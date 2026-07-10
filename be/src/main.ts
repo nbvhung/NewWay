@@ -10,10 +10,10 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
+  app.set('trust proxy', 1);
+
   app.enableCors({
-    origin: process.env.NODE_ENV === 'production'
-      ? 'https://yourdomain.com'
-      : ['http://localhost:3000'],
+    origin: [process.env.CORS_ORIGIN || 'http://localhost:3000'],
     credentials: true,
   });
 
