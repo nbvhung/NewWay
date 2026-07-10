@@ -59,7 +59,9 @@ export class AuthController {
 
   private isCrossOrigin(req: Request): boolean {
     const origin = req.headers.origin || req.headers.referer || '';
-    return !origin.includes('localhost') && !origin.includes('127.0.0.1') && origin.startsWith('http');
+    const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
+    const isHttp = origin.startsWith('http://') || origin.startsWith('https://');
+    return !isLocalhost && isHttp && origin !== 'https://newway-backend-production.up.railway.app';
   }
 
   private setTokenCookies(req: Request, res: Response, accessToken: string, refreshToken: string) {
