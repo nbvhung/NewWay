@@ -26,6 +26,20 @@ export class SubmissionsController {
     return { data: result };
   }
 
+  @Get('submissions/salary-summary')
+  @UseGuards(JwtAuthGuard)
+  async getSalarySummary(
+    @CurrentUser() user: any,
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+  ) {
+    const now = new Date();
+    const m = month ? parseInt(month) : now.getMonth() + 1;
+    const y = year ? parseInt(year) : now.getFullYear();
+    const result = await this.submissionsService.getSalarySummary(user.id, m, y);
+    return { data: result };
+  }
+
   @Put('submissions/:id')
   @UseGuards(JwtAuthGuard)
   async updateMy(

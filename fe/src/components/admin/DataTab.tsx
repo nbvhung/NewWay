@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { StatsCard } from '@/components/ui/stats-card';
 import { EditSubmissionModal } from './EditSubmissionModal';
+import { Pagination } from '@/components/ui/pagination';
+import { usePagination } from '@/hooks/use-pagination';
 import { Submission, User, ShippingLine } from '@/types';
 import { api } from '@/lib/api-client';
 import { fmtDate, ROLE_LABELS } from '@/lib/utils';
@@ -26,6 +28,8 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
   const [editForm, setEditForm] = useState<any>({});
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const { page, pageSize, totalPages, totalItems, paged: pagedSubmissions, setPage, setPageSize } = usePagination(submissions, 20);
 
   const loadSubmissions = async () => {
     try {
@@ -161,62 +165,73 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         {submissions.length === 0 ? (
           <div className="text-center py-16 text-[#64748b] text-sm">📭 Không có bản ghi nào</div>
         ) : (
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              <tr className="bg-[#263147]">
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">#</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">Người nhập / Role</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">Lái xe NW</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">KH</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">H20</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">H40</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">V20</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">V40</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">V20FR</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">V40FR</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">VSL</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">TIP</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">Sửa</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">Ngày tạo</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {submissions.map((s, i) => (
-                <tr key={s.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.03)]">
-                  <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(148,163,184,0.15)] text-[#94a3b8]">{i + 1}</span></td>
-                  <td className="px-3 py-2.5">
-                    <span className="px-1.5 py-0.5 rounded-full bg-[rgba(26,86,219,0.2)] text-blue-400">{(s as any).user?.username || '—'}</span>
-                    {(s as any).user?.role && (
-                      <span className="ml-1 px-1 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#94a3b8]">{ROLE_LABELS[(s as any).user.role] || (s as any).user.role}</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5 font-medium">{s.driverName}</td>
-                  <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(16,185,129,0.2)] text-emerald-400 max-w-[160px] inline-block truncate">{slDisplayMap.get(s.shippingLine) || s.shippingLine}</span></td>
-                  <td className="px-3 py-2.5">{s.hang20 || '—'}</td>
-                  <td className="px-3 py-2.5">{s.hang40 || '—'}</td>
-                  <td className="px-3 py-2.5">{s.vo20 || '—'}</td>
-                  <td className="px-3 py-2.5">{s.vo40 || '—'}</td>
-                  <td className="px-3 py-2.5">{s.vo20fr || '—'}</td>
-                  <td className="px-3 py-2.5">{s.vo40fr || '—'}</td>
-                  <td className="px-3 py-2.5">{s.veSinhLai || '—'}</td>
-                  <td className="px-3 py-2.5">{s.tip || '—'}</td>
-                  <td className="px-3 py-2.5">
-                    {s.editCount > 0
-                      ? <span className="px-1.5 py-0.5 rounded-full bg-[rgba(245,158,11,0.2)] text-amber-400">✏️ {s.editCount}</span>
-                      : <span className="px-1.5 py-0.5 rounded-full bg-[rgba(148,163,184,0.15)] text-[#94a3b8]">0</span>}
-                  </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap text-[#94a3b8]">{fmtDate(s.createdAt)}</td>
-                  <td className="px-3 py-2.5 whitespace-nowrap flex gap-1">
-                    <button onClick={() => openEditSub(s)}
-                      className="px-2 py-1 rounded text-[10px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️</button>
-                    <button onClick={() => deleteSub(s.id)}
-                      className="px-2 py-1 rounded text-[10px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">🗑️</button>
-                  </td>
+          <>
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-[#263147]">
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">#</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">Người nhập / Role</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">Lái xe NW</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">KH</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">H20</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">H40</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">V20</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">V40</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">V20FR</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">V40FR</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">VSL</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">TIP</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">Sửa</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">Ngày tạo</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">Thao tác</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pagedSubmissions.map((s, i) => (
+                  <tr key={s.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.03)]">
+                    <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(148,163,184,0.15)] text-[#94a3b8]">{(page - 1) * pageSize + i + 1}</span></td>
+                    <td className="px-3 py-2.5">
+                      <span className="px-1.5 py-0.5 rounded-full bg-[rgba(26,86,219,0.2)] text-blue-400">{(s as any).user?.username || '—'}</span>
+                      {(s as any).user?.role && (
+                        <span className="ml-1 px-1 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#94a3b8]">{ROLE_LABELS[(s as any).user.role] || (s as any).user.role}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 font-medium">{s.driverName}</td>
+                    <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(16,185,129,0.2)] text-emerald-400 max-w-[160px] inline-block truncate">{slDisplayMap.get(s.shippingLine) || s.shippingLine}</span></td>
+                    <td className="px-3 py-2.5">{s.hang20 || '—'}</td>
+                    <td className="px-3 py-2.5">{s.hang40 || '—'}</td>
+                    <td className="px-3 py-2.5">{s.vo20 || '—'}</td>
+                    <td className="px-3 py-2.5">{s.vo40 || '—'}</td>
+                    <td className="px-3 py-2.5">{s.vo20fr || '—'}</td>
+                    <td className="px-3 py-2.5">{s.vo40fr || '—'}</td>
+                    <td className="px-3 py-2.5">{s.veSinhLai || '—'}</td>
+                    <td className="px-3 py-2.5">{s.tip || '—'}</td>
+                    <td className="px-3 py-2.5">
+                      {s.editCount > 0
+                        ? <span className="px-1.5 py-0.5 rounded-full bg-[rgba(245,158,11,0.2)] text-amber-400">✏️ {s.editCount}</span>
+                        : <span className="px-1.5 py-0.5 rounded-full bg-[rgba(148,163,184,0.15)] text-[#94a3b8]">0</span>}
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-[#94a3b8]">{fmtDate(s.createdAt)}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap flex gap-1">
+                      <button onClick={() => openEditSub(s)}
+                        className="px-2 py-1 rounded text-[10px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️</button>
+                      <button onClick={() => deleteSub(s.id)}
+                        className="px-2 py-1 rounded text-[10px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">🗑️</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[10, 20, 50, 100]}
+            />
+          </>
         )}
       </div>
 

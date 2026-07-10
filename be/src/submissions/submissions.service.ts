@@ -133,6 +133,54 @@ export class SubmissionsService {
     return this.findByIdWithHistory(submission.id);
   }
 
+  async getSalarySummary(userId: number, month: number, year: number): Promise<any> {
+    const submissions = await this.submissionsRepository.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
+
+    const monthSubs = submissions.filter((sub) => {
+      const d = new Date(sub.createdAt);
+      return d.getMonth() + 1 === month && d.getFullYear() === year;
+    });
+
+    const allRoutes = await this.routesRepository.find();
+    const routeMoneyMap = new Map<string, number>();
+    for (const r of allRoutes) {
+      routeMoneyMap.set(r.name, Number(r.money) || 0);
+    }
+
+    const allShippingLines = await this.shippingLinesRepository.find();
+    const slMap = new Map<string, ShippingLine>();
+    for (const sl of allShippingLines) {
+      slMap.set(sl.name, sl);
+    }
+    const planDisplayName = (sl: ShippingLine) => {
+      return [sl.name, sl.soChuyen, sl.routeName, sl.ngay, sl.vendor].filter(Boolean).join(' / ');
+    };
+
+    let totalSalary = 0;
+    const details: any[] = [];
+
+    for (const sub of monthSubs) {
+      const sl = slMap.get(sub.shippingLine);
+      const tenTuyen = sub.route || sl?.routeName || '';
+      const donGia = routeMoneyMap.get(tenTuyen) || 0;
+      const h20 = parseFloat(sub.hang20) || 0;
+      const h40 = parseFloat(sub.hang40) || 0;
+      const v20 = parseFloat(sub.vo20) || 0;
+      const v40 = parseFloat(sub.vo40) || 0;
+      const v20fr = parseFloat(sub.vo20fr) || 0;
+      const v40fr = parseFloat(sub.vo40fr) || 0;
+      const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+      const salary = donGia * tong * (sl?.tangCuong ? 1.15 : 1);
+      totalSalary += salary;
+      details.push({ ...sub, salary, planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine });
+    }
+
+    return { totalSalary, count: monthSubs.length, month, year, details };
+  }
+
   async findAll(filter: {
     userId?: number;
     shippingLine?: string;

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import { ROLE_LABELS } from '@/lib/utils';
@@ -31,9 +32,14 @@ export function Navbar() {
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/form" className="flex items-center gap-2.5 font-bold text-base">
-            <span className="w-7 h-7 bg-gradient-to-br from-[#1a56db] to-[#06b6d4] rounded-md flex items-center justify-center text-xs text-white font-bold">
-              N
-            </span>
+            <Image
+              src="/logo.png"
+              alt="New Way Logo"
+              width={28}
+              height={28}
+              className="rounded-md object-contain"
+              priority
+            />
             <span className="hidden sm:inline">New Way</span>
           </Link>
 

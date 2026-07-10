@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { ShippingLine, Route } from '@/types';
 import { api } from '@/lib/api-client';
 import { Modal } from '@/components/ui/modal';
+import { Pagination } from '@/components/ui/pagination';
+import { usePagination } from '@/hooks/use-pagination';
 
 interface Props {
   allShippingLines: ShippingLine[];
@@ -29,6 +31,8 @@ export function ShippingLinesTab({ allShippingLines, allRoutes, onRefresh, toast
   const [editVendor, setEditVendor] = useState('');
   const [editTangCuong, setEditTangCuong] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const { page, pageSize, totalPages, totalItems, paged: pagedLines, setPage, setPageSize } = usePagination(allShippingLines, 10);
 
   const addPlan = async () => {
     if (!name.trim()) { toast('Vui lòng nhập tên kế hoạch', 'error'); return; }
@@ -104,7 +108,7 @@ export function ShippingLinesTab({ allShippingLines, allRoutes, onRefresh, toast
           <button onClick={onRefresh} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#94a3b8] border border-[rgba(255,255,255,0.08)] hover:text-[#f1f5f9] transition-all cursor-pointer">🔄 Làm mới</button>
         </div>
         <div className="flex flex-col gap-1.5">
-          {allShippingLines.map(p => {
+          {pagedLines.map(p => {
             const display = planDisplayName(p);
             return (
               <div key={p.id} className="flex items-center justify-between gap-2 px-3 py-2.5 bg-[#263147] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs">
@@ -120,6 +124,15 @@ export function ShippingLinesTab({ allShippingLines, allRoutes, onRefresh, toast
           })}
           {allShippingLines.length === 0 && <div className="text-center w-full py-8 text-[#64748b] text-sm">Chưa có kế hoạch</div>}
         </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={totalItems}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[5, 10, 20, 50]}
+        />
       </div>
 
       <div className="bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-xl p-5 sticky top-20">

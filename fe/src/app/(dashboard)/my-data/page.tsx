@@ -24,6 +24,8 @@ interface EditFormData {
   tip: string;
 }
 
+const MONTHS_VI = ['', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+
 export default function MyDataPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -37,6 +39,11 @@ export default function MyDataPage() {
     vo20fr: '', vo40fr: '', veSinhLai: '', tip: '',
   });
   const [saving, setSaving] = useState(false);
+
+  const now = new Date();
+  const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
+  const [viewYear, setViewYear] = useState(now.getFullYear());
+  const [salarySummary, setSalarySummary] = useState<{ totalSalary: number; count: number } | null>(null);
 
   const planDisplayName = (sl: ShippingLine) => {
     return [sl.name, sl.soChuyen, sl.routeName, sl.ngay, sl.vendor].filter(Boolean).join(' / ');
@@ -60,6 +67,26 @@ export default function MyDataPage() {
       setLoading(false);
     }
   };
+
+  const fetchSalarySummary = async (month: number, year: number) => {
+    try {
+      const res = await api.get<any>(`/submissions/salary-summary?month=${month}&year=${year}`);
+      return res?.data || res || { totalSalary: 0, count: 0 };
+    } catch {
+      return { totalSalary: 0, count: 0 };
+    }
+  };
+
+  useEffect(() => {
+    if (!loading) {
+      fetchSalarySummary(viewMonth, viewYear).then(setSalarySummary);
+    }
+  }, [loading]);
+
+  // Sync salary when month/year changes
+  useEffect(() => {
+    fetchSalarySummary(viewMonth, viewYear).then(setSalarySummary);
+  }, [viewMonth, viewYear]);
 
   const updateField = (field: string, value: string) => {
     setEditForm((prev) => ({ ...prev, [field]: value }));
@@ -102,10 +129,14 @@ export default function MyDataPage() {
   };
 
   const today = new Date().toISOString().slice(0, 10);
+  const filteredData = data.filter((s) => {
+    const d = new Date(s.createdAt);
+    return d.getMonth() + 1 === viewMonth && d.getFullYear() === viewYear;
+  });
   const stats = {
-    total: data.length,
-    edits: data.reduce((sum, s) => sum + (s.editCount || 0), 0),
-    today: data.filter((s) => (s.createdAt || '').slice(0, 10) === today).length,
+    total: filteredData.length,
+    edits: filteredData.reduce((sum, s) => sum + (s.editCount || 0), 0),
+    today: filteredData.filter((s) => (s.createdAt || '').slice(0, 10) === today).length,
   };
 
   if (loading) return <LoadingSpinner className="min-h-[60vh]" />;
@@ -129,42 +160,72 @@ export default function MyDataPage() {
       </div>
 
       <div className="bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-xl">
-        <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <h3 className="text-base font-bold">📋 Danh sách bản ghi</h3>
-          <button onClick={loadData} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#94a3b8] border border-[rgba(255,255,255,0.08)] hover:text-[#f1f5f9] transition-all cursor-pointer">
-            🔄 Làm mới
-          </button>
+        <div className="flex items-center justify-between flex-wrap gap-3 px-5 pt-5 pb-3">
+          <div>
+            <h3 className="text-base font-bold">📋 Danh sách bản ghi</h3>
+            <p className="text-[10px] text-[#64748b] mt-0.5">Hiển thị bản ghi của {MONTHS_VI[viewMonth]}/{viewYear}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Month navigator */}
+            <div className="flex items-center gap-1 bg-[#263147] border border-[rgba(255,255,255,0.06)] rounded-lg px-2 py-1">
+              <button
+                onClick={() => {
+                  const newM = viewMonth === 1 ? 12 : viewMonth - 1;
+                  const newY = viewMonth === 1 ? viewYear - 1 : viewYear;
+                  setViewMonth(newM);
+                  setViewYear(newY);
+                }}
+                className="p-0.5 rounded text-[#94a3b8] hover:text-[#f1f5f9] hover:bg-[rgba(255,255,255,0.06)] transition-all cursor-pointer text-xs"
+              >◀</button>
+              <span className="text-xs font-semibold text-[#f1f5f9] px-1 min-w-[80px] text-center">
+                {MONTHS_VI[viewMonth]}/{viewYear}
+              </span>
+              <button
+                onClick={() => {
+                  const newM = viewMonth === 12 ? 1 : viewMonth + 1;
+                  const newY = viewMonth === 12 ? viewYear + 1 : viewYear;
+                  if (newY > now.getFullYear() || (newY === now.getFullYear() && newM > now.getMonth() + 1)) return;
+                  setViewMonth(newM);
+                  setViewYear(newY);
+                }}
+                className="p-0.5 rounded text-[#94a3b8] hover:text-[#f1f5f9] hover:bg-[rgba(255,255,255,0.06)] transition-all cursor-pointer text-xs"
+              >▶</button>
+            </div>
+            <button onClick={loadData} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#94a3b8] border border-[rgba(255,255,255,0.08)] hover:text-[#f1f5f9] transition-all cursor-pointer">
+              🔄 Làm mới
+            </button>
+          </div>
         </div>
 
-        {data.length === 0 ? (
+        {filteredData.length === 0 ? (
           <div className="text-center py-16 text-[#64748b]">
             <div className="text-5xl mb-3">📭</div>
-            <p className="text-sm">Chưa có bản ghi nào.</p>
+            <p className="text-sm">Chưa có bản ghi nào trong {MONTHS_VI[viewMonth]}/{viewYear}.</p>
             <Link href="/form" className="text-[#1a56db] text-sm hover:underline">Nhập liệu ngay →</Link>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" style={{ maxHeight: '480px', overflowY: 'auto' }}>
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="bg-[#263147]">
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">#</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">Ngày tạo</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">Kế hoạch</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">H20</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">H40</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">V20</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">V40</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">V20FR</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">V40FR</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">VSL</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">TIP</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">Lương</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">Sửa</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">Thao tác</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">#</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">Ngày tạo</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">Kế hoạch</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">H20</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">H40</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">V20</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">V40</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">V20FR</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">V40FR</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">VSL</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">TIP</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">Lương</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">Sửa</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
-                {data.map((s, i) => (
+                {filteredData.map((s, i) => (
                   <tr key={s.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.03)]">
                     <td className="px-3.5 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#94a3b8]">{i + 1}</span></td>
                     <td className="px-3.5 py-3 whitespace-nowrap text-[#94a3b8]">{fmtDate(s.createdAt)}</td>
@@ -196,6 +257,22 @@ export default function MyDataPage() {
             </table>
           </div>
         )}
+      </div>
+
+      {/* Salary Summary */}
+      <div className="mt-6">
+        <div className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] border border-[rgba(255,255,255,0.08)] rounded-xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold">💰 Lương {MONTHS_VI[viewMonth]}/{viewYear}</h3>
+            </div>
+            <span className="text-xs text-[#94a3b8]">{salarySummary?.count ?? 0} bản ghi</span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] to-[#34d399]">
+            {formatMoney(salarySummary?.totalSalary)}
+          </div>
+          <p className="text-xs text-[#64748b] mt-2">🎉 Hãy duy trì phong độ để đạt kết quả cao nhất nhé!</p>
+        </div>
       </div>
 
       <Modal

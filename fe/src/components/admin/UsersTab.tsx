@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { EditUserModal } from './EditUserModal';
+import { Pagination } from '@/components/ui/pagination';
+import { usePagination } from '@/hooks/use-pagination';
 import { User } from '@/types';
 import { api } from '@/lib/api-client';
 import { fmtDate, ROLE_LABELS } from '@/lib/utils';
@@ -40,6 +42,8 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
   const [newUser, setNewUser] = useState({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', sdt: '' });
   const [editUserData, setEditUserData] = useState<any>(null);
   const [editUserModalOpen, setEditUserModalOpen] = useState(false);
+
+  const { page, pageSize, totalPages, totalItems, paged: pagedUsers, setPage, setPageSize } = usePagination(allUsers, 10);
 
   const addUser = async () => {
     if (!newUser.username || !newUser.fullName || !newUser.password) {
@@ -90,7 +94,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
           <button onClick={onRefresh} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#94a3b8] border border-[rgba(255,255,255,0.08)] hover:text-[#f1f5f9] transition-all cursor-pointer">🔄 Làm mới</button>
         </div>
         <div className="flex flex-col gap-2">
-          {allUsers.map(u => (
+          {pagedUsers.map(u => (
             <div key={u.id} className="flex items-center gap-3.5 p-3.5 bg-[#263147] border border-[rgba(255,255,255,0.08)] rounded-lg hover:border-[rgba(26,86,219,0.3)] transition-all">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1a56db] to-[#06b6d4] flex items-center justify-center font-bold text-sm text-white shrink-0">
                 {(u.fullName || '?')[0].toUpperCase()}
@@ -109,6 +113,15 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
           ))}
           {allUsers.length === 0 && <div className="text-center py-8 text-[#64748b] text-sm">Chưa có người dùng</div>}
         </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={totalItems}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[5, 10, 20, 50]}
+        />
       </div>
 
       <div className="bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-xl p-5 sticky top-20">

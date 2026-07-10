@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/providers/auth-provider';
 
 export default function LoginPage() {
@@ -45,8 +46,15 @@ export default function LoginPage() {
 
       <div className="relative z-10 w-full max-w-[420px] bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-2xl p-10 sm:p-12 shadow-lg">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-[#1a56db] to-[#06b6d4] rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 shadow-[0_8px_32px_rgba(26,86,219,0.4)]">
-            🚛
+          <div className="w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+            <Image
+              src="/logo.png"
+              alt="New Way Logo"
+              width={64}
+              height={64}
+              className="rounded-2xl object-contain shadow-[0_8px_32px_rgba(26,86,219,0.4)]"
+              priority
+            />
           </div>
           <h1 className="text-xl font-bold leading-tight">Xác nhận sản lượng<br />xe NEW WAY</h1>
           <p className="text-xs text-[#94a3b8] mt-1">Vui lòng đăng nhập để tiếp tục</p>
