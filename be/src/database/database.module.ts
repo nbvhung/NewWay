@@ -10,17 +10,30 @@ import * as bcrypt from 'bcryptjs';
 @Module({
   imports: [
     TypeOrmModule.forRootAsync({
-      useFactory: () => ({
-        type: 'postgres',
-        host: process.env.DATABASE_HOST || 'localhost',
-        port: parseInt(process.env.DATABASE_PORT || '5432'),
-        username: process.env.DATABASE_USER || 'postgres',
-        password: process.env.DATABASE_PASSWORD || 'postgres',
-        database: process.env.DATABASE_NAME || 'newway',
-        entities: [User, ShippingLine, Route, Submission, EditHistory],
-        synchronize: true,
-        logging: false,
-      }),
+      useFactory: () => {
+        const dbUrl = process.env.DATABASE_URL;
+        if (dbUrl) {
+          return {
+            type: 'postgres',
+            url: dbUrl,
+            entities: [User, ShippingLine, Route, Submission, EditHistory],
+            synchronize: true,
+            logging: false,
+            ssl: { rejectUnauthorized: false },
+          };
+        }
+        return {
+          type: 'postgres',
+          host: process.env.DATABASE_HOST || 'localhost',
+          port: parseInt(process.env.DATABASE_PORT || '5432'),
+          username: process.env.DATABASE_USER || 'postgres',
+          password: process.env.DATABASE_PASSWORD || 'postgres',
+          database: process.env.DATABASE_NAME || 'newway',
+          entities: [User, ShippingLine, Route, Submission, EditHistory],
+          synchronize: true,
+          logging: false,
+        };
+      },
     }),
     TypeOrmModule.forFeature([User, ShippingLine, Route, Submission, EditHistory]),
   ],
@@ -35,7 +48,12 @@ export class DatabaseModule {
 
   private async seedDefaultData() {
     const { DataSource } = require('typeorm');
-    const dataSource = new DataSource({
+    const dbUrl = process.env.DATABASE_URL;
+    const dataSource = new DataSource(dbUrl ? {
+      type: 'postgres',
+      url: dbUrl,
+      ssl: { rejectUnauthorized: false },
+    } : {
       type: 'postgres',
       host: process.env.DATABASE_HOST || 'localhost',
       port: parseInt(process.env.DATABASE_PORT || '5432'),
