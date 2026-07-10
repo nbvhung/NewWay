@@ -37,7 +37,7 @@ function roleOptionsFor(currentRole: string) {
 }
 
 export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
-  const [newUser, setNewUser] = useState({ username: '', fullName: '', password: '', role: 'laixe' });
+  const [newUser, setNewUser] = useState({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', sdt: '' });
   const [editUserData, setEditUserData] = useState<any>(null);
   const [editUserModalOpen, setEditUserModalOpen] = useState(false);
 
@@ -49,13 +49,13 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
     try {
       await api.post('/admin/users', newUser);
       toast(`Đã thêm tài khoản: ${newUser.username}`, 'success');
-      setNewUser({ username: '', fullName: '', password: '', role: 'laixe' });
+      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', sdt: '' });
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
   };
 
   const openEditUser = (u: User) => {
-    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, password: '' });
+    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, soXe: u.soXe, sdt: u.sdt, password: '' });
     setEditUserModalOpen(true);
   };
 
@@ -126,6 +126,16 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Mật khẩu <span className="text-red-500">*</span></label>
           <input type="password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} placeholder="Tối thiểu 6 ký tự"
+            className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+        </div>
+        <div className="mb-3">
+          <label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Biển số xe</label>
+          <input type="text" value={newUser.soXe} onChange={e => setNewUser({ ...newUser, soXe: e.target.value })} placeholder="vd: 15H 07883"
+            className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+        </div>
+        <div className="mb-3">
+          <label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Số điện thoại</label>
+          <input type="text" value={newUser.sdt} onChange={e => setNewUser({ ...newUser, sdt: e.target.value })} placeholder="vd: 0912237755"
             className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
         </div>
         <div className="mb-4">

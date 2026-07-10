@@ -38,6 +38,16 @@ export function EditUserModal({ open, onClose, editUserData, setEditUserData, on
         </select>
       </div>
       <div className="mb-3">
+        <label className="text-xs font-medium text-[#94a3b8] mb-1 block">Số xe</label>
+        <input type="text" value={editUserData?.soXe || ''} onChange={e => setEditUserData({ ...editUserData, soXe: e.target.value })}
+          className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db]" />
+      </div>
+      <div className="mb-3">
+        <label className="text-xs font-medium text-[#94a3b8] mb-1 block">SĐT</label>
+        <input type="text" value={editUserData?.sdt || ''} onChange={e => setEditUserData({ ...editUserData, sdt: e.target.value })}
+          className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db]" />
+      </div>
+      <div className="mb-3">
         <label className="text-xs font-medium text-[#94a3b8] mb-1 block">Mật khẩu mới <span className="text-[#64748b] font-normal">(để trống = không đổi)</span></label>
         <input type="password" value={editUserData?.password || ''} onChange={e => setEditUserData({ ...editUserData, password: e.target.value })} placeholder="Nhập mật khẩu mới nếu muốn đổi"
           className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />

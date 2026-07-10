@@ -17,6 +17,12 @@ export class User {
   @Column({ name: 'role', length: 20, default: 'laixe' })
   role: string;
 
+  @Column({ name: 'so_xe', length: 50, default: '' })
+  soXe: string;
+
+  @Column({ name: 'sdt', length: 20, default: '' })
+  sdt: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

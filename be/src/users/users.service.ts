@@ -56,6 +56,8 @@ export class UsersService {
       passwordHash: hash,
       fullName: dto.fullName.trim(),
       role: validRole,
+      soXe: dto.soXe?.trim() || '',
+      sdt: dto.sdt?.trim() || '',
     });
     const saved = await this.usersRepository.save(user);
     const { passwordHash, ...result } = saved;
@@ -90,6 +92,8 @@ export class UsersService {
     if (dto.password) {
       target.passwordHash = bcrypt.hashSync(dto.password, 10);
     }
+    if (dto.soXe !== undefined) target.soXe = dto.soXe.trim();
+    if (dto.sdt !== undefined) target.sdt = dto.sdt.trim();
 
     const saved = await this.usersRepository.save(target);
     const { passwordHash, ...result } = saved;

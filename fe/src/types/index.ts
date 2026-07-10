@@ -3,6 +3,8 @@ export interface User {
   username: string;
   fullName: string;
   role: Role;
+  soXe: string;
+  sdt: string;
   createdAt?: string;
 }
 

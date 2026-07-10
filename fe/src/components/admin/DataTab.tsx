@@ -5,7 +5,7 @@ import { StatsCard } from '@/components/ui/stats-card';
 import { EditSubmissionModal } from './EditSubmissionModal';
 import { Submission, User, ShippingLine } from '@/types';
 import { api } from '@/lib/api-client';
-import { fmtDate } from '@/lib/utils';
+import { fmtDate, ROLE_LABELS } from '@/lib/utils';
 
 interface Props {
   user: any;
@@ -165,7 +165,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
             <thead>
               <tr className="bg-[#263147]">
                 <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">#</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">Người nhập</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">Người nhập / Role</th>
                 <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">Lái xe NW</th>
                 <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">KH</th>
                 <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">H20</th>
@@ -185,7 +185,12 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
               {submissions.map((s, i) => (
                 <tr key={s.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.03)]">
                   <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(148,163,184,0.15)] text-[#94a3b8]">{i + 1}</span></td>
-                  <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(26,86,219,0.2)] text-blue-400">{(s as any).user?.username || '—'}</span></td>
+                  <td className="px-3 py-2.5">
+                    <span className="px-1.5 py-0.5 rounded-full bg-[rgba(26,86,219,0.2)] text-blue-400">{(s as any).user?.username || '—'}</span>
+                    {(s as any).user?.role && (
+                      <span className="ml-1 px-1 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#94a3b8]">{ROLE_LABELS[(s as any).user.role] || (s as any).user.role}</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5 font-medium">{s.driverName}</td>
                   <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(16,185,129,0.2)] text-emerald-400 max-w-[160px] inline-block truncate">{slDisplayMap.get(s.shippingLine) || s.shippingLine}</span></td>
                   <td className="px-3 py-2.5">{s.hang20 || '—'}</td>

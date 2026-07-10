@@ -18,4 +18,12 @@ export class CreateUserDto {
   @IsString()
   @IsIn(['laixe', 'ops', 'admin', 'super_admin', 'hr'], { message: 'Vai trò không hợp lệ' })
   role?: string;
+
+  @IsOptional()
+  @IsString()
+  soXe?: string;
+
+  @IsOptional()
+  @IsString()
+  sdt?: string;
 }
