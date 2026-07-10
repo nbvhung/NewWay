@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 const publicPaths = ['/login'];
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (publicPaths.includes(pathname) || pathname === '/') {
@@ -23,7 +23,8 @@ export async function middleware(request: NextRequest) {
 
     if (accessToken) {
       try {
-        const payload = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64url').toString());
+        const base64 = accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(atob(base64));
         const expiry = payload.exp * 1000;
         if (Date.now() >= expiry) {
           return NextResponse.redirect(new URL('/login', request.url));
