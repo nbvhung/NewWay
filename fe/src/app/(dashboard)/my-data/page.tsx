@@ -285,7 +285,7 @@ export default function MyDataPage() {
           </div>
         </div>
 
-        {editSub && editSub.history && editSub.history.length > 0 && (user?.role === 'admin' || user?.role === 'super_admin') && (
+        {editSub && editSub.history && editSub.history.length > 0 && (user?.role === 'admin' || user?.role === 'supper_admin') && (
           <>
             <div className="h-px bg-[rgba(255,255,255,0.08)] my-4" />
             <div className="text-xs font-semibold text-[#94a3b8] mb-2.5">

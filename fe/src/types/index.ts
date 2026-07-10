@@ -8,7 +8,7 @@ export interface User {
   createdAt?: string;
 }
 
-export type Role = 'laixe' | 'ops' | 'admin' | 'super_admin' | 'hr';
+export type Role = 'laixe' | 'ops' | 'admin' | 'supper_admin' | 'hr';
 
 export interface ShippingLine {
   id: number;

@@ -99,7 +99,7 @@ export class SubmissionsService {
     if (!submission) {
       throw new NotFoundException('Không tìm thấy bản ghi');
     }
-    if (submission.userId !== userId && !['admin', 'super_admin', 'ops'].includes(role)) {
+    if (submission.userId !== userId && !['admin', 'supper_admin', 'ops'].includes(role)) {
       throw new ForbiddenException('Bạn không có quyền sửa bản ghi này');
     }
 
@@ -144,8 +144,8 @@ export class SubmissionsService {
       .leftJoinAndSelect('s.user', 'user')
       .orderBy('s.createdAt', 'DESC');
 
-    if (role !== 'admin' && role !== 'super_admin') {
-      query.andWhere('user.role NOT IN (:...excludedRoles)', { excludedRoles: ['admin', 'super_admin'] });
+    if (role !== 'admin' && role !== 'supper_admin') {
+      query.andWhere('user.role NOT IN (:...excludedRoles)', { excludedRoles: ['admin', 'supper_admin'] });
     }
 
     if (filter.userId) {
@@ -523,7 +523,7 @@ export class SubmissionsService {
       }
     }
 
-    if (role === 'admin' || role === 'super_admin') {
+    if (role === 'admin' || role === 'supper_admin') {
       const wsHistory = workbook.addWorksheet('Lịch sử chỉnh sửa');
       wsHistory.columns = [
         { header: 'STT', key: 'stt', width: 6 },

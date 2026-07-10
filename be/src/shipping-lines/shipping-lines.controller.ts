@@ -18,28 +18,28 @@ export class ShippingLinesController {
 
   @Get('admin/shipping-lines')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ops', 'admin', 'super_admin')
+  @Roles('ops', 'admin', 'supper_admin')
   findAllForAdmin() {
     return this.shippingLinesService.findAll();
   }
 
   @Post('admin/shipping-lines')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ops', 'admin', 'super_admin')
+  @Roles('ops', 'admin', 'supper_admin')
   create(@Body() dto: CreateShippingLineDto) {
     return this.shippingLinesService.create(dto);
   }
 
   @Put('admin/shipping-lines/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ops', 'admin', 'super_admin')
+  @Roles('ops', 'admin', 'supper_admin')
   update(@Param('id') id: string, @Body() dto: UpdateShippingLineDto) {
     return this.shippingLinesService.update(+id, dto);
   }
 
   @Delete('admin/shipping-lines/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ops', 'admin', 'super_admin')
+  @Roles('ops', 'admin', 'supper_admin')
   remove(@Param('id') id: string) {
     return this.shippingLinesService.remove(+id);
   }

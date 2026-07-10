@@ -15,7 +15,7 @@ interface Props {
 
 function roleBadge(role: string) {
   const colors: Record<string, string> = {
-    super_admin: 'bg-red-500/20 text-red-400',
+    supper_admin: 'bg-red-500/20 text-red-400',
     admin: 'bg-amber-500/20 text-amber-400',
     ops: 'bg-purple-500/20 text-purple-400',
     laixe: 'bg-blue-500/20 text-blue-400',
@@ -24,14 +24,14 @@ function roleBadge(role: string) {
 }
 
 function canManageUser(currentRole: string, targetRole: string) {
-  if (currentRole === 'super_admin') return true;
-  if (currentRole === 'admin') return targetRole !== 'super_admin';
+  if (currentRole === 'supper_admin') return true;
+  if (currentRole === 'admin') return targetRole !== 'supper_admin';
   if (currentRole === 'ops') return targetRole === 'laixe';
   return false;
 }
 
 function roleOptionsFor(currentRole: string) {
-  if (currentRole === 'super_admin') return ['laixe', 'ops', 'admin', 'super_admin', 'hr'];
+  if (currentRole === 'supper_admin') return ['laixe', 'ops', 'admin', 'supper_admin', 'hr'];
   if (currentRole === 'admin') return ['laixe', 'ops', 'hr'];
   return ['laixe'];
 }

@@ -83,7 +83,7 @@ export function EditSubmissionModal({ open, onClose, editForm, setEditForm, allS
           <input type="text" value={editForm.tip || ''} onChange={e => setEditForm({ ...editForm, tip: e.target.value })}
             className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db]" /></div>
       </div>
-      {submission?.history && submission.history.length > 0 && (userRole === 'admin' || userRole === 'super_admin') && (
+      {submission?.history && submission.history.length > 0 && (userRole === 'admin' || userRole === 'supper_admin') && (
         <>
           <div className="h-px bg-[rgba(255,255,255,0.08)] my-4" />
           <div className="text-xs font-semibold text-[#94a3b8] mb-2">📜 Lịch sử chỉnh sửa ({submission.history.length} lần)</div>

@@ -16,7 +16,7 @@ export function Navbar() {
   const isActive = (path: string) => pathname.startsWith(path);
 
   const roleClass =
-    user.role === 'super_admin'
+    user.role === 'supper_admin'
       ? 'bg-red-500/20 text-red-400'
       : user.role === 'admin'
       ? 'bg-amber-500/20 text-amber-400'
@@ -58,7 +58,7 @@ export function Navbar() {
             >
               📊 Dữ liệu của tôi
             </Link>
-            {(user.role === 'ops' || user.role === 'admin' || user.role === 'super_admin' || user.role === 'hr') && (
+            {(user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || user.role === 'hr') && (
               <Link
                 href="/admin"
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
@@ -111,7 +111,7 @@ export function Navbar() {
           <Link href="/my-data" className="px-3 py-2 rounded-lg text-sm" onClick={() => setMenuOpen(false)}>
             📊 Dữ liệu của tôi
           </Link>
-          {(user.role === 'ops' || user.role === 'admin' || user.role === 'super_admin' || user.role === 'hr') && (
+          {(user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || user.role === 'hr') && (
             <Link href="/admin" className="px-3 py-2 rounded-lg text-sm text-amber-400" onClick={() => setMenuOpen(false)}>
               ⚙️ Quản lý
             </Link>
