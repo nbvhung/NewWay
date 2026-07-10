@@ -10,7 +10,9 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
-  app.set('trust proxy', 1);
+  // Set trust proxy for production
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.set('trust proxy', 1);
 
   app.enableCors({
     origin: [process.env.CORS_ORIGIN || 'http://localhost:3000'],
@@ -31,3 +33,4 @@ async function bootstrap() {
 }
 
 bootstrap();
+
