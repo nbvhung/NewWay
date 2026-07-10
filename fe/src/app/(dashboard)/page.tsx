@@ -1,0 +1,22 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/providers/auth-provider';
+
+export default function DashboardPage() {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'tonghop' || user.role === 'admin' || user.role === 'supper_admin') {
+        router.replace('/admin');
+      } else {
+        router.replace('/form');
+      }
+    }
+  }, [user, router]);
+
+  return null;
+}
