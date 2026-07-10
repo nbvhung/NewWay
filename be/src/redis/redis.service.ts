@@ -6,15 +6,29 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private client: Redis;
 
   async onModuleInit() {
-    this.client = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      maxRetriesPerRequest: 3,
-      retryStrategy: (times) => {
-        if (times > 3) return null;
-        return Math.min(times * 200, 2000);
-      },
-    });
+    const redisUrl = process.env.REDIS_URL;
+    
+    if (redisUrl) {
+      // Use REDIS_URL from Railway
+      this.client = new Redis(redisUrl, {
+        maxRetriesPerRequest: 3,
+        retryStrategy: (times) => {
+          if (times > 3) return null;
+          return Math.min(times * 200, 2000);
+        },
+      });
+    } else {
+      // Fallback for local development
+      this.client = new Redis({
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379'),
+        maxRetriesPerRequest: 3,
+        retryStrategy: (times) => {
+          if (times > 3) return null;
+          return Math.min(times * 200, 2000);
+        },
+      });
+    }
   }
 
   async onModuleDestroy() {
@@ -69,3 +83,4 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     await this.client.del(`refresh_token:${userId}`);
   }
 }
+
