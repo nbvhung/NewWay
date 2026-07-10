@@ -14,8 +14,15 @@ async function bootstrap() {
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.set('trust proxy', 1);
 
+  const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',').map(s => s.trim());
   app.enableCors({
-    origin: [process.env.CORS_ORIGIN || 'http://localhost:3000'],
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.some(o => origin.startsWith(o))) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   });
 
