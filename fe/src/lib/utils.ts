@@ -10,9 +10,9 @@ export function fmtDate(dt: string | null | undefined): string {
 }
 
 export const ROLE_LABELS: Record<string, string> = {
-  supper_admin: 'Supper Admin',
+  super_admin: 'Super Admin',
   admin: 'Admin',
-  tonghop: 'Người tổng hợp',
+  ops: 'OPS',
   hr: 'HR',
   laixe: 'Lái xe',
 };

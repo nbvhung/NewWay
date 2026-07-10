@@ -99,7 +99,7 @@ export class SubmissionsService {
     if (!submission) {
       throw new NotFoundException('Không tìm thấy bản ghi');
     }
-    if (submission.userId !== userId && !['admin', 'supper_admin', 'tonghop'].includes(role)) {
+    if (submission.userId !== userId && !['admin', 'super_admin', 'ops'].includes(role)) {
       throw new ForbiddenException('Bạn không có quyền sửa bản ghi này');
     }
 
@@ -144,8 +144,8 @@ export class SubmissionsService {
       .leftJoinAndSelect('s.user', 'user')
       .orderBy('s.createdAt', 'DESC');
 
-    if (role !== 'admin' && role !== 'supper_admin') {
-      query.andWhere('user.role NOT IN (:...excludedRoles)', { excludedRoles: ['admin', 'supper_admin'] });
+    if (role !== 'admin' && role !== 'super_admin') {
+      query.andWhere('user.role NOT IN (:...excludedRoles)', { excludedRoles: ['admin', 'super_admin'] });
     }
 
     if (filter.userId) {
@@ -182,13 +182,14 @@ export class SubmissionsService {
     return { message: 'Đã xóa bản ghi' };
   }
 
-  async exportExcel(res: Response, role: string, filter: {
+  async exportExcel(res: Response, user: any, filter: {
     userId?: number;
     shippingLine?: string;
     fromDate?: string;
     toDate?: string;
   }) {
-    const showLuong = role !== 'tonghop';
+    const role = user.role;
+    const showLuong = role !== 'ops';
     const submissions = await this.findAll(filter, role);
 
     const allShippingLines = await this.shippingLinesRepository.find({ relations: { route: true } });
@@ -248,56 +249,91 @@ export class SubmissionsService {
     });
     headerRow.height = 28;
 
-    submissions.forEach((sub: any, idx: number) => {
+    const filteredSubs = role === 'ops'
+      ? submissions.filter((s: any) => s.userId !== user.id)
+      : submissions;
+
+    filteredSubs.forEach((sub: any, idx: number) => {
       const row = ws.addRow({
-        stt: idx + 1,
-        username: sub.user?.username || '',
-        driverName: sub.driverName,
-        shippingLine: (() => {
-          const sl = slMap.get(sub.shippingLine);
-          return sl ? planDisplayName(sl) : sub.shippingLine;
-        })(),
-        route: sub.route || '',
-        hang20: sub.hang20,
-        hang40: sub.hang40,
-        vo20: sub.vo20,
-        vo40: sub.vo40,
-        vo20fr: sub.vo20fr,
-        vo40fr: sub.vo40fr,
-        veSinhLai: sub.veSinhLai,
-        tip: sub.tip,
-        editCount: sub.editCount,
-        lastEditedAt: sub.lastEditedAt
-          ? new Date(sub.lastEditedAt).toLocaleString('vi-VN')
-          : '',
-        createdAt: new Date(sub.createdAt).toLocaleString('vi-VN'),
-        ...(showLuong ? {
-          luong: (() => {
-            const tenTuyen = sub.route || slMap.get(sub.shippingLine)?.routeName || '';
-            const donGia = routeMoneyMap.get(tenTuyen) || 0;
-            const h20 = parseFloat(sub.hang20) || 0;
-            const h40 = parseFloat(sub.hang40) || 0;
-            const v20 = parseFloat(sub.vo20) || 0;
-            const v40 = parseFloat(sub.vo40) || 0;
-            const v20fr = parseFloat(sub.vo20fr) || 0;
-            const v40fr = parseFloat(sub.vo40fr) || 0;
-            const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
-            return donGia * tong;
+          stt: idx + 1,
+          username: sub.user?.username || '',
+          driverName: sub.driverName,
+          shippingLine: (() => {
+            const sl = slMap.get(sub.shippingLine);
+            return sl ? planDisplayName(sl) : sub.shippingLine;
           })(),
-        } : {}),
-      });
-      row.eachCell((cell) => {
-        cell.border = allBorder;
-        cell.alignment = { vertical: 'middle' };
-      });
-      if (idx % 2 === 0) {
+          route: sub.route || '',
+          hang20: sub.hang20,
+          hang40: sub.hang40,
+          vo20: sub.vo20,
+          vo40: sub.vo40,
+          vo20fr: sub.vo20fr,
+          vo40fr: sub.vo40fr,
+          veSinhLai: sub.veSinhLai,
+          tip: sub.tip,
+          editCount: sub.editCount,
+          lastEditedAt: sub.lastEditedAt
+            ? new Date(sub.lastEditedAt).toLocaleString('vi-VN')
+            : '',
+          createdAt: new Date(sub.createdAt).toLocaleString('vi-VN'),
+          ...(showLuong ? {
+            luong: (() => {
+              const tenTuyen = sub.route || slMap.get(sub.shippingLine)?.routeName || '';
+              const donGia = routeMoneyMap.get(tenTuyen) || 0;
+              const h20 = parseFloat(sub.hang20) || 0;
+              const h40 = parseFloat(sub.hang40) || 0;
+              const v20 = parseFloat(sub.vo20) || 0;
+              const v40 = parseFloat(sub.vo40) || 0;
+              const v20fr = parseFloat(sub.vo20fr) || 0;
+              const v40fr = parseFloat(sub.vo40fr) || 0;
+              const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+              return donGia * tong;
+            })(),
+          } : {}),
+        });
         row.eachCell((cell) => {
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FF' } } as ExcelJS.Fill;
+          cell.border = allBorder;
+          cell.alignment = { vertical: 'middle' };
+        });
+        if (idx % 2 === 0) {
+          row.eachCell((cell) => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FF' } } as ExcelJS.Fill;
+          });
+        }
+      });
+
+    if (role === 'ops') {
+      const opsSub = submissions.find((s: any) => s.userId === user.id) || null;
+      if (opsSub) {
+        const row = ws.addRow({
+          stt: '', username: '', driverName: '', shippingLine: '', route: '',
+          hang20: opsSub.hang20 || '',
+          hang40: opsSub.hang40 || '',
+          vo20: opsSub.vo20 || '',
+          vo40: opsSub.vo40 || '',
+          vo20fr: opsSub.vo20fr || '',
+          vo40fr: opsSub.vo40fr || '',
+          veSinhLai: opsSub.veSinhLai || '',
+          tip: opsSub.tip || '',
+          editCount: '',
+          lastEditedAt: '',
+          createdAt: '',
+        });
+        const rowNum = row.number;
+        ws.mergeCells(`A${rowNum}:E${rowNum}`);
+        const cell = row.getCell(1);
+        cell.value = 'SL TỔNG TÀU';
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        row.eachCell((c) => {
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } } as ExcelJS.Fill;
+          c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+          c.border = allBorder;
+          c.alignment = { horizontal: 'center', vertical: 'middle' };
         });
       }
-    });
+    }
 
-    if (role === 'admin' || role === 'supper_admin') {
+    if (role === 'admin' || role === 'super_admin') {
       const wsHistory = workbook.addWorksheet('Lịch sử chỉnh sửa');
       wsHistory.columns = [
         { header: 'STT', key: 'stt', width: 6 },

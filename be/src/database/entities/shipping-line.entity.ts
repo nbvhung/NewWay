@@ -21,6 +21,9 @@ export class ShippingLine {
   @Column({ name: 'vendor', length: 255, default: '' })
   vendor: string;
 
+  @Column({ name: 'tang_cuong', type: 'boolean', default: false })
+  tangCuong: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

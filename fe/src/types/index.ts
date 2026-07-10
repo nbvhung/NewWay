@@ -6,7 +6,7 @@ export interface User {
   createdAt?: string;
 }
 
-export type Role = 'laixe' | 'tonghop' | 'admin' | 'supper_admin' | 'hr';
+export type Role = 'laixe' | 'ops' | 'admin' | 'super_admin' | 'hr';
 
 export interface ShippingLine {
   id: number;
@@ -15,6 +15,7 @@ export interface ShippingLine {
   routeName: string;
   ngay: string;
   vendor: string;
+  tangCuong: boolean;
   createdAt: string;
   routeId?: number;
   route?: Route;

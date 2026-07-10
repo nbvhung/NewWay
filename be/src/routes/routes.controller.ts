@@ -8,7 +8,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 
 @Controller('admin/routes')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('hr', 'admin', 'supper_admin')
+@Roles('hr', 'admin', 'super_admin')
 export class RoutesController {
   constructor(private routesService: RoutesService) {}
 

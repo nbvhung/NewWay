@@ -127,7 +127,7 @@ export default function FormPage() {
                         <div className="w-2 h-2 rounded-full bg-[#1a56db]" />
                       )}
                     </div>
-                    <span className="text-sm font-medium">{planDisplayName(sl)}</span>
+                    <span className="text-sm font-medium">{planDisplayName(sl)}{sl.tangCuong && <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-400">+15%</span>}</span>
                   </label>
                 ))}
                 {shippingLines.length === 0 && (

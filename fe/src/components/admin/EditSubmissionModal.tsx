@@ -51,7 +51,7 @@ export function EditSubmissionModal({ open, onClose, editForm, setEditForm, allS
               }`}>
                 {editForm.shippingLine === sl.name && <div className="w-1.5 h-1.5 rounded-full bg-[#1a56db]" />}
               </div>
-              <span>{planDisplayName(sl)}</span>
+              <span>{planDisplayName(sl)}{sl.tangCuong && <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-400">+15%</span>}</span>
             </label>
           ))}
         </div>
@@ -83,7 +83,7 @@ export function EditSubmissionModal({ open, onClose, editForm, setEditForm, allS
           <input type="text" value={editForm.tip || ''} onChange={e => setEditForm({ ...editForm, tip: e.target.value })}
             className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db]" /></div>
       </div>
-      {submission?.history && submission.history.length > 0 && (userRole === 'admin' || userRole === 'supper_admin') && (
+      {submission?.history && submission.history.length > 0 && (userRole === 'admin' || userRole === 'super_admin') && (
         <>
           <div className="h-px bg-[rgba(255,255,255,0.08)] my-4" />
           <div className="text-xs font-semibold text-[#94a3b8] mb-2">📜 Lịch sử chỉnh sửa ({submission.history.length} lần)</div>

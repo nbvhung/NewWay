@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ShippingLine, Route } from '@/types';
 import { api } from '@/lib/api-client';
+import { Modal } from '@/components/ui/modal';
 
 interface Props {
   allShippingLines: ShippingLine[];
@@ -17,6 +18,17 @@ export function ShippingLinesTab({ allShippingLines, allRoutes, onRefresh, toast
   const [routeName, setRouteName] = useState('');
   const [ngay, setNgay] = useState('');
   const [vendor, setVendor] = useState('');
+  const [tangCuong, setTangCuong] = useState(false);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<ShippingLine | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editSoChuyen, setEditSoChuyen] = useState('');
+  const [editRouteName, setEditRouteName] = useState('');
+  const [editNgay, setEditNgay] = useState('');
+  const [editVendor, setEditVendor] = useState('');
+  const [editTangCuong, setEditTangCuong] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const addPlan = async () => {
     if (!name.trim()) { toast('Vui lòng nhập tên kế hoạch', 'error'); return; }
@@ -27,6 +39,7 @@ export function ShippingLinesTab({ allShippingLines, allRoutes, onRefresh, toast
         routeName: routeName.trim(),
         ngay: ngay || undefined,
         vendor: vendor.trim(),
+        tangCuong,
       });
       toast(`Đã thêm kế hoạch: ${name.trim()}`, 'success');
       setName('');
@@ -34,8 +47,40 @@ export function ShippingLinesTab({ allShippingLines, allRoutes, onRefresh, toast
       setRouteName('');
       setNgay('');
       setVendor('');
+      setTangCuong(false);
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
+  };
+
+  const openEdit = (p: ShippingLine) => {
+    setEditTarget(p);
+    setEditName(p.name);
+    setEditSoChuyen(p.soChuyen);
+    setEditRouteName(p.routeName);
+    setEditNgay(p.ngay);
+    setEditVendor(p.vendor);
+    setEditTangCuong(p.tangCuong);
+    setEditOpen(true);
+  };
+
+  const saveEdit = async () => {
+    if (!editTarget) return;
+    if (!editName.trim()) { toast('Tên kế hoạch không được để trống', 'error'); return; }
+    setSaving(true);
+    try {
+      await api.put(`/admin/shipping-lines/${editTarget.id}`, {
+        name: editName.trim(),
+        soChuyen: editSoChuyen.trim(),
+        routeName: editRouteName.trim(),
+        ngay: editNgay || undefined,
+        vendor: editVendor.trim(),
+        tangCuong: editTangCuong,
+      });
+      toast('Đã cập nhật kế hoạch', 'success');
+      setEditOpen(false);
+      onRefresh();
+    } catch (err: any) { toast(err.message, 'error'); }
+    finally { setSaving(false); }
   };
 
   const deletePlan = async (id: number, displayName: string) => {
@@ -63,9 +108,13 @@ export function ShippingLinesTab({ allShippingLines, allRoutes, onRefresh, toast
             const display = planDisplayName(p);
             return (
               <div key={p.id} className="flex items-center justify-between gap-2 px-3 py-2.5 bg-[#263147] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs">
-                <span className="truncate">{display}</span>
-                <button onClick={() => deletePlan(p.id, display)}
-                  className="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">✕</button>
+                <span className="truncate">{display}{p.tangCuong && <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-400">+15%</span>}</span>
+                <div className="flex gap-1 shrink-0">
+                  <button onClick={() => openEdit(p)}
+                    className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️</button>
+                  <button onClick={() => deletePlan(p.id, display)}
+                    className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">✕</button>
+                </div>
               </div>
             );
           })}
@@ -115,11 +164,76 @@ export function ShippingLinesTab({ allShippingLines, allRoutes, onRefresh, toast
           <input type="text" value={vendor} onChange={e => setVendor(e.target.value)} placeholder="vd: Vendor A"
             className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
         </div>
+        <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
+          <input type="checkbox" checked={tangCuong} onChange={e => setTangCuong(e.target.checked)}
+            className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+          <span className="text-xs font-medium text-[#94a3b8]">🚢 Tàu Tăng Cường <span className="text-amber-400 font-bold">+15%</span></span>
+        </label>
         <button onClick={addPlan}
           className="w-full py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] cursor-pointer">
           ➕ Thêm kế hoạch
         </button>
       </div>
+
+      <Modal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        title="✏️ Sửa kế hoạch"
+        footer={
+          <>
+            <button onClick={() => setEditOpen(false)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#94a3b8] border border-[rgba(255,255,255,0.08)] hover:text-[#f1f5f9] cursor-pointer">Hủy</button>
+            <button onClick={saveEdit} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] disabled:opacity-50 cursor-pointer">
+              {saving ? 'Đang lưu...' : '💾 Lưu thay đổi'}
+            </button>
+          </>
+        }
+      >
+        <div className="mb-3">
+          <label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Tên kế hoạch <span className="text-red-500">*</span></label>
+          <input type="text" value={editName} onChange={e => setEditName(e.target.value)}
+            className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+        </div>
+        <div className="mb-3">
+          <label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Số chuyển</label>
+          <input type="text" value={editSoChuyen} onChange={e => setEditSoChuyen(e.target.value)}
+            className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db]" />
+        </div>
+        <div className="mb-3">
+          <label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Tuyến đường</label>
+          {allRoutes.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-2 p-2 border border-[rgba(255,255,255,0.08)] rounded-lg max-h-[120px] overflow-y-auto">
+              {allRoutes.map(r => (
+                <label key={r.id}
+                  className={`px-2 py-1 rounded text-[10px] border cursor-pointer ${
+                    editRouteName === r.name
+                      ? 'border-[#1a56db] bg-[rgba(26,86,219,0.15)]'
+                      : 'border-[rgba(255,255,255,0.08)] hover:border-[#1a56db]'
+                  }`}
+                  onClick={() => setEditRouteName(editRouteName === r.name ? '' : r.name)}>
+                  🛤️ {r.name}
+                </label>
+              ))}
+            </div>
+          )}
+          <input type="text" value={editRouteName} onChange={e => setEditRouteName(e.target.value)}
+            className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db]" />
+        </div>
+        <div className="mb-3">
+          <label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Ngày</label>
+          <input type="date" value={editNgay} onChange={e => setEditNgay(e.target.value)}
+            className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db]" />
+        </div>
+        <div className="mb-3">
+          <label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Vendor</label>
+          <input type="text" value={editVendor} onChange={e => setEditVendor(e.target.value)}
+            className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db]" />
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" checked={editTangCuong} onChange={e => setEditTangCuong(e.target.checked)}
+            className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+          <span className="text-xs font-medium text-[#94a3b8]">🚢 Tàu Tăng Cường <span className="text-amber-400 font-bold">+15%</span></span>
+        </label>
+      </Modal>
     </div>
   );
 }

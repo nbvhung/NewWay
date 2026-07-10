@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { CreateShippingLineDto } from './dto/create-shipping-line.dto';
+import { UpdateShippingLineDto } from './dto/update-shipping-line.dto';
 
 @Injectable()
 export class ShippingLinesService {
@@ -31,10 +32,32 @@ export class ShippingLinesService {
       routeName: dto.routeName?.trim() || '',
       ngay: dto.ngay || undefined,
       vendor: dto.vendor?.trim() || '',
+      tangCuong: dto.tangCuong || false,
     });
     if (dto.routeId) {
       (plan as any).routeId = dto.routeId;
     }
+
+    return this.shippingLinesRepository.save(plan);
+  }
+
+  async update(id: number, dto: UpdateShippingLineDto) {
+    const plan = await this.shippingLinesRepository.findOne({ where: { id } });
+    if (!plan) {
+      throw new NotFoundException('Không tìm thấy kế hoạch');
+    }
+
+    if (dto.name !== undefined) {
+      if (!dto.name.trim()) {
+        throw new BadRequestException('Tên kế hoạch không được để trống');
+      }
+      plan.name = dto.name.trim();
+    }
+    if (dto.soChuyen !== undefined) plan.soChuyen = dto.soChuyen.trim();
+    if (dto.routeName !== undefined) plan.routeName = dto.routeName.trim();
+    if (dto.ngay !== undefined) plan.ngay = dto.ngay;
+    if (dto.vendor !== undefined) plan.vendor = dto.vendor.trim();
+    if (dto.tangCuong !== undefined) plan.tangCuong = dto.tangCuong;
 
     return this.shippingLinesRepository.save(plan);
   }

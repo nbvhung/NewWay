@@ -24,7 +24,11 @@ export default function AdminPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const TABS = ALL_TABS.filter(t => t.key !== 'routes' || (user?.role !== 'tonghop'));
+  const TABS = ALL_TABS.filter(t => {
+    if (t.key === 'routes' && user?.role === 'ops') return false;
+    if (t.key === 'shipping-lines' && user?.role === 'hr') return false;
+    return true;
+  });
   const [activeTab, setActiveTab] = useState<Tab>('data');
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [allShippingLines, setAllShippingLines] = useState<ShippingLine[]>([]);

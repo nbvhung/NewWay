@@ -234,7 +234,7 @@ export default function MyDataPage() {
                 }`}>
                   {editForm.shippingLine === sl.name && <div className="w-1.5 h-1.5 rounded-full bg-[#1a56db]" />}
                 </div>
-                <span>{planDisplayName(sl)}</span>
+                <span>{planDisplayName(sl)}{sl.tangCuong && <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-400">+15%</span>}</span>
               </label>
             ))}
           </div>
@@ -285,7 +285,7 @@ export default function MyDataPage() {
           </div>
         </div>
 
-        {editSub && editSub.history && editSub.history.length > 0 && (user?.role === 'admin' || user?.role === 'supper_admin') && (
+        {editSub && editSub.history && editSub.history.length > 0 && (user?.role === 'admin' || user?.role === 'super_admin') && (
           <>
             <div className="h-px bg-[rgba(255,255,255,0.08)] my-4" />
             <div className="text-xs font-semibold text-[#94a3b8] mb-2.5">

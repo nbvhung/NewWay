@@ -1,9 +1,9 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsBoolean } from 'class-validator';
 
-export class CreateShippingLineDto {
+export class UpdateShippingLineDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Tên kế hoạch không được để trống' })
-  name: string;
+  name?: string;
 
   @IsOptional()
   @IsString()
@@ -20,9 +20,6 @@ export class CreateShippingLineDto {
   @IsOptional()
   @IsString()
   vendor?: string;
-
-  @IsOptional()
-  routeId?: number;
 
   @IsOptional()
   @IsBoolean()
