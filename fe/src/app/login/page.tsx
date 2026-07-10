@@ -13,7 +13,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   if (user) {
-    if (user.role === 'tonghop' || user.role === 'admin' || user.role === 'supper_admin') {
+    if (user.role === 'tonghop' || user.role === 'admin' || user.role === 'supper_admin' || user.role === 'hr') {
       router.replace('/admin');
     } else {
       router.replace('/form');
@@ -27,7 +27,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const u = await login(username.trim(), password);
-      if (u.role === 'tonghop' || u.role === 'admin' || u.role === 'supper_admin') {
+      if (u.role === 'tonghop' || u.role === 'admin' || u.role === 'supper_admin' || u.role === 'hr') {
         router.push('/admin');
       } else {
         router.push('/form');

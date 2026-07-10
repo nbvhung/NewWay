@@ -6,21 +6,25 @@ export interface User {
   createdAt?: string;
 }
 
-export type Role = 'laixe' | 'tonghop' | 'admin' | 'supper_admin';
+export type Role = 'laixe' | 'tonghop' | 'admin' | 'supper_admin' | 'hr';
 
 export interface ShippingLine {
   id: number;
   name: string;
+  soChuyen: string;
+  routeName: string;
+  ngay: string;
+  vendor: string;
   createdAt: string;
-  routes: Route[];
+  routeId?: number;
+  route?: Route;
 }
 
 export interface Route {
   id: number;
-  shippingLineId: number;
   name: string;
+  money: number;
   createdAt: string;
-  hangTauTen?: string;
 }
 
 export interface Submission {
@@ -43,6 +47,8 @@ export interface Submission {
   updatedAt: string;
   history: EditHistory[];
   user?: { id: number; username: string };
+  salary?: number;
+  planDisplayName?: string;
 }
 
 export interface EditHistory {

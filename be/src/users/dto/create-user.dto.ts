@@ -16,6 +16,6 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['laixe', 'tonghop', 'admin', 'supper_admin'], { message: 'Vai trò không hợp lệ' })
+  @IsIn(['laixe', 'tonghop', 'admin', 'supper_admin', 'hr'], { message: 'Vai trò không hợp lệ' })
   role?: string;
 }

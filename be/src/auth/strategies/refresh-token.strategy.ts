@@ -3,12 +3,12 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Request } from 'express';
 import * as bcrypt from 'bcryptjs';
-import { RedisService } from '../../redis/redis.service';
+import { AuthService } from '../auth.service';
 import { TokenPayload } from '../interfaces/token-payload.interface';
 
 @Injectable()
 export class RefreshTokenStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
-  constructor(private redisService: RedisService) {
+  constructor(private authService: AuthService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req: Request) => {
@@ -30,14 +30,13 @@ export class RefreshTokenStrategy extends PassportStrategy(Strategy, 'jwt-refres
       throw new UnauthorizedException('Không tìm thấy refresh token');
     }
 
-    const storedHash = await this.redisService.getRefreshToken(payload.sub);
+    const storedHash = await this.authService.findRefreshTokenHash(payload.sub);
     if (!storedHash) {
       throw new UnauthorizedException('Refresh token không hợp lệ');
     }
 
     const isValid = bcrypt.compareSync(refreshToken, storedHash);
     if (!isValid) {
-      await this.redisService.removeRefreshToken(payload.sub);
       throw new UnauthorizedException('Refresh token không hợp lệ');
     }
 

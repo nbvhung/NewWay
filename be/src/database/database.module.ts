@@ -5,6 +5,7 @@ import { ShippingLine } from './entities/shipping-line.entity';
 import { Route } from './entities/route.entity';
 import { Submission } from './entities/submission.entity';
 import { EditHistory } from './entities/edit-history.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
 import { SeedService } from './seed.service';
 
 @Module({
@@ -16,7 +17,7 @@ import { SeedService } from './seed.service';
           return {
             type: 'postgres',
             url: dbUrl,
-            entities: [User, ShippingLine, Route, Submission, EditHistory],
+            entities: [User, ShippingLine, Route, Submission, EditHistory, RefreshToken],
             synchronize: true,
             logging: false,
             ssl: { rejectUnauthorized: false },
@@ -29,13 +30,13 @@ import { SeedService } from './seed.service';
           username: process.env.DATABASE_USER || 'postgres',
           password: process.env.DATABASE_PASSWORD || 'postgres',
           database: process.env.DATABASE_NAME || 'newway',
-          entities: [User, ShippingLine, Route, Submission, EditHistory],
+          entities: [User, ShippingLine, Route, Submission, EditHistory, RefreshToken],
           synchronize: true,
           logging: false,
         };
       },
     }),
-    TypeOrmModule.forFeature([User, ShippingLine, Route, Submission, EditHistory]),
+    TypeOrmModule.forFeature([User, ShippingLine, Route, Submission, EditHistory, RefreshToken]),
   ],
   providers: [SeedService],
   exports: [TypeOrmModule],

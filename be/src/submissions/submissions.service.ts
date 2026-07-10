@@ -5,6 +5,8 @@ import * as ExcelJS from 'exceljs';
 import type { Response } from 'express';
 import { Submission } from '../database/entities/submission.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
+import { ShippingLine } from '../database/entities/shipping-line.entity';
+import { Route } from '../database/entities/route.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateSubmissionDto } from './dto/update-submission.dto';
 
@@ -15,6 +17,10 @@ export class SubmissionsService {
     private submissionsRepository: Repository<Submission>,
     @InjectRepository(EditHistory)
     private editHistoryRepository: Repository<EditHistory>,
+    @InjectRepository(ShippingLine)
+    private shippingLinesRepository: Repository<ShippingLine>,
+    @InjectRepository(Route)
+    private routesRepository: Repository<Route>,
   ) {}
 
   async create(dto: CreateSubmissionDto, userId: number, fullName: string) {
@@ -40,13 +46,40 @@ export class SubmissionsService {
       where: { userId },
       order: { createdAt: 'DESC' },
     });
+
+    const allRoutes = await this.routesRepository.find();
+    const routeMoneyMap = new Map<string, number>();
+    for (const r of allRoutes) {
+      routeMoneyMap.set(r.name, Number(r.money) || 0);
+    }
+
+    const allShippingLines = await this.shippingLinesRepository.find();
+    const slMap = new Map<string, ShippingLine>();
+    for (const sl of allShippingLines) {
+      slMap.set(sl.name, sl);
+    }
+    const planDisplayName = (sl: ShippingLine) => {
+      return [sl.name, sl.soChuyen, sl.routeName, sl.ngay, sl.vendor].filter(Boolean).join(' / ');
+    };
+
     const result: any[] = [];
     for (const sub of submissions) {
       const history = await this.editHistoryRepository.find({
         where: { submissionId: sub.id },
         order: { editedAt: 'DESC' },
       });
-      result.push({ ...sub, history });
+      const sl = slMap.get(sub.shippingLine);
+      const tenTuyen = sub.route || sl?.routeName || '';
+      const donGia = routeMoneyMap.get(tenTuyen) || 0;
+      const h20 = parseFloat(sub.hang20) || 0;
+      const h40 = parseFloat(sub.hang40) || 0;
+      const v20 = parseFloat(sub.vo20) || 0;
+      const v40 = parseFloat(sub.vo40) || 0;
+      const v20fr = parseFloat(sub.vo20fr) || 0;
+      const v40fr = parseFloat(sub.vo40fr) || 0;
+      const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+      const salary = donGia * tong;
+      result.push({ ...sub, history, salary, planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine });
     }
     return result;
   }
@@ -105,11 +138,15 @@ export class SubmissionsService {
     shippingLine?: string;
     fromDate?: string;
     toDate?: string;
-  }): Promise<any[]> {
+  }, role?: string): Promise<any[]> {
     const query = this.submissionsRepository
       .createQueryBuilder('s')
       .leftJoinAndSelect('s.user', 'user')
       .orderBy('s.createdAt', 'DESC');
+
+    if (role !== 'admin' && role !== 'supper_admin') {
+      query.andWhere('user.role NOT IN (:...excludedRoles)', { excludedRoles: ['admin', 'supper_admin'] });
+    }
 
     if (filter.userId) {
       query.andWhere('s.userId = :userId', { userId: filter.userId });
@@ -145,13 +182,29 @@ export class SubmissionsService {
     return { message: 'Đã xóa bản ghi' };
   }
 
-  async exportExcel(res: Response, filter: {
+  async exportExcel(res: Response, role: string, filter: {
     userId?: number;
     shippingLine?: string;
     fromDate?: string;
     toDate?: string;
   }) {
-    const submissions = await this.findAll(filter);
+    const showLuong = role !== 'tonghop';
+    const submissions = await this.findAll(filter, role);
+
+    const allShippingLines = await this.shippingLinesRepository.find({ relations: { route: true } });
+    const slMap = new Map<string, ShippingLine>();
+    for (const sl of allShippingLines) {
+      slMap.set(sl.name, sl);
+    }
+    const planDisplayName = (sl: ShippingLine) => {
+      return [sl.name, sl.soChuyen, sl.routeName, sl.ngay, sl.vendor].filter(Boolean).join(' / ');
+    };
+
+    const allRoutes = await this.routesRepository.find();
+    const routeMoneyMap = new Map<string, number>();
+    for (const r of allRoutes) {
+      routeMoneyMap.set(r.name, Number(r.money) || 0);
+    }
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Hệ thống New Way';
@@ -183,6 +236,7 @@ export class SubmissionsService {
       { header: 'Số lần sửa', key: 'editCount', width: 12 },
       { header: 'Lần sửa cuối', key: 'lastEditedAt', width: 18 },
       { header: 'Ngày tạo', key: 'createdAt', width: 18 },
+      ...(showLuong ? [{ header: 'Lương', key: 'luong', width: 16 }] : []),
     ];
 
     const headerRow = ws.getRow(1);
@@ -199,7 +253,10 @@ export class SubmissionsService {
         stt: idx + 1,
         username: sub.user?.username || '',
         driverName: sub.driverName,
-        shippingLine: sub.shippingLine,
+        shippingLine: (() => {
+          const sl = slMap.get(sub.shippingLine);
+          return sl ? planDisplayName(sl) : sub.shippingLine;
+        })(),
         route: sub.route || '',
         hang20: sub.hang20,
         hang40: sub.hang40,
@@ -214,6 +271,20 @@ export class SubmissionsService {
           ? new Date(sub.lastEditedAt).toLocaleString('vi-VN')
           : '',
         createdAt: new Date(sub.createdAt).toLocaleString('vi-VN'),
+        ...(showLuong ? {
+          luong: (() => {
+            const tenTuyen = sub.route || slMap.get(sub.shippingLine)?.routeName || '';
+            const donGia = routeMoneyMap.get(tenTuyen) || 0;
+            const h20 = parseFloat(sub.hang20) || 0;
+            const h40 = parseFloat(sub.hang40) || 0;
+            const v20 = parseFloat(sub.vo20) || 0;
+            const v40 = parseFloat(sub.vo40) || 0;
+            const v20fr = parseFloat(sub.vo20fr) || 0;
+            const v40fr = parseFloat(sub.vo40fr) || 0;
+            const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+            return donGia * tong;
+          })(),
+        } : {}),
       });
       row.eachCell((cell) => {
         cell.border = allBorder;
@@ -226,66 +297,114 @@ export class SubmissionsService {
       }
     });
 
-    const wsHistory = workbook.addWorksheet('Lịch sử chỉnh sửa');
-    wsHistory.columns = [
-      { header: 'STT', key: 'stt', width: 6 },
-      { header: 'ID bản ghi', key: 'submissionId', width: 12 },
-      { header: 'Người sửa', key: 'editedByName', width: 18 },
-      { header: 'Nội dung thay đổi', key: 'changes', width: 50 },
-      { header: 'Thời gian sửa', key: 'editedAt', width: 20 },
-    ];
+    if (role === 'admin' || role === 'supper_admin') {
+      const wsHistory = workbook.addWorksheet('Lịch sử chỉnh sửa');
+      wsHistory.columns = [
+        { header: 'STT', key: 'stt', width: 6 },
+        { header: 'ID bản ghi', key: 'submissionId', width: 12 },
+        { header: 'Người sửa', key: 'editedByName', width: 18 },
+        { header: 'Nội dung thay đổi', key: 'changes', width: 50 },
+        { header: 'Thời gian sửa', key: 'editedAt', width: 20 },
+      ];
 
-    wsHistory.getRow(1).eachCell((cell) => {
-      cell.fill = headerFill;
-      cell.font = headerFont;
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border = allBorder;
-    });
-
-    const fieldLabels: Record<string, string> = {
-      shippingLine: 'Kế hoạch',
-      route: 'Tuyến đường',
-      hang20: 'Hàng 20',
-      hang40: 'Hàng 40',
-      vo20: 'Vỏ 20',
-      vo40: 'Vỏ 40',
-      vo20fr: 'Vỏ 20FR',
-      vo40fr: 'Vỏ 40FR',
-      veSinhLai: 'Vệ sinh lại',
-      tip: 'TIP',
-    };
-
-    const allHistory = await this.editHistoryRepository
-      .createQueryBuilder('eh')
-      .leftJoinAndSelect('eh.editedBy', 'user')
-      .orderBy('eh.editedAt', 'DESC')
-      .getMany();
-
-    allHistory.forEach((h: any, idx: number) => {
-      let changesText = '';
-      try {
-        const changes = JSON.parse(h.changes);
-        changesText = Object.entries(changes)
-          .map(([k, v]: [string, any]) => {
-            const label = fieldLabels[k] || k;
-            return `${label}: "${v.old || '(trống)'}" → "${v.new || '(trống)'}"`;
-          })
-          .join('; ');
-      } catch {
-        changesText = h.changes;
-      }
-
-      const row = wsHistory.addRow({
-        stt: idx + 1,
-        submissionId: h.submissionId,
-        editedByName: h.editedByName,
-        changes: changesText,
-        editedAt: new Date(h.editedAt).toLocaleString('vi-VN'),
-      });
-      row.eachCell((cell) => {
+      wsHistory.getRow(1).eachCell((cell) => {
+        cell.fill = headerFill;
+        cell.font = headerFont;
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
         cell.border = allBorder;
       });
-    });
+
+      const fieldLabels: Record<string, string> = {
+        shippingLine: 'Kế hoạch',
+        route: 'Tuyến đường',
+        hang20: 'Hàng 20',
+        hang40: 'Hàng 40',
+        vo20: 'Vỏ 20',
+        vo40: 'Vỏ 40',
+        vo20fr: 'Vỏ 20FR',
+        vo40fr: 'Vỏ 40FR',
+        veSinhLai: 'Vệ sinh lại',
+        tip: 'TIP',
+      };
+
+      const allHistory = await this.editHistoryRepository
+        .createQueryBuilder('eh')
+        .leftJoinAndSelect('eh.editedBy', 'user')
+        .orderBy('eh.editedAt', 'DESC')
+        .getMany();
+
+      allHistory.forEach((h: any, idx: number) => {
+        let changesText = '';
+        try {
+          const changes = JSON.parse(h.changes);
+          changesText = Object.entries(changes)
+            .map(([k, v]: [string, any]) => {
+              const label = fieldLabels[k] || k;
+              return `${label}: "${v.old || '(trống)'}" → "${v.new || '(trống)'}"`;
+            })
+            .join('; ');
+        } catch {
+          changesText = h.changes;
+        }
+
+        const row = wsHistory.addRow({
+          stt: idx + 1,
+          submissionId: h.submissionId,
+          editedByName: h.editedByName,
+          changes: changesText,
+          editedAt: new Date(h.editedAt).toLocaleString('vi-VN'),
+        });
+        row.eachCell((cell) => {
+          cell.border = allBorder;
+        });
+      });
+    }
+
+    if (showLuong) {
+      const wsSalary = workbook.addWorksheet('Tổng hợp lương');
+      wsSalary.columns = [
+        { header: 'Tên', key: 'name', width: 30 },
+        { header: 'Lương', key: 'luong', width: 20 },
+      ];
+      const salaryRow = wsSalary.getRow(1);
+      salaryRow.eachCell((cell) => {
+        cell.fill = headerFill;
+        cell.font = headerFont;
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = allBorder;
+      });
+      salaryRow.height = 28;
+
+      const salaryMap = new Map<string, number>();
+      for (const sub of submissions as any[]) {
+        const name = sub.user?.fullName || sub.driverName;
+        const tenTuyen = sub.route || slMap.get(sub.shippingLine)?.routeName || '';
+        const donGia = routeMoneyMap.get(tenTuyen) || 0;
+        const h20 = parseFloat(sub.hang20) || 0;
+        const h40 = parseFloat(sub.hang40) || 0;
+        const v20 = parseFloat(sub.vo20) || 0;
+        const v40 = parseFloat(sub.vo40) || 0;
+        const v20fr = parseFloat(sub.vo20fr) || 0;
+        const v40fr = parseFloat(sub.vo40fr) || 0;
+        const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+        salaryMap.set(name, (salaryMap.get(name) || 0) + donGia * tong);
+      }
+
+      let idx = 0;
+      for (const [name, luong] of salaryMap) {
+        idx++;
+        const row = wsSalary.addRow({ name, luong });
+        row.eachCell((cell) => {
+          cell.border = allBorder;
+          cell.alignment = { vertical: 'middle' };
+        });
+        if (idx % 2 === 0) {
+          row.eachCell((cell) => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FF' } } as ExcelJS.Fill;
+          });
+        }
+      }
+    }
 
     const filename = `SanLuongXeNewWay_${new Date().toISOString().slice(0, 10)}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

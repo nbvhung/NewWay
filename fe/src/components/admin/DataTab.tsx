@@ -17,6 +17,7 @@ interface Props {
 
 export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShippingLines }: Props) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const slDisplayMap = new Map(allShippingLines.map(sl => [sl.name, [sl.name, sl.soChuyen, sl.routeName, sl.ngay, sl.vendor].filter(Boolean).join(' / ')]));
   const [filterUser, setFilterUser] = useState('');
   const [filterSl, setFilterSl] = useState('');
   const [filterFrom, setFilterFrom] = useState('');
@@ -133,7 +134,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
           <select value={filterSl} onChange={e => setFilterSl(e.target.value)}
             className="px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db]">
             <option value="">Tất cả</option>
-            {allShippingLines.map(sl => <option key={sl.id} value={sl.name}>{sl.name}</option>)}
+            {allShippingLines.map(sl => <option key={sl.id} value={sl.name}>{[sl.name, sl.soChuyen, sl.routeName, sl.ngay, sl.vendor].filter(Boolean).join(' / ')}</option>)}
           </select>
         </div>
         <div>
@@ -186,7 +187,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
                   <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(148,163,184,0.15)] text-[#94a3b8]">{i + 1}</span></td>
                   <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(26,86,219,0.2)] text-blue-400">{(s as any).user?.username || '—'}</span></td>
                   <td className="px-3 py-2.5 font-medium">{s.driverName}</td>
-                  <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(16,185,129,0.2)] text-emerald-400">{s.shippingLine}</span></td>
+                  <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(16,185,129,0.2)] text-emerald-400 max-w-[160px] inline-block truncate">{slDisplayMap.get(s.shippingLine) || s.shippingLine}</span></td>
                   <td className="px-3 py-2.5">{s.hang20 || '—'}</td>
                   <td className="px-3 py-2.5">{s.hang40 || '—'}</td>
                   <td className="px-3 py-2.5">{s.vo20 || '—'}</td>
@@ -223,6 +224,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         saving={saving}
         onSave={saveSubEdit}
         submission={editSub}
+        userRole={user?.role}
       />
     </div>
   );

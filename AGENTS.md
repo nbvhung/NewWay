@@ -55,7 +55,7 @@ D:\WebLab\NewWay\
 | role | VARCHAR(20) | NOT NULL, DEFAULT 'laixe' |
 | createdAt | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
 
-Role enum: `laixe` | `tonghop` | `admin` | `supper_admin`
+Role enum: `laixe` | `tonghop` | `hr` | `admin` | `supper_admin`
 
 ### `shipping_lines`
 
@@ -116,9 +116,10 @@ UNIQUE(shippingLineId, name)
 | Role | Permissions |
 |---|---|
 | `laixe` | Tạo submission, xem/sửa submission của mình, xem danh sách shipping lines + routes |
-| `tonghop` | Xem tất cả submissions (có filter), export Excel |
-| `admin` | Như tonghop + CRUD user (trừ supper_admin), CRUD shipping-lines & routes |
-| `supper_admin` | Toàn quyền (bao gồm CRUD admin & supper_admin) |
+| `tonghop` | Xem tất cả submissions (có filter), export Excel (không có cột Lương) |
+| `hr` | Như tonghop + quản lý routes (CRUD), export Excel có cột Lương, xem users (chỉ laixe/tonghop/hr), tạo/sửa/xoá laixe |
+| `admin` | Như tonghop + CRUD user (trừ supper_admin), CRUD shipping-lines & routes, export Excel có cột Lương |
+| `supper_admin` | Toàn quyền (bao gồm CRUD admin & supper_admin), export Excel có cột Lương |
 
 ### Auth Flow
 
@@ -193,13 +194,14 @@ UNIQUE(shippingLineId, name)
 | GET | `/api/admin/shipping-lines` | tonghop+ | Danh sách hãng tàu |
 | POST | `/api/admin/shipping-lines` | tonghop+ | Tạo hãng tàu mới |
 | DELETE | `/api/admin/shipping-lines/:id` | tonghop+ | Xóa hãng tàu |
-| GET | `/api/admin/routes` | tonghop+ | Danh sách tuyến đường |
-| POST | `/api/admin/routes` | tonghop+ | Tạo tuyến đường |
-| DELETE | `/api/admin/routes/:id` | tonghop+ | Xóa tuyến đường |
+| GET | `/api/admin/routes` | hr+ | Danh sách tuyến đường |
+| POST | `/api/admin/routes` | hr+ | Tạo tuyến đường |
+| PUT | `/api/admin/routes/:id` | hr+ | Cập nhật tuyến đường |
+| DELETE | `/api/admin/routes/:id` | hr+ | Xóa tuyến đường |
 | GET | `/api/admin/submissions` | tonghop+ | Tất cả submissions (filter) |
 | PUT | `/api/admin/submissions/:id` | tonghop+ | Sửa bất kỳ submission |
 | DELETE | `/api/admin/submissions/:id` | tonghop+ | Xóa submission |
-| GET | `/api/admin/export` | tonghop+ | Export Excel |
+| GET | `/api/admin/export` | tonghop+ | Export Excel (cột Lương chỉ hiển thị với hr/admin/supper_admin) |
 
 ## Frontend Pages
 

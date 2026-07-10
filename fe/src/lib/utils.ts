@@ -13,8 +13,14 @@ export const ROLE_LABELS: Record<string, string> = {
   supper_admin: 'Supper Admin',
   admin: 'Admin',
   tonghop: 'Người tổng hợp',
+  hr: 'HR',
   laixe: 'Lái xe',
 };
+
+export function formatMoney(amount: number | null | undefined): string {
+  if (amount == null || amount === 0) return '—';
+  return amount.toLocaleString('vi-VN') + ' ₫';
+}
 
 export const FIELD_LABELS: Record<string, string> = {
   shippingLine: 'Kế hoạch',

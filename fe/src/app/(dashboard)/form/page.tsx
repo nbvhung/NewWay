@@ -10,9 +10,9 @@ import { ShippingLine } from '@/types';
 export default function FormPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+
   const [shippingLines, setShippingLines] = useState<ShippingLine[]>([]);
   const [selectedShippingLine, setSelectedShippingLine] = useState('');
-  const [selectedRoute, setSelectedRoute] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -41,7 +41,10 @@ export default function FormPage() {
   };
 
   const selectedLine = shippingLines.find((sl) => sl.name === selectedShippingLine);
-  const routes = selectedLine?.routes || [];
+
+  const planDisplayName = (sl: ShippingLine) => {
+    return [sl.name, sl.soChuyen, sl.routeName, sl.ngay, sl.vendor].filter(Boolean).join(' / ');
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -54,7 +57,7 @@ export default function FormPage() {
     try {
       await api.post('/submissions', {
         shippingLine: selectedShippingLine,
-        route: selectedRoute,
+        route: selectedLine?.routeName || '',
         hang20,
         hang40,
         vo20,
@@ -75,7 +78,6 @@ export default function FormPage() {
 
   const resetForm = () => {
     setSelectedShippingLine('');
-    setSelectedRoute('');
     setHang20('');
     setHang40('');
     setVo20('');
@@ -116,8 +118,6 @@ export default function FormPage() {
                     }`}
                     onClick={() => {
                       setSelectedShippingLine(sl.name);
-                      const firstRoute = sl.routes?.[0]?.name || '';
-                      setSelectedRoute(firstRoute);
                     }}
                   >
                     <div className={`w-[18px] h-[18px] border-2 rounded-full flex items-center justify-center shrink-0 transition-all ${
@@ -127,7 +127,7 @@ export default function FormPage() {
                         <div className="w-2 h-2 rounded-full bg-[#1a56db]" />
                       )}
                     </div>
-                    <span className="text-sm font-medium">{sl.name}</span>
+                    <span className="text-sm font-medium">{planDisplayName(sl)}</span>
                   </label>
                 ))}
                 {shippingLines.length === 0 && (
@@ -136,13 +136,6 @@ export default function FormPage() {
               </div>
             )}
           </div>
-
-          {selectedShippingLine && routes.length > 0 && (
-            <div className="mb-4">
-              <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">Tuyến đường</label>
-              <p className="text-sm text-[#94a3b8] py-1.5 px-1">{selectedRoute || routes[0]?.name}</p>
-            </div>
-          )}
 
           <div className="h-px bg-[rgba(255,255,255,0.08)] my-5" />
 

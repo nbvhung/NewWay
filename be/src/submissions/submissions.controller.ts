@@ -39,8 +39,9 @@ export class SubmissionsController {
 
   @Get('admin/submissions')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('tonghop', 'admin', 'supper_admin')
+  @Roles('tonghop', 'admin', 'supper_admin', 'hr')
   async findAll(
+    @CurrentUser() user: any,
     @Query('user_id') userId?: string,
     @Query('shippingLine') shippingLine?: string,
     @Query('from_date') fromDate?: string,
@@ -51,13 +52,13 @@ export class SubmissionsController {
       shippingLine,
       fromDate,
       toDate,
-    });
+    }, user.role);
     return { data: result };
   }
 
   @Put('admin/submissions/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('tonghop', 'admin', 'supper_admin')
+  @Roles('tonghop', 'admin', 'supper_admin', 'hr')
   async updateByAdmin(
     @Param('id') id: string,
     @Body() dto: UpdateSubmissionDto,
@@ -69,22 +70,23 @@ export class SubmissionsController {
 
   @Delete('admin/submissions/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('tonghop', 'admin', 'supper_admin')
+  @Roles('tonghop', 'admin', 'supper_admin', 'hr')
   async remove(@Param('id') id: string) {
     return this.submissionsService.remove(+id);
   }
 
   @Get('admin/export')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('tonghop', 'admin', 'supper_admin')
+  @Roles('tonghop', 'admin', 'supper_admin', 'hr')
   async export(
     @Res() res: Response,
+    @CurrentUser() user: any,
     @Query('user_id') userId?: string,
     @Query('shippingLine') shippingLine?: string,
     @Query('from_date') fromDate?: string,
     @Query('to_date') toDate?: string,
   ) {
-    await this.submissionsService.exportExcel(res, {
+    await this.submissionsService.exportExcel(res, user.role, {
       userId: userId ? +userId : undefined,
       shippingLine,
       fromDate,

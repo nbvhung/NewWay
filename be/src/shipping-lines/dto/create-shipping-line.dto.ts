@@ -1,12 +1,26 @@
-import { IsString, IsNotEmpty, IsArray, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class CreateShippingLineDto {
   @IsString()
-  @IsNotEmpty({ message: 'Tên hãng tàu không được để trống' })
+  @IsNotEmpty({ message: 'Tên kế hoạch không được để trống' })
   name: string;
 
   @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  routes?: string[];
+  @IsString()
+  soChuyen?: string;
+
+  @IsOptional()
+  @IsString()
+  routeName?: string;
+
+  @IsOptional()
+  @IsString()
+  ngay?: string;
+
+  @IsOptional()
+  @IsString()
+  vendor?: string;
+
+  @IsOptional()
+  routeId?: number;
 }

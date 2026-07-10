@@ -3,8 +3,9 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, MoreThan } from 'typeorm';
 import { User } from '../database/entities/user.entity';
+import { RefreshToken } from '../database/entities/refresh-token.entity';
 import { RedisService } from '../redis/redis.service';
 
 @Injectable()
@@ -12,6 +13,8 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(RefreshToken)
+    private refreshTokenRepository: Repository<RefreshToken>,
     private jwtService: JwtService,
     private redisService: RedisService,
   ) {}
@@ -36,7 +39,7 @@ export class AuthService {
       throw new UnauthorizedException('Người dùng không tồn tại');
     }
 
-    await this.redisService.removeRefreshToken(userId);
+    await this.clearRefreshTokens(userId);
     return this.generateTokens(user);
   }
 
@@ -46,7 +49,26 @@ export class AuthService {
     if (ttl > 0) {
       await this.redisService.blacklistToken(jti, ttl);
     }
+    await this.clearRefreshTokens(userId);
+  }
+
+  async findRefreshTokenHash(userId: number): Promise<string | null> {
+    const cached = await this.redisService.getRefreshToken(userId);
+    if (cached) return cached;
+
+    const oldest = await this.refreshTokenRepository.findOne({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
+    if (!oldest) return null;
+
+    await this.redisService.setRefreshToken(userId, oldest.tokenHash);
+    return oldest.tokenHash;
+  }
+
+  private async clearRefreshTokens(userId: number) {
     await this.redisService.removeRefreshToken(userId);
+    await this.refreshTokenRepository.delete({ userId });
   }
 
   private async generateTokens(user: User) {
@@ -82,7 +104,13 @@ export class AuthService {
     );
 
     const refreshHash = bcrypt.hashSync(refreshToken, 10);
-    await this.redisService.setRefreshToken(user.id, refreshHash);
+
+    await Promise.all([
+      this.redisService.setRefreshToken(user.id, refreshHash),
+      this.refreshTokenRepository.save(
+        this.refreshTokenRepository.create({ userId: user.id, tokenHash: refreshHash }),
+      ),
+    ]);
 
     return {
       accessToken,

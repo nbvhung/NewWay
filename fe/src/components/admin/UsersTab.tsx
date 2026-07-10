@@ -31,8 +31,8 @@ function canManageUser(currentRole: string, targetRole: string) {
 }
 
 function roleOptionsFor(currentRole: string) {
-  if (currentRole === 'supper_admin') return ['laixe', 'tonghop', 'admin', 'supper_admin'];
-  if (currentRole === 'admin') return ['laixe', 'tonghop'];
+  if (currentRole === 'supper_admin') return ['laixe', 'tonghop', 'admin', 'supper_admin', 'hr'];
+  if (currentRole === 'admin') return ['laixe', 'tonghop', 'hr'];
   return ['laixe'];
 }
 

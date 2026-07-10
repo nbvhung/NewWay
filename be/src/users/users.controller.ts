@@ -9,7 +9,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('admin/users')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('tonghop', 'admin', 'supper_admin')
+@Roles('tonghop', 'admin', 'supper_admin', 'hr')
 export class UsersController {
   constructor(private usersService: UsersService) {}
 

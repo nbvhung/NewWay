@@ -7,5 +7,5 @@ export class CreateRouteDto {
 
   @IsOptional()
   @IsNumber()
-  shippingLineId?: number;
+  money?: number;
 }

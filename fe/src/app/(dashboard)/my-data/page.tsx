@@ -9,7 +9,7 @@ import { StatsCard } from '@/components/ui/stats-card';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { api } from '@/lib/api-client';
 import { ShippingLine, Submission } from '@/types';
-import { fmtDate, FIELD_LABELS } from '@/lib/utils';
+import { fmtDate, FIELD_LABELS, formatMoney } from '@/lib/utils';
 
 interface EditFormData {
   shippingLine: string;
@@ -37,6 +37,10 @@ export default function MyDataPage() {
     vo20fr: '', vo40fr: '', veSinhLai: '', tip: '',
   });
   const [saving, setSaving] = useState(false);
+
+  const planDisplayName = (sl: ShippingLine) => {
+    return [sl.name, sl.soChuyen, sl.routeName, sl.ngay, sl.vendor].filter(Boolean).join(' / ');
+  };
 
   useEffect(() => {
     loadData();
@@ -154,6 +158,7 @@ export default function MyDataPage() {
                   <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">V40FR</th>
                   <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">VSL</th>
                   <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">TIP</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">Lương</th>
                   <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">Sửa</th>
                   <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap">Thao tác</th>
                 </tr>
@@ -163,7 +168,7 @@ export default function MyDataPage() {
                   <tr key={s.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.03)]">
                     <td className="px-3.5 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#94a3b8]">{i + 1}</span></td>
                     <td className="px-3.5 py-3 whitespace-nowrap text-[#94a3b8]">{fmtDate(s.createdAt)}</td>
-                    <td className="px-3.5 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(26,86,219,0.2)] text-blue-400">{s.shippingLine}</span></td>
+                    <td className="px-3.5 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(26,86,219,0.2)] text-blue-400 max-w-[160px] inline-block truncate">{s.planDisplayName || s.shippingLine}</span></td>
                     <td className="px-3.5 py-3">{s.hang20 || '—'}</td>
                     <td className="px-3.5 py-3">{s.hang40 || '—'}</td>
                     <td className="px-3.5 py-3">{s.vo20 || '—'}</td>
@@ -172,6 +177,7 @@ export default function MyDataPage() {
                     <td className="px-3.5 py-3">{s.vo40fr || '—'}</td>
                     <td className="px-3.5 py-3">{s.veSinhLai || '—'}</td>
                     <td className="px-3.5 py-3">{s.tip || '—'}</td>
+                    <td className="px-3.5 py-3">{formatMoney(s.salary)}</td>
                     <td className="px-3.5 py-3">
                       {s.editCount > 0 ? (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(245,158,11,0.2)] text-amber-400">✏️ {s.editCount}</span>
@@ -220,8 +226,7 @@ export default function MyDataPage() {
                 }`}
                 onClick={() => {
                   updateField('shippingLine', sl.name);
-                  const firstRoute = sl.routes?.[0]?.name || '';
-                  updateField('route', firstRoute);
+                  updateField('route', sl.routeName || '');
                 }}
               >
                 <div className={`w-4 h-4 border-2 rounded-full flex items-center justify-center shrink-0 ${
@@ -229,7 +234,7 @@ export default function MyDataPage() {
                 }`}>
                   {editForm.shippingLine === sl.name && <div className="w-1.5 h-1.5 rounded-full bg-[#1a56db]" />}
                 </div>
-                <span>{sl.name}</span>
+                <span>{planDisplayName(sl)}</span>
               </label>
             ))}
           </div>
@@ -280,7 +285,7 @@ export default function MyDataPage() {
           </div>
         </div>
 
-        {editSub && editSub.history && editSub.history.length > 0 && (
+        {editSub && editSub.history && editSub.history.length > 0 && (user?.role === 'admin' || user?.role === 'supper_admin') && (
           <>
             <div className="h-px bg-[rgba(255,255,255,0.08)] my-4" />
             <div className="text-xs font-semibold text-[#94a3b8] mb-2.5">

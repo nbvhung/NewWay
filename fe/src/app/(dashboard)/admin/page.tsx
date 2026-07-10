@@ -13,7 +13,7 @@ import { User, ShippingLine, Route } from '@/types';
 
 type Tab = 'data' | 'users' | 'shipping-lines' | 'routes';
 
-const TABS: { key: Tab; label: string; icon: string }[] = [
+const ALL_TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'data', label: 'Tất cả dữ liệu', icon: '📊' },
   { key: 'users', label: 'Quản lý tài khoản', icon: '👥' },
   { key: 'shipping-lines', label: 'Quản lý kế hoạch', icon: '🚢' },
@@ -24,6 +24,7 @@ export default function AdminPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  const TABS = ALL_TABS.filter(t => t.key !== 'routes' || (user?.role !== 'tonghop'));
   const [activeTab, setActiveTab] = useState<Tab>('data');
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [allShippingLines, setAllShippingLines] = useState<ShippingLine[]>([]);
@@ -115,7 +116,7 @@ export default function AdminPage() {
       {activeTab === 'routes' && (
         <RoutesTab
           allRoutes={allRoutes}
-          onRefresh={() => { loadRoutes(); loadShippingLines(); }}
+          onRefresh={() => { loadRoutes(); }}
           toast={toast}
         />
       )}

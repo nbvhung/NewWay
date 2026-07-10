@@ -10,7 +10,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user) {
-      if (user.role === 'tonghop' || user.role === 'admin' || user.role === 'supper_admin') {
+      if (user.role === 'tonghop' || user.role === 'admin' || user.role === 'supper_admin' || user.role === 'hr') {
         router.replace('/admin');
       } else {
         router.replace('/form');

@@ -22,6 +22,11 @@ export class UsersService {
         where: { role: Not('supper_admin') },
         order: { createdAt: 'DESC' },
       });
+    } else if (currentRole === 'hr') {
+      users = await this.usersRepository.find({
+        where: [{ role: 'laixe' }, { role: 'tonghop' }, { role: 'hr' }],
+        order: { createdAt: 'DESC' },
+      });
     } else {
       users = await this.usersRepository.find({
         where: [{ role: 'laixe' }, { role: 'tonghop' }],
@@ -38,7 +43,7 @@ export class UsersService {
     }
 
     let validRole = dto.role || 'laixe';
-    if (currentRole === 'tonghop' && validRole !== 'laixe') {
+    if ((currentRole === 'tonghop' || currentRole === 'hr') && validRole !== 'laixe') {
       throw new ForbiddenException('Bạn chỉ có thể tạo tài khoản lái xe');
     }
     if (currentRole === 'admin' && validRole === 'supper_admin') {
@@ -63,8 +68,10 @@ export class UsersService {
       throw new NotFoundException('Không tìm thấy người dùng');
     }
 
-    if (currentRole === 'tonghop' && target.role !== 'laixe') {
-      throw new ForbiddenException('Bạn chỉ có thể sửa tài khoản lái xe');
+    if (currentRole === 'tonghop' || currentRole === 'hr') {
+      if (target.role !== 'laixe') {
+        throw new ForbiddenException('Bạn chỉ có thể sửa tài khoản lái xe');
+      }
     }
     if (currentRole === 'admin' && target.role === 'supper_admin') {
       throw new ForbiddenException('Bạn không có quyền sửa tài khoản này');
@@ -72,7 +79,7 @@ export class UsersService {
 
     if (dto.fullName) target.fullName = dto.fullName.trim();
     if (dto.role) {
-      if (currentRole === 'tonghop' && dto.role !== 'laixe') {
+      if ((currentRole === 'tonghop' || currentRole === 'hr') && dto.role !== 'laixe') {
         throw new ForbiddenException('Bạn chỉ có thể sửa tài khoản lái xe');
       }
       if (currentRole === 'admin' && dto.role === 'supper_admin') {
@@ -99,7 +106,7 @@ export class UsersService {
       throw new NotFoundException('Không tìm thấy người dùng');
     }
 
-    if (currentRole === 'tonghop' && target.role !== 'laixe') {
+    if ((currentRole === 'tonghop' || currentRole === 'hr') && target.role !== 'laixe') {
       throw new ForbiddenException('Bạn chỉ có thể xóa tài khoản lái xe');
     }
     if (currentRole === 'admin' && target.role === 'supper_admin') {

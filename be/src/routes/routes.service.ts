@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Route } from '../database/entities/route.entity';
 import { CreateRouteDto } from './dto/create-route.dto';
+import { UpdateRouteDto } from './dto/update-route.dto';
 
 @Injectable()
 export class RoutesService {
@@ -12,16 +13,7 @@ export class RoutesService {
   ) {}
 
   async findAll() {
-    return this.routesRepository
-      .createQueryBuilder('route')
-      .leftJoinAndSelect('route.shippingLine', 'shippingLine')
-      .orderBy('route.name', 'ASC')
-      .getMany();
-  }
-
-  async findByShippingLine(shippingLineId: number) {
     return this.routesRepository.find({
-      where: { shippingLineId },
       order: { name: 'ASC' },
     });
   }
@@ -36,8 +28,31 @@ export class RoutesService {
 
     const route = this.routesRepository.create({
       name: dto.name.trim(),
-      shippingLineId: dto.shippingLineId ?? undefined,
-    } as any);
+      money: dto.money ?? 0,
+    });
+    return this.routesRepository.save(route);
+  }
+
+  async update(id: number, dto: UpdateRouteDto) {
+    const route = await this.routesRepository.findOne({ where: { id } });
+    if (!route) {
+      throw new NotFoundException('Không tìm thấy tuyến đường');
+    }
+
+    if (dto.name !== undefined) {
+      const name = dto.name.trim();
+      const existing = await this.routesRepository.findOne({
+        where: { name },
+      });
+      if (existing && existing.id !== id) {
+        throw new BadRequestException('Tên tuyến đường đã tồn tại');
+      }
+      route.name = name;
+    }
+    if (dto.money !== undefined) {
+      route.money = dto.money;
+    }
+
     return this.routesRepository.save(route);
   }
 

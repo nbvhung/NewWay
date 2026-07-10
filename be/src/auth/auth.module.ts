@@ -7,10 +7,11 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
 import { User } from '../database/entities/user.entity';
+import { RefreshToken } from '../database/entities/refresh-token.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, RefreshToken]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({}),
   ],

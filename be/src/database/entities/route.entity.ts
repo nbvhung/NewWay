@@ -1,22 +1,16 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
-import { ShippingLine } from './shipping-line.entity';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
 @Entity('routes')
-@Unique(['shippingLineId', 'name'])
 export class Route {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'shipping_line_id' })
-  shippingLineId: number;
-
-  @Column({ name: 'name', length: 255, nullable: false })
+  @Column({ name: 'name', length: 255, unique: true, nullable: false })
   name: string;
+
+  @Column({ name: 'money', type: 'decimal', precision: 15, scale: 2, default: 0 })
+  money: number;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
-
-  @ManyToOne(() => ShippingLine, (shippingLine) => shippingLine.routes, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'shipping_line_id' })
-  shippingLine: ShippingLine;
 }
