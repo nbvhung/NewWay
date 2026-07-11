@@ -1,4 +1,11 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+// On client: use relative path → goes through Next.js proxy (same-origin, fixes Safari ITP)
+// On server: use absolute URL for SSR/server components
+const BACKEND_URL = process.env.BACKEND_URL
+  || (process.env.NODE_ENV === 'production'
+      ? 'https://newway-backend-production.up.railway.app'
+      : 'http://localhost:4000');
+const API_URL = typeof window !== 'undefined' ? '/api' : `${BACKEND_URL}/api`;
+
 
 interface FetchOptions extends RequestInit {
   params?: Record<string, string | number | undefined>;

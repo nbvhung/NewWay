@@ -264,14 +264,14 @@ export default function MyDataPage() {
         <div className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] border border-[rgba(255,255,255,0.08)] rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold">💰 Lương {MONTHS_VI[viewMonth]}/{viewYear}</h3>
+              <h3 className="text-base font-bold">💰 Từ đầu tháng này, bạn đã cày được:</h3>
             </div>
             <span className="text-xs text-[#94a3b8]">{salarySummary?.count ?? 0} bản ghi</span>
           </div>
           <div className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] to-[#34d399]">
             {formatMoney(salarySummary?.totalSalary)}
           </div>
-          <p className="text-xs text-[#64748b] mt-2">🎉 Hãy duy trì phong độ để đạt kết quả cao nhất nhé!</p>
+          <p className="text-xs text-[#64748b] mt-2">🎉 Thật là tuyệt vời !!!</p>
         </div>
       </div>
 
