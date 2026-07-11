@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: newway-backend
+    runtime: node
+    rootDir: be
+    branch: vxhung
+    buildCommand: npm install && npm run build
+    startCommand: node dist/main.js
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: DATABASE_URL
+        value: postgresql://neondb_owner:npg_O9qCmuyU8pkS@ep-super-recipe-aobr46y6-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+      - key: JWT_ACCESS_SECRET
+        value: access_super_secret_key_new_way_2024_64_chars_minimum_required_here_1234567890
+      - key: JWT_REFRESH_SECRET
+        value: refresh_super_secret_key_new_way_2024_64_chars_minimum_required_here_0987654321
+      - key: DEFAULT_ADMIN_PASSWORD
+        value: admin123
+      - key: DEFAULT_SUPPER_PASSWORD
+        value: supper123
+      - key: SEED_SHIPPING_LINES
+        value: "true"
+      - key: REDIS_HOST
+        value: localhost
+      - key: REDIS_PORT
+        value: "6379"
