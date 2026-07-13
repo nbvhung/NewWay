@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
     // fixing Safari ITP / incognito mode cookie blocking.
     const backendUrl = process.env.BACKEND_URL
       || (process.env.NODE_ENV === 'production'
-          ? 'https://newway-backend-production.up.railway.app'
+          ? 'https://newway-backend.onrender.com'
           : 'http://localhost:4000');
     return [
       {
