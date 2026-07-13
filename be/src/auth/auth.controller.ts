@@ -12,9 +12,9 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200)
-  async login(@Req() req: Request, @Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.login(dto.username, dto.password);
-    this.setTokenCookies(req, res, result.accessToken, result.refreshToken);
+    this.setTokenCookies(res, result.accessToken, result.refreshToken);
     return { user: result.user };
   }
 
@@ -24,7 +24,7 @@ export class AuthController {
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const user = req.user as any;
     const result = await this.authService.refresh(user.id);
-    this.setTokenCookies(req, res, result.accessToken, result.refreshToken);
+    this.setTokenCookies(res, result.accessToken, result.refreshToken);
     return { user: result.user };
   }
 
@@ -47,7 +47,7 @@ export class AuthController {
       } catch {}
     }
     await this.authService.logout(user.id, jti, exp);
-    this.clearTokenCookies(req, res);
+    this.clearTokenCookies(res);
     return { message: 'Đã đăng xuất' };
   }
 
@@ -57,35 +57,27 @@ export class AuthController {
     return { user };
   }
 
-  private isCrossOrigin(req: Request): boolean {
-    const origin = req.headers.origin || req.headers.referer || '';
-    const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
-    const isHttp = origin.startsWith('http://') || origin.startsWith('https://');
-    return !isLocalhost && isHttp && origin !== 'https://newway-backend-production.up.railway.app';
-  }
-
-  private setTokenCookies(req: Request, res: Response, accessToken: string, refreshToken: string) {
-    const remote = this.isCrossOrigin(req);
+  private setTokenCookies(res: Response, accessToken: string, refreshToken: string) {
+    const isProd = process.env.NODE_ENV === 'production';
     res.cookie('access_token', accessToken, {
       httpOnly: true,
-      secure: remote,
-      sameSite: remote ? 'none' : 'strict',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'strict',
       path: '/',
       maxAge: 15 * 60 * 1000,
     });
     res.cookie('refresh_token', refreshToken, {
       httpOnly: true,
-      secure: remote,
-      sameSite: remote ? 'none' : 'strict',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'strict',
       path: '/api/auth/refresh',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
   }
 
-  private clearTokenCookies(req: Request, res: Response) {
-    const remote = this.isCrossOrigin(req);
-    res.clearCookie('access_token', { path: '/', secure: remote, sameSite: remote ? 'none' : 'strict' });
-    res.clearCookie('refresh_token', { path: '/api/auth/refresh', secure: remote, sameSite: remote ? 'none' : 'strict' });
+  private clearTokenCookies(res: Response) {
+    res.clearCookie('access_token', { path: '/' });
+    res.clearCookie('refresh_token', { path: '/api/auth/refresh' });
   }
 
   private extractToken(req: Request): string | null {

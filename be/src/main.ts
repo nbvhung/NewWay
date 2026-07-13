@@ -14,28 +14,10 @@ async function bootstrap() {
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.set('trust proxy', 1);
 
-  // Allow all vercel.app, onrender.com and localhost origins
   app.enableCors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      const allowed = [
-        'http://localhost:3000',
-        'http://localhost:4000',
-        '.vercel.app',
-        '.onrender.com',
-        ...(process.env.CORS_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean),
-      ];
-      if (allowed.some(o => origin === o || origin.endsWith(o))) {
-        callback(null, true);
-      } else {
-        callback(null, true); // Allow all in production for simplicity
-      }
-    },
+    origin: [process.env.CORS_ORIGIN || 'http://localhost:3000'],
     credentials: true,
   });
-
-  // Health check endpoint for Render (must be before NestJS validation pipe)
-  expressApp.get('/api/health', (_req: any, res: any) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
   app.useGlobalPipes(
     new ValidationPipe({
