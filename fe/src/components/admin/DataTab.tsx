@@ -102,7 +102,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
       if (filterSl) params.append('shippingLine', filterSl);
       if (filterFrom) params.append('from_date', filterFrom);
       if (filterTo) params.append('to_date', filterTo);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/export?${params}`, {
+      const res = await fetch(`/api/admin/export?${params}`, {
         credentials: 'include',
       });
       if (!res.ok) return;

@@ -33,6 +33,7 @@ import { SeedService } from './seed.service';
           entities: [User, ShippingLine, Route, Submission, EditHistory, RefreshToken],
           synchronize: true,
           logging: false,
+          ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
         };
       },
     }),

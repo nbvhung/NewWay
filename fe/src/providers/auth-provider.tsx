@@ -25,13 +25,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
     try {
       const data = await api.get<{ user: User }>('/auth/me');
       setUser(data.user);
     } catch {
       try {
-        const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
+        const refreshRes = await fetch('/api/auth/refresh', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
