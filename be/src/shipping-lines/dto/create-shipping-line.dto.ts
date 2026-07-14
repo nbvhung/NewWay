@@ -27,4 +27,16 @@ export class CreateShippingLineDto {
   @IsOptional()
   @IsBoolean()
   tangCuong?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  leTet?: boolean;
+
+  @IsOptional()
+  @IsString()
+  vendorKhac?: string;
+
+  @IsOptional()
+  @IsString()
+  tenNguoiNhap?: string;
 }

@@ -36,11 +36,14 @@ export class Submission {
   @Column({ name: 'vo_40fr', length: 50, default: '' })
   vo40fr: string;
 
-  @Column({ name: 've_sinh_lai', length: 255, default: '' })
+  @Column({ name: 've_sinh_lai', length: 50, default: '' })
   veSinhLai: string;
 
-  @Column({ name: 'tip', length: 255, default: '' })
+  @Column({ name: 'tip', length: 50, default: '' })
   tip: string;
+
+  @Column({ name: 'keo_ve', length: 50, default: '' })
+  keoVe: string;
 
   @Column({ name: 'edit_count', default: 0 })
   editCount: number;

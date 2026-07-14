@@ -72,7 +72,7 @@ export class SubmissionsController {
 
   @Put('admin/submissions/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ops', 'admin', 'supper_admin', 'hr')
+  @Roles('ops', 'admin', 'supper_admin')
   async updateByAdmin(
     @Param('id') id: string,
     @Body() dto: UpdateSubmissionDto,
@@ -84,7 +84,7 @@ export class SubmissionsController {
 
   @Delete('admin/submissions/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ops', 'admin', 'supper_admin', 'hr')
+  @Roles('admin', 'supper_admin')
   async remove(@Param('id') id: string) {
     return this.submissionsService.remove(+id);
   }

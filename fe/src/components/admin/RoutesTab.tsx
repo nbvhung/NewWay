@@ -62,8 +62,9 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
     } catch (err: any) { toast(err.message, 'error'); }
   };
 
-  const fmtMoney = (v: number) => {
-    return v ? v.toLocaleString('vi-VN') + '₫' : '';
+  const fmtMoney = (v: number | string) => {
+    const n = Math.floor(typeof v === 'string' ? parseFloat(v) : v);
+    return n ? n.toLocaleString('vi-VN') + ' đ' : '';
   };
 
   return (

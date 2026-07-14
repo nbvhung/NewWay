@@ -24,4 +24,16 @@ export class UpdateShippingLineDto {
   @IsOptional()
   @IsBoolean()
   tangCuong?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  leTet?: boolean;
+
+  @IsOptional()
+  @IsString()
+  vendorKhac?: string;
+
+  @IsOptional()
+  @IsString()
+  tenNguoiNhap?: string;
 }

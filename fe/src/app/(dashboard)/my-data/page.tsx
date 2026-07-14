@@ -22,6 +22,7 @@ interface EditFormData {
   vo40fr: string;
   veSinhLai: string;
   tip: string;
+  keoVe: string;
 }
 
 const MONTHS_VI = ['', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
@@ -36,7 +37,7 @@ export default function MyDataPage() {
   const [editSub, setEditSub] = useState<Submission | null>(null);
   const [editForm, setEditForm] = useState<EditFormData>({
     shippingLine: '', route: '', hang20: '', hang40: '', vo20: '', vo40: '',
-    vo20fr: '', vo40fr: '', veSinhLai: '', tip: '',
+    vo20fr: '', vo40fr: '', veSinhLai: '', tip: '', keoVe: '',
   });
   const [saving, setSaving] = useState(false);
 
@@ -46,7 +47,7 @@ export default function MyDataPage() {
   const [salarySummary, setSalarySummary] = useState<{ totalSalary: number; count: number } | null>(null);
 
   const planDisplayName = (sl: ShippingLine) => {
-    return [sl.name, sl.soChuyen, sl.routeName, sl.ngay, sl.vendor].filter(Boolean).join(' / ');
+    return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
   };
 
   useEffect(() => {
@@ -105,6 +106,7 @@ export default function MyDataPage() {
       vo40fr: sub.vo40fr || '',
       veSinhLai: sub.veSinhLai || '',
       tip: sub.tip || '',
+      keoVe: sub.keoVe || '',
     });
     setEditModal(true);
   };
@@ -219,7 +221,8 @@ export default function MyDataPage() {
                   <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">V40FR</th>
                   <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">VSL</th>
                   <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">TIP</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">Lương</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">KV</th>
+                  {user?.role !== 'ops' && <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">Lương</th>}
                   <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">Sửa</th>
                   <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#94a3b8] whitespace-nowrap sticky top-0 bg-[#263147] z-10">Thao tác</th>
                 </tr>
@@ -238,7 +241,8 @@ export default function MyDataPage() {
                     <td className="px-3.5 py-3">{s.vo40fr || '—'}</td>
                     <td className="px-3.5 py-3">{s.veSinhLai || '—'}</td>
                     <td className="px-3.5 py-3">{s.tip || '—'}</td>
-                    <td className="px-3.5 py-3">{formatMoney(s.salary)}</td>
+                    <td className="px-3.5 py-3">{s.keoVe || '—'}</td>
+                    {user?.role !== 'ops' && <td className="px-3.5 py-3">{formatMoney(s.salary)}</td>}
                     <td className="px-3.5 py-3">
                       {s.editCount > 0 ? (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(245,158,11,0.2)] text-amber-400">✏️ {s.editCount}</span>
@@ -259,21 +263,22 @@ export default function MyDataPage() {
         )}
       </div>
 
-      {/* Salary Summary */}
+      {user?.role !== 'ops' && (
       <div className="mt-6">
         <div className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] border border-[rgba(255,255,255,0.08)] rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold">💰 Lương {MONTHS_VI[viewMonth]}/{viewYear}</h3>
+              <h3 className="text-base font-bold">💰 Từ đầu tháng này, bạn đã cày được:</h3>
             </div>
             <span className="text-xs text-[#94a3b8]">{salarySummary?.count ?? 0} bản ghi</span>
           </div>
           <div className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] to-[#34d399]">
             {formatMoney(salarySummary?.totalSalary)}
           </div>
-          <p className="text-xs text-[#64748b] mt-2">🎉 Hãy duy trì phong độ để đạt kết quả cao nhất nhé!</p>
+          <p className="text-xs text-[#64748b] mt-2">🎉 Thật là tuyệt vời !!!</p>
         </div>
       </div>
+      )}
 
       <Modal
         open={editModal}
@@ -311,7 +316,7 @@ export default function MyDataPage() {
                 }`}>
                   {editForm.shippingLine === sl.name && <div className="w-1.5 h-1.5 rounded-full bg-[#1a56db]" />}
                 </div>
-                <span>{planDisplayName(sl)}{sl.tangCuong && <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-400">+15%</span>}</span>
+                <span>{planDisplayName(sl)}{sl.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-400">x3</span> : sl.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-400">+15%</span> : null}</span>
               </label>
             ))}
           </div>
@@ -350,14 +355,19 @@ export default function MyDataPage() {
             <input type="number" min="0" value={editForm.vo40fr} onChange={(e) => updateField('vo40fr', e.target.value)} placeholder="0"
               className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
-          <div className="col-span-2">
+          <div>
             <label className="block text-xs font-medium text-[#94a3b8] mb-1">Vệ sinh lại</label>
-            <input type="text" value={editForm.veSinhLai} onChange={(e) => updateField('veSinhLai', e.target.value)} placeholder="..."
+            <input type="number" min="0" value={editForm.veSinhLai} onChange={(e) => updateField('veSinhLai', e.target.value)} placeholder="0"
               className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
-          <div className="col-span-2">
+          <div>
             <label className="block text-xs font-medium text-[#94a3b8] mb-1">TIP</label>
-            <input type="text" value={editForm.tip} onChange={(e) => updateField('tip', e.target.value)} placeholder="..."
+            <input type="number" min="0" value={editForm.tip} onChange={(e) => updateField('tip', e.target.value)} placeholder="0"
+              className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#94a3b8] mb-1">Kéo về</label>
+            <input type="number" min="0" value={editForm.keoVe} onChange={(e) => updateField('keoVe', e.target.value)} placeholder="0"
               className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
         </div>

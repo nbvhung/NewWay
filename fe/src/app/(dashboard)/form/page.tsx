@@ -24,6 +24,7 @@ export default function FormPage() {
   const [vo40fr, setVo40fr] = useState('');
   const [veSinhLai, setVeSinhLai] = useState('');
   const [tip, setTip] = useState('');
+  const [keoVe, setKeoVe] = useState('');
 
   useEffect(() => {
     loadShippingLines();
@@ -43,7 +44,7 @@ export default function FormPage() {
   const selectedLine = shippingLines.find((sl) => sl.name === selectedShippingLine);
 
   const planDisplayName = (sl: ShippingLine) => {
-    return [sl.name, sl.soChuyen, sl.routeName, sl.ngay, sl.vendor].filter(Boolean).join(' / ');
+    return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -66,6 +67,7 @@ export default function FormPage() {
         vo40fr,
         veSinhLai,
         tip,
+        keoVe,
       });
       toast('Đã gửi xác nhận thành công!', 'success');
       resetForm();
@@ -86,6 +88,7 @@ export default function FormPage() {
     setVo40fr('');
     setVeSinhLai('');
     setTip('');
+    setKeoVe('');
   };
 
   return (
@@ -127,7 +130,7 @@ export default function FormPage() {
                         <div className="w-2 h-2 rounded-full bg-[#1a56db]" />
                       )}
                     </div>
-                    <span className="text-sm font-medium">{planDisplayName(sl)}{sl.tangCuong && <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-400">+15%</span>}</span>
+                    <span className="text-sm font-medium">{planDisplayName(sl)}{sl.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-400">x3</span> : sl.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-400">+15%</span> : null}</span>
                   </label>
                 ))}
                 {shippingLines.length === 0 && (
@@ -183,14 +186,19 @@ export default function FormPage() {
               <input type="number" min="0" value={vo40fr} onChange={(e) => setVo40fr(e.target.value)} placeholder="0"
                 className="w-full px-3.5 py-2.5 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-[#f1f5f9] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
             </div>
-            <div className="sm:col-span-2">
+            <div>
               <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">Vệ sinh lại</label>
-              <input type="text" value={veSinhLai} onChange={(e) => setVeSinhLai(e.target.value)} placeholder="Nhập thông tin vệ sinh lại..."
+              <input type="number" min="0" value={veSinhLai} onChange={(e) => setVeSinhLai(e.target.value)} placeholder="0"
                 className="w-full px-3.5 py-2.5 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-[#f1f5f9] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
             </div>
-            <div className="sm:col-span-2">
+            <div>
               <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">TIP</label>
-              <input type="text" value={tip} onChange={(e) => setTip(e.target.value)} placeholder="Nhập TIP..."
+              <input type="number" min="0" value={tip} onChange={(e) => setTip(e.target.value)} placeholder="0"
+                className="w-full px-3.5 py-2.5 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-[#f1f5f9] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">Kéo về</label>
+              <input type="number" min="0" value={keoVe} onChange={(e) => setKeoVe(e.target.value)} placeholder="0"
                 className="w-full px-3.5 py-2.5 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-[#f1f5f9] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
             </div>
           </div>

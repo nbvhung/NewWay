@@ -1,12 +1,7 @@
 export function fmtDate(dt: string | null | undefined): string {
   if (!dt) return '—';
-  return new Date(dt).toLocaleString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const d = new Date(dt);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -33,4 +28,5 @@ export const FIELD_LABELS: Record<string, string> = {
   vo40fr: 'Vỏ 40FR',
   veSinhLai: 'Vệ sinh lại',
   tip: 'TIP',
+  keoVe: 'Kéo về',
 };

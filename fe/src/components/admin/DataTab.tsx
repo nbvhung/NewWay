@@ -19,7 +19,7 @@ interface Props {
 
 export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShippingLines }: Props) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const slDisplayMap = new Map(allShippingLines.map(sl => [sl.name, [sl.name, sl.soChuyen, sl.routeName, sl.ngay, sl.vendor].filter(Boolean).join(' / ')]));
+  const slDisplayMap = new Map(allShippingLines.map(sl => [sl.name, [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ')]));
   const [filterUser, setFilterUser] = useState('');
   const [filterSl, setFilterSl] = useState('');
   const [filterFrom, setFilterFrom] = useState('');
@@ -74,6 +74,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         vo40fr: editForm.vo40fr || '',
         veSinhLai: editForm.veSinhLai || '',
         tip: editForm.tip || '',
+        keoVe: editForm.keoVe || '',
       });
       setEditModalOpen(false);
       loadSubmissions();
@@ -138,7 +139,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
           <select value={filterSl} onChange={e => setFilterSl(e.target.value)}
             className="px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db]">
             <option value="">Tất cả</option>
-            {allShippingLines.map(sl => <option key={sl.id} value={sl.name}>{[sl.name, sl.soChuyen, sl.routeName, sl.ngay, sl.vendor].filter(Boolean).join(' / ')}</option>)}
+            {allShippingLines.map(sl => <option key={sl.id} value={sl.name}>{[sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ')}</option>)}
           </select>
         </div>
         <div>
@@ -181,6 +182,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
                   <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">V40FR</th>
                   <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">VSL</th>
                   <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">TIP</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">KV</th>
                   <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">Sửa</th>
                   <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">Ngày tạo</th>
                   <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#94a3b8]">Thao tác</th>
@@ -206,6 +208,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
                     <td className="px-3 py-2.5">{s.vo40fr || '—'}</td>
                     <td className="px-3 py-2.5">{s.veSinhLai || '—'}</td>
                     <td className="px-3 py-2.5">{s.tip || '—'}</td>
+                    <td className="px-3 py-2.5">{s.keoVe || '—'}</td>
                     <td className="px-3 py-2.5">
                       {s.editCount > 0
                         ? <span className="px-1.5 py-0.5 rounded-full bg-[rgba(245,158,11,0.2)] text-amber-400">✏️ {s.editCount}</span>
