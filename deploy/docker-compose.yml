@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+    networks:
+      - newway
+
+  frontend:
+    build:
+      context: ../fe
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - BACKEND_URL=http://backend:4000
+      - NEXT_PUBLIC_API_URL=https://<domain>  # override khi deploy
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - newway
+
+  backend:
+    build:
+      context: ../be
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - newway
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ""  # chỉ listen local docker network
+    restart: unless-stopped
+    networks:
+      - newway
+
+networks:
+  newway:
+    driver: bridge

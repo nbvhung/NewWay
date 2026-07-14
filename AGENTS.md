@@ -26,10 +26,26 @@ người tổng hợp xem lọc xuất Excel, admin quản lý user và danh m�
 
 ```
 D:\WebLab\NewWay\
-├── be/       # NestJS backend (port 4000)
-├── fe/       # Next.js frontend (port 3000)
+├── be/         # NestJS backend (port 4000)
+├── fe/         # Next.js frontend (port 3000)
+├── deploy/     # Production deployment scripts & docs
 ├── AGENTS.md
 └── README.md
+```
+
+### Production architecture
+
+```
+Internet (tài xế)
+    │
+    ▼
+VPS (Hetzner $6/th)
+├── Nginx (80→443, SSL Let's Encrypt)
+├── Frontend (Next.js, :3000)
+├── Backend API (NestJS, :4000)
+└── Redis (:6379)
+    │
+    └── WireGuard tunnel ─── Server công ty (PostgreSQL, không expose internet)
 ```
 
 ## Backend Module Map
@@ -39,7 +55,7 @@ D:\WebLab\NewWay\
 | `auth/` | `/api/auth` | Public (login, refresh), JWT (logout, me) |
 | `users/` | `/api/admin/users` | JWT + Roles('tonghop','admin','supper_admin') |
 | `shipping-lines/` | `/api/shipping-lines` (user), `/api/admin/shipping-lines` (admin) | JWT / JWT+Roles |
-| `routes/` | `/api/admin/routes` | JWT + Roles('tonghop','admin','supper_admin') |
+| `routes/` | `/api/admin/routes` | JWT + Roles('ops','hr','admin','supper_admin') |
 | `submissions/` | `/api/submissions` (user), `/api/admin/submissions` (admin) | JWT / JWT+Roles |
 
 ## Database Schema
@@ -126,9 +142,9 @@ UNIQUE(shippingLineId, name)
 1. **Login**: `POST /api/auth/login` → validate username + password (bcrypt.compare)
 2. **Issue**: access_token (JWT, sub = userId, 15 phút) + refresh_token (JWT, sub = userId, 7 ngày)
 3. **Store**: refresh_token hash trong Redis, key = `refresh_token:{userId}`
-4. **Cookies**: Set-Cookie với httpOnly, Secure, SameSite=Strict
-   - `access_token`: Path=/api, Max-Age=900
-   - `refresh_token`: Path=/api/auth/refresh, Max-Age=604800
+4. **Cookies**: Set-Cookie với httpOnly, Secure, SameSite=Lax
+   - `access_token`: Path=/, Max-Age=900
+   - `refresh_token`: Path=/, Max-Age=604800
 5. **Refresh**: `POST /api/auth/refresh` → verify refresh_token → check Redis whitelist → rotation (clear old, issue new pair) → set cookies
 6. **Logout**: `POST /api/auth/logout` → blacklist access_token (Redis, TTL = thời gian còn lại) → remove refresh_token khỏi Redis → clear cookies
 7. **Auth Guard**: JwtAuthGuard đọc access_token từ cookie `access_token` (hoặc Authorization header fallback)
@@ -280,10 +296,12 @@ DATABASE_PORT=5432
 DATABASE_USER=postgres
 DATABASE_PASSWORD=postgres
 DATABASE_NAME=newway
+DB_SSL=false                       # Bật SSL cho PostgreSQL production
 REDIS_HOST=localhost
 REDIS_PORT=6379
 JWT_ACCESS_SECRET=<random-64-characters>
 JWT_REFRESH_SECRET=<random-64-characters>
+CORS_ORIGIN=http://localhost:3000  # Frontend URL (cho CORS)
 DEFAULT_ADMIN_PASSWORD=admin123
 DEFAULT_SUPPER_PASSWORD=supper123
 SEED_SHIPPING_LINES=true
@@ -292,7 +310,7 @@ SEED_SHIPPING_LINES=true
 ### Frontend (`fe/.env.local`)
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:4000/api
+BACKEND_URL=http://localhost:4000
 ```
 
 ## Notes for AI
@@ -303,3 +321,7 @@ NEXT_PUBLIC_API_URL=http://localhost:4000/api
 4. **Excel export format** giữ nguyên font, màu, border như đã định nghĩa
 5. **Edit history tracking** — bắt buộc mỗi lần sửa phải ghi history với JSON diff
 6. **Responsive** — giao diện phải hoạt động tốt trên mobile (lái xe dùng điện thoại)
+7. **Proxy rewrite** — Next.js rewrite proxy `/api/*` → backend, đảm bảo cookie same-origin (fix Safari/iOS)
+8. **Security** — Helmet, rate limiting (100/min), CORS exact match, `synchronize: false` ở production (tự động theo `NODE_ENV`)
+9. **DB isolation** — PostgreSQL chạy trên server công ty, kết nối qua WireGuard tunnel, không expose internet
+10. **Deployment** — xem `deploy/` cho Docker + setup script 1 lệnh
