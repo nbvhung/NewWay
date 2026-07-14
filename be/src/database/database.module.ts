@@ -12,13 +12,14 @@ import { SeedService } from './seed.service';
   imports: [
     TypeOrmModule.forRootAsync({
       useFactory: () => {
+        const isProd = process.env.NODE_ENV === 'production';
         const dbUrl = process.env.DATABASE_URL;
         if (dbUrl) {
           return {
             type: 'postgres',
             url: dbUrl,
             entities: [User, ShippingLine, Route, Submission, EditHistory, RefreshToken],
-            synchronize: true,
+            synchronize: !isProd,
             logging: false,
             ssl: { rejectUnauthorized: false },
           };
@@ -31,7 +32,7 @@ import { SeedService } from './seed.service';
           password: process.env.DATABASE_PASSWORD || 'postgres',
           database: process.env.DATABASE_NAME || 'newway',
           entities: [User, ShippingLine, Route, Submission, EditHistory, RefreshToken],
-          synchronize: true,
+          synchronize: !isProd,
           logging: false,
           ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
         };
