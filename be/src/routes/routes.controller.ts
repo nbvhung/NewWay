@@ -8,26 +8,29 @@ import { Roles } from '../common/decorators/roles.decorator';
 
 @Controller('admin/routes')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('hr', 'admin', 'supper_admin')
 export class RoutesController {
   constructor(private routesService: RoutesService) {}
 
   @Get()
+  @Roles('ops', 'hr', 'admin', 'supper_admin')
   findAll() {
     return this.routesService.findAll();
   }
 
   @Post()
+  @Roles('hr', 'admin', 'supper_admin')
   create(@Body() dto: CreateRouteDto) {
     return this.routesService.create(dto);
   }
 
   @Put(':id')
+  @Roles('hr', 'admin', 'supper_admin')
   update(@Param('id') id: string, @Body() dto: UpdateRouteDto) {
     return this.routesService.update(+id, dto);
   }
 
   @Delete(':id')
+  @Roles('hr', 'admin', 'supper_admin')
   remove(@Param('id') id: string) {
     return this.routesService.remove(+id);
   }

@@ -24,6 +24,15 @@ export class ShippingLine {
   @Column({ name: 'tang_cuong', type: 'boolean', default: false })
   tangCuong: boolean;
 
+  @Column({ name: 'vendor_khac', length: 255, default: '' })
+  vendorKhac: string;
+
+  @Column({ name: 'ten_nguoi_nhap', length: 255, default: '' })
+  tenNguoiNhap: string;
+
+  @Column({ name: 'le_tet', type: 'boolean', default: false })
+  leTet: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

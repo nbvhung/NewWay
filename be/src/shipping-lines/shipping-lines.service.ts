@@ -33,6 +33,9 @@ export class ShippingLinesService {
       ngay: dto.ngay || undefined,
       vendor: dto.vendor?.trim() || '',
       tangCuong: dto.tangCuong || false,
+      leTet: dto.leTet || false,
+      vendorKhac: dto.vendorKhac?.trim() || '',
+      tenNguoiNhap: dto.tenNguoiNhap?.trim() || '',
     });
     if (dto.routeId) {
       (plan as any).routeId = dto.routeId;
@@ -58,6 +61,9 @@ export class ShippingLinesService {
     if (dto.ngay !== undefined) plan.ngay = dto.ngay;
     if (dto.vendor !== undefined) plan.vendor = dto.vendor.trim();
     if (dto.tangCuong !== undefined) plan.tangCuong = dto.tangCuong;
+    if (dto.leTet !== undefined) plan.leTet = dto.leTet;
+    if (dto.vendorKhac !== undefined) plan.vendorKhac = dto.vendorKhac.trim();
+    if (dto.tenNguoiNhap !== undefined) plan.tenNguoiNhap = dto.tenNguoiNhap.trim();
 
     return this.shippingLinesRepository.save(plan);
   }

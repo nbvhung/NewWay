@@ -40,4 +40,8 @@ export class UpdateSubmissionDto {
   @IsOptional()
   @IsString()
   tip?: string;
+
+  @IsOptional()
+  @IsString()
+  keoVe?: string;
 }

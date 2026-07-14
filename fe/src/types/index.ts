@@ -18,6 +18,9 @@ export interface ShippingLine {
   ngay: string;
   vendor: string;
   tangCuong: boolean;
+  leTet: boolean;
+  vendorKhac: string;
+  tenNguoiNhap: string;
   createdAt: string;
   routeId?: number;
   route?: Route;
@@ -44,6 +47,7 @@ export interface Submission {
   vo40fr: string;
   veSinhLai: string;
   tip: string;
+  keoVe: string;
   editCount: number;
   lastEditedAt: string | null;
   createdAt: string;

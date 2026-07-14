@@ -1,0 +1,1136 @@
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of D:\NWW\NewWay\package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * D:\NWW\NewWay\fe\package-lock.json
+
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Cannot update a component (`Router`) while rendering a different component (`LoginPage`). To locate the bad setState() call inside `LoginPage`, follow the stack trace as described in https://react.dev/link/setstate-in-render 
+    at LoginPage (src/app/login/page.tsx:18:14)
+  16 |   if (user) {
+  17 |     if (user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || us...
+> 18 |       router.replace('/admin');
+     |              ^
+  19 |     } else {
+  20 |       router.replace('/form');
+  21 |     } (src/app/login/page.tsx:18:14)
+⨯ ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  [90m31 |[0m   [36mconst[0m [editRouteName, setEditRouteName] = useState([32m''[0m);
+  [90m32 |[0m   [36mconst[0m [editNgay, setEditNgay] = useState([32m''[0m);
+[31m[1m>[0m [90m33 |[0m   [36mconst[0m [editVendor, setEditVendor] = useState([32m''[0m);
+  [90m   |[0m          [31m[1m^^^^^^^^^^[0m
+  [90m34 |[0m   [36mconst[0m [editTangCuong, setEditTangCuong] = useState([36mfalse[0m);
+  [90m35 |[0m   [36mconst[0m [editLeTet, setEditLeTet] = useState([36mfalse[0m);
+  [90m36 |[0m   [36mconst[0m [saving, setSaving] = useState([36mfalse[0m);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+
+
+./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  [90m31 |[0m   [36mconst[0m [editRouteName, setEditRouteName] = useState([32m''[0m);
+  [90m32 |[0m   [36mconst[0m [editNgay, setEditNgay] = useState([32m''[0m);
+[31m[1m>[0m [90m33 |[0m   [36mconst[0m [editVendor, setEditVendor] = useState([32m''[0m);
+  [90m   |[0m                      [31m[1m^^^^^^^^^^^^^[0m
+  [90m34 |[0m   [36mconst[0m [editTangCuong, setEditTangCuong] = useState([36mfalse[0m);
+  [90m35 |[0m   [36mconst[0m [editLeTet, setEditLeTet] = useState([36mfalse[0m);
+  [90m36 |[0m   [36mconst[0m [saving, setSaving] = useState([36mfalse[0m);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+⨯ ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  [90m31 |[0m   [36mconst[0m [editRouteName, setEditRouteName] = useState([32m''[0m);
+  [90m32 |[0m   [36mconst[0m [editNgay, setEditNgay] = useState([32m''[0m);
+[31m[1m>[0m [90m33 |[0m   [36mconst[0m [editVendor, setEditVendor] = useState([32m''[0m);
+  [90m   |[0m          [31m[1m^^^^^^^^^^[0m
+  [90m34 |[0m   [36mconst[0m [editTangCuong, setEditTangCuong] = useState([36mfalse[0m);
+  [90m35 |[0m   [36mconst[0m [editLeTet, setEditLeTet] = useState([36mfalse[0m);
+  [90m36 |[0m   [36mconst[0m [saving, setSaving] = useState([36mfalse[0m);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+
+
+./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  [90m31 |[0m   [36mconst[0m [editRouteName, setEditRouteName] = useState([32m''[0m);
+  [90m32 |[0m   [36mconst[0m [editNgay, setEditNgay] = useState([32m''[0m);
+[31m[1m>[0m [90m33 |[0m   [36mconst[0m [editVendor, setEditVendor] = useState([32m''[0m);
+  [90m   |[0m                      [31m[1m^^^^^^^^^^^^^[0m
+  [90m34 |[0m   [36mconst[0m [editTangCuong, setEditTangCuong] = useState([36mfalse[0m);
+  [90m35 |[0m   [36mconst[0m [editLeTet, setEditLeTet] = useState([36mfalse[0m);
+  [90m36 |[0m   [36mconst[0m [saving, setSaving] = useState([36mfalse[0m);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+
+[browser] Uncaught Error: ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./fe/src/components/admin/ShippingLinesTab.tsx:33:10)
+    at <unknown> (Error: (./fe/src/components/admin/ShippingLinesTab.tsx:33:10)
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:10
+the name `editVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |          ^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] ./fe/src/components/admin/ShippingLinesTab.tsx:33:22
+the name `setEditVendor` is defined multiple times
+  31 |   const [editRouteName, setEditRouteName] = useState('');
+  32 |   const [editNgay, setEditNgay] = useState('');
+> 33 |   const [editVendor, setEditVendor] = useState('');
+     |                      ^^^^^^^^^^^^^
+  34 |   const [editTangCuong, setEditTangCuong] = useState(false);
+  35 |   const [editLeTet, setEditLeTet] = useState(false);
+  36 |   const [saving, setSaving] = useState(false);
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component Browser]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./fe/src/components/admin/ShippingLinesTab.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Client Component SSR]
+    ./fe/src/app/(dashboard)/admin/page.tsx [Server Component] 
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Uncaught ReferenceError: vendor is not defined
+    at ShippingLinesTab (src/components/admin/ShippingLinesTab.tsx:177:37)
+    at AdminPage (src/app/(dashboard)/admin/page.tsx:116:51)
+  175 |         <div className="mb-3">
+  176 |           <label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Vendor</la...
+> 177 |           <input type="text" value={vendor} onChange={e => setVendor(e.target.value)} pla...
+      |                                     ^
+  178 |             className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08...
+  179 |         </div>
+  180 |         <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Cannot update a component (`Router`) while rendering a different component (`LoginPage`). To locate the bad setState() call inside `LoginPage`, follow the stack trace as described in https://react.dev/link/setstate-in-render 
+    at LoginPage (src/app/login/page.tsx:18:14)
+  16 |   if (user) {
+  17 |     if (user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || us...
+> 18 |       router.replace('/admin');
+     |              ^
+  19 |     } else {
+  20 |       router.replace('/form');
+  21 |     } (src/app/login/page.tsx:18:14)
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Cannot update a component (`Router`) while rendering a different component (`LoginPage`). To locate the bad setState() call inside `LoginPage`, follow the stack trace as described in https://react.dev/link/setstate-in-render 
+    at LoginPage (src/app/login/page.tsx:18:14)
+  16 |   if (user) {
+  17 |     if (user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || us...
+> 18 |       router.replace('/admin');
+     |              ^
+  19 |     } else {
+  20 |       router.replace('/form');
+  21 |     } (src/app/login/page.tsx:18:14)
+[browser] TypeError: Failed to fetch
+    at ApiClient.fetch (src/lib/api-client.ts:31:21)
+    at ApiClient.get (src/lib/api-client.ts:78:17)
+    at loadSubmissions (src/components/admin/DataTab.tsx:41:29)
+    at DataTab.useEffect (src/components/admin/DataTab.tsx:50:5)
+  29 |     };
+  30 |
+> 31 |     let res = await fetch(url, fetchOptions);
+     |                     ^
+  32 |
+  33 |     if (res.status === 401 && !endpoint.includes('/auth/')) {
+  34 |       const refreshed = await this.tryRefresh(); (src/components/admin/DataTab.tsx:45:15)
+[browser] TypeError: Failed to fetch
+    at ApiClient.fetch (src/lib/api-client.ts:31:21)
+    at ApiClient.get (src/lib/api-client.ts:78:17)
+    at loadSubmissions (src/components/admin/DataTab.tsx:41:29)
+    at DataTab.useEffect (src/components/admin/DataTab.tsx:50:5)
+  29 |     };
+  30 |
+> 31 |     let res = await fetch(url, fetchOptions);
+     |                     ^
+  32 |
+  33 |     if (res.status === 401 && !endpoint.includes('/auth/')) {
+  34 |       const refreshed = await this.tryRefresh(); (src/components/admin/DataTab.tsx:45:15)
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Cannot update a component (`Router`) while rendering a different component (`LoginPage`). To locate the bad setState() call inside `LoginPage`, follow the stack trace as described in https://react.dev/link/setstate-in-render 
+    at LoginPage (src/app/login/page.tsx:18:14)
+  16 |   if (user) {
+  17 |     if (user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || us...
+> 18 |       router.replace('/admin');
+     |              ^
+  19 |     } else {
+  20 |       router.replace('/form');
+  21 |     } (src/app/login/page.tsx:18:14)
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Cannot update a component (`Router`) while rendering a different component (`LoginPage`). To locate the bad setState() call inside `LoginPage`, follow the stack trace as described in https://react.dev/link/setstate-in-render 
+    at LoginPage (src/app/login/page.tsx:18:14)
+  16 |   if (user) {
+  17 |     if (user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || us...
+> 18 |       router.replace('/admin');
+     |              ^
+  19 |     } else {
+  20 |       router.replace('/form');
+  21 |     } (src/app/login/page.tsx:18:14)
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Cannot update a component (`Router`) while rendering a different component (`LoginPage`). To locate the bad setState() call inside `LoginPage`, follow the stack trace as described in https://react.dev/link/setstate-in-render 
+    at LoginPage (src/app/login/page.tsx:18:14)
+  16 |   if (user) {
+  17 |     if (user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || us...
+> 18 |       router.replace('/admin');
+     |              ^
+  19 |     } else {
+  20 |       router.replace('/form');
+  21 |     } (src/app/login/page.tsx:18:14)
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Cannot update a component (`Router`) while rendering a different component (`LoginPage`). To locate the bad setState() call inside `LoginPage`, follow the stack trace as described in https://react.dev/link/setstate-in-render 
+    at LoginPage (src/app/login/page.tsx:18:14)
+  16 |   if (user) {
+  17 |     if (user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || us...
+> 18 |       router.replace('/admin');
+     |              ^
+  19 |     } else {
+  20 |       router.replace('/form');
+  21 |     } (src/app/login/page.tsx:18:14)
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Image with src "/logo.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+[browser] Cannot update a component (`Router`) while rendering a different component (`LoginPage`). To locate the bad setState() call inside `LoginPage`, follow the stack trace as described in https://react.dev/link/setstate-in-render 
+    at LoginPage (src/app/login/page.tsx:18:14)
+  16 |   if (user) {
+  17 |     if (user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || us...
+> 18 |       router.replace('/admin');
+     |              ^
+  19 |     } else {
+  20 |       router.replace('/form');
+  21 |     } (src/app/login/page.tsx:18:14)

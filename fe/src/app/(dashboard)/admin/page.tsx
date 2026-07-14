@@ -27,6 +27,7 @@ export default function AdminPage() {
   const TABS = ALL_TABS.filter(t => {
     if (t.key === 'routes' && user?.role === 'ops') return false;
     if (t.key === 'shipping-lines' && user?.role === 'hr') return false;
+    if (t.key === 'users' && user?.role !== 'admin' && user?.role !== 'supper_admin') return false;
     return true;
   });
   const [activeTab, setActiveTab] = useState<Tab>('data');

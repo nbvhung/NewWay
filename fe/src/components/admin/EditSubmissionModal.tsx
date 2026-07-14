@@ -18,7 +18,7 @@ interface Props {
 
 export function EditSubmissionModal({ open, onClose, editForm, setEditForm, allShippingLines, saving, onSave, submission, userRole }: Props) {
   const planDisplayName = (sl: ShippingLine) => {
-    return [sl.name, sl.soChuyen, sl.routeName, sl.ngay, sl.vendor].filter(Boolean).join(' / ');
+    return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
   };
   return (
     <Modal
@@ -51,7 +51,7 @@ export function EditSubmissionModal({ open, onClose, editForm, setEditForm, allS
               }`}>
                 {editForm.shippingLine === sl.name && <div className="w-1.5 h-1.5 rounded-full bg-[#1a56db]" />}
               </div>
-              <span>{planDisplayName(sl)}{sl.tangCuong && <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-400">+15%</span>}</span>
+              <span>{planDisplayName(sl)}{sl.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-400">x3</span> : sl.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-400">+15%</span> : null}</span>
             </label>
           ))}
         </div>
@@ -76,11 +76,14 @@ export function EditSubmissionModal({ open, onClose, editForm, setEditForm, allS
         <div><label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Vỏ 40FR</label>
           <input type="number" value={editForm.vo40fr || ''} onChange={e => setEditForm({ ...editForm, vo40fr: e.target.value })}
             className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db]" /></div>
-        <div className="col-span-2"><label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Vệ sinh lại</label>
-          <input type="text" value={editForm.veSinhLai || ''} onChange={e => setEditForm({ ...editForm, veSinhLai: e.target.value })}
+        <div><label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Vệ sinh lại</label>
+          <input type="number" min="0" value={editForm.veSinhLai || ''} onChange={e => setEditForm({ ...editForm, veSinhLai: e.target.value })}
             className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db]" /></div>
-        <div className="col-span-2"><label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">TIP</label>
-          <input type="text" value={editForm.tip || ''} onChange={e => setEditForm({ ...editForm, tip: e.target.value })}
+        <div><label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">TIP</label>
+          <input type="number" min="0" value={editForm.tip || ''} onChange={e => setEditForm({ ...editForm, tip: e.target.value })}
+            className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db]" /></div>
+        <div><label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Kéo về</label>
+          <input type="number" min="0" value={editForm.keoVe || ''} onChange={e => setEditForm({ ...editForm, keoVe: e.target.value })}
             className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db]" /></div>
       </div>
       {submission?.history && submission.history.length > 0 && (userRole === 'admin' || userRole === 'supper_admin') && (
