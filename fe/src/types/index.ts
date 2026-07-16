@@ -21,6 +21,7 @@ export interface ShippingLine {
   leTet: boolean;
   vendorKhac: string;
   tenNguoiNhap: string;
+  completed: boolean;
   createdAt: string;
   routeId?: number;
   route?: Route;
@@ -56,6 +57,7 @@ export interface Submission {
   user?: { id: number; username: string };
   salary?: number;
   planDisplayName?: string;
+  planDate?: string;
 }
 
 export interface EditHistory {

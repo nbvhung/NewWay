@@ -4,7 +4,7 @@ import { AuthProvider } from '@/providers/auth-provider';
 
 export const metadata: Metadata = {
   title: 'New Way — Xác nhận sản lượng xe',
-  description: 'Hệ thống xác nhận sản lượng xe New Way',
+  description: 'Hệ thống xác nhận sản lượng New Way',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -99,12 +99,16 @@ export class SubmissionsController {
     @Query('shippingLine') shippingLine?: string,
     @Query('from_date') fromDate?: string,
     @Query('to_date') toDate?: string,
+    @Query('vendorKhac') vendorKhac?: string,
+    @Query('tenNguoiNhap') tenNguoiNhap?: string,
   ) {
     await this.submissionsService.exportExcel(res, user, {
       userId: userId ? +userId : undefined,
       shippingLine,
       fromDate,
       toDate,
+      vendorKhac,
+      tenNguoiNhap,
     });
   }
 }

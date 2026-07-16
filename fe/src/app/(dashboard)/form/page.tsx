@@ -23,8 +23,8 @@ export default function FormPage() {
   const [vo20fr, setVo20fr] = useState('');
   const [vo40fr, setVo40fr] = useState('');
   const [veSinhLai, setVeSinhLai] = useState('');
-  const [tip, setTip] = useState('');
   const [keoVe, setKeoVe] = useState('');
+  const [tip, setTip] = useState('');
 
   useEffect(() => {
     loadShippingLines();
@@ -66,8 +66,8 @@ export default function FormPage() {
         vo20fr,
         vo40fr,
         veSinhLai,
-        tip,
         keoVe,
+        tip,
       });
       toast('Đã gửi xác nhận thành công!', 'success');
       resetForm();
@@ -87,25 +87,25 @@ export default function FormPage() {
     setVo20fr('');
     setVo40fr('');
     setVeSinhLai('');
-    setTip('');
     setKeoVe('');
+    setTip('');
   };
 
   return (
     <div>
       <div className="mb-6">
         <h1 className="text-xl sm:text-2xl font-extrabold">📝 Nhập liệu sản lượng</h1>
-        <p className="text-xs text-[#94a3b8] mt-1">Điền đầy đủ thông tin bên dưới và nhấn Gửi xác nhận</p>
+        <p className="text-xs text-[#64748b] mt-1">Điền đầy đủ thông tin bên dưới và nhấn Gửi xác nhận</p>
       </div>
 
-      <div className="max-w-[680px] mx-auto bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-xl p-5 sm:p-6">
+      <div className="max-w-[680px] mx-auto bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5 sm:p-6">
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">
               Kế hoạch <span className="text-[#ef4444]">*</span>
             </label>
             {loading ? (
-              <div className="flex items-center gap-2 text-xs text-[#64748b] py-2">
+              <div className="flex items-center gap-2 text-xs text-[#94a3b8] py-2">
                 <span className="animate-spin w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full" />
                 Đang tải...
               </div>
@@ -114,17 +114,17 @@ export default function FormPage() {
                 {shippingLines.map((sl) => (
                   <label
                     key={sl.id}
-                    className={`flex items-center gap-2.5 px-3.5 py-2.5 bg-[#1e293b] border rounded-lg cursor-pointer transition-all select-none hover:border-[#1a56db] hover:bg-[rgba(26,86,219,0.08)] ${
+                    className={`flex items-center gap-2.5 px-3.5 py-2.5 bg-[#ffffff] border rounded-lg cursor-pointer transition-all select-none hover:border-[#1a56db] hover:bg-[rgba(26,86,219,0.08)] ${
                       selectedShippingLine === sl.name
                         ? 'border-[#1a56db] bg-[rgba(26,86,219,0.12)]'
-                        : 'border-[rgba(255,255,255,0.08)]'
+                        : 'border-[rgba(0,0,0,0.08)]'
                     }`}
                     onClick={() => {
                       setSelectedShippingLine(sl.name);
                     }}
                   >
                     <div className={`w-[18px] h-[18px] border-2 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                      selectedShippingLine === sl.name ? 'border-[#1a56db]' : 'border-[rgba(255,255,255,0.08)]'
+                      selectedShippingLine === sl.name ? 'border-[#1a56db]' : 'border-[rgba(0,0,0,0.08)]'
                     }`}>
                       {selectedShippingLine === sl.name && (
                         <div className="w-2 h-2 rounded-full bg-[#1a56db]" />
@@ -134,79 +134,79 @@ export default function FormPage() {
                   </label>
                 ))}
                 {shippingLines.length === 0 && (
-                  <p className="text-xs text-[#64748b] py-2">Chưa có kế hoạch nào. Vui lòng liên hệ admin.</p>
+                  <p className="text-xs text-[#94a3b8] py-2">Chưa có kế hoạch nào. Vui lòng liên hệ admin.</p>
                 )}
               </div>
             )}
           </div>
 
-          <div className="h-px bg-[rgba(255,255,255,0.08)] my-5" />
+          <div className="h-px bg-[rgba(0,0,0,0.08)] my-5" />
 
           <div className="mb-4">
-            <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">Lái xe NW</label>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Lái xe NW</label>
             <input
               type="text"
               value={user?.fullName || ''}
               readOnly
-              className="w-full px-3.5 py-2.5 bg-[rgba(26,86,219,0.08)] border border-[rgba(26,86,219,0.3)] rounded-lg text-sm text-[#f1f5f9] cursor-default"
+              className="w-full px-3.5 py-2.5 bg-[rgba(26,86,219,0.08)] border border-[rgba(26,86,219,0.3)] rounded-lg text-sm text-[#0f172a] cursor-default"
             />
-            <small className="text-[#64748b] mt-1 block">ℹ️ Thông tin này được lấy tự động từ tài khoản đăng nhập</small>
+            <small className="text-[#94a3b8] mt-1 block">ℹ️ Thông tin này được lấy tự động từ tài khoản đăng nhập</small>
           </div>
 
-          <div className="h-px bg-[rgba(255,255,255,0.08)] my-5" />
+          <div className="h-px bg-[rgba(0,0,0,0.08)] my-5" />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="mb-4 sm:mb-0">
-              <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">Tổng số hàng 20</label>
+              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số hàng 20</label>
               <input type="number" min="0" value={hang20} onChange={(e) => setHang20(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-[#f1f5f9] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
+                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#94a3b8]" />
             </div>
             <div className="mb-4 sm:mb-0">
-              <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">Tổng số hàng 40</label>
+              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số hàng 40</label>
               <input type="number" min="0" value={hang40} onChange={(e) => setHang40(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-[#f1f5f9] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
+                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#94a3b8]" />
             </div>
             <div className="mb-4 sm:mb-0">
-              <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">Tổng số vỏ 20</label>
+              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20</label>
               <input type="number" min="0" value={vo20} onChange={(e) => setVo20(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-[#f1f5f9] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
+                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#94a3b8]" />
             </div>
             <div className="mb-4 sm:mb-0">
-              <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">Tổng số vỏ 40</label>
+              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40</label>
               <input type="number" min="0" value={vo40} onChange={(e) => setVo40(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-[#f1f5f9] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
+                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#94a3b8]" />
             </div>
             <div className="mb-4 sm:mb-0">
-              <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">Tổng số vỏ 20FR</label>
+              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20FR</label>
               <input type="number" min="0" value={vo20fr} onChange={(e) => setVo20fr(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-[#f1f5f9] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
+                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#94a3b8]" />
             </div>
             <div className="mb-4 sm:mb-0">
-              <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">Tổng số vỏ 40FR</label>
+              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40FR</label>
               <input type="number" min="0" value={vo40fr} onChange={(e) => setVo40fr(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-[#f1f5f9] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
+                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#94a3b8]" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">Vệ sinh lại</label>
+              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Vệ sinh lại</label>
               <input type="number" min="0" value={veSinhLai} onChange={(e) => setVeSinhLai(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-[#f1f5f9] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
+                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#94a3b8]" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">TIP</label>
-              <input type="number" min="0" value={tip} onChange={(e) => setTip(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-[#f1f5f9] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#94a3b8] mb-1.5">Kéo về</label>
+              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Kéo về</label>
               <input type="number" min="0" value={keoVe} onChange={(e) => setKeoVe(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-sm text-[#f1f5f9] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
+                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#94a3b8]" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#64748b] mb-1.5">TIP (x 1.000đ)</label>
+              <input type="number" min="0" value={tip} onChange={(e) => setTip(e.target.value)} placeholder="0"
+                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#94a3b8]" />
             </div>
           </div>
 
-          <div className="h-px bg-[rgba(255,255,255,0.08)] my-5" />
+          <div className="h-px bg-[rgba(0,0,0,0.08)] my-5" />
 
           <div className="flex items-center justify-between flex-wrap gap-3">
-            <Link href="/my-data" className="text-xs font-medium text-[#94a3b8] px-3.5 py-2 rounded-lg border border-[rgba(255,255,255,0.08)] hover:text-[#f1f5f9] transition-all">
+            <Link href="/my-data" className="text-xs font-medium text-[#64748b] px-3.5 py-2 rounded-lg border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all">
               📊 Xem dữ liệu của tôi
             </Link>
             <button

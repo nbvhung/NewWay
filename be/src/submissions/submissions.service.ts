@@ -7,6 +7,7 @@ import { Submission } from '../database/entities/submission.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Route } from '../database/entities/route.entity';
+import { User } from '../database/entities/user.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateSubmissionDto } from './dto/update-submission.dto';
 
@@ -21,6 +22,8 @@ export class SubmissionsService {
     private shippingLinesRepository: Repository<ShippingLine>,
     @InjectRepository(Route)
     private routesRepository: Repository<Route>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
   ) {}
 
   async create(dto: CreateSubmissionDto, userId: number, fullName: string) {
@@ -78,10 +81,14 @@ export class SubmissionsService {
       const v40 = parseFloat(sub.vo40) || 0;
       const v20fr = parseFloat(sub.vo20fr) || 0;
       const v40fr = parseFloat(sub.vo40fr) || 0;
+      const vsl = parseFloat(sub.veSinhLai) || 0;
+      const kv = parseFloat(sub.keoVe) || 0;
+      const tip = parseFloat(sub.tip) || 0;
       const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
       const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
-      const salary = donGia * tong * heSo;
-      result.push({ ...sub, history, salary, planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine });
+      const salary = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo + tip * 1000;
+      const planDate = sl?.ngay || null;
+      result.push({ ...sub, history, salary, planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine, planDate });
     }
     return result;
   }
@@ -136,16 +143,6 @@ export class SubmissionsService {
   }
 
   async getSalarySummary(userId: number, month: number, year: number): Promise<any> {
-    const submissions = await this.submissionsRepository.find({
-      where: { userId },
-      order: { createdAt: 'DESC' },
-    });
-
-    const monthSubs = submissions.filter((sub) => {
-      const d = new Date(sub.createdAt);
-      return d.getMonth() + 1 === month && d.getFullYear() === year;
-    });
-
     const allRoutes = await this.routesRepository.find();
     const routeMoneyMap = new Map<string, number>();
     for (const r of allRoutes) {
@@ -161,11 +158,23 @@ export class SubmissionsService {
       return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
     };
 
+    // Fetch all submissions, then filter by plan date (sl.ngay) instead of createdAt
+    const submissions = await this.submissionsRepository.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
+
     let totalSalary = 0;
+    let count = 0;
     const details: any[] = [];
 
-    for (const sub of monthSubs) {
+    for (const sub of submissions) {
       const sl = slMap.get(sub.shippingLine);
+      // Use plan date (sl.ngay) for month grouping; fallback to createdAt if plan has no date
+      const planDateStr = sl?.ngay || null;
+      const refDate = planDateStr ? new Date(planDateStr) : new Date(sub.createdAt);
+      if (refDate.getMonth() + 1 !== month || refDate.getFullYear() !== year) continue;
+
       const tenTuyen = sub.route || sl?.routeName || '';
       const donGia = routeMoneyMap.get(tenTuyen) || 0;
       const h20 = parseFloat(sub.hang20) || 0;
@@ -174,14 +183,18 @@ export class SubmissionsService {
       const v40 = parseFloat(sub.vo40) || 0;
       const v20fr = parseFloat(sub.vo20fr) || 0;
       const v40fr = parseFloat(sub.vo40fr) || 0;
+      const vsl = parseFloat(sub.veSinhLai) || 0;
+      const kv = parseFloat(sub.keoVe) || 0;
+      const tip = parseFloat(sub.tip) || 0;
       const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
       const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
-      const salary = donGia * tong * heSo;
+      const salary = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo + tip * 1000;
       totalSalary += salary;
+      count++;
       details.push({ ...sub, salary, planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine });
     }
 
-    return { totalSalary, count: monthSubs.length, month, year, details };
+    return { totalSalary, count, month, year, details };
   }
 
   async findAll(filter: {
@@ -238,6 +251,8 @@ export class SubmissionsService {
     shippingLine?: string;
     fromDate?: string;
     toDate?: string;
+    vendorKhac?: string;
+    tenNguoiNhap?: string;
   }) {
     const role = user.role;
     const showLuong = role !== 'ops';
@@ -262,6 +277,8 @@ export class SubmissionsService {
     workbook.creator = 'Hệ thống New Way';
     workbook.created = new Date();
 
+    const allDrivers = await this.usersRepository.find({ where: { role: 'laixe' }, order: { fullName: 'ASC' } });
+
     const headerFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
     const headerFont: Partial<ExcelJS.Font> = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
     const borderStyle: ExcelJS.Border = { style: 'thin', color: { argb: 'FFCCCCCC' } };
@@ -270,7 +287,7 @@ export class SubmissionsService {
     const fmtDate = (d: string) => {
       if (!d) return '';
       const dt = new Date(d);
-      return `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`;
+      return `${String(dt.getDate()).padStart(2, '0')}-${String(dt.getMonth() + 1).padStart(2, '0')}-${dt.getFullYear()}`;
     };
 
     // For OPS: create per-ship sheets first (so main sheet appears at bottom)
@@ -282,7 +299,6 @@ export class SubmissionsService {
         groupedBySl.get(key)!.push(sub);
       }
 
-      let sheetIdx = 1;
       for (const [slName, subs] of groupedBySl) {
         const sl = slMap.get(slName);
         if (!sl) continue;
@@ -290,7 +306,9 @@ export class SubmissionsService {
         const driverSubs = subs.filter((s: any) => s.user && s.user.role === 'laixe');
         const opsSub = subs.find((s: any) => s.userId === user.id) || null;
 
-        const ws2 = workbook.addWorksheet(`Tàu ${sheetIdx}`);
+        // Build sheet name from plan info; replace chars not allowed by Excel
+        const sheetName = [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' - ').substring(0, 31);
+        const ws2 = workbook.addWorksheet(sheetName);
 
         const titleFont: Partial<ExcelJS.Font> = { bold: true, size: 11 };
 
@@ -323,7 +341,7 @@ export class SubmissionsService {
         // Row 3: XE VẬN TẢI + Tàu Lễ, Tết
         ws2.mergeCells(3, 1, 3, 6);
         const r3 = ws2.getRow(3);
-        r3.getCell(1).value = `XE VẬN TẢI: ${sl.vendor || ''}${sl.vendorKhac ? ` - Vendor khác: ${sl.vendorKhac}` : ''}`;
+        r3.getCell(1).value = `XE VẬN TẢI: NW, ${filter.vendorKhac || ''}`;
         r3.getCell(1).font = titleFont;
         ws2.mergeCells(3, 9, 3, 10);
         r3.getCell(9).value = 'Tàu Lễ, Tết';
@@ -376,7 +394,7 @@ export class SubmissionsService {
 
         // Row 7: Sub-header
         const shRow = ws2.getRow(7);
-        const shCells = ['', '', '', '', '20\'', '40\'', '20\'', '40\'', '20FR', '40FR', '(VSL/TIP/KV)', ''];
+        const shCells = ['', '', '', '', '20\'', '40\'', '20\'', '40\'', '20FR', '40FR', '(VSL/KV/TIP)', ''];
         shCells.forEach((v, i) => { shRow.getCell(i + 1).value = v; });
         shRow.eachCell((cell) => {
           cell.font = { bold: true, size: 9 };
@@ -386,44 +404,51 @@ export class SubmissionsService {
         });
         shRow.height = 16;
 
-        // Data rows — group by user, sum quantities
+        // Data rows — group by user, sum quantities, include all drivers
         let dataStartRow = 8;
         let totalH20 = 0, totalH40 = 0, totalV20 = 0, totalV40 = 0, totalV20fr = 0, totalV40fr = 0;
+        let totalVsl = 0, totalTip = 0, totalKv = 0;
 
-        const grouped = new Map<number, { user: any; subs: any[] }>();
+        // Build map of driver data from submissions
+        const shipDriverMap = new Map<number, { h20: number; h40: number; v20: number; v40: number; v20fr: number; v40fr: number; vsl: number; tip: number; kv: number }>();
         for (const sub of driverSubs) {
           const uid = sub.userId;
-          if (!grouped.has(uid)) grouped.set(uid, { user: sub.user, subs: [] });
-          grouped.get(uid)!.subs.push(sub);
+          if (!shipDriverMap.has(uid)) shipDriverMap.set(uid, { h20: 0, h40: 0, v20: 0, v40: 0, v20fr: 0, v40fr: 0, vsl: 0, tip: 0, kv: 0 });
+          const d = shipDriverMap.get(uid)!;
+          d.h20 += parseFloat(sub.hang20) || 0;
+          d.h40 += parseFloat(sub.hang40) || 0;
+          d.v20 += parseFloat(sub.vo20) || 0;
+          d.v40 += parseFloat(sub.vo40) || 0;
+          d.v20fr += parseFloat(sub.vo20fr) || 0;
+          d.v40fr += parseFloat(sub.vo40fr) || 0;
+          d.vsl += parseFloat(sub.veSinhLai) || 0;
+          d.tip += parseFloat(sub.tip) || 0;
+          d.kv += parseFloat(sub.keoVe) || 0;
         }
 
         let rowIdx = 0;
-        for (const [, group] of grouped) {
-          const u = group.user || {};
-          let h20 = 0, h40 = 0, v20 = 0, v40 = 0, v20fr = 0, v40fr = 0;
-          let vsl = 0, tip = 0, kv = 0;
-
-          for (const sub of group.subs) {
-            h20 += parseFloat(sub.hang20) || 0;
-            h40 += parseFloat(sub.hang40) || 0;
-            v20 += parseFloat(sub.vo20) || 0;
-            v40 += parseFloat(sub.vo40) || 0;
-            v20fr += parseFloat(sub.vo20fr) || 0;
-            v40fr += parseFloat(sub.vo40fr) || 0;
-            vsl += parseFloat(sub.veSinhLai) || 0;
-            tip += parseFloat(sub.tip) || 0;
-            kv += parseFloat(sub.keoVe) || 0;
-          }
+        for (const driver of allDrivers) {
+          const d = shipDriverMap.get(driver.id);
+          const h20 = d?.h20 || 0;
+          const h40 = d?.h40 || 0;
+          const v20 = d?.v20 || 0;
+          const v40 = d?.v40 || 0;
+          const v20fr = d?.v20fr || 0;
+          const v40fr = d?.v40fr || 0;
+          const vsl = d?.vsl || 0;
+          const tip = d?.tip || 0;
+          const kv = d?.kv || 0;
 
           totalH20 += h20; totalH40 += h40; totalV20 += v20; totalV40 += v40; totalV20fr += v20fr; totalV40fr += v40fr;
+          totalVsl += vsl; totalTip += tip; totalKv += kv;
 
-          const ghiChu = [vsl || '', tip || '', kv || ''].filter(Boolean).join(' / ');
+          const ghiChu = [vsl || '', kv || '', tip || ''].filter(Boolean).join(' / ');
 
           const row = ws2.getRow(dataStartRow + rowIdx);
           row.getCell(1).value = rowIdx + 1;
-          row.getCell(2).value = u.soXe || '';
-          row.getCell(3).value = u.fullName || u.username || '';
-          row.getCell(4).value = u.sdt || '';
+          row.getCell(2).value = driver.soXe || '';
+          row.getCell(3).value = driver.fullName || driver.username || '';
+          row.getCell(4).value = driver.sdt || '';
           row.getCell(5).value = h20 || '';
           row.getCell(6).value = h40 || '';
           row.getCell(7).value = v20 || '';
@@ -431,7 +456,7 @@ export class SubmissionsService {
           row.getCell(9).value = v20fr || '';
           row.getCell(10).value = v40fr || '';
           row.getCell(11).value = ghiChu;
-          row.getCell(12).value = sl.tenNguoiNhap || '';
+          row.getCell(12).value = '';
 
           row.eachCell((cell) => {
             cell.border = allBorder;
@@ -440,11 +465,6 @@ export class SubmissionsService {
           });
 
           rowIdx++;
-        }
-
-        // Merge Người nhập column for all data rows
-        if (rowIdx > 0) {
-          ws2.mergeCells(dataStartRow, 12, dataStartRow + rowIdx - 1, 12);
         }
 
         // TỔNG SL XE NW row
@@ -459,8 +479,8 @@ export class SubmissionsService {
         totalRow.getCell(8).value = totalV40 || '';
         totalRow.getCell(9).value = totalV20fr || '';
         totalRow.getCell(10).value = totalV40fr || '';
-        totalRow.getCell(11).value = '';
-        totalRow.getCell(12).value = sl.tenNguoiNhap || '';
+        totalRow.getCell(11).value = [totalVsl || '', totalKv || '', totalTip || ''].filter(Boolean).join(' / ');
+        totalRow.getCell(12).value = '';
         totalRow.eachCell((cell) => {
           cell.border = allBorder;
           cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -469,20 +489,20 @@ export class SubmissionsService {
         totalRow.height = 22;
 
         // SL TỔNG TÀU row
-        if (opsSub) {
+        {
           const opsRowNum = totalRowNum + 1;
           const opsRow = ws2.getRow(opsRowNum);
           ws2.mergeCells(opsRowNum, 1, opsRowNum, 4);
           opsRow.getCell(1).value = 'SL TỔNG TÀU';
           opsRow.getCell(1).font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
-          opsRow.getCell(5).value = opsSub.hang20 || '';
-          opsRow.getCell(6).value = opsSub.hang40 || '';
-          opsRow.getCell(7).value = opsSub.vo20 || '';
-          opsRow.getCell(8).value = opsSub.vo40 || '';
-          opsRow.getCell(9).value = opsSub.vo20fr || '';
-          opsRow.getCell(10).value = opsSub.vo40fr || '';
+          opsRow.getCell(5).value = opsSub?.hang20 || '';
+          opsRow.getCell(6).value = opsSub?.hang40 || '';
+          opsRow.getCell(7).value = opsSub?.vo20 || '';
+          opsRow.getCell(8).value = opsSub?.vo40 || '';
+          opsRow.getCell(9).value = opsSub?.vo20fr || '';
+          opsRow.getCell(10).value = opsSub?.vo40fr || '';
           opsRow.getCell(11).value = '';
-          opsRow.getCell(12).value = sl.tenNguoiNhap || '';
+          opsRow.getCell(12).value = filter.tenNguoiNhap || '';
           opsRow.eachCell((cell) => {
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } } as ExcelJS.Fill;
             cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
@@ -492,35 +512,195 @@ export class SubmissionsService {
           opsRow.height = 22;
         }
 
-        sheetIdx++;
       }
     }
 
-    // Main sheet: "Sản lượng xe New Way" (for OPS, created last = bottom)
-    const ws = workbook.addWorksheet('Sản lượng xe New Way', {
-      pageSetup: { paperSize: 9, orientation: 'landscape' },
-    });
+    // For HR: create per-driver sheets
+    if (role === 'hr') {
+      const driverSubsMap = new Map<number, any[]>();
+      for (const sub of submissions as any[]) {
+        const uid = sub.userId;
+        if (!driverSubsMap.has(uid)) driverSubsMap.set(uid, []);
+        driverSubsMap.get(uid)!.push(sub);
+      }
 
-    ws.columns = [
-      { header: 'STT', key: 'stt', width: 6 },
-      { header: 'Tài khoản', key: 'username', width: 14 },
-      { header: 'Lái xe NW', key: 'driverName', width: 18 },
-      { header: 'Kế hoạch', key: 'shippingLine', width: 14 },
-      { header: 'Tuyến đường', key: 'route', width: 18 },
-      { header: 'Hàng 20', key: 'hang20', width: 10 },
-      { header: 'Hàng 40', key: 'hang40', width: 10 },
-      { header: 'Vỏ 20', key: 'vo20', width: 10 },
-      { header: 'Vỏ 40', key: 'vo40', width: 10 },
-      { header: 'Vỏ 20FR', key: 'vo20fr', width: 10 },
-      { header: 'Vỏ 40FR', key: 'vo40fr', width: 10 },
-      { header: 'Vệ sinh lại', key: 'veSinhLai', width: 10 },
-      { header: 'TIP', key: 'tip', width: 10 },
-      { header: 'Kéo về', key: 'keoVe', width: 10 },
-      { header: 'Số lần sửa', key: 'editCount', width: 12 },
-      { header: 'Lần sửa cuối', key: 'lastEditedAt', width: 18 },
-      { header: 'Ngày tạo', key: 'createdAt', width: 18 },
-      ...(showLuong ? [{ header: 'Lương', key: 'luong', width: 16 }] : []),
-    ];
+      for (const driver of allDrivers) {
+        const subs = driverSubsMap.get(driver.id) || [];
+        const wsDriver = workbook.addWorksheet(`${driver.fullName} - ${driver.soXe || ''}`.substring(0, 31));
+
+        wsDriver.columns = [
+          { header: 'STT', key: 'stt', width: 5 },
+          { header: 'Kế hoạch', key: 'plan', width: 20 },
+          { header: 'Tuyến đường', key: 'route', width: 18 },
+          { header: 'Đơn giá', key: 'donGia', width: 12 },
+          { header: 'Hàng 20', key: 'hang20', width: 10 },
+          { header: 'Hàng 40', key: 'hang40', width: 10 },
+          { header: 'Vỏ 20', key: 'vo20', width: 10 },
+          { header: 'Vỏ 40', key: 'vo40', width: 10 },
+          { header: 'Vỏ 20FR', key: 'vo20fr', width: 10 },
+          { header: 'Vỏ 40FR', key: 'vo40fr', width: 10 },
+          { header: 'Vệ sinh lại', key: 'veSinhLai', width: 10 },
+          { header: 'Kéo về', key: 'keoVe', width: 10 },
+          { header: 'TIP (Nghìn đ)', key: 'tip', width: 12 },
+          { header: 'Lương', key: 'luong', width: 16 },
+          { header: 'Tàu tăng cường', key: 'tangCuong', width: 12 },
+          { header: 'Tàu Lễ, Tết', key: 'leTet', width: 12 },
+        ];
+
+        const headerRow = wsDriver.getRow(1);
+        headerRow.eachCell((cell) => {
+          cell.fill = headerFill;
+          cell.font = headerFont;
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell.border = allBorder;
+        });
+        headerRow.height = 28;
+
+        if (subs.length === 0) {
+          wsDriver.addRow({ stt: '', plan: 'Không có dữ liệu', route: '', donGia: '', hang20: '', hang40: '', vo20: '', vo40: '', vo20fr: '', vo40fr: '', veSinhLai: '', keoVe: '', tip: '', luong: '', tangCuong: '', leTet: '' });
+        } else {
+          // Group by plan name, sum quantities
+          const planGroups = new Map<string, { sl: any; subs: any[] }>();
+          for (const sub of subs) {
+            const key = sub.shippingLine;
+            if (!planGroups.has(key)) planGroups.set(key, { sl: slMap.get(key), subs: [] });
+            planGroups.get(key)!.subs.push(sub);
+          }
+
+          let rowIdx = 0;
+          let sumH20 = 0, sumH40 = 0, sumV20 = 0, sumV40 = 0, sumV20fr = 0, sumV40fr = 0, sumVsl = 0, sumKv = 0, sumTip = 0, sumLuong = 0;
+
+          for (const [planName, group] of planGroups) {
+            const sl = group.sl;
+            const tenTuyen = group.subs[0].route || sl?.routeName || '';
+            const donGia = routeMoneyMap.get(tenTuyen) || 0;
+            let h20 = 0, h40 = 0, v20 = 0, v40 = 0, v20fr = 0, v40fr = 0, vsl = 0, kv = 0, tip = 0;
+
+            for (const sub of group.subs) {
+              h20 += parseFloat(sub.hang20) || 0;
+              h40 += parseFloat(sub.hang40) || 0;
+              v20 += parseFloat(sub.vo20) || 0;
+              v40 += parseFloat(sub.vo40) || 0;
+              v20fr += parseFloat(sub.vo20fr) || 0;
+              v40fr += parseFloat(sub.vo40fr) || 0;
+              vsl += parseFloat(sub.veSinhLai) || 0;
+              kv += parseFloat(sub.keoVe) || 0;
+              tip += parseFloat(sub.tip) || 0;
+            }
+
+            const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+            const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
+            const luong = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo + tip * 1000;
+
+            sumH20 += h20; sumH40 += h40; sumV20 += v20; sumV40 += v40; sumV20fr += v20fr; sumV40fr += v40fr; sumVsl += vsl; sumKv += kv; sumTip += tip; sumLuong += luong;
+
+            rowIdx++;
+            const row = wsDriver.addRow({
+              stt: rowIdx,
+              plan: sl ? planDisplayName(sl) : planName,
+              route: tenTuyen,
+              donGia: donGia.toLocaleString('vi-VN'),
+              hang20: h20 || '',
+              hang40: h40 || '',
+              vo20: v20 || '',
+              vo40: v40 || '',
+              vo20fr: v20fr || '',
+              vo40fr: v40fr || '',
+              veSinhLai: vsl || '',
+              keoVe: kv || '',
+              tip: tip || '',
+              luong: luong.toLocaleString('vi-VN'),
+              tangCuong: sl?.tangCuong ? 'x' : '',
+              leTet: sl?.leTet ? 'x' : '',
+            });
+            row.eachCell((cell) => {
+              cell.border = allBorder;
+              cell.alignment = { vertical: 'middle' };
+            });
+            if (rowIdx % 2 === 0) {
+              row.eachCell((cell) => {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FF' } } as ExcelJS.Fill;
+              });
+            }
+          }
+
+          // Total row
+          const totalRow = wsDriver.addRow({
+            stt: '',
+            plan: 'TỔNG CỘNG',
+            route: '',
+            donGia: '',
+            hang20: sumH20 || '',
+            hang40: sumH40 || '',
+            vo20: sumV20 || '',
+            vo40: sumV40 || '',
+            vo20fr: sumV20fr || '',
+            vo40fr: sumV40fr || '',
+            veSinhLai: sumVsl || '',
+            keoVe: sumKv || '',
+            tip: sumTip || '',
+            luong: sumLuong.toLocaleString('vi-VN'),
+            tangCuong: '',
+            leTet: '',
+          });
+          totalRow.eachCell((cell) => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } } as ExcelJS.Fill;
+            cell.font = { bold: true, size: 10 };
+            cell.border = allBorder;
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          });
+        }
+      }
+    }
+
+    // Main sheet: "Tổng hợp" (for OPS, created last = bottom)
+    const monthStr = filter.fromDate
+      ? `${String(new Date(filter.fromDate).getMonth() + 1).padStart(2, '0')}-${new Date(filter.fromDate).getFullYear()}`
+      : `${String(new Date().getMonth() + 1).padStart(2, '0')}-${new Date().getFullYear()}`;
+    const ws = workbook.addWorksheet(
+      role === 'ops' ? 'Tổng hợp' : role === 'hr' ? `Tổng hợp lương tháng ${monthStr}` : 'Sản lượng xe New Way',
+      { pageSetup: { paperSize: 9, orientation: 'landscape' } },
+    );
+
+    if (role === 'hr') {
+      ws.columns = [
+        { header: 'STT', key: 'stt', width: 6 },
+        { header: 'BKS', key: 'soXe', width: 14 },
+        { header: 'Lái xe NW', key: 'driverName', width: 22 },
+        { header: 'SĐT', key: 'sdt', width: 14 },
+        { header: 'Hàng 20', key: 'hang20', width: 10 },
+        { header: 'Hàng 40', key: 'hang40', width: 10 },
+        { header: 'Vỏ 20', key: 'vo20', width: 10 },
+        { header: 'Vỏ 40', key: 'vo40', width: 10 },
+        { header: 'Vỏ 20FR', key: 'vo20fr', width: 10 },
+        { header: 'Vỏ 40FR', key: 'vo40fr', width: 10 },
+        { header: 'Vệ sinh lại', key: 'veSinhLai', width: 10 },
+        { header: 'Kéo về', key: 'keoVe', width: 10 },
+        { header: 'TIP', key: 'tip', width: 10 },
+        { header: 'Lương', key: 'luong', width: 16 },
+      ];
+    } else {
+      ws.columns = [
+        { header: 'STT', key: 'stt', width: 6 },
+        { header: 'Tài khoản', key: 'username', width: 14 },
+        { header: 'Lái xe NW', key: 'driverName', width: 18 },
+        { header: 'Kế hoạch', key: 'shippingLine', width: 14 },
+        { header: 'Tuyến đường', key: 'route', width: 18 },
+        { header: 'Hàng 20', key: 'hang20', width: 10 },
+        { header: 'Hàng 40', key: 'hang40', width: 10 },
+        { header: 'Vỏ 20', key: 'vo20', width: 10 },
+        { header: 'Vỏ 40', key: 'vo40', width: 10 },
+        { header: 'Vỏ 20FR', key: 'vo20fr', width: 10 },
+        { header: 'Vỏ 40FR', key: 'vo40fr', width: 10 },
+        { header: 'Vệ sinh lại', key: 'veSinhLai', width: 10 },
+        { header: 'Kéo về', key: 'keoVe', width: 10 },
+        { header: 'TIP', key: 'tip', width: 10 },
+        { header: 'Số lần sửa', key: 'editCount', width: 12 },
+        { header: 'Lần sửa cuối', key: 'lastEditedAt', width: 18 },
+        { header: 'Ngày tạo', key: 'createdAt', width: 18 },
+        ...(showLuong ? [{ header: 'Lương', key: 'luong', width: 16 }] : []),
+      ];
+    }
 
     const headerRow = ws.getRow(1);
     headerRow.eachCell((cell) => {
@@ -531,90 +711,171 @@ export class SubmissionsService {
     });
     headerRow.height = 28;
 
+    // Build a map userId -> summed submission data
     const filteredSubs = role === 'ops'
       ? submissions.filter((s: any) => s.userId !== user.id)
       : submissions;
 
-    filteredSubs.forEach((sub: any, idx: number) => {
-      const row = ws.addRow({
-          stt: idx + 1,
-          username: sub.user?.username || '',
-          driverName: sub.driverName,
-          shippingLine: (() => {
-            const sl = slMap.get(sub.shippingLine);
-            return sl ? planDisplayName(sl) : sub.shippingLine;
-          })(),
-          route: sub.route || '',
-          hang20: sub.hang20,
-          hang40: sub.hang40,
-          vo20: sub.vo20,
-          vo40: sub.vo40,
-          vo20fr: sub.vo20fr,
-          vo40fr: sub.vo40fr,
-          veSinhLai: sub.veSinhLai,
-          tip: sub.tip,
-          keoVe: sub.keoVe,
-          editCount: sub.editCount,
-          lastEditedAt: fmtDate(sub.lastEditedAt),
-          createdAt: fmtDate(sub.createdAt),
-          ...(showLuong ? {
-            luong: (() => {
-              const sl = slMap.get(sub.shippingLine);
-              const tenTuyen = sub.route || sl?.routeName || '';
-              const donGia = routeMoneyMap.get(tenTuyen) || 0;
-              const h20 = parseFloat(sub.hang20) || 0;
-              const h40 = parseFloat(sub.hang40) || 0;
-              const v20 = parseFloat(sub.vo20) || 0;
-              const v40 = parseFloat(sub.vo40) || 0;
-              const v20fr = parseFloat(sub.vo20fr) || 0;
-              const v40fr = parseFloat(sub.vo40fr) || 0;
-              const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
-              const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
-              return donGia * tong * heSo;
-            })(),
-          } : {}),
+    const driverDataMap = new Map<number, { fullName: string; username: string; h20: number; h40: number; v20: number; v40: number; v20fr: number; v40fr: number; vsl: number; tip: number; kv: number; salary: number }>();
+    for (const sub of filteredSubs as any[]) {
+      const uid = sub.userId;
+      if (!driverDataMap.has(uid)) {
+        driverDataMap.set(uid, { fullName: sub.user?.fullName || sub.driverName || '', username: sub.user?.username || '', h20: 0, h40: 0, v20: 0, v40: 0, v20fr: 0, v40fr: 0, vsl: 0, tip: 0, kv: 0, salary: 0 });
+      }
+      const d = driverDataMap.get(uid)!;
+      d.h20 += parseFloat(sub.hang20) || 0;
+      d.h40 += parseFloat(sub.hang40) || 0;
+      d.v20 += parseFloat(sub.vo20) || 0;
+      d.v40 += parseFloat(sub.vo40) || 0;
+      d.v20fr += parseFloat(sub.vo20fr) || 0;
+      d.v40fr += parseFloat(sub.vo40fr) || 0;
+      d.vsl += parseFloat(sub.veSinhLai) || 0;
+      d.tip += parseFloat(sub.tip) || 0;
+      d.kv += parseFloat(sub.keoVe) || 0;
+      // Accumulate salary per submission
+      if (showLuong) {
+        const sl = slMap.get(sub.shippingLine);
+        const tenTuyen = sub.route || sl?.routeName || '';
+        const donGia = routeMoneyMap.get(tenTuyen) || 0;
+        const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
+        const tongSub = (parseFloat(sub.hang20) || 0) + (parseFloat(sub.hang40) || 0) + Math.ceil((parseFloat(sub.vo20) || 0) / 2) + (parseFloat(sub.vo40) || 0) + Math.ceil((parseFloat(sub.vo20fr) || 0) / 8) + Math.ceil((parseFloat(sub.vo40fr) || 0) / 4);
+        const vslSub = parseFloat(sub.veSinhLai) || 0;
+        const kvSub = parseFloat(sub.keoVe) || 0;
+        const tipSub = parseFloat(sub.tip) || 0;
+        d.salary += donGia * tongSub * heSo + vslSub * 40000 * heSo + kvSub * donGia * heSo + tipSub * 1000;
+      }
+    }
+
+    let rowIdx = 0;
+    let sumH20 = 0, sumH40 = 0, sumV20 = 0, sumV40 = 0, sumV20fr = 0, sumV40fr = 0, sumVsl = 0, sumKv = 0, sumTip = 0, sumLuong = 0;
+    for (const driver of allDrivers) {
+      const d = driverDataMap.get(driver.id);
+      const h20 = d?.h20 || 0;
+      const h40 = d?.h40 || 0;
+      const v20 = d?.v20 || 0;
+      const v40 = d?.v40 || 0;
+      const v20fr = d?.v20fr || 0;
+      const v40fr = d?.v40fr || 0;
+      const vsl = d?.vsl || 0;
+      const tip = d?.tip || 0;
+      const kv = d?.kv || 0;
+      const salary = showLuong ? (d?.salary || 0) : 0;
+
+      sumH20 += h20; sumH40 += h40; sumV20 += v20; sumV40 += v40; sumV20fr += v20fr; sumV40fr += v40fr; sumVsl += vsl; sumKv += kv; sumTip += tip; sumLuong += salary;
+
+      rowIdx++;
+      if (role === 'hr') {
+        const row = ws.addRow({
+          stt: rowIdx,
+          soXe: driver.soXe || '',
+          driverName: driver.fullName,
+          sdt: driver.sdt || '',
+          hang20: h20 || '',
+          hang40: h40 || '',
+          vo20: v20 || '',
+          vo40: v40 || '',
+          vo20fr: v20fr || '',
+          vo40fr: v40fr || '',
+          veSinhLai: vsl || '',
+          keoVe: kv || '',
+          tip: tip || '',
+          luong: salary ? salary.toLocaleString('vi-VN') : '',
         });
         row.eachCell((cell) => {
           cell.border = allBorder;
           cell.alignment = { vertical: 'middle' };
         });
-        if (idx % 2 === 0) {
+        if (rowIdx % 2 === 0) {
           row.eachCell((cell) => {
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FF' } } as ExcelJS.Fill;
           });
         }
-      });
-
-    if (role === 'ops') {
-      const opsSub = submissions.find((s: any) => s.userId === user.id) || null;
-      if (opsSub) {
+      } else {
         const row = ws.addRow({
-          stt: '', username: '', driverName: '', shippingLine: '', route: '',
-          hang20: opsSub.hang20 || '',
-          hang40: opsSub.hang40 || '',
-          vo20: opsSub.vo20 || '',
-          vo40: opsSub.vo40 || '',
-          vo20fr: opsSub.vo20fr || '',
-          vo40fr: opsSub.vo40fr || '',
-          veSinhLai: opsSub.veSinhLai || '',
-          tip: opsSub.tip || '',
-          keoVe: opsSub.keoVe || '',
+          stt: rowIdx,
+          username: driver.username,
+          driverName: driver.fullName,
+          shippingLine: '',
+          route: '',
+          hang20: h20 || '',
+          hang40: h40 || '',
+          vo20: v20 || '',
+          vo40: v40 || '',
+          vo20fr: v20fr || '',
+          vo40fr: v40fr || '',
+          veSinhLai: vsl || '',
+          keoVe: kv || '',
+          tip: tip || '',
           editCount: '',
           lastEditedAt: '',
           createdAt: '',
+          ...(showLuong ? { luong: salary ? salary.toLocaleString('vi-VN') : '' } : {}),
         });
-        const rowNum = row.number;
-        ws.mergeCells(`A${rowNum}:E${rowNum}`);
-        const cell = row.getCell(1);
-        cell.value = 'SL TỔNG TÀU';
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        row.eachCell((c) => {
-          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } } as ExcelJS.Fill;
-          c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
-          c.border = allBorder;
-          c.alignment = { horizontal: 'center', vertical: 'middle' };
+        row.eachCell((cell) => {
+          cell.border = allBorder;
+          cell.alignment = { vertical: 'middle' };
         });
+        if (rowIdx % 2 === 0) {
+          row.eachCell((cell) => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FF' } } as ExcelJS.Fill;
+          });
+        }
       }
+    }
+
+    if (role === 'hr') {
+      const totalRow = ws.addRow({
+        stt: '',
+        soXe: '',
+        driverName: 'TỔNG CỘNG',
+        sdt: '',
+        hang20: sumH20 || '',
+        hang40: sumH40 || '',
+        vo20: sumV20 || '',
+        vo40: sumV40 || '',
+        vo20fr: sumV20fr || '',
+        vo40fr: sumV40fr || '',
+        veSinhLai: sumVsl || '',
+        keoVe: sumKv || '',
+        tip: sumTip || '',
+        luong: sumLuong.toLocaleString('vi-VN'),
+      });
+      totalRow.eachCell((cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } } as ExcelJS.Fill;
+        cell.font = { bold: true, size: 10 };
+        cell.border = allBorder;
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      });
+    }
+
+    if (role === 'ops') {
+      const opsSub = submissions.find((s: any) => s.userId === user.id) || null;
+      const row = ws.addRow({
+        stt: '', username: '', driverName: '', shippingLine: '', route: '',
+        hang20: opsSub?.hang20 || '',
+        hang40: opsSub?.hang40 || '',
+        vo20: opsSub?.vo20 || '',
+        vo40: opsSub?.vo40 || '',
+        vo20fr: opsSub?.vo20fr || '',
+        vo40fr: opsSub?.vo40fr || '',
+        veSinhLai: opsSub?.veSinhLai || '',
+        keoVe: opsSub?.keoVe || '',
+        tip: opsSub?.tip || '',
+        editCount: '',
+        lastEditedAt: '',
+        createdAt: '',
+      });
+      const rowNum = row.number;
+      ws.mergeCells(`A${rowNum}:E${rowNum}`);
+      const cell = row.getCell(1);
+      cell.value = 'SL TỔNG TÀU';
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      row.eachCell((c) => {
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } } as ExcelJS.Fill;
+        c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+        c.border = allBorder;
+        c.alignment = { horizontal: 'center', vertical: 'middle' };
+      });
     }
 
     if (role === 'admin' || role === 'supper_admin') {
@@ -644,8 +905,8 @@ export class SubmissionsService {
         vo20fr: 'Vỏ 20FR',
         vo40fr: 'Vỏ 40FR',
         veSinhLai: 'Vệ sinh lại',
-        tip: 'TIP',
         keoVe: 'Kéo về',
+        tip: 'TIP',
       };
 
       const allHistory = await this.editHistoryRepository
@@ -681,7 +942,7 @@ export class SubmissionsService {
       });
     }
 
-    if (showLuong) {
+    if (showLuong && role !== 'hr') {
       const wsSalary = workbook.addWorksheet('Tổng hợp lương');
       wsSalary.columns = [
         { header: 'Tên', key: 'name', width: 30 },
@@ -709,14 +970,17 @@ export class SubmissionsService {
         const v40 = parseFloat(sub.vo40) || 0;
         const v20fr = parseFloat(sub.vo20fr) || 0;
         const v40fr = parseFloat(sub.vo40fr) || 0;
+        const vsl = parseFloat(sub.veSinhLai) || 0;
+        const kv = parseFloat(sub.keoVe) || 0;
+        const tip = parseFloat(sub.tip) || 0;
         const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
-        salaryMap.set(name, (salaryMap.get(name) || 0) + donGia * tong * heSo);
+        salaryMap.set(name, (salaryMap.get(name) || 0) + donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo + tip * 1000);
       }
 
       let idx = 0;
       for (const [name, luong] of salaryMap) {
         idx++;
-        const row = wsSalary.addRow({ name, luong });
+        const row = wsSalary.addRow({ name, luong: luong.toLocaleString('vi-VN') });
         row.eachCell((cell) => {
           cell.border = allBorder;
           cell.alignment = { vertical: 'middle' };
@@ -729,7 +993,11 @@ export class SubmissionsService {
       }
     }
 
-    const filename = `SanLuongXeNewWay_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const filename = role === 'ops'
+      ? `SL_${(filter.shippingLine && slMap.has(filter.shippingLine) ? planDisplayName(slMap.get(filter.shippingLine)!) : filter.shippingLine || 'All').replace(/[/\\?%*:|"<>]/g, '_')}.xlsx`
+      : role === 'hr'
+        ? `Tổng hợp lương tháng_${monthStr.replace('-', '_')}.xlsx`
+        : `SanLuongXeNewWay_${new Date().toISOString().slice(0, 10)}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
 

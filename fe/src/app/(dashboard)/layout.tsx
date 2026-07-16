@@ -19,7 +19,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+      <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center">
         <LoadingSpinner />
       </div>
     );
@@ -28,7 +28,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0f172a]">
+    <div className="min-h-screen flex flex-col bg-[#f1f5f9]">
       <ToastProvider>
         <Navbar />
         <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-8">

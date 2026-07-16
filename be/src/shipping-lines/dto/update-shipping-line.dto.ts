@@ -36,4 +36,8 @@ export class UpdateShippingLineDto {
   @IsOptional()
   @IsString()
   tenNguoiNhap?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  completed?: boolean;
 }
