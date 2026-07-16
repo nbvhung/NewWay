@@ -86,6 +86,10 @@ class ApiClient {
     return this.fetch<T>(endpoint, { method: 'PUT', body: body ? JSON.stringify(body) : undefined });
   }
 
+  patch<T>(endpoint: string, body?: any) {
+    return this.fetch<T>(endpoint, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined });
+  }
+
   delete<T>(endpoint: string) {
     return this.fetch<T>(endpoint, { method: 'DELETE' });
   }

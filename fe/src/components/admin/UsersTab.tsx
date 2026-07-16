@@ -88,30 +88,30 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
-      <div className="bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-xl p-5">
+      <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-bold">👥 Danh sách tài khoản</h3>
-          <button onClick={onRefresh} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#94a3b8] border border-[rgba(255,255,255,0.08)] hover:text-[#f1f5f9] transition-all cursor-pointer">🔄 Làm mới</button>
+          <button onClick={onRefresh} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">🔄 Làm mới</button>
         </div>
         <div className="flex flex-col gap-2">
           {pagedUsers.map(u => (
-            <div key={u.id} className="flex items-center gap-3.5 p-3.5 bg-[#263147] border border-[rgba(255,255,255,0.08)] rounded-lg hover:border-[rgba(26,86,219,0.3)] transition-all">
+            <div key={u.id} className="flex items-center gap-3.5 p-3.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg hover:border-[rgba(26,86,219,0.3)] transition-all">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1a56db] to-[#06b6d4] flex items-center justify-center font-bold text-sm text-white shrink-0">
                 {(u.fullName || '?')[0].toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold">{u.fullName} <span className={roleBadge(u.role)}>{ROLE_LABELS[u.role]}</span></div>
-                <div className="text-[10px] text-[#64748b] mt-0.5">@{u.username} · Tạo: {fmtDate(u.createdAt!)}</div>
+                <div className="text-[10px] text-[#94a3b8] mt-0.5">@{u.username} · Tạo: {fmtDate(u.createdAt!)}</div>
               </div>
               {canManageUser(currentUser.role, u.role) && (
                 <div className="flex gap-1.5 shrink-0">
-                  <button onClick={() => openEditUser(u)} className="px-2 py-1 rounded text-[10px] font-medium border border-[rgba(255,255,255,0.08)] text-[#94a3b8] hover:text-[#f1f5f9] cursor-pointer">✏️</button>
+                  <button onClick={() => openEditUser(u)} className="px-2 py-1 rounded text-[10px] font-medium border border-[rgba(0,0,0,0.08)] text-[#64748b] hover:text-[#0f172a] cursor-pointer">✏️</button>
                   <button onClick={() => deleteUser(u.id)} className="px-2 py-1 rounded text-[10px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">🗑️</button>
                 </div>
               )}
             </div>
           ))}
-          {allUsers.length === 0 && <div className="text-center py-8 text-[#64748b] text-sm">Chưa có người dùng</div>}
+          {allUsers.length === 0 && <div className="text-center py-8 text-[#94a3b8] text-sm">Chưa có người dùng</div>}
         </div>
         <Pagination
           page={page}
@@ -124,37 +124,37 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         />
       </div>
 
-      <div className="bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-xl p-5 sticky top-20">
+      <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5 sticky top-20">
         <h3 className="text-base font-bold mb-4">➕ Thêm tài khoản</h3>
         <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Tên đăng nhập <span className="text-red-500">*</span></label>
+          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tên đăng nhập <span className="text-red-500">*</span></label>
           <input type="text" value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} placeholder="vd: driver01"
-            className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
         </div>
         <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Họ tên <span className="text-red-500">*</span></label>
+          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Họ tên <span className="text-red-500">*</span></label>
           <input type="text" value={newUser.fullName} onChange={e => setNewUser({ ...newUser, fullName: e.target.value })} placeholder="vd: Nguyễn Văn A"
-            className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
         </div>
         <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Mật khẩu <span className="text-red-500">*</span></label>
+          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Mật khẩu <span className="text-red-500">*</span></label>
           <input type="password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} placeholder="Tối thiểu 6 ký tự"
-            className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
         </div>
         <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Biển số xe</label>
+          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Biển số xe</label>
           <input type="text" value={newUser.soXe} onChange={e => setNewUser({ ...newUser, soXe: e.target.value })} placeholder="vd: 15H 07883"
-            className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
         </div>
         <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Số điện thoại</label>
+          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Số điện thoại</label>
           <input type="text" value={newUser.sdt} onChange={e => setNewUser({ ...newUser, sdt: e.target.value })} placeholder="vd: 0912237755"
-            className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
         </div>
         <div className="mb-4">
-          <label className="text-[10px] font-medium text-[#94a3b8] mb-1 block">Vai trò</label>
+          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Vai trò</label>
           <select value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })}
-            className="w-full px-3 py-2 bg-[#1e293b] border border-[rgba(255,255,255,0.08)] rounded-lg text-xs text-[#f1f5f9] outline-none focus:border-[#1a56db]">
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]">
             {roleOptionsFor(currentUser.role).map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
           </select>
         </div>

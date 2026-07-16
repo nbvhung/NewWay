@@ -1,7 +1,7 @@
 export function fmtDate(dt: string | null | undefined): string {
   if (!dt) return '—';
   const d = new Date(dt);
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
 }
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -13,8 +13,14 @@ export const ROLE_LABELS: Record<string, string> = {
 };
 
 export function formatMoney(amount: number | null | undefined): string {
-  if (amount == null || amount === 0) return '—';
+  if (amount == null) return '—';
+  if (amount === 0) return '0 ₫';
   return amount.toLocaleString('vi-VN') + ' ₫';
+}
+
+export function formatNumber(amount: number | null | undefined): string {
+  if (amount == null) return '—';
+  return amount.toLocaleString('vi-VN');
 }
 
 export const FIELD_LABELS: Record<string, string> = {
@@ -27,6 +33,6 @@ export const FIELD_LABELS: Record<string, string> = {
   vo20fr: 'Vỏ 20FR',
   vo40fr: 'Vỏ 40FR',
   veSinhLai: 'Vệ sinh lại',
-  tip: 'TIP',
   keoVe: 'Kéo về',
+  tip: 'TIP',
 };

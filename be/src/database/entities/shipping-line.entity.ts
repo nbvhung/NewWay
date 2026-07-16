@@ -33,6 +33,9 @@ export class ShippingLine {
   @Column({ name: 'le_tet', type: 'boolean', default: false })
   leTet: boolean;
 
+  @Column({ name: 'completed', type: 'boolean', default: false })
+  completed: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

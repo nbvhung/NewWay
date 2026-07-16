@@ -6,11 +6,13 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import { ROLE_LABELS } from '@/lib/utils';
+import { Modal } from '@/components/ui/modal';
 
 export function Navbar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   if (!user) return null;
 
@@ -28,7 +30,7 @@ export function Navbar() {
       : 'bg-blue-500/20 text-blue-400';
 
   return (
-    <nav className="bg-[rgba(15,23,42,0.95)] backdrop-blur-xl border-b border-[rgba(255,255,255,0.08)] sticky top-0 z-[100]">
+    <nav className="bg-[rgba(241,245,249,0.95)] backdrop-blur-xl border-b border-[rgba(0,0,0,0.08)] sticky top-0 z-[100]">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/form" className="flex items-center gap-2.5 font-bold text-base">
@@ -48,8 +50,8 @@ export function Navbar() {
               href="/form"
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                 isActive('/form')
-                  ? 'bg-[#1e293b] text-[#f1f5f9]'
-                  : 'text-[#94a3b8] hover:text-[#f1f5f9]'
+                  ? 'bg-[#ffffff] text-[#0f172a]'
+                  : 'text-[#64748b] hover:text-[#0f172a]'
               }`}
             >
               📝 Nhập liệu
@@ -58,19 +60,19 @@ export function Navbar() {
               href="/my-data"
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                 isActive('/my-data')
-                  ? 'bg-[#1e293b] text-[#f1f5f9]'
-                  : 'text-[#94a3b8] hover:text-[#f1f5f9]'
+                  ? 'bg-[#ffffff] text-[#0f172a]'
+                  : 'text-[#64748b] hover:text-[#0f172a]'
               }`}
             >
-              📊 Dữ liệu của tôi
+              📊 Sản lượng của tôi
             </Link>
             {(user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || user.role === 'hr') && (
               <Link
                 href="/admin"
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                   isActive('/admin')
-                    ? 'bg-[#1e293b] text-amber-400'
-                    : 'text-[#94a3b8] hover:text-amber-400'
+                    ? 'bg-[#ffffff] text-amber-400'
+                    : 'text-[#64748b] hover:text-amber-400'
                 }`}
               >
                 ⚙️ Quản lý
@@ -79,8 +81,18 @@ export function Navbar() {
           </div>
         </div>
 
+        <button
+          className="md:hidden flex flex-col gap-1 p-1 bg-none border-none cursor-pointer z-[101]"
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Menu"
+        >
+          <span className={`block w-5 h-0.5 bg-[#0f172a] rounded transition-all ${menuOpen ? 'rotate-45 translate-y-[6px]' : ''}`} />
+          <span className={`block w-5 h-0.5 bg-[#0f172a] rounded transition-all ${menuOpen ? 'opacity-0' : ''}`} />
+          <span className={`block w-5 h-0.5 bg-[#0f172a] rounded transition-all ${menuOpen ? '-rotate-45 -translate-y-[6px]' : ''}`} />
+        </button>
+
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-[#1e293b] rounded-lg border border-[rgba(255,255,255,0.08)] text-xs">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-[#ffffff] rounded-lg border border-[rgba(0,0,0,0.08)] text-xs">
             <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#1a56db] to-[#06b6d4] flex items-center justify-center font-bold text-[10px] text-white">
               {(user.fullName || user.username || '?')[0].toUpperCase()}
             </div>
@@ -91,18 +103,8 @@ export function Navbar() {
           </div>
 
           <button
-            className="md:hidden flex flex-col gap-1 p-1 bg-none border-none cursor-pointer z-[101]"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Menu"
-          >
-            <span className={`block w-5 h-0.5 bg-[#f1f5f9] rounded transition-all ${menuOpen ? 'rotate-45 translate-y-[6px]' : ''}`} />
-            <span className={`block w-5 h-0.5 bg-[#f1f5f9] rounded transition-all ${menuOpen ? 'opacity-0' : ''}`} />
-            <span className={`block w-5 h-0.5 bg-[#f1f5f9] rounded transition-all ${menuOpen ? '-rotate-45 -translate-y-[6px]' : ''}`} />
-          </button>
-
-          <button
-            onClick={logout}
-            className="text-xs font-medium text-[#94a3b8] px-2.5 py-1.5 rounded-lg border border-[rgba(255,255,255,0.08)] hover:text-[#f1f5f9] transition-all cursor-pointer"
+            onClick={() => setShowLogoutConfirm(true)}
+            className="text-xs font-medium text-[#64748b] px-2.5 py-1.5 rounded-lg border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer"
           >
             🚪
           </button>
@@ -110,23 +112,40 @@ export function Navbar() {
       </div>
 
       {menuOpen && (
-        <div className="md:hidden border-t border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.98)] px-4 pb-4 pt-2 flex flex-col gap-1">
+        <div className="md:hidden border-t border-[rgba(0,0,0,0.08)] bg-[rgba(241,245,249,0.98)] px-4 pb-4 pt-2 flex flex-col gap-1">
           <Link href="/form" className="px-3 py-2 rounded-lg text-sm" onClick={() => setMenuOpen(false)}>
             📝 Nhập liệu
           </Link>
           <Link href="/my-data" className="px-3 py-2 rounded-lg text-sm" onClick={() => setMenuOpen(false)}>
-            📊 Dữ liệu của tôi
+            📊 Sản lượng của tôi
           </Link>
           {(user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || user.role === 'hr') && (
             <Link href="/admin" className="px-3 py-2 rounded-lg text-sm text-amber-400" onClick={() => setMenuOpen(false)}>
               ⚙️ Quản lý
             </Link>
           )}
-          <div className="flex items-center gap-2 px-3 py-2 mt-2 border-t border-[rgba(255,255,255,0.08)] pt-3 text-xs text-[#64748b]">
+          <div className="flex items-center gap-2 px-3 py-2 mt-2 border-t border-[rgba(0,0,0,0.08)] pt-3 text-xs text-[#94a3b8]">
             {user.fullName} — {ROLE_LABELS[user.role] || user.role}
           </div>
         </div>
       )}
+      <Modal
+        open={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        title="🚪 Xác nhận đăng xuất"
+        footer={
+          <>
+            <button onClick={() => setShowLogoutConfirm(false)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">
+              Hủy
+            </button>
+            <button onClick={() => { setShowLogoutConfirm(false); logout(); }} className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white shadow-[0_4px_15px_rgba(239,68,68,0.4)] hover:shadow-[0_6px_20px_rgba(239,68,68,0.5)] transition-all cursor-pointer">
+              ✅ Đăng xuất
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-[#64748b]">Bạn có chắc chắn muốn đăng xuất không?</p>
+      </Modal>
     </nav>
   );
 }

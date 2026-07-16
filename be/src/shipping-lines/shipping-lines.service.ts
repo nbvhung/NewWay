@@ -64,6 +64,7 @@ export class ShippingLinesService {
     if (dto.leTet !== undefined) plan.leTet = dto.leTet;
     if (dto.vendorKhac !== undefined) plan.vendorKhac = dto.vendorKhac.trim();
     if (dto.tenNguoiNhap !== undefined) plan.tenNguoiNhap = dto.tenNguoiNhap.trim();
+    if (dto.completed !== undefined) plan.completed = dto.completed;
 
     return this.shippingLinesRepository.save(plan);
   }
