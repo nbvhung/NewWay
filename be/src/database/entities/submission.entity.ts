@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { User } from './user.entity';
+import { ShippingLine } from './shipping-line.entity';
 
 @Entity('submissions')
 export class Submission {
@@ -11,6 +12,13 @@ export class Submission {
 
   @Column({ name: 'shipping_line', length: 255, nullable: false })
   shippingLine: string;
+
+  @Column({ name: 'shipping_line_id', nullable: true, type: 'int' })
+  shippingLineId: number | null;
+
+  @ManyToOne(() => ShippingLine)
+  @JoinColumn({ name: 'shipping_line_id' })
+  shippingLineRef: ShippingLine;
 
   @Column({ name: 'route', length: 255, default: '' })
   route: string;

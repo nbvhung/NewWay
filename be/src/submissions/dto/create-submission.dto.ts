@@ -1,9 +1,13 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
 
 export class CreateSubmissionDto {
   @IsString()
   @IsNotEmpty({ message: 'Vui lòng chọn kế hoạch' })
   shippingLine: string;
+
+  @IsOptional()
+  @IsNumber()
+  shippingLineId?: number;
 
   @IsOptional()
   @IsString()

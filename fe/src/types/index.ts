@@ -38,6 +38,7 @@ export interface Submission {
   id: number;
   userId: number;
   shippingLine: string;
+  shippingLineId?: number;
   route: string;
   driverName: string;
   hang20: string;

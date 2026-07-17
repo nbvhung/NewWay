@@ -20,6 +20,9 @@ export function EditSubmissionModal({ open, onClose, editForm, setEditForm, allS
   const planDisplayName = (sl: ShippingLine) => {
     return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
   };
+  const selectedPlanId = editForm.shippingLineId
+    ? editForm.shippingLineId
+    : (allShippingLines.find(sl => sl.name === editForm.shippingLine)?.id ?? null);
   return (
     <Modal
       open={open}
@@ -40,16 +43,16 @@ export function EditSubmissionModal({ open, onClose, editForm, setEditForm, allS
           {allShippingLines.map(sl => (
             <label key={sl.id}
               className={`flex items-center gap-2.5 px-3 py-2 bg-[#ffffff] border rounded-lg cursor-pointer text-xs transition-all ${
-                editForm.shippingLine === sl.name
+                selectedPlanId === sl.id
                   ? 'border-[#1a56db] bg-[rgba(26,86,219,0.12)]'
                   : 'border-[rgba(0,0,0,0.08)]'
               }`}
-              onClick={() => setEditForm({ ...editForm, shippingLine: sl.name })}
+              onClick={() => setEditForm({ ...editForm, shippingLine: sl.name, shippingLineId: sl.id })}
             >
               <div className={`w-4 h-4 border-2 rounded-full flex items-center justify-center shrink-0 ${
-                editForm.shippingLine === sl.name ? 'border-[#1a56db]' : 'border-[rgba(0,0,0,0.08)]'
+                selectedPlanId === sl.id ? 'border-[#1a56db]' : 'border-[rgba(0,0,0,0.08)]'
               }`}>
-                {editForm.shippingLine === sl.name && <div className="w-1.5 h-1.5 rounded-full bg-[#1a56db]" />}
+                {selectedPlanId === sl.id && <div className="w-1.5 h-1.5 rounded-full bg-[#1a56db]" />}
               </div>
               <span>{planDisplayName(sl)}{sl.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-600">x3</span> : sl.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-600">+15%</span> : null}</span>
             </label>

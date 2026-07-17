@@ -58,6 +58,7 @@ export default function FormPage() {
     try {
       await api.post('/submissions', {
         shippingLine: selectedLine?.name || '',
+        shippingLineId: selectedLine?.id || undefined,
         route: selectedLine?.routeName || '',
         hang20,
         hang40,
