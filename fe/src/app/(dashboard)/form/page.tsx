@@ -12,7 +12,7 @@ export default function FormPage() {
   const { toast } = useToast();
 
   const [shippingLines, setShippingLines] = useState<ShippingLine[]>([]);
-  const [selectedShippingLine, setSelectedShippingLine] = useState('');
+  const [selectedShippingLineId, setSelectedShippingLineId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -41,7 +41,7 @@ export default function FormPage() {
     }
   };
 
-  const selectedLine = shippingLines.find((sl) => sl.name === selectedShippingLine);
+  const selectedLine = shippingLines.find((sl) => sl.id === selectedShippingLineId);
 
   const planDisplayName = (sl: ShippingLine) => {
     return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
@@ -49,7 +49,7 @@ export default function FormPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedShippingLine) {
+    if (!selectedShippingLineId) {
       toast('Vui lòng chọn kế hoạch', 'error');
       return;
     }
@@ -57,7 +57,7 @@ export default function FormPage() {
     setSubmitting(true);
     try {
       await api.post('/submissions', {
-        shippingLine: selectedShippingLine,
+        shippingLine: selectedLine?.name || '',
         route: selectedLine?.routeName || '',
         hang20,
         hang40,
@@ -79,7 +79,7 @@ export default function FormPage() {
   };
 
   const resetForm = () => {
-    setSelectedShippingLine('');
+    setSelectedShippingLineId(null);
     setHang20('');
     setHang40('');
     setVo20('');
@@ -115,18 +115,18 @@ export default function FormPage() {
                   <label
                     key={sl.id}
                     className={`flex items-center gap-2.5 px-3.5 py-2.5 bg-[#ffffff] border rounded-lg cursor-pointer transition-all select-none hover:border-[#1a56db] hover:bg-[rgba(26,86,219,0.08)] ${
-                      selectedShippingLine === sl.name
+                      selectedShippingLineId === sl.id
                         ? 'border-[#1a56db] bg-[rgba(26,86,219,0.12)]'
                         : 'border-[rgba(0,0,0,0.08)]'
                     }`}
                     onClick={() => {
-                      setSelectedShippingLine(sl.name);
+                      setSelectedShippingLineId(sl.id);
                     }}
                   >
                     <div className={`w-[18px] h-[18px] border-2 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                      selectedShippingLine === sl.name ? 'border-[#1a56db]' : 'border-[rgba(0,0,0,0.08)]'
+                      selectedShippingLineId === sl.id ? 'border-[#1a56db]' : 'border-[rgba(0,0,0,0.08)]'
                     }`}>
-                      {selectedShippingLine === sl.name && (
+                      {selectedShippingLineId === sl.id && (
                         <div className="w-2 h-2 rounded-full bg-[#1a56db]" />
                       )}
                     </div>
