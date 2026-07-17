@@ -12,12 +12,15 @@ export class ShippingLinesService {
     private shippingLinesRepository: Repository<ShippingLine>,
   ) {}
 
-  async findAll(): Promise<any[]> {
-    return this.shippingLinesRepository
+  async findAll(completed?: boolean): Promise<any[]> {
+    const qb = this.shippingLinesRepository
       .createQueryBuilder('sl')
       .leftJoinAndSelect('sl.route', 'route')
-      .orderBy('sl.created_at', 'DESC')
-      .getMany();
+      .orderBy('sl.created_at', 'DESC');
+    if (completed !== undefined) {
+      qb.andWhere('sl.completed = :completed', { completed });
+    }
+    return qb.getMany();
   }
 
   async create(dto: CreateShippingLineDto) {
