@@ -295,7 +295,7 @@ export class SubmissionsService {
     workbook.creator = 'Hệ thống New Way';
     workbook.created = new Date();
 
-    const allDrivers = await this.usersRepository.find({ where: { role: 'laixe' }, order: { fullName: 'ASC' } });
+    const allDrivers = await this.usersRepository.find({ where: { role: 'laixe' }, order: { stt: 'ASC' } });
 
     const headerFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
     const headerFont: Partial<ExcelJS.Font> = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
