@@ -134,7 +134,7 @@ export default function FormPage() {
                   </label>
                 ))}
                 {shippingLines.length === 0 && (
-                  <p className="text-xs text-[#64748b] py-2">Chưa có kế hoạch nào. Vui lòng liên hệ admin.</p>
+                  <p className="text-xs text-[#64748b] py-2">Chưa có kế hoạch nào.</p>
                 )}
               </div>
             )}

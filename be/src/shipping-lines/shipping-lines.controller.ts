@@ -13,7 +13,7 @@ export class ShippingLinesController {
   @Get('shipping-lines')
   @UseGuards(JwtAuthGuard)
   findAllForUser() {
-    return this.shippingLinesService.findAll();
+    return this.shippingLinesService.findAll(false);
   }
 
   @Get('admin/shipping-lines')
