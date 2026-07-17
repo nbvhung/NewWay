@@ -8,7 +8,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/use-pagination';
 import { Submission, User, ShippingLine } from '@/types';
 import { api } from '@/lib/api-client';
-import { fmtDate, ROLE_LABELS } from '@/lib/utils';
+import { ROLE_LABELS } from '@/lib/utils';
 
 interface Props {
   user: any;
@@ -56,9 +56,6 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
   useEffect(() => {
     loadSubmissions();
   }, [filterSl]);
-
-  const today = new Date().toISOString().slice(0, 10);
-  const todayCount = submissions.filter((s) => (s.createdAt || '').slice(0, 10) === today).length;
 
   const openEditSub = (sub: Submission) => {
     setEditSub(sub);
@@ -146,12 +143,12 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
 
   return (
     <div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      {user?.role !== 'hr' && (
+      <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 mb-4">
         <StatsCard icon="📋" value={submissions.length} label="Tổng bản ghi" />
-        <StatsCard icon="👥" value={allUsers.length} label="Người dùng" />
         <StatsCard icon="🚢" value={allShippingLines.length} label="Kế hoạch" />
-        <StatsCard icon="📅" value={todayCount} label="Hôm nay" />
       </div>
+      )}
 
       <div className="flex flex-wrap gap-2.5 items-end mb-4 p-4 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl">
         {user?.role === 'hr' ? (
@@ -219,30 +216,30 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         )}
       </div>
 
+      {user?.role !== 'hr' && (
       <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl overflow-x-auto">
         {submissions.length === 0 ? (
-          <div className="text-center py-16 text-[#94a3b8] text-sm">📭 Không có bản ghi nào</div>
+          <div className="text-center py-16 text-[#64748b] text-sm">📭 Không có bản ghi nào</div>
         ) : (
           <>
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="bg-[#f8fafc]">
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#64748b]">#</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#64748b]">Người nhập / Role</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#64748b]">Lái xe NW</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#64748b]">KH</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#64748b]">H20</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#64748b]">H40</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#64748b]">V20</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#64748b]">V40</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#64748b]">V20FR</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#64748b]">V40FR</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#64748b]">VSL</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#64748b]">KV</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#64748b]">TIP (x 1.000đ)</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#64748b]">Sửa</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#64748b]">Ngày tạo</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#64748b]">Thao tác</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">#</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">Người nhập / Role</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">Lái xe NW</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">KH</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">H20</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">H40</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">V20</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">V40</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">V20FR</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">V40FR</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">VSL</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">KV</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">TIP (x 1.000đ)</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">Sửa</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -250,13 +247,13 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
                   <tr key={s.id} className="border-b border-[rgba(0,0,0,0.04)] hover:bg-[rgba(0,0,0,0.03)]">
                     <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(100,116,139,0.15)] text-[#64748b]">{(page - 1) * pageSize + i + 1}</span></td>
                     <td className="px-3 py-2.5">
-                      <span className="px-1.5 py-0.5 rounded-full bg-[rgba(26,86,219,0.2)] text-blue-400">{(s as any).user?.username || '—'}</span>
+                      <span className="px-1.5 py-0.5 rounded-full bg-[rgba(26,86,219,0.2)] text-blue-700">{(s as any).user?.username || '—'}</span>
                       {(s as any).user?.role && (
                         <span className="ml-1 px-1 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(100,116,139,0.15)] text-[#64748b]">{ROLE_LABELS[(s as any).user.role] || (s as any).user.role}</span>
                       )}
                     </td>
                     <td className="px-3 py-2.5 font-medium">{s.driverName}</td>
-                    <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(16,185,129,0.2)] text-emerald-400 max-w-[160px] inline-block truncate">{slDisplayMap.get(s.shippingLine) || s.shippingLine}</span></td>
+                    <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(16,185,129,0.2)] text-emerald-700 max-w-[160px] inline-block truncate">{slDisplayMap.get(s.shippingLine) || s.shippingLine}</span></td>
                     <td className="px-3 py-2.5">{s.hang20 || '—'}</td>
                     <td className="px-3 py-2.5">{s.hang40 || '—'}</td>
                     <td className="px-3 py-2.5">{s.vo20 || '—'}</td>
@@ -268,10 +265,9 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
                     <td className="px-3 py-2.5">{s.tip || '—'}</td>
                     <td className="px-3 py-2.5">
                       {s.editCount > 0
-                        ? <span className="px-1.5 py-0.5 rounded-full bg-[rgba(245,158,11,0.2)] text-amber-400">✏️ {s.editCount}</span>
+                        ? <span className="px-1.5 py-0.5 rounded-full bg-[rgba(245,158,11,0.2)] text-amber-700">✏️ {s.editCount}</span>
                         : <span className="px-1.5 py-0.5 rounded-full bg-[rgba(100,116,139,0.15)] text-[#64748b]">0</span>}
                     </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap text-[#64748b]">{fmtDate(s.createdAt)}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap flex gap-1">
                       <button onClick={() => openEditSub(s)}
                         className="px-2 py-1 rounded text-[10px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️</button>
@@ -294,6 +290,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
           </>
         )}
       </div>
+      )}
 
       <EditSubmissionModal
         open={editModalOpen}
@@ -327,12 +324,12 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         <div className="mb-4">
           <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Vendor khác (nếu có)</label>
           <input type="text" value={exportVendorKhac} onChange={e => setExportVendorKhac(e.target.value)} placeholder="Nhập vendor khác..."
-            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
         </div>
         <div className="mb-2">
           <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Tên người nhập</label>
           <input type="text" value={exportTenNguoiNhap} onChange={e => setExportTenNguoiNhap(e.target.value)} placeholder="Nhập tên người nhập..."
-            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
         </div>
       </Modal>
     </div>

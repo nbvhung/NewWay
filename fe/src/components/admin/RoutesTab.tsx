@@ -80,7 +80,7 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
               <div key={r.id} className="flex items-center justify-between gap-2 px-3 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs">
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="truncate">🛤️ {r.name}</span>
-                  {r.money > 0 && <span className="shrink-0 px-1.5 py-0.5 rounded bg-[rgba(16,185,129,0.2)] text-emerald-400 text-[10px]">{fmtMoney(r.money)}</span>}
+                  {r.money > 0 && <span className="shrink-0 px-1.5 py-0.5 rounded bg-[rgba(16,185,129,0.2)] text-emerald-600 text-[10px]">{fmtMoney(r.money)}</span>}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => openEdit(r)}
@@ -90,7 +90,7 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
                 </div>
               </div>
             ))}
-            {allRoutes.length === 0 && <div className="text-center w-full py-8 text-[#94a3b8] text-sm">Chưa có tuyến đường</div>}
+            {allRoutes.length === 0 && <div className="text-center w-full py-8 text-[#64748b] text-sm">Chưa có tuyến đường</div>}
           </div>
         </div>
 
@@ -99,12 +99,12 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
           <div className="mb-3">
             <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tên tuyến đường <span className="text-red-500">*</span></label>
             <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="vd: TU1"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div className="mb-3">
             <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tiền</label>
             <input type="number" value={money} onChange={e => setMoney(e.target.value)} placeholder="vd: 500000"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <button onClick={addRoute}
             className="w-full py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] cursor-pointer">

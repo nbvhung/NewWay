@@ -6,7 +6,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/use-pagination';
 import { User } from '@/types';
 import { api } from '@/lib/api-client';
-import { fmtDate, ROLE_LABELS } from '@/lib/utils';
+import { ROLE_LABELS } from '@/lib/utils';
 
 interface Props {
   currentUser: any;
@@ -17,12 +17,12 @@ interface Props {
 
 function roleBadge(role: string) {
   const colors: Record<string, string> = {
-    supper_admin: 'bg-red-500/20 text-red-400',
-    admin: 'bg-amber-500/20 text-amber-400',
-    ops: 'bg-purple-500/20 text-purple-400',
-    laixe: 'bg-blue-500/20 text-blue-400',
+    supper_admin: 'bg-red-500/20 text-red-600',
+    admin: 'bg-amber-500/20 text-amber-600',
+    ops: 'bg-purple-500/20 text-purple-600',
+    laixe: 'bg-blue-500/20 text-blue-600',
   };
-  return `px-2 py-0.5 rounded-full text-[10px] font-semibold ${colors[role] || 'bg-gray-500/20 text-gray-400'}`;
+  return `px-2 py-0.5 rounded-full text-[10px] font-semibold ${colors[role] || 'bg-gray-500/20 text-gray-600'}`;
 }
 
 function canManageUser(currentRole: string, targetRole: string) {
@@ -101,7 +101,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold">{u.fullName} <span className={roleBadge(u.role)}>{ROLE_LABELS[u.role]}</span></div>
-                <div className="text-[10px] text-[#94a3b8] mt-0.5">@{u.username} · Tạo: {fmtDate(u.createdAt!)}</div>
+                <div className="text-[10px] text-[#64748b] mt-0.5">@{u.username}</div>
               </div>
               {canManageUser(currentUser.role, u.role) && (
                 <div className="flex gap-1.5 shrink-0">
@@ -111,7 +111,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
               )}
             </div>
           ))}
-          {allUsers.length === 0 && <div className="text-center py-8 text-[#94a3b8] text-sm">Chưa có người dùng</div>}
+          {allUsers.length === 0 && <div className="text-center py-8 text-[#64748b] text-sm">Chưa có người dùng</div>}
         </div>
         <Pagination
           page={page}
@@ -129,27 +129,27 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tên đăng nhập <span className="text-red-500">*</span></label>
           <input type="text" value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} placeholder="vd: driver01"
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
         </div>
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Họ tên <span className="text-red-500">*</span></label>
           <input type="text" value={newUser.fullName} onChange={e => setNewUser({ ...newUser, fullName: e.target.value })} placeholder="vd: Nguyễn Văn A"
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
         </div>
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Mật khẩu <span className="text-red-500">*</span></label>
           <input type="password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} placeholder="Tối thiểu 6 ký tự"
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
         </div>
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Biển số xe</label>
           <input type="text" value={newUser.soXe} onChange={e => setNewUser({ ...newUser, soXe: e.target.value })} placeholder="vd: 15H 07883"
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
         </div>
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Số điện thoại</label>
           <input type="text" value={newUser.sdt} onChange={e => setNewUser({ ...newUser, sdt: e.target.value })} placeholder="vd: 0912237755"
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
         </div>
         <div className="mb-4">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Vai trò</label>

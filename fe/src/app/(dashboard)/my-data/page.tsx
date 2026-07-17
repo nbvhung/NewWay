@@ -167,7 +167,7 @@ export default function MyDataPage() {
         <div className="flex items-center justify-between flex-wrap gap-3 px-5 pt-5 pb-3">
           <div>
             <h3 className="text-base font-bold">📋 Danh sách nhập sản lượng</h3>
-            <p className="text-[10px] text-[#94a3b8] mt-0.5">Hiển thị bản ghi của {MONTHS_VI[viewMonth]}/{viewYear}</p>
+            <p className="text-[10px] text-[#64748b] mt-0.5">Hiển thị bản ghi của {MONTHS_VI[viewMonth]}/{viewYear}</p>
           </div>
           <div className="flex items-center gap-2">
             {/* Month navigator */}
@@ -202,7 +202,7 @@ export default function MyDataPage() {
         </div>
 
         {filteredData.length === 0 ? (
-          <div className="text-center py-16 text-[#94a3b8]">
+          <div className="text-center py-16 text-[#64748b]">
             <div className="text-5xl mb-3">📭</div>
             <p className="text-sm">Chưa có bản ghi nào trong {MONTHS_VI[viewMonth]}/{viewYear}.</p>
             <Link href="/form" className="text-[#1a56db] text-sm hover:underline">Nhập liệu ngay →</Link>
@@ -212,29 +212,27 @@ export default function MyDataPage() {
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="bg-[#f8fafc]">
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#64748b] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">#</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#64748b] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Ngày tạo</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#64748b] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Kế hoạch</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#64748b] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">H20</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#64748b] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">H40</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#64748b] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">V20</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#64748b] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">V40</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#64748b] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">V20FR</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#64748b] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">V40FR</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#64748b] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">VSL</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#64748b] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">KV</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#64748b] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">TIP (x 1.000đ)</th>
-                  {user?.role !== 'ops' && <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#64748b] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Lương</th>}
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#64748b] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Sửa</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#64748b] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Thao tác</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">#</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Kế hoạch</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">H20</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">H40</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">V20</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">V40</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">V20FR</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">V40FR</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">VSL</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">KV</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">TIP (x 1.000đ)</th>
+                  {user?.role !== 'ops' && <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Lương</th>}
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Sửa</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredData.map((s, i) => (
                   <tr key={s.id} className="border-b border-[rgba(0,0,0,0.04)] hover:bg-[rgba(0,0,0,0.03)]">
                     <td className="px-3.5 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#64748b]">{i + 1}</span></td>
-                    <td className="px-3.5 py-3 whitespace-nowrap text-[#64748b]">{fmtDate(s.createdAt)}</td>
-                    <td className="px-3.5 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(26,86,219,0.2)] text-blue-400 max-w-[160px] inline-block truncate">{s.planDisplayName || s.shippingLine}</span></td>
+                    <td className="px-3.5 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(26,86,219,0.2)] text-blue-700 max-w-[160px] inline-block truncate">{s.planDisplayName || s.shippingLine}</span></td>
                     <td className="px-3.5 py-3">{s.hang20 || '—'}</td>
                     <td className="px-3.5 py-3">{s.hang40 || '—'}</td>
                     <td className="px-3.5 py-3">{s.vo20 || '—'}</td>
@@ -247,7 +245,7 @@ export default function MyDataPage() {
                     {user?.role !== 'ops' && <td className="px-3.5 py-3">{formatMoney(s.salary)}</td>}
                     <td className="px-3.5 py-3">
                       {s.editCount > 0 ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(245,158,11,0.2)] text-amber-400">✏️ {s.editCount}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(245,158,11,0.2)] text-amber-700">✏️ {s.editCount}</span>
                       ) : (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#64748b]">0</span>
                       )}
@@ -303,7 +301,7 @@ export default function MyDataPage() {
           <div className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] to-[#34d399]">
             {formatMoney(salarySummary?.totalSalary)}
           </div>
-          <p className="text-xs text-[#94a3b8] mt-2">🎉 Thật là tuyệt vời !!!</p>
+          <p className="text-xs text-[#64748b] mt-2">🎉 Thật là tuyệt vời !!!</p>
         </div>
       </div>
       )}
@@ -344,7 +342,7 @@ export default function MyDataPage() {
                 }`}>
                   {editForm.shippingLine === sl.name && <div className="w-1.5 h-1.5 rounded-full bg-[#1a56db]" />}
                 </div>
-                <span>{planDisplayName(sl)}{sl.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-400">x3</span> : sl.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-400">+15%</span> : null}</span>
+                <span>{planDisplayName(sl)}{sl.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-400">x3</span> : sl.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-700">+15%</span> : null}</span>
               </label>
             ))}
           </div>
@@ -356,47 +354,47 @@ export default function MyDataPage() {
           <div>
             <label className="block text-xs font-medium text-[#64748b] mb-1">Tổng số hàng 20</label>
             <input type="number" min="0" value={editForm.hang20} onChange={(e) => updateField('hang20', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
             <label className="block text-xs font-medium text-[#64748b] mb-1">Tổng số hàng 40</label>
             <input type="number" min="0" value={editForm.hang40} onChange={(e) => updateField('hang40', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
             <label className="block text-xs font-medium text-[#64748b] mb-1">Tổng số vỏ 20</label>
             <input type="number" min="0" value={editForm.vo20} onChange={(e) => updateField('vo20', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
             <label className="block text-xs font-medium text-[#64748b] mb-1">Tổng số vỏ 40</label>
             <input type="number" min="0" value={editForm.vo40} onChange={(e) => updateField('vo40', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
             <label className="block text-xs font-medium text-[#64748b] mb-1">Tổng số vỏ 20FR</label>
             <input type="number" min="0" value={editForm.vo20fr} onChange={(e) => updateField('vo20fr', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
             <label className="block text-xs font-medium text-[#64748b] mb-1">Tổng số vỏ 40FR</label>
             <input type="number" min="0" value={editForm.vo40fr} onChange={(e) => updateField('vo40fr', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
             <label className="block text-xs font-medium text-[#64748b] mb-1">Vệ sinh lại</label>
             <input type="number" min="0" value={editForm.veSinhLai} onChange={(e) => updateField('veSinhLai', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
             <label className="block text-xs font-medium text-[#64748b] mb-1">Kéo về</label>
             <input type="number" min="0" value={editForm.keoVe} onChange={(e) => updateField('keoVe', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
             <label className="block text-xs font-medium text-[#64748b] mb-1">TIP (x 1.000đ)</label>
             <input type="number" min="0" value={editForm.tip} onChange={(e) => updateField('tip', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
         </div>
 

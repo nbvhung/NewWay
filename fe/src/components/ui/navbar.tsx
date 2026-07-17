@@ -20,14 +20,14 @@ export function Navbar() {
 
   const roleClass =
     user.role === 'supper_admin'
-      ? 'bg-red-500/20 text-red-400'
+      ? 'bg-red-500/20 text-red-600'
       : user.role === 'admin'
-      ? 'bg-amber-500/20 text-amber-400'
+      ? 'bg-amber-500/20 text-amber-600'
       : user.role === 'ops'
-      ? 'bg-purple-500/20 text-purple-400'
+      ? 'bg-purple-500/20 text-purple-600'
       : user.role === 'hr'
-      ? 'bg-green-500/20 text-green-400'
-      : 'bg-blue-500/20 text-blue-400';
+      ? 'bg-green-500/20 text-green-600'
+      : 'bg-blue-500/20 text-blue-600';
 
   return (
     <nav className="bg-[rgba(241,245,249,0.95)] backdrop-blur-xl border-b border-[rgba(0,0,0,0.08)] sticky top-0 z-[100]">
@@ -56,6 +56,7 @@ export function Navbar() {
             >
               📝 Nhập liệu
             </Link>
+            {user.role !== 'admin' && user.role !== 'hr' && (
             <Link
               href="/my-data"
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
@@ -66,13 +67,14 @@ export function Navbar() {
             >
               📊 Sản lượng của tôi
             </Link>
+            )}
             {(user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || user.role === 'hr') && (
               <Link
                 href="/admin"
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                   isActive('/admin')
-                    ? 'bg-[#ffffff] text-amber-400'
-                    : 'text-[#64748b] hover:text-amber-400'
+                    ? 'bg-[#ffffff] text-amber-600'
+                    : 'text-[#64748b] hover:text-amber-600'
                 }`}
               >
                 ⚙️ Quản lý
@@ -116,15 +118,17 @@ export function Navbar() {
           <Link href="/form" className="px-3 py-2 rounded-lg text-sm" onClick={() => setMenuOpen(false)}>
             📝 Nhập liệu
           </Link>
+          {user.role !== 'admin' && user.role !== 'hr' && (
           <Link href="/my-data" className="px-3 py-2 rounded-lg text-sm" onClick={() => setMenuOpen(false)}>
             📊 Sản lượng của tôi
           </Link>
+          )}
           {(user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || user.role === 'hr') && (
-            <Link href="/admin" className="px-3 py-2 rounded-lg text-sm text-amber-400" onClick={() => setMenuOpen(false)}>
+            <Link href="/admin" className="px-3 py-2 rounded-lg text-sm text-amber-600" onClick={() => setMenuOpen(false)}>
               ⚙️ Quản lý
             </Link>
           )}
-          <div className="flex items-center gap-2 px-3 py-2 mt-2 border-t border-[rgba(0,0,0,0.08)] pt-3 text-xs text-[#94a3b8]">
+          <div className="flex items-center gap-2 px-3 py-2 mt-2 border-t border-[rgba(0,0,0,0.08)] pt-3 text-xs text-[#64748b]">
             {user.fullName} — {ROLE_LABELS[user.role] || user.role}
           </div>
         </div>
