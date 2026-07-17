@@ -295,7 +295,8 @@ export class SubmissionsService {
     workbook.creator = 'Hệ thống New Way';
     workbook.created = new Date();
 
-    const allDrivers = await this.usersRepository.find({ where: { role: 'laixe' }, order: { stt: 'ASC' } });
+    const allDrivers = await this.usersRepository.find({ where: { role: 'laixe' } });
+    allDrivers.sort((a, b) => (parseInt(a.stt) || 0) - (parseInt(b.stt) || 0) || a.fullName.localeCompare(b.fullName));
 
     const headerFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
     const headerFont: Partial<ExcelJS.Font> = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
