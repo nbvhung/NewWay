@@ -20,6 +20,9 @@ export class User {
   @Column({ name: 'so_xe', length: 50, default: '' })
   soXe: string;
 
+  @Column({ name: 'stt', length: 50, default: '' })
+  stt: string;
+
   @Column({ name: 'sdt', length: 20, default: '' })
   sdt: string;
 

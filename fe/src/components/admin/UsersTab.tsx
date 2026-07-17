@@ -39,7 +39,7 @@ function roleOptionsFor(currentRole: string) {
 }
 
 export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
-  const [newUser, setNewUser] = useState({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', sdt: '' });
+  const [newUser, setNewUser] = useState({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', stt: '', sdt: '' });
   const [editUserData, setEditUserData] = useState<any>(null);
   const [editUserModalOpen, setEditUserModalOpen] = useState(false);
 
@@ -53,13 +53,13 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
     try {
       await api.post('/admin/users', newUser);
       toast(`Đã thêm tài khoản: ${newUser.username}`, 'success');
-      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', sdt: '' });
+      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', stt: '', sdt: '' });
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
   };
 
   const openEditUser = (u: User) => {
-    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, soXe: u.soXe, sdt: u.sdt, password: '' });
+    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, soXe: u.soXe, stt: u.stt, sdt: u.sdt, password: '' });
     setEditUserModalOpen(true);
   };
 
@@ -69,6 +69,9 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
       await api.put(`/admin/users/${editUserData.id}`, {
         fullName: editUserData.fullName,
         role: editUserData.role,
+        soXe: editUserData.soXe || '',
+        stt: editUserData.stt || '',
+        sdt: editUserData.sdt || '',
         ...(editUserData.password ? { password: editUserData.password } : {}),
       });
       toast('Đã cập nhật tài khoản', 'success');
@@ -144,6 +147,11 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Biển số xe</label>
           <input type="text" value={newUser.soXe} onChange={e => setNewUser({ ...newUser, soXe: e.target.value })} placeholder="vd: 15H 07883"
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+        </div>
+        <div className="mb-3">
+          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">STT</label>
+          <input type="text" value={newUser.stt} onChange={e => setNewUser({ ...newUser, stt: e.target.value })} placeholder="vd: NW001"
             className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
         </div>
         <div className="mb-3">

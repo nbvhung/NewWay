@@ -82,6 +82,13 @@ export class SubmissionsController {
     return { data: result };
   }
 
+  @Delete('admin/submissions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'supper_admin')
+  async removeAll() {
+    return this.submissionsService.removeAll();
+  }
+
   @Delete('admin/submissions/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'supper_admin')

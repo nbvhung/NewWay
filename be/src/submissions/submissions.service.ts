@@ -255,6 +255,13 @@ export class SubmissionsService {
     return { message: 'Đã xóa bản ghi' };
   }
 
+  async removeAll() {
+    await this.submissionsRepository.query('DELETE FROM edit_history');
+    await this.submissionsRepository.query('DELETE FROM submissions');
+    await this.submissionsRepository.query("ALTER SEQUENCE submissions_id_seq RESTART WITH 1");
+    return { message: 'Đã xóa tất cả dữ liệu' };
+  }
+
   async exportExcel(res: Response, user: any, filter: {
     userId?: number;
     shippingLine?: string;
@@ -456,7 +463,7 @@ export class SubmissionsService {
           const ghiChu = [vsl || '', kv || '', tip || ''].filter(Boolean).join(' / ');
 
           const row = ws2.getRow(dataStartRow + rowIdx);
-          row.getCell(1).value = rowIdx + 1;
+          row.getCell(1).value = driver.stt || '';
           row.getCell(2).value = driver.soXe || '';
           row.getCell(3).value = driver.fullName || driver.username || '';
           row.getCell(4).value = driver.sdt || '';
@@ -607,7 +614,7 @@ export class SubmissionsService {
 
             rowIdx++;
             const row = wsDriver.addRow({
-              stt: rowIdx,
+              stt: driver.stt || '',
               plan: sl ? planDisplayName(sl) : planName,
               route: tenTuyen,
               donGia: donGia.toLocaleString('vi-VN'),
@@ -776,7 +783,7 @@ export class SubmissionsService {
       rowIdx++;
       if (role === 'hr') {
         const row = ws.addRow({
-          stt: rowIdx,
+          stt: driver.stt || '',
           soXe: driver.soXe || '',
           driverName: driver.fullName,
           sdt: driver.sdt || '',
@@ -802,7 +809,7 @@ export class SubmissionsService {
         }
       } else {
         const row = ws.addRow({
-          stt: rowIdx,
+          stt: driver.stt || '',
           username: driver.username,
           driverName: driver.fullName,
           shippingLine: '',

@@ -4,6 +4,7 @@ export interface User {
   fullName: string;
   role: Role;
   soXe: string;
+  stt: string;
   sdt: string;
   createdAt?: string;
 }

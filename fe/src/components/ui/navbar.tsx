@@ -33,7 +33,7 @@ export function Navbar() {
     <nav className="bg-[rgba(241,245,249,0.95)] backdrop-blur-xl border-b border-[rgba(0,0,0,0.08)] sticky top-0 z-[100]">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/form" className="flex items-center gap-2.5 font-bold text-base">
+          <Link href="/" className="flex items-center gap-2.5 font-bold text-base">
             <Image
               src="/logo.png"
               alt="New Way Logo"
@@ -46,7 +46,7 @@ export function Navbar() {
           </Link>
 
           <div className="hidden md:flex items-center gap-1">
-            {user.role !== 'hr' && (
+            {user.role !== 'hr' && user.role !== 'admin' && (
             <Link
               href="/form"
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
@@ -117,7 +117,7 @@ export function Navbar() {
 
       {menuOpen && (
         <div className="md:hidden border-t border-[rgba(0,0,0,0.08)] bg-[rgba(241,245,249,0.98)] px-4 pb-4 pt-2 flex flex-col gap-1">
-          {user.role !== 'hr' && (
+          {user.role !== 'hr' && user.role !== 'admin' && (
           <Link href="/form" className="px-3 py-2 rounded-lg text-sm" onClick={() => setMenuOpen(false)}>
             📝 Nhập liệu
           </Link>
