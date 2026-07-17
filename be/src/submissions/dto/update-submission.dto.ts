@@ -1,9 +1,13 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsNumber } from 'class-validator';
 
 export class UpdateSubmissionDto {
   @IsOptional()
   @IsString()
   shippingLine?: string;
+
+  @IsOptional()
+  @IsNumber()
+  shippingLineId?: number;
 
   @IsOptional()
   @IsString()

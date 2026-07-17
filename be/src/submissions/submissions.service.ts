@@ -30,6 +30,7 @@ export class SubmissionsService {
     const submission = new Submission();
     submission.userId = userId;
     submission.shippingLine = dto.shippingLine;
+    submission.shippingLineId = dto.shippingLineId ?? null;
     submission.route = dto.route || '';
     submission.driverName = fullName;
     submission.hang20 = dto.hang20 || '';
@@ -58,9 +59,11 @@ export class SubmissionsService {
     }
 
     const allShippingLines = await this.shippingLinesRepository.find();
-    const slMap = new Map<string, ShippingLine>();
+    const slMap = new Map<number, ShippingLine>();
+    const slNameMap = new Map<string, ShippingLine>();
     for (const sl of allShippingLines) {
-      slMap.set(sl.name, sl);
+      slMap.set(sl.id, sl);
+      slNameMap.set(sl.name, sl);
     }
     const planDisplayName = (sl: ShippingLine) => {
       return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
@@ -72,7 +75,7 @@ export class SubmissionsService {
         where: { submissionId: sub.id },
         order: { editedAt: 'DESC' },
       });
-      const sl = slMap.get(sub.shippingLine);
+      const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
       const tenTuyen = sub.route || sl?.routeName || '';
       const donGia = routeMoneyMap.get(tenTuyen) || 0;
       const h20 = parseFloat(sub.hang20) || 0;
@@ -124,6 +127,10 @@ export class SubmissionsService {
       }
     }
 
+    if (dto.shippingLineId !== undefined) {
+      submission.shippingLineId = dto.shippingLineId;
+    }
+
     if (Object.keys(changes).length === 0) {
       return { message: 'Không có thay đổi', submission: { ...submission, history: [] } };
     }
@@ -150,9 +157,11 @@ export class SubmissionsService {
     }
 
     const allShippingLines = await this.shippingLinesRepository.find();
-    const slMap = new Map<string, ShippingLine>();
+    const slMap = new Map<number, ShippingLine>();
+    const slNameMap = new Map<string, ShippingLine>();
     for (const sl of allShippingLines) {
-      slMap.set(sl.name, sl);
+      slMap.set(sl.id, sl);
+      slNameMap.set(sl.name, sl);
     }
     const planDisplayName = (sl: ShippingLine) => {
       return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
@@ -169,7 +178,7 @@ export class SubmissionsService {
     const details: any[] = [];
 
     for (const sub of submissions) {
-      const sl = slMap.get(sub.shippingLine);
+      const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
       // Use plan date (sl.ngay) for month grouping; fallback to createdAt if plan has no date
       const planDateStr = sl?.ngay || null;
       const refDate = planDateStr ? new Date(planDateStr) : new Date(sub.createdAt);
@@ -259,9 +268,11 @@ export class SubmissionsService {
     const submissions = await this.findAll(filter, role);
 
     const allShippingLines = await this.shippingLinesRepository.find({ relations: { route: true } });
-    const slMap = new Map<string, ShippingLine>();
+    const slMap = new Map<number, ShippingLine>();
+    const slNameMap = new Map<string, ShippingLine>();
     for (const sl of allShippingLines) {
-      slMap.set(sl.name, sl);
+      slMap.set(sl.id, sl);
+      slNameMap.set(sl.name, sl);
     }
     const planDisplayName = (sl: ShippingLine) => {
       return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
@@ -300,7 +311,7 @@ export class SubmissionsService {
       }
 
       for (const [slName, subs] of groupedBySl) {
-        const sl = slMap.get(slName);
+        const sl = slNameMap.get(slName);
         if (!sl) continue;
 
         const driverSubs = subs.filter((s: any) => s.user && s.user.role === 'laixe');
@@ -563,7 +574,7 @@ export class SubmissionsService {
           const planGroups = new Map<string, { sl: any; subs: any[] }>();
           for (const sub of subs) {
             const key = sub.shippingLine;
-            if (!planGroups.has(key)) planGroups.set(key, { sl: slMap.get(key), subs: [] });
+            if (!planGroups.has(key)) planGroups.set(key, { sl: (sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(key)), subs: [] });
             planGroups.get(key)!.subs.push(sub);
           }
 
@@ -733,7 +744,7 @@ export class SubmissionsService {
       d.kv += parseFloat(sub.keoVe) || 0;
       // Accumulate salary per submission
       if (showLuong) {
-        const sl = slMap.get(sub.shippingLine);
+        const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
         const tenTuyen = sub.route || sl?.routeName || '';
         const donGia = routeMoneyMap.get(tenTuyen) || 0;
         const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
@@ -957,7 +968,7 @@ export class SubmissionsService {
       const salaryMap = new Map<string, number>();
       for (const sub of submissions as any[]) {
         const name = sub.user?.fullName || sub.driverName;
-        const sl = slMap.get(sub.shippingLine);
+        const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
         const tenTuyen = sub.route || sl?.routeName || '';
         const donGia = routeMoneyMap.get(tenTuyen) || 0;
         const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
@@ -991,7 +1002,7 @@ export class SubmissionsService {
     }
 
     const filename = role === 'ops'
-      ? `SL_${(filter.shippingLine && slMap.has(filter.shippingLine) ? planDisplayName(slMap.get(filter.shippingLine)!) : filter.shippingLine || 'All').replace(/[/\\?%*:|"<>]/g, '_')}.xlsx`
+      ? `SL_${(filter.shippingLine && slNameMap.has(filter.shippingLine) ? planDisplayName(slNameMap.get(filter.shippingLine)!) : filter.shippingLine || 'All').replace(/[/\\?%*:|"<>]/g, '_')}.xlsx`
       : role === 'hr'
         ? `Tổng hợp lương tháng_${monthStr.replace('-', '_')}.xlsx`
         : `SanLuongXeNewWay_${new Date().toISOString().slice(0, 10)}.xlsx`;

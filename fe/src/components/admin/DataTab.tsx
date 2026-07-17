@@ -69,6 +69,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
     try {
       await api.put(`/admin/submissions/${editSub.id}`, {
         shippingLine: editForm.shippingLine,
+        shippingLineId: editForm.shippingLineId || undefined,
         route: editForm.route || '',
         hang20: editForm.hang20 || '',
         hang40: editForm.hang40 || '',
