@@ -35,6 +35,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
   const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
   const [exportVendorKhac, setExportVendorKhac] = useState('');
   const [exportTenNguoiNhap, setExportTenNguoiNhap] = useState('');
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
 
   const { page, pageSize, totalPages, totalItems, paged: pagedSubmissions, setPage, setPageSize } = usePagination(submissions, 20);
 
@@ -217,6 +218,15 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         )}
       </div>
 
+      {(user?.role === 'admin' || user?.role === 'supper_admin') && submissions.length > 0 && (
+        <div className="flex justify-end mb-3">
+          <button onClick={() => setDeleteAllOpen(true)}
+            className="px-3 py-1.5 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">
+            🗑️ Xóa tất cả dữ liệu
+          </button>
+        </div>
+      )}
+
       {user?.role !== 'hr' && (
       <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl overflow-x-auto">
         {submissions.length === 0 ? (
@@ -332,6 +342,32 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
           <input type="text" value={exportTenNguoiNhap} onChange={e => setExportTenNguoiNhap(e.target.value)} placeholder="Nhập tên người nhập..."
             className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
         </div>
+      </Modal>
+
+      <Modal
+        open={deleteAllOpen}
+        onClose={() => setDeleteAllOpen(false)}
+        title="⚠️ Xác nhận xóa tất cả"
+        footer={
+          <div className="flex gap-2 w-full">
+            <button onClick={() => setDeleteAllOpen(false)}
+              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">
+              Hủy
+            </button>
+            <button onClick={async () => {
+              setDeleteAllOpen(false);
+              try {
+                await api.delete('/admin/submissions');
+                loadSubmissions();
+              } catch {}
+            }}
+              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">
+              🗑️ Xóa tất cả
+            </button>
+          </div>
+        }
+      >
+        <p className="text-sm text-[#64748b]">Bạn có chắc chắn muốn <strong>xóa tất cả</strong> dữ liệu nhập liệu? Hành động này không thể hoàn tác.</p>
       </Modal>
     </div>
   );

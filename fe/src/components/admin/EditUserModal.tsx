@@ -43,6 +43,11 @@ export function EditUserModal({ open, onClose, editUserData, setEditUserData, on
           className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" />
       </div>
       <div className="mb-3">
+        <label className="text-xs font-medium text-[#64748b] mb-1 block">STT</label>
+        <input type="text" value={editUserData?.stt || ''} onChange={e => setEditUserData({ ...editUserData, stt: e.target.value })}
+          className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" />
+      </div>
+      <div className="mb-3">
         <label className="text-xs font-medium text-[#64748b] mb-1 block">SĐT</label>
         <input type="text" value={editUserData?.sdt || ''} onChange={e => setEditUserData({ ...editUserData, sdt: e.target.value })}
           className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" />

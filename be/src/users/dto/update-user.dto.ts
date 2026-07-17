@@ -20,5 +20,9 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
+  stt?: string;
+
+  @IsOptional()
+  @IsString()
   sdt?: string;
 }
