@@ -697,7 +697,6 @@ export class SubmissionsService {
         { header: 'TIP', key: 'tip', width: 10 },
         { header: 'Số lần sửa', key: 'editCount', width: 12 },
         { header: 'Lần sửa cuối', key: 'lastEditedAt', width: 18 },
-        { header: 'Ngày tạo', key: 'createdAt', width: 18 },
         ...(showLuong ? [{ header: 'Lương', key: 'luong', width: 16 }] : []),
       ];
     }
@@ -808,7 +807,6 @@ export class SubmissionsService {
           tip: tip || '',
           editCount: '',
           lastEditedAt: '',
-          createdAt: '',
           ...(showLuong ? { luong: salary ? salary.toLocaleString('vi-VN') : '' } : {}),
         });
         row.eachCell((cell) => {
@@ -861,11 +859,10 @@ export class SubmissionsService {
         veSinhLai: opsSub?.veSinhLai || '',
         keoVe: opsSub?.keoVe || '',
         tip: opsSub?.tip || '',
-        editCount: '',
-        lastEditedAt: '',
-        createdAt: '',
-      });
-      const rowNum = row.number;
+          editCount: '',
+          lastEditedAt: '',
+        });
+        const rowNum = row.number;
       ws.mergeCells(`A${rowNum}:E${rowNum}`);
       const cell = row.getCell(1);
       cell.value = 'SL TỔNG TÀU';

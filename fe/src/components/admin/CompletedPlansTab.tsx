@@ -7,6 +7,9 @@ import { api } from '@/lib/api-client';
 export function CompletedPlansTab() {
   const [completedPlans, setCompletedPlans] = useState<ShippingLine[]>([]);
   const [loading, setLoading] = useState(true);
+  const now = new Date();
+  const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1);
+  const [filterYear, setFilterYear] = useState(now.getFullYear());
 
   const loadCompleted = async () => {
     setLoading(true);
@@ -21,14 +24,6 @@ export function CompletedPlansTab() {
   useEffect(() => {
     loadCompleted();
   }, []);
-
-  const deletePlan = async (id: number, displayName: string) => {
-    if (!confirm(`Xóa kế hoạch "${displayName}"?`)) return;
-    try {
-      await api.delete(`/admin/shipping-lines/${id}`);
-      loadCompleted();
-    } catch {}
-  };
 
   const exportPlan = async (p: ShippingLine) => {
     try {
@@ -57,17 +52,46 @@ export function CompletedPlansTab() {
     return [p.name, p.soChuyen, p.routeName, p.ngay].filter(Boolean).join(' / ');
   };
 
+  // Filter by month/year based on plan date (p.ngay)
+  const filteredPlans = completedPlans.filter(p => {
+    if (!p.ngay) return false;
+    const d = new Date(p.ngay);
+    return d.getMonth() + 1 === filterMonth && d.getFullYear() === filterYear;
+  });
+
   return (
     <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-bold">✅ Kế hoạch đã hoàn thành</h3>
         <button onClick={loadCompleted} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">🔄 Làm mới</button>
       </div>
+
+      <div className="flex gap-2.5 mb-4">
+        <div>
+          <label className="block text-[10px] font-medium text-[#64748b] mb-1">Tháng</label>
+          <select value={filterMonth} onChange={e => setFilterMonth(Number(e.target.value))}
+            className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]">
+            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+              <option key={m} value={m}>Tháng {m}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-[10px] font-medium text-[#64748b] mb-1">Năm</label>
+          <select value={filterYear} onChange={e => setFilterYear(Number(e.target.value))}
+            className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]">
+            {Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i).map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-1.5">
         {loading ? (
-          <div className="text-center w-full py-8 text-[#94a3b8] text-sm">Đang tải...</div>
+          <div className="text-center w-full py-8 text-[#64748b] text-sm">Đang tải...</div>
         ) : (
-          completedPlans.map(p => {
+          filteredPlans.map(p => {
             const display = planDisplayName(p);
             return (
               <div key={p.id} className="flex items-center justify-between gap-2 px-3 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs">
@@ -78,14 +102,12 @@ export function CompletedPlansTab() {
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => exportPlan(p)}
                     className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white cursor-pointer">📥</button>
-                  <button onClick={() => deletePlan(p.id, display)}
-                    className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">✕</button>
                 </div>
               </div>
             );
           })
         )}
-        {!loading && completedPlans.length === 0 && <div className="text-center w-full py-8 text-[#94a3b8] text-sm">Chưa có kế hoạch hoàn thành</div>}
+        {!loading && filteredPlans.length === 0 && <div className="text-center w-full py-8 text-[#64748b] text-sm">Không có kế hoạch hoàn thành trong tháng này</div>}
       </div>
     </div>
   );

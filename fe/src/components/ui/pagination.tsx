@@ -53,7 +53,7 @@ export function Pagination({
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-[rgba(0,0,0,0.06)]">
       {/* Left: summary + page size */}
       <div className="flex items-center gap-3">
-        <span className="text-[11px] text-[#94a3b8]">
+        <span className="text-[11px] text-[#64748b]">
           {from}–{to} / <span className="text-[#64748b] font-medium">{totalItems}</span> bản ghi
         </span>
         {onPageSizeChange && (
@@ -84,7 +84,7 @@ export function Pagination({
 
           {pages.map((p, i) =>
             p === '...' ? (
-              <span key={`ellipsis-${i}`} className="min-w-[30px] h-[30px] flex items-center justify-center text-[#94a3b8] text-xs">
+              <span key={`ellipsis-${i}`} className="min-w-[30px] h-[30px] flex items-center justify-center text-[#64748b] text-xs">
                 …
               </span>
             ) : (

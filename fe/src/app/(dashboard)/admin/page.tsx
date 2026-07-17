@@ -27,7 +27,7 @@ export default function AdminPage() {
   const { toast } = useToast();
 
   const TABS = ALL_TABS(user?.role).filter(t => {
-    if (t.key === 'completed-plans' && user?.role === 'laixe') return false;
+    if (t.key === 'completed-plans' && (user?.role === 'laixe' || user?.role === 'hr')) return false;
     if (t.key === 'routes' && user?.role === 'ops') return false;
     if (t.key === 'shipping-lines' && user?.role === 'hr') return false;
     if (t.key === 'users' && user?.role !== 'admin' && user?.role !== 'supper_admin') return false;
@@ -73,7 +73,7 @@ export default function AdminPage() {
   if (loading) return <LoadingSpinner className="min-h-[60vh]" />;
 
   if (user?.role === 'laixe') {
-    return <div className="text-center py-16 text-[#94a3b8] text-sm">Bạn không có quyền truy cập trang này.</div>;
+    return <div className="text-center py-16 text-[#64748b] text-sm">Bạn không có quyền truy cập trang này.</div>;
   }
 
   return (

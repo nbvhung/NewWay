@@ -130,22 +130,23 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
             const display = planDisplayName(p);
             return (
               <div key={p.id} className="flex items-center justify-between gap-2 px-3 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs">
-                <span className="truncate">{display}{p.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-400">x3</span> : p.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-400">+15%</span> : null}</span>
+                <span className="truncate">{display}{p.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-600">x3</span> : p.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-600">+15%</span> : null}</span>
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => openEdit(p)}
                     className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️</button>
-                  {user?.role === 'ops' ? (
+                  {user?.role === 'ops' || user?.role === 'admin' || user?.role === 'supper_admin' ? (
                     <button onClick={() => completePlan(p.id, display)}
                       className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white cursor-pointer">✅</button>
-                  ) : (
+                  ) : null}
+                  {(user?.role === 'admin' || user?.role === 'supper_admin') ? (
                     <button onClick={() => deletePlan(p.id, display)}
                       className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">✕</button>
-                  )}
+                  ) : null}
                 </div>
               </div>
             );
           })}
-          {allShippingLines.length === 0 && <div className="text-center w-full py-8 text-[#94a3b8] text-sm">Chưa có kế hoạch</div>}
+          {allShippingLines.length === 0 && <div className="text-center w-full py-8 text-[#64748b] text-sm">Chưa có kế hoạch</div>}
         </div>
         <Pagination
           page={page}
@@ -163,12 +164,12 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tên kế hoạch/Tên Tàu <span className="text-red-500">*</span></label>
           <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="vd: Kế hoạch A"
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
         </div>
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Số chuyến</label>
           <input type="text" value={soChuyen} onChange={e => setSoChuyen(e.target.value)} placeholder="vd: CH01"
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
         </div>
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tuyến đường</label>
@@ -183,7 +184,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
                 onClick={() => setRouteName(routeName === r.name ? '' : r.name)}>
                 🛤️ {r.name}
               </label>
-            )) : <span className="text-[10px] text-[#94a3b8]">Chưa có tuyến đường</span>}
+            )) : <span className="text-[10px] text-[#64748b]">Chưa có tuyến đường</span>}
           </div>
         </div>
         <div className="mb-3">
@@ -194,12 +195,12 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
         <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
           <input type="checkbox" checked={tangCuong} onChange={e => setTangCuong(e.target.checked)}
             className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
-          <span className="text-xs font-medium text-[#64748b]">🚢 Tàu Tăng Cường <span className="text-amber-400 font-bold">+15%</span></span>
+          <span className="text-xs font-medium text-[#64748b]">🚢 Tàu Tăng Cường <span className="text-amber-600 font-bold">+15%</span></span>
         </label>
         <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
           <input type="checkbox" checked={leTet} onChange={e => setLeTet(e.target.checked)}
             className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
-          <span className="text-xs font-medium text-[#64748b]">🎉 Tàu Lễ, Tết <span className="text-red-400 font-bold">x3</span></span>
+          <span className="text-xs font-medium text-[#64748b]">🎉 Tàu Lễ, Tết <span className="text-red-600 font-bold">x3</span></span>
         </label>
         <button onClick={addPlan}
           className="w-full py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] cursor-pointer">
@@ -223,7 +224,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tên kế hoạch/Tên Tàu <span className="text-red-500">*</span></label>
           <input type="text" value={editName} onChange={e => setEditName(e.target.value)}
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#94a3b8]" />
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
         </div>
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Số chuyến</label>
@@ -243,7 +244,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
                 onClick={() => setEditRouteName(editRouteName === r.name ? '' : r.name)}>
                 🛤️ {r.name}
               </label>
-            )) : <span className="text-[10px] text-[#94a3b8]">Chưa có tuyến đường</span>}
+            )) : <span className="text-[10px] text-[#64748b]">Chưa có tuyến đường</span>}
           </div>
         </div>
         <div className="mb-3">
@@ -254,12 +255,12 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
         <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
           <input type="checkbox" checked={editTangCuong} onChange={e => setEditTangCuong(e.target.checked)}
             className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
-          <span className="text-xs font-medium text-[#64748b]">🚢 Tàu Tăng Cường <span className="text-amber-400 font-bold">+15%</span></span>
+          <span className="text-xs font-medium text-[#64748b]">🚢 Tàu Tăng Cường <span className="text-amber-600 font-bold">+15%</span></span>
         </label>
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input type="checkbox" checked={editLeTet} onChange={e => setEditLeTet(e.target.checked)}
             className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
-          <span className="text-xs font-medium text-[#64748b]">🎉 Tàu Lễ, Tết <span className="text-red-400 font-bold">x3</span></span>
+          <span className="text-xs font-medium text-[#64748b]">🎉 Tàu Lễ, Tết <span className="text-red-600 font-bold">x3</span></span>
         </label>
       </Modal>
 

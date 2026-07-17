@@ -76,7 +76,7 @@ export default function LoginPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Nhập tên đăng nhập..."
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none transition-all focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#94a3b8]"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none transition-all focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]"
               required
             />
           </div>
@@ -90,7 +90,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Nhập mật khẩu..."
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none transition-all focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#94a3b8]"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none transition-all focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]"
               required
             />
           </div>
