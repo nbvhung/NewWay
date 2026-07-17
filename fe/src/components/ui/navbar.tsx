@@ -46,6 +46,7 @@ export function Navbar() {
           </Link>
 
           <div className="hidden md:flex items-center gap-1">
+            {user.role !== 'hr' && (
             <Link
               href="/form"
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
@@ -56,6 +57,7 @@ export function Navbar() {
             >
               📝 Nhập liệu
             </Link>
+            )}
             {user.role !== 'admin' && user.role !== 'hr' && (
             <Link
               href="/my-data"
@@ -115,9 +117,11 @@ export function Navbar() {
 
       {menuOpen && (
         <div className="md:hidden border-t border-[rgba(0,0,0,0.08)] bg-[rgba(241,245,249,0.98)] px-4 pb-4 pt-2 flex flex-col gap-1">
+          {user.role !== 'hr' && (
           <Link href="/form" className="px-3 py-2 rounded-lg text-sm" onClick={() => setMenuOpen(false)}>
             📝 Nhập liệu
           </Link>
+          )}
           {user.role !== 'admin' && user.role !== 'hr' && (
           <Link href="/my-data" className="px-3 py-2 rounded-lg text-sm" onClick={() => setMenuOpen(false)}>
             📊 Sản lượng của tôi
