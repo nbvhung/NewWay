@@ -36,6 +36,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
   const [exportVendorKhac, setExportVendorKhac] = useState('');
   const [exportTenNguoiNhap, setExportTenNguoiNhap] = useState('');
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
 
   const { page, pageSize, totalPages, totalItems, paged: pagedSubmissions, setPage, setPageSize } = usePagination(submissions, 20);
 
@@ -346,16 +347,18 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
 
       <Modal
         open={deleteAllOpen}
-        onClose={() => setDeleteAllOpen(false)}
+        onClose={() => { setDeleteAllOpen(false); setDeletePassword(''); }}
         title="⚠️ Xác nhận xóa tất cả"
         footer={
           <div className="flex gap-2 w-full">
-            <button onClick={() => setDeleteAllOpen(false)}
+            <button onClick={() => { setDeleteAllOpen(false); setDeletePassword(''); }}
               className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">
               Hủy
             </button>
             <button onClick={async () => {
+              if (deletePassword !== '091281') return;
               setDeleteAllOpen(false);
+              setDeletePassword('');
               try {
                 await api.delete('/admin/submissions');
                 loadSubmissions();
@@ -367,7 +370,12 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
           </div>
         }
       >
-        <p className="text-sm text-[#64748b]">Bạn có chắc chắn muốn <strong>xóa tất cả</strong> dữ liệu nhập liệu? Hành động này không thể hoàn tác.</p>
+        <p className="text-sm text-[#64748b] mb-4">Bạn có chắc chắn muốn <strong>xóa tất cả</strong> dữ liệu nhập liệu? Hành động này không thể hoàn tác.</p>
+        <div>
+          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Nhập mật khẩu xác nhận</label>
+          <input type="password" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} placeholder="Nhập mật khẩu..."
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+        </div>
       </Modal>
     </div>
   );
