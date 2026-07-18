@@ -178,22 +178,22 @@ export default function FormPage() {
                 className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
             </div>
             <div className="mb-4 sm:mb-0">
-              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20FR</label>
+              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
               <input type="number" min="0" value={vo20fr} onChange={(e) => setVo20fr(e.target.value)} placeholder="0"
                 className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
             </div>
             <div className="mb-4 sm:mb-0">
-              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40FR</label>
+              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
               <input type="number" min="0" value={vo40fr} onChange={(e) => setVo40fr(e.target.value)} placeholder="0"
                 className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Vệ sinh lại</label>
+              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Vệ sinh lại <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
               <input type="number" min="0" value={veSinhLai} onChange={(e) => setVeSinhLai(e.target.value)} placeholder="0"
                 className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Kéo về</label>
+              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Kéo về <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
               <input type="number" min="0" value={keoVe} onChange={(e) => setKeoVe(e.target.value)} placeholder="0"
                 className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
             </div>

@@ -218,7 +218,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         )}
       </div>
 
-      {(user?.role === 'admin' || user?.role === 'supper_admin') && submissions.length > 0 && (
+      {user?.role === 'supper_admin' && submissions.length > 0 && (
         <div className="flex justify-end mb-3">
           <button onClick={() => setDeleteAllOpen(true)}
             className="px-3 py-1.5 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">
