@@ -73,16 +73,16 @@ export function EditSubmissionModal({ open, onClose, editForm, setEditForm, allS
         <div><label className="text-[10px] font-medium text-[#64748b] mb-1 block">Vỏ 40</label>
           <input type="number" value={editForm.vo40 || ''} onChange={e => setEditForm({ ...editForm, vo40: e.target.value })}
             className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" /></div>
-        <div><label className="text-[10px] font-medium text-[#64748b] mb-1 block">Vỏ 20FR</label>
+        <div><label className="text-[10px] font-medium text-[#64748b] mb-1 block">Vỏ 20FR <span className="text-[9px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
           <input type="number" value={editForm.vo20fr || ''} onChange={e => setEditForm({ ...editForm, vo20fr: e.target.value })}
             className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" /></div>
-        <div><label className="text-[10px] font-medium text-[#64748b] mb-1 block">Vỏ 40FR</label>
+        <div><label className="text-[10px] font-medium text-[#64748b] mb-1 block">Vỏ 40FR <span className="text-[9px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
           <input type="number" value={editForm.vo40fr || ''} onChange={e => setEditForm({ ...editForm, vo40fr: e.target.value })}
             className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" /></div>
-        <div><label className="text-[10px] font-medium text-[#64748b] mb-1 block">Vệ sinh lại</label>
+        <div><label className="text-[10px] font-medium text-[#64748b] mb-1 block">Vệ sinh lại <span className="text-[9px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
           <input type="number" min="0" value={editForm.veSinhLai || ''} onChange={e => setEditForm({ ...editForm, veSinhLai: e.target.value })}
             className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" /></div>
-        <div><label className="text-[10px] font-medium text-[#64748b] mb-1 block">Kéo về</label>
+        <div><label className="text-[10px] font-medium text-[#64748b] mb-1 block">Kéo về <span className="text-[9px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
           <input type="number" min="0" value={editForm.keoVe || ''} onChange={e => setEditForm({ ...editForm, keoVe: e.target.value })}
             className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" /></div>
         <div><label className="text-[10px] font-medium text-[#64748b] mb-1 block">TIP (x 1.000đ)</label>

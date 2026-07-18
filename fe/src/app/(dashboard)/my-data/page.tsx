@@ -376,22 +376,22 @@ export default function MyDataPage() {
               className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Tổng số vỏ 20FR</label>
+            <label className="block text-xs font-medium text-[#64748b] mb-1">Tổng số vỏ 20FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
             <input type="number" min="0" value={editForm.vo20fr} onChange={(e) => updateField('vo20fr', e.target.value)} placeholder="0"
               className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Tổng số vỏ 40FR</label>
+            <label className="block text-xs font-medium text-[#64748b] mb-1">Tổng số vỏ 40FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
             <input type="number" min="0" value={editForm.vo40fr} onChange={(e) => updateField('vo40fr', e.target.value)} placeholder="0"
               className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Vệ sinh lại</label>
+            <label className="block text-xs font-medium text-[#64748b] mb-1">Vệ sinh lại <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
             <input type="number" min="0" value={editForm.veSinhLai} onChange={(e) => updateField('veSinhLai', e.target.value)} placeholder="0"
               className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Kéo về</label>
+            <label className="block text-xs font-medium text-[#64748b] mb-1">Kéo về <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
             <input type="number" min="0" value={editForm.keoVe} onChange={(e) => updateField('keoVe', e.target.value)} placeholder="0"
               className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
