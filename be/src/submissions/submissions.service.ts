@@ -578,11 +578,14 @@ export class SubmissionsService {
         if (subs.length === 0) {
           wsDriver.addRow({ stt: '', plan: 'Không có dữ liệu', route: '', donGia: '', hang20: '', hang40: '', vo20: '', vo40: '', vo20fr: '', vo40fr: '', veSinhLai: '', keoVe: '', tip: '', luong: '', tangCuong: '', leTet: '' });
         } else {
-          // Group by plan name, sum quantities
+          // Group by plan, sum quantities
           const planGroups = new Map<string, { sl: any; subs: any[] }>();
           for (const sub of subs) {
-            const key = sub.shippingLine;
-            if (!planGroups.has(key)) planGroups.set(key, { sl: (sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(key)), subs: [] });
+            const key = sub.shippingLineId ? `id:${sub.shippingLineId}` : sub.shippingLine;
+            if (!planGroups.has(key)) {
+              const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
+              planGroups.set(key, { sl, subs: [] });
+            }
             planGroups.get(key)!.subs.push(sub);
           }
 
