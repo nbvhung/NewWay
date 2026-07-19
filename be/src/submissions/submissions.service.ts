@@ -581,9 +581,16 @@ export class SubmissionsService {
           // Group by plan, sum quantities
           const planGroups = new Map<string, { sl: any; subs: any[] }>();
           for (const sub of subs) {
-            const key = sub.shippingLineId ? `id:${sub.shippingLineId}` : sub.shippingLine;
+            let key: string;
+            let sl: any;
+            if (sub.shippingLineId) {
+              key = `id:${sub.shippingLineId}`;
+              sl = slMap.get(sub.shippingLineId);
+            } else {
+              sl = slNameMap.get(sub.shippingLine);
+              key = sl ? `id:${sl.id}` : `${sub.shippingLine}||${sub.route || ''}`;
+            }
             if (!planGroups.has(key)) {
-              const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
               planGroups.set(key, { sl, subs: [] });
             }
             planGroups.get(key)!.subs.push(sub);
