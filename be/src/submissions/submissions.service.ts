@@ -318,29 +318,30 @@ export class SubmissionsService {
     if (role === 'ops') {
       const groupedBySl = new Map<string, any[]>();
       for (const sub of submissions as any[]) {
-        let key: string;
-        let sl: any;
-        if (sub.shippingLineId) {
-          key = `id:${sub.shippingLineId}`;
-          sl = slMap.get(sub.shippingLineId);
-        } else {
-          sl = slNameMap.get(sub.shippingLine);
-          key = sl ? `id:${sl.id}` : `${sub.shippingLine}||${sub.route || ''}`;
-        }
+        const key = sub.shippingLineId
+          ? `id:${sub.shippingLineId}`
+          : `${sub.shippingLine}||${sub.route || ''}`;
         if (!groupedBySl.has(key)) groupedBySl.set(key, []);
         groupedBySl.get(key)!.push(sub);
       }
 
       for (const [key, subs] of groupedBySl) {
         const slId = key.startsWith('id:') ? parseInt(key.slice(3)) : undefined;
-        const sl = slId ? slMap.get(slId) : slNameMap.get(key.split('||')[0]);
-        if (!sl) continue;
+        const sl = slId ? slMap.get(slId) : null;
+        const slSafe: any = sl || {
+          name: key.split('||')[0],
+          routeName: key.split('||')[1] || '',
+          ngay: '',
+          soChuyen: '',
+          tangCuong: false,
+          leTet: false,
+        };
 
         const driverSubs = subs.filter((s: any) => s.user && s.user.role === 'laixe');
         const opsSub = subs.find((s: any) => s.userId === user.id) || null;
 
         // Build sheet name from plan info; replace chars not allowed by Excel
-        const sheetName = [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' - ').substring(0, 31);
+        const sheetName = [slSafe.name, slSafe.soChuyen, slSafe.routeName, slSafe.ngay].filter(Boolean).join(' - ').substring(0, 31);
         const ws2 = workbook.addWorksheet(sheetName);
 
         const titleFont: Partial<ExcelJS.Font> = { bold: true, size: 11 };
@@ -348,10 +349,10 @@ export class SubmissionsService {
         // Row 1: XUẤT TÀU + Ngày
         ws2.mergeCells(1, 1, 1, 6);
         const r1 = ws2.getRow(1);
-        r1.getCell(1).value = `XUẤT TÀU: ${planDisplayName(sl)}`;
+        r1.getCell(1).value = `XUẤT TÀU: ${planDisplayName(slSafe)}`;
         r1.getCell(1).font = titleFont;
         ws2.mergeCells(1, 9, 1, 12);
-        r1.getCell(9).value = `Ngày : ${sl.ngay || ''}`;
+        r1.getCell(9).value = `Ngày : ${slSafe.ngay || ''}`;
         r1.getCell(9).font = titleFont;
         r1.getCell(9).alignment = { horizontal: 'right', vertical: 'middle' };
         r1.height = 25;
@@ -359,14 +360,14 @@ export class SubmissionsService {
         // Row 2: TUYẾN ĐƯỜNG + Tàu tăng cường
         ws2.mergeCells(2, 1, 2, 6);
         const r2 = ws2.getRow(2);
-        r2.getCell(1).value = `TUYẾN ĐƯỜNG: ${sl.routeName || ''}`;
+        r2.getCell(1).value = `TUYẾN ĐƯỜNG: ${slSafe.routeName || ''}`;
         r2.getCell(1).font = titleFont;
         ws2.mergeCells(2, 9, 2, 10);
         r2.getCell(9).value = 'Tàu tăng cường';
         r2.getCell(9).font = titleFont;
         r2.getCell(9).alignment = { horizontal: 'right', vertical: 'middle' };
         ws2.mergeCells(2, 11, 2, 12);
-        r2.getCell(11).value = sl.tangCuong ? 'x' : '';
+        r2.getCell(11).value = slSafe.tangCuong ? 'x' : '';
         r2.getCell(11).font = { ...titleFont, color: { argb: 'FFFF0000' } };
         r2.getCell(11).alignment = { horizontal: 'center', vertical: 'middle' };
         r2.height = 22;
@@ -381,7 +382,7 @@ export class SubmissionsService {
         r3.getCell(9).font = titleFont;
         r3.getCell(9).alignment = { horizontal: 'right', vertical: 'middle' };
         ws2.mergeCells(3, 11, 3, 12);
-        r3.getCell(11).value = sl.leTet ? 'x' : '';
+        r3.getCell(11).value = slSafe.leTet ? 'x' : '';
         r3.getCell(11).font = { ...titleFont, color: { argb: 'FFFF0000' } };
         r3.getCell(11).alignment = { horizontal: 'center', vertical: 'middle' };
         r3.height = 22;
@@ -601,8 +602,8 @@ export class SubmissionsService {
               key = `id:${sub.shippingLineId}`;
               sl = slMap.get(sub.shippingLineId);
             } else {
-              sl = slNameMap.get(sub.shippingLine);
-              key = sl ? `id:${sl.id}` : `${sub.shippingLine}||${sub.route || ''}`;
+              key = `${sub.shippingLine}||${sub.route || ''}`;
+              sl = null;
             }
             if (!planGroups.has(key)) {
               planGroups.set(key, { sl, subs: [] });
@@ -640,7 +641,7 @@ export class SubmissionsService {
             rowIdx++;
             const row = wsDriver.addRow({
               stt: driver.stt || '',
-              plan: sl ? planDisplayName(sl) : planName,
+              plan: sl ? planDisplayName(sl) : planName.split('||')[0] + (planName.includes('||') ? ` - ${planName.split('||')[1] || ''}` : ''),
               route: tenTuyen,
               donGia: donGia.toLocaleString('vi-VN'),
               hang20: h20 || '',
