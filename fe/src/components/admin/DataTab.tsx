@@ -44,7 +44,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
     try {
       const params: Record<string, string | number | undefined> = {};
       if (filterUser) params.user_id = filterUser;
-      if (filterSl) params.shippingLine = filterSl;
+      if (filterSl) params.shippingLineId = filterSl;
       if (filterFrom) params.from_date = filterFrom;
       if (filterTo) params.to_date = filterTo;
       const res = await api.get<any>('/admin/submissions', params);
@@ -112,7 +112,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         params.append('to_date', toDate);
       }
       if (filterUser) params.append('user_id', filterUser);
-      if (filterSl) params.append('shippingLine', filterSl);
+      if (filterSl) params.append('shippingLineId', filterSl);
       if (filterFrom) params.append('from_date', filterFrom);
       if (filterTo) params.append('to_date', filterTo);
       if (vendorKhac) params.append('vendorKhac', vendorKhac);
@@ -194,7 +194,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
               <select value={filterSl} onChange={e => { setFilterSl(e.target.value); setPage(1); }}
                 className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]">
                 <option value="">Tất cả</option>
-                {(user?.role === 'ops' ? allShippingLines.filter(p => !p.completed) : allShippingLines).map(sl => <option key={sl.id} value={sl.name}>{[sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ')}</option>)}
+                {(user?.role === 'ops' ? allShippingLines.filter(p => !p.completed) : allShippingLines).map(sl => <option key={sl.id} value={sl.id}>{[sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ')}</option>)}
               </select>
             </div>
             <div>
