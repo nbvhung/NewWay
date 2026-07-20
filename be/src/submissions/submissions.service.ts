@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as ExcelJS from 'exceljs';
@@ -27,6 +27,14 @@ export class SubmissionsService {
   ) {}
 
   async create(dto: CreateSubmissionDto, userId: number, fullName: string) {
+    const existing = await this.submissionsRepository.findOne({
+      where: dto.shippingLineId
+        ? { userId, shippingLineId: dto.shippingLineId }
+        : { userId, shippingLine: dto.shippingLine },
+    });
+    if (existing) {
+      throw new BadRequestException('Bạn đã nhập liệu cho kế hoạch này rồi. Chỉ được phép sửa, không được tạo thêm.');
+    }
     const submission = new Submission();
     submission.userId = userId;
     submission.shippingLine = dto.shippingLine;
