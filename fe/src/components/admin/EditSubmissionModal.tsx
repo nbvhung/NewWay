@@ -20,9 +20,7 @@ export function EditSubmissionModal({ open, onClose, editForm, setEditForm, allS
   const planDisplayName = (sl: ShippingLine) => {
     return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
   };
-  const selectedPlanId = editForm.shippingLineId
-    ? editForm.shippingLineId
-    : (allShippingLines.find(sl => sl.name === editForm.shippingLine)?.id ?? null);
+  const selectedPlanId = editForm.shippingLineId ?? null;
   return (
     <Modal
       open={open}

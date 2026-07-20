@@ -20,7 +20,12 @@ interface Props {
 
 export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShippingLines }: Props) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const slDisplayMap = new Map(allShippingLines.map(sl => [sl.name, [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ')]));
+  const slDisplayMapById = new Map(allShippingLines.map(sl => [sl.id, [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ')]));
+  const slDisplayMapByName = new Map(allShippingLines.map(sl => [sl.name, [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ')]));
+  const getSlDisplay = (s: Submission) => {
+    if (s.shippingLineId) return slDisplayMapById.get(s.shippingLineId) || s.shippingLine;
+    return slDisplayMapByName.get(s.shippingLine) || s.shippingLine;
+  };
   const [filterUser, setFilterUser] = useState('');
   const [filterSl, setFilterSl] = useState('');
   const [filterFrom, setFilterFrom] = useState('');
@@ -265,7 +270,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
                       )}
                     </td>
                     <td className="px-3 py-2.5 font-medium">{s.driverName}</td>
-                    <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(16,185,129,0.2)] text-emerald-700 max-w-[160px] inline-block truncate">{slDisplayMap.get(s.shippingLine) || s.shippingLine}</span></td>
+                    <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(16,185,129,0.2)] text-emerald-700 max-w-[160px] inline-block truncate">{getSlDisplay(s)}</span></td>
                     <td className="px-3 py-2.5">{s.hang20 || '—'}</td>
                     <td className="px-3 py-2.5">{s.hang40 || '—'}</td>
                     <td className="px-3 py-2.5">{s.vo20 || '—'}</td>

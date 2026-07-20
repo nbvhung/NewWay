@@ -1043,7 +1043,7 @@ export class SubmissionsService {
     }
 
     const filename = role === 'ops'
-      ? `SL_${(filter.shippingLine && slNameMap.has(filter.shippingLine) ? planDisplayName(slNameMap.get(filter.shippingLine)!) : filter.shippingLine || 'All').replace(/[/\\?%*:|"<>]/g, '_')}.xlsx`
+      ? `SL_${(filter.shippingLineId && slMap.has(filter.shippingLineId) ? planDisplayName(slMap.get(filter.shippingLineId)!) : filter.shippingLine || 'All').replace(/[/\\?%*:|"<>]/g, '_')}.xlsx`
       : role === 'hr'
         ? `Tổng hợp lương tháng_${monthStr.replace('-', '_')}.xlsx`
         : `SanLuongXeNewWay_${new Date().toISOString().slice(0, 10)}.xlsx`;

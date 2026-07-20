@@ -13,6 +13,7 @@ import { fmtDate, FIELD_LABELS, formatMoney } from '@/lib/utils';
 
 interface EditFormData {
   shippingLine: string;
+  shippingLineId?: number;
   route: string;
   hang20: string;
   hang40: string;
@@ -35,7 +36,6 @@ export default function MyDataPage() {
   const [loading, setLoading] = useState(true);
   const [editModal, setEditModal] = useState(false);
   const [editSub, setEditSub] = useState<Submission | null>(null);
-  const [editPlanId, setEditPlanId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<EditFormData>({
     shippingLine: '', route: '', hang20: '', hang40: '', vo20: '', vo40: '',
     vo20fr: '', vo40fr: '', veSinhLai: '', keoVe: '', tip: '',
@@ -97,10 +97,10 @@ export default function MyDataPage() {
 
   const openEdit = (sub: Submission) => {
     setEditSub(sub);
-    const matchedPlan = shippingLines.find(sl => sl.name === sub.shippingLine);
-    setEditPlanId(matchedPlan?.id ?? null);
+    const matchedPlanId = sub.shippingLineId || shippingLines.find(sl => sl.name === sub.shippingLine)?.id;
     setEditForm({
       shippingLine: sub.shippingLine,
+      shippingLineId: matchedPlanId,
       route: sub.route,
       hang20: sub.hang20 || '',
       hang40: sub.hang40 || '',
@@ -117,13 +117,13 @@ export default function MyDataPage() {
 
   const saveEdit = async () => {
     if (!editSub) return;
-    if (!editForm.shippingLine) {
+    if (!editForm.shippingLineId && !editForm.shippingLine) {
       toast('Vui lòng chọn kế hoạch', 'error');
       return;
     }
     setSaving(true);
     try {
-      await api.put(`/submissions/${editSub.id}`, { ...editForm, shippingLineId: editPlanId || undefined });
+      await api.put(`/submissions/${editSub.id}`, editForm);
       toast('Đã lưu thay đổi thành công!', 'success');
       setEditModal(false);
       loadData();
@@ -331,20 +331,18 @@ export default function MyDataPage() {
               <label
                 key={sl.id}
                 className={`flex items-center gap-2.5 px-3 py-2 bg-[#ffffff] border rounded-lg cursor-pointer transition-all text-xs ${
-                  editPlanId === sl.id
+                  editForm.shippingLineId === sl.id
                     ? 'border-[#1a56db] bg-[rgba(26,86,219,0.12)]'
                     : 'border-[rgba(0,0,0,0.08)]'
                 }`}
                 onClick={() => {
-                  setEditPlanId(sl.id);
-                  updateField('shippingLine', sl.name);
-                  updateField('route', sl.routeName || '');
+                  setEditForm(prev => ({ ...prev, shippingLine: sl.name, shippingLineId: sl.id, route: sl.routeName || '' }));
                 }}
               >
                 <div className={`w-4 h-4 border-2 rounded-full flex items-center justify-center shrink-0 ${
-                  editPlanId === sl.id ? 'border-[#1a56db]' : 'border-[rgba(0,0,0,0.08)]'
+                  editForm.shippingLineId === sl.id ? 'border-[#1a56db]' : 'border-[rgba(0,0,0,0.08)]'
                 }`}>
-                  {editPlanId === sl.id && <div className="w-1.5 h-1.5 rounded-full bg-[#1a56db]" />}
+                  {editForm.shippingLineId === sl.id && <div className="w-1.5 h-1.5 rounded-full bg-[#1a56db]" />}
                 </div>
                 <span>{planDisplayName(sl)}{sl.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-400">x3</span> : sl.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-700">+15%</span> : null}</span>
               </label>
