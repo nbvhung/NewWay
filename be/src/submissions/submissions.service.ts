@@ -209,6 +209,7 @@ export class SubmissionsService {
   async findAll(filter: {
     userId?: number;
     shippingLine?: string;
+    shippingLineId?: number;
     fromDate?: string;
     toDate?: string;
   }, role?: string): Promise<any[]> {
@@ -223,6 +224,9 @@ export class SubmissionsService {
 
     if (filter.userId) {
       query.andWhere('s.userId = :userId', { userId: filter.userId });
+    }
+    if (filter.shippingLineId) {
+      query.andWhere('s.shippingLineId = :shippingLineId', { shippingLineId: filter.shippingLineId });
     }
     if (filter.shippingLine) {
       query.andWhere('s.shippingLine = :shippingLine', { shippingLine: filter.shippingLine });
@@ -265,6 +269,7 @@ export class SubmissionsService {
   async exportExcel(res: Response, user: any, filter: {
     userId?: number;
     shippingLine?: string;
+    shippingLineId?: number;
     fromDate?: string;
     toDate?: string;
     vendorKhac?: string;

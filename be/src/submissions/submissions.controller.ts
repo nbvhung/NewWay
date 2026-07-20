@@ -104,6 +104,7 @@ export class SubmissionsController {
     @CurrentUser() user: any,
     @Query('user_id') userId?: string,
     @Query('shippingLine') shippingLine?: string,
+    @Query('shippingLineId') shippingLineId?: string,
     @Query('from_date') fromDate?: string,
     @Query('to_date') toDate?: string,
     @Query('vendorKhac') vendorKhac?: string,
@@ -112,6 +113,7 @@ export class SubmissionsController {
     await this.submissionsService.exportExcel(res, user, {
       userId: userId ? +userId : undefined,
       shippingLine,
+      shippingLineId: shippingLineId ? +shippingLineId : undefined,
       fromDate,
       toDate,
       vendorKhac,

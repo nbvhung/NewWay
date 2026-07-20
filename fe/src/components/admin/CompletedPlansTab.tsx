@@ -28,7 +28,7 @@ export function CompletedPlansTab() {
   const exportPlan = async (p: ShippingLine) => {
     try {
       const params = new URLSearchParams();
-      params.append('shippingLine', p.name);
+      params.append('shippingLineId', String(p.id));
       if (p.vendorKhac) params.append('vendorKhac', p.vendorKhac);
       if (p.tenNguoiNhap) params.append('tenNguoiNhap', p.tenNguoiNhap);
       const res = await fetch(`/api/admin/export?${params}`, {
