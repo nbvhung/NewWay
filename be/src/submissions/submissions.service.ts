@@ -313,13 +313,22 @@ export class SubmissionsService {
     if (role === 'ops') {
       const groupedBySl = new Map<string, any[]>();
       for (const sub of submissions as any[]) {
-        const key = sub.shippingLine;
+        let key: string;
+        let sl: any;
+        if (sub.shippingLineId) {
+          key = `id:${sub.shippingLineId}`;
+          sl = slMap.get(sub.shippingLineId);
+        } else {
+          sl = slNameMap.get(sub.shippingLine);
+          key = sl ? `id:${sl.id}` : `${sub.shippingLine}||${sub.route || ''}`;
+        }
         if (!groupedBySl.has(key)) groupedBySl.set(key, []);
         groupedBySl.get(key)!.push(sub);
       }
 
-      for (const [slName, subs] of groupedBySl) {
-        const sl = slNameMap.get(slName);
+      for (const [key, subs] of groupedBySl) {
+        const slId = key.startsWith('id:') ? parseInt(key.slice(3)) : undefined;
+        const sl = slId ? slMap.get(slId) : slNameMap.get(key.split('||')[0]);
         if (!sl) continue;
 
         const driverSubs = subs.filter((s: any) => s.user && s.user.role === 'laixe');
