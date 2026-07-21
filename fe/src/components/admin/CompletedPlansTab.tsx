@@ -29,6 +29,7 @@ export function CompletedPlansTab() {
     try {
       const params = new URLSearchParams();
       params.append('shippingLineId', String(p.id));
+      params.append('done', 'true');
       if (p.vendorKhac) params.append('vendorKhac', p.vendorKhac);
       if (p.tenNguoiNhap) params.append('tenNguoiNhap', p.tenNguoiNhap);
       const res = await fetch(`/api/admin/export?${params}`, {

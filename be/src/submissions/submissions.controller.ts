@@ -68,6 +68,7 @@ export class SubmissionsController {
       shippingLineId: shippingLineId ? +shippingLineId : undefined,
       fromDate,
       toDate,
+      excludeCompleted: !['admin', 'supper_admin'].includes(user.role),
     }, user.role);
     return { data: result };
   }
@@ -111,6 +112,7 @@ export class SubmissionsController {
     @Query('to_date') toDate?: string,
     @Query('vendorKhac') vendorKhac?: string,
     @Query('tenNguoiNhap') tenNguoiNhap?: string,
+    @Query('done') done?: string,
   ) {
     await this.submissionsService.exportExcel(res, user, {
       userId: userId ? +userId : undefined,
@@ -120,6 +122,7 @@ export class SubmissionsController {
       toDate,
       vendorKhac,
       tenNguoiNhap,
+      done: done === 'true',
     });
   }
 }
