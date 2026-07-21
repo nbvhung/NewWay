@@ -63,7 +63,6 @@ cd fe && npm run dev
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:4000/api
 - **Tài khoản mặc định**: `admin` / `admin123`
-- **Supper admin**: `supperadmin` / `supper123`
 
 ## Triển khai sản xuất (Production)
 
