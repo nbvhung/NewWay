@@ -66,6 +66,7 @@ export class SubmissionsController {
       shippingLine,
       fromDate,
       toDate,
+      excludeCompleted: !['admin', 'supper_admin'].includes(user.role),
     }, user.role);
     return { data: result };
   }

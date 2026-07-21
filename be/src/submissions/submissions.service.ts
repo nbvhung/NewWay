@@ -69,9 +69,11 @@ export class SubmissionsService {
     const allShippingLines = await this.shippingLinesRepository.find();
     const slMap = new Map<number, ShippingLine>();
     const slNameMap = new Map<string, ShippingLine>();
+    const completedSlIds = new Set<number>();
     for (const sl of allShippingLines) {
       slMap.set(sl.id, sl);
       slNameMap.set(sl.name, sl);
+      if (sl.completed) completedSlIds.add(sl.id);
     }
     const planDisplayName = (sl: ShippingLine) => {
       return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
@@ -79,11 +81,12 @@ export class SubmissionsService {
 
     const result: any[] = [];
     for (const sub of submissions) {
+      const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
+      if (sl?.completed) continue;
       const history = await this.editHistoryRepository.find({
         where: { submissionId: sub.id },
         order: { editedAt: 'DESC' },
       });
-      const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
       const tenTuyen = sub.route || sl?.routeName || '';
       const donGia = routeMoneyMap.get(tenTuyen) || 0;
       const h20 = parseFloat(sub.hang20) || 0;
@@ -230,6 +233,7 @@ export class SubmissionsService {
     shippingLineId?: number;
     fromDate?: string;
     toDate?: string;
+    excludeCompleted?: boolean;
   }, role?: string): Promise<any[]> {
     const query = this.submissionsRepository
       .createQueryBuilder('s')
@@ -256,7 +260,19 @@ export class SubmissionsService {
       query.andWhere('DATE(s.createdAt) <= :toDate', { toDate: filter.toDate });
     }
 
-    const submissions = await query.getMany();
+    let submissions = await query.getMany();
+
+    // Filter out submissions for completed plans (web UI only)
+    if (filter.excludeCompleted) {
+      const allShippingLines = await this.shippingLinesRepository.find();
+      const completedIds = new Set(allShippingLines.filter(sl => sl.completed).map(sl => sl.id));
+      const completedNames = new Set(allShippingLines.filter(sl => sl.completed).map(sl => sl.name));
+      submissions = submissions.filter(s => {
+        if (s.shippingLineId) return !completedIds.has(s.shippingLineId);
+        return !completedNames.has(s.shippingLine);
+      });
+    }
+
     const result: any[] = [];
     for (const sub of submissions) {
       const history = await this.editHistoryRepository.find({
