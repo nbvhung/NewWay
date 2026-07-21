@@ -325,7 +325,12 @@ export default function MyDataPage() {
         }
       >
         <div className="mb-4">
-          <label className="block text-xs font-medium text-[#64748b] mb-1.5">Kế hoạch <span className="text-red-500">*</span></label>
+          <label className="block text-xs font-medium text-[#64748b] mb-1.5">Kế hoạch</label>
+          {user?.role === 'laixe' ? (
+            <div className="px-3 py-2 bg-[rgba(148,163,184,0.1)] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#64748b]">
+              {editForm.route ? `${editForm.shippingLine} - ${editForm.route}` : editForm.shippingLine}
+            </div>
+          ) : (
           <div className="flex flex-col gap-1.5 max-h-[180px] overflow-y-auto">
             {shippingLines.map((sl) => (
               <label
@@ -350,6 +355,7 @@ export default function MyDataPage() {
               </label>
             ))}
           </div>
+          )}
         </div>
 
         <div className="h-px bg-[rgba(0,0,0,0.08)] my-4" />
