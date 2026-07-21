@@ -123,6 +123,16 @@ export class SubmissionsService {
       throw new ForbiddenException('Bạn không có quyền sửa bản ghi này');
     }
 
+    // Prevent editing if the plan is completed (admin/supper_admin bypass)
+    if (!['admin', 'supper_admin'].includes(role)) {
+      const plan = submission.shippingLineId
+        ? await this.shippingLinesRepository.findOne({ where: { id: submission.shippingLineId } })
+        : null;
+      if (plan?.completed) {
+        throw new ForbiddenException('Kế hoạch đã hoàn thành, không được phép sửa');
+      }
+    }
+
     const changes: Record<string, { old: string; new: string }> = {};
     const fields = ['shippingLine', 'route', 'hang20', 'hang40', 'vo20', 'vo40', 'vo20fr', 'vo40fr', 'veSinhLai', 'tip', 'keoVe'];
 
@@ -282,8 +292,9 @@ export class SubmissionsService {
     toDate?: string;
     vendorKhac?: string;
     tenNguoiNhap?: string;
+    done?: boolean;
   }) {
-    const role = user.role;
+    const role = filter.done ? 'ops' : user.role;
     const showLuong = role !== 'ops';
     const submissions = await this.findAll(filter, role);
 
@@ -1047,11 +1058,17 @@ export class SubmissionsService {
       wsSalary.getColumn(2).numFmt = '#,##0';
     }
 
-    const filename = role === 'ops'
-      ? `SL_${(filter.shippingLineId && slMap.has(filter.shippingLineId) ? planDisplayName(slMap.get(filter.shippingLineId)!) : filter.shippingLine || 'All').replace(/[/\\?%*:|"<>]/g, '_')}.xlsx`
-      : role === 'hr'
-        ? `Tổng hợp lương tháng_${monthStr.replace('-', '_')}.xlsx`
-        : `SanLuongXeNewWay_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    let filename: string;
+    if (role === 'ops') {
+      const slFilterName = filter.shippingLineId
+        ? (slMap.has(filter.shippingLineId) ? planDisplayName(slMap.get(filter.shippingLineId)!) : `Plan_${filter.shippingLineId}`)
+        : (filter.shippingLine || 'All');
+      filename = `SL_${slFilterName.replace(/[/\\?%*:|"<>]/g, '_')}${filter.done ? '(done)' : ''}.xlsx`;
+    } else if (role === 'hr') {
+      filename = `Tổng hợp lương tháng_${monthStr.replace('-', '_')}.xlsx`;
+    } else {
+      filename = `SanLuongXeNewWay_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    }
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
 

@@ -111,6 +111,7 @@ export class SubmissionsController {
     @Query('to_date') toDate?: string,
     @Query('vendorKhac') vendorKhac?: string,
     @Query('tenNguoiNhap') tenNguoiNhap?: string,
+    @Query('done') done?: string,
   ) {
     await this.submissionsService.exportExcel(res, user, {
       userId: userId ? +userId : undefined,
@@ -120,6 +121,7 @@ export class SubmissionsController {
       toDate,
       vendorKhac,
       tenNguoiNhap,
+      done: done === 'true',
     });
   }
 }
