@@ -651,7 +651,7 @@ export class SubmissionsService {
               stt: driver.stt || '',
               plan: sl ? planDisplayName(sl) : planName.split('||')[0] + (planName.includes('||') ? ` - ${planName.split('||')[1] || ''}` : ''),
               route: tenTuyen,
-              donGia: donGia.toLocaleString('vi-VN'),
+              donGia: donGia,
               hang20: h20 || '',
               hang40: h40 || '',
               vo20: v20 || '',
@@ -661,7 +661,7 @@ export class SubmissionsService {
               veSinhLai: vsl || '',
               keoVe: kv || '',
               tip: tip || '',
-              luong: luong.toLocaleString('vi-VN'),
+              luong: luong,
               tangCuong: sl?.tangCuong ? 'x' : '',
               leTet: sl?.leTet ? 'x' : '',
             });
@@ -691,7 +691,7 @@ export class SubmissionsService {
             veSinhLai: sumVsl || '',
             keoVe: sumKv || '',
             tip: sumTip || '',
-            luong: sumLuong.toLocaleString('vi-VN'),
+            luong: sumLuong,
             tangCuong: '',
             leTet: '',
           });
@@ -702,6 +702,8 @@ export class SubmissionsService {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
           });
         }
+        wsDriver.getColumn(4).numFmt = '#,##0';
+        wsDriver.getColumn(14).numFmt = '#,##0';
       }
     }
 
@@ -830,7 +832,7 @@ export class SubmissionsService {
           veSinhLai: vsl || '',
           keoVe: kv || '',
           tip: tip || '',
-          luong: salary ? salary.toLocaleString('vi-VN') : '',
+          luong: salary || 0,
         });
         row.eachCell((cell) => {
           cell.border = allBorder;
@@ -859,7 +861,7 @@ export class SubmissionsService {
           tip: tip || '',
           editCount: '',
           lastEditedAt: '',
-          ...(showLuong ? { luong: salary ? salary.toLocaleString('vi-VN') : '' } : {}),
+          ...(showLuong ? { luong: salary || 0 } : {}),
         });
         row.eachCell((cell) => {
           cell.border = allBorder;
@@ -888,7 +890,7 @@ export class SubmissionsService {
         veSinhLai: sumVsl || '',
         keoVe: sumKv || '',
         tip: sumTip || '',
-        luong: sumLuong.toLocaleString('vi-VN'),
+        luong: sumLuong,
       });
       totalRow.eachCell((cell) => {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } } as ExcelJS.Fill;
@@ -926,6 +928,8 @@ export class SubmissionsService {
         c.alignment = { horizontal: 'center', vertical: 'middle' };
       });
     }
+
+    if (showLuong && ws.getColumn('luong')) ws.getColumn('luong').numFmt = '#,##0';
 
     if (role === 'admin' || role === 'supper_admin') {
       const wsHistory = workbook.addWorksheet('Lịch sử chỉnh sửa');
@@ -1029,7 +1033,7 @@ export class SubmissionsService {
       let idx = 0;
       for (const [name, luong] of salaryMap) {
         idx++;
-        const row = wsSalary.addRow({ name, luong: luong.toLocaleString('vi-VN') });
+        const row = wsSalary.addRow({ name, luong: luong });
         row.eachCell((cell) => {
           cell.border = allBorder;
           cell.alignment = { vertical: 'middle' };
@@ -1040,6 +1044,7 @@ export class SubmissionsService {
           });
         }
       }
+      wsSalary.getColumn(2).numFmt = '#,##0';
     }
 
     const filename = role === 'ops'
