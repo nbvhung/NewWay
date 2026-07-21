@@ -69,11 +69,9 @@ export class SubmissionsService {
     const allShippingLines = await this.shippingLinesRepository.find();
     const slMap = new Map<number, ShippingLine>();
     const slNameMap = new Map<string, ShippingLine>();
-    const completedSlIds = new Set<number>();
     for (const sl of allShippingLines) {
       slMap.set(sl.id, sl);
       slNameMap.set(sl.name, sl);
-      if (sl.completed) completedSlIds.add(sl.id);
     }
     const planDisplayName = (sl: ShippingLine) => {
       return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
@@ -81,12 +79,11 @@ export class SubmissionsService {
 
     const result: any[] = [];
     for (const sub of submissions) {
-      const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
-      if (sl?.completed) continue;
       const history = await this.editHistoryRepository.find({
         where: { submissionId: sub.id },
         order: { editedAt: 'DESC' },
       });
+      const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
       const tenTuyen = sub.route || sl?.routeName || '';
       const donGia = routeMoneyMap.get(tenTuyen) || 0;
       const h20 = parseFloat(sub.hang20) || 0;
@@ -124,16 +121,6 @@ export class SubmissionsService {
     }
     if (submission.userId !== userId && !['admin', 'supper_admin', 'ops'].includes(role)) {
       throw new ForbiddenException('Bạn không có quyền sửa bản ghi này');
-    }
-
-    // Prevent editing if the plan is completed (admin/supper_admin bypass)
-    if (!['admin', 'supper_admin'].includes(role)) {
-      const plan = submission.shippingLineId
-        ? await this.shippingLinesRepository.findOne({ where: { id: submission.shippingLineId } })
-        : null;
-      if (plan?.completed) {
-        throw new ForbiddenException('Kế hoạch đã hoàn thành, không được phép sửa');
-      }
     }
 
     const changes: Record<string, { old: string; new: string }> = {};
@@ -233,7 +220,6 @@ export class SubmissionsService {
     shippingLineId?: number;
     fromDate?: string;
     toDate?: string;
-    excludeCompleted?: boolean;
   }, role?: string): Promise<any[]> {
     const query = this.submissionsRepository
       .createQueryBuilder('s')
@@ -260,19 +246,7 @@ export class SubmissionsService {
       query.andWhere('DATE(s.createdAt) <= :toDate', { toDate: filter.toDate });
     }
 
-    let submissions = await query.getMany();
-
-    // Filter out submissions for completed plans (web UI only)
-    if (filter.excludeCompleted) {
-      const allShippingLines = await this.shippingLinesRepository.find();
-      const completedIds = new Set(allShippingLines.filter(sl => sl.completed).map(sl => sl.id));
-      const completedNames = new Set(allShippingLines.filter(sl => sl.completed).map(sl => sl.name));
-      submissions = submissions.filter(s => {
-        if (s.shippingLineId) return !completedIds.has(s.shippingLineId);
-        return !completedNames.has(s.shippingLine);
-      });
-    }
-
+    const submissions = await query.getMany();
     const result: any[] = [];
     for (const sub of submissions) {
       const history = await this.editHistoryRepository.find({
@@ -308,9 +282,8 @@ export class SubmissionsService {
     toDate?: string;
     vendorKhac?: string;
     tenNguoiNhap?: string;
-    done?: boolean;
   }) {
-    const role = filter.done ? 'ops' : user.role;
+    const role = user.role;
     const showLuong = role !== 'ops';
     const submissions = await this.findAll(filter, role);
 
@@ -1074,17 +1047,11 @@ export class SubmissionsService {
       wsSalary.getColumn(2).numFmt = '#,##0';
     }
 
-    let filename: string;
-    if (role === 'ops') {
-      const slFilterName = filter.shippingLineId
-        ? (slMap.has(filter.shippingLineId) ? planDisplayName(slMap.get(filter.shippingLineId)!) : `Plan_${filter.shippingLineId}`)
-        : (filter.shippingLine || 'All');
-      filename = `SL_${slFilterName.replace(/[/\\?%*:|"<>]/g, '_')}${filter.done ? '(done)' : ''}.xlsx`;
-    } else if (role === 'hr') {
-      filename = `Tổng hợp lương tháng_${monthStr.replace('-', '_')}.xlsx`;
-    } else {
-      filename = `SanLuongXeNewWay_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    }
+    const filename = role === 'ops'
+      ? `SL_${(filter.shippingLineId && slMap.has(filter.shippingLineId) ? planDisplayName(slMap.get(filter.shippingLineId)!) : filter.shippingLine || 'All').replace(/[/\\?%*:|"<>]/g, '_')}.xlsx`
+      : role === 'hr'
+        ? `Tổng hợp lương tháng_${monthStr.replace('-', '_')}.xlsx`
+        : `SanLuongXeNewWay_${new Date().toISOString().slice(0, 10)}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
 
