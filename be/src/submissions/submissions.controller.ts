@@ -113,6 +113,9 @@ export class SubmissionsController {
     @Query('vendorKhac') vendorKhac?: string,
     @Query('tenNguoiNhap') tenNguoiNhap?: string,
     @Query('done') done?: string,
+    @Query('mode') mode?: string,
+    @Query('month') month?: string,
+    @Query('year') year?: string,
   ) {
     await this.submissionsService.exportExcel(res, user, {
       userId: userId ? +userId : undefined,
@@ -123,6 +126,9 @@ export class SubmissionsController {
       vendorKhac,
       tenNguoiNhap,
       done: done === 'true',
+      mode: mode || undefined,
+      month: month ? +month : undefined,
+      year: year ? +year : undefined,
     });
   }
 }

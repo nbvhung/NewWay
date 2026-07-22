@@ -310,9 +310,17 @@ export class SubmissionsService {
     vendorKhac?: string;
     tenNguoiNhap?: string;
     done?: boolean;
+    mode?: string;
+    month?: number;
+    year?: number;
   }) {
+    const isMonthly = filter.mode === 'monthly';
+    if (isMonthly && filter.month && filter.year) {
+      filter.fromDate = `${filter.year}-${String(filter.month).padStart(2, '0')}-01`;
+      filter.toDate = new Date(filter.year, filter.month, 0).toISOString().slice(0, 10);
+    }
     const role = filter.done ? 'ops' : user.role;
-    const showLuong = role !== 'ops';
+    const showLuong = role !== 'ops' && !isMonthly;
     const submissions = await this.findAll(filter, role);
 
     const allShippingLines = await this.shippingLinesRepository.find({ relations: { route: true } });
@@ -592,6 +600,210 @@ export class SubmissionsService {
       }
     }
 
+    // For Monthly: per-driver sheets without Đơn giá & Lương, no totals
+    if (isMonthly) {
+      const driverSubsMap = new Map<number, any[]>();
+      for (const sub of submissions as any[]) {
+        const uid = sub.userId;
+        if (!driverSubsMap.has(uid)) driverSubsMap.set(uid, []);
+        driverSubsMap.get(uid)!.push(sub);
+      }
+
+      for (const driver of allDrivers) {
+        const subs = driverSubsMap.get(driver.id) || [];
+        const wsDriver = workbook.addWorksheet(`${driver.fullName} - ${driver.soXe || ''}`.substring(0, 31));
+
+        wsDriver.columns = [
+          { header: 'STT', key: 'stt', width: 5 },
+          { header: 'Kế hoạch', key: 'plan', width: 20 },
+          { header: 'Tuyến đường', key: 'route', width: 18 },
+          { header: 'Hàng 20', key: 'hang20', width: 10 },
+          { header: 'Hàng 40', key: 'hang40', width: 10 },
+          { header: 'Vỏ 20', key: 'vo20', width: 10 },
+          { header: 'Vỏ 40', key: 'vo40', width: 10 },
+          { header: 'Vỏ 20FR', key: 'vo20fr', width: 10 },
+          { header: 'Vỏ 40FR', key: 'vo40fr', width: 10 },
+          { header: 'Vệ sinh lại', key: 'veSinhLai', width: 10 },
+          { header: 'Kéo về', key: 'keoVe', width: 10 },
+          { header: 'TIP (Nghìn đ)', key: 'tip', width: 12 },
+          { header: 'Tàu tăng cường', key: 'tangCuong', width: 12 },
+          { header: 'Tàu Lễ, Tết', key: 'leTet', width: 12 },
+        ];
+
+        const headerRow = wsDriver.getRow(1);
+        headerRow.eachCell((cell) => {
+          cell.fill = headerFill;
+          cell.font = headerFont;
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell.border = allBorder;
+        });
+        headerRow.height = 28;
+
+        if (subs.length === 0) {
+          wsDriver.addRow({ stt: '', plan: 'Không có dữ liệu', route: '', hang20: '', hang40: '', vo20: '', vo40: '', vo20fr: '', vo40fr: '', veSinhLai: '', keoVe: '', tip: '', tangCuong: '', leTet: '' });
+        } else {
+          const planGroups = new Map<string, { sl: any; subs: any[] }>();
+          for (const sub of subs) {
+            let key: string;
+            let sl: any;
+            if (sub.shippingLineId) {
+              key = `id:${sub.shippingLineId}`;
+              sl = slMap.get(sub.shippingLineId);
+            } else {
+              key = `${sub.shippingLine}||${sub.route || ''}`;
+              sl = null;
+            }
+            if (!planGroups.has(key)) {
+              planGroups.set(key, { sl, subs: [] });
+            }
+            planGroups.get(key)!.subs.push(sub);
+          }
+
+          let rowIdx = 0;
+          for (const [planName, group] of planGroups) {
+            const sl = group.sl;
+            const tenTuyen = group.subs[0].route || sl?.routeName || '';
+            let h20 = 0, h40 = 0, v20 = 0, v40 = 0, v20fr = 0, v40fr = 0, vsl = 0, kv = 0, tip = 0;
+
+            for (const sub of group.subs) {
+              h20 += parseFloat(sub.hang20) || 0;
+              h40 += parseFloat(sub.hang40) || 0;
+              v20 += parseFloat(sub.vo20) || 0;
+              v40 += parseFloat(sub.vo40) || 0;
+              v20fr += parseFloat(sub.vo20fr) || 0;
+              v40fr += parseFloat(sub.vo40fr) || 0;
+              vsl += parseFloat(sub.veSinhLai) || 0;
+              kv += parseFloat(sub.keoVe) || 0;
+              tip += parseFloat(sub.tip) || 0;
+            }
+
+            rowIdx++;
+            const row = wsDriver.addRow({
+              stt: driver.stt || '',
+              plan: sl ? planDisplayName(sl) : planName.split('||')[0] + (planName.includes('||') ? ` - ${planName.split('||')[1] || ''}` : ''),
+              route: tenTuyen,
+              hang20: h20 || '',
+              hang40: h40 || '',
+              vo20: v20 || '',
+              vo40: v40 || '',
+              vo20fr: v20fr || '',
+              vo40fr: v40fr || '',
+              veSinhLai: vsl || '',
+              keoVe: kv || '',
+              tip: tip || '',
+              tangCuong: sl?.tangCuong ? 'x' : '',
+              leTet: sl?.leTet ? 'x' : '',
+            });
+            row.eachCell((cell) => {
+              cell.border = allBorder;
+              cell.alignment = { vertical: 'middle' };
+            });
+            if (rowIdx % 2 === 0) {
+              row.eachCell((cell) => {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FF' } } as ExcelJS.Fill;
+              });
+            }
+          }
+        }
+      }
+
+      // Summary sheet: combined driver data, STT→Xe, no totals
+      const monthStr = `${String(filter.month).padStart(2, '0')}-${filter.year}`;
+      const wsSummary = workbook.addWorksheet(`Tổng hợp tháng ${monthStr}`);
+
+      wsSummary.columns = [
+        { header: 'Xe', key: 'xe', width: 8 },
+        { header: 'BKS', key: 'bks', width: 14 },
+        { header: 'Lái xe', key: 'driverName', width: 22 },
+        { header: 'Kế hoạch', key: 'plan', width: 20 },
+        { header: 'Tuyến đường', key: 'route', width: 18 },
+        { header: 'Hàng 20', key: 'hang20', width: 10 },
+        { header: 'Hàng 40', key: 'hang40', width: 10 },
+        { header: 'Vỏ 20', key: 'vo20', width: 10 },
+        { header: 'Vỏ 40', key: 'vo40', width: 10 },
+        { header: 'Vỏ 20FR', key: 'vo20fr', width: 10 },
+        { header: 'Vỏ 40FR', key: 'vo40fr', width: 10 },
+        { header: 'Vệ sinh lại', key: 'veSinhLai', width: 10 },
+        { header: 'Kéo về', key: 'keoVe', width: 10 },
+        { header: 'TIP (Nghìn đ)', key: 'tip', width: 12 },
+        { header: 'Tàu tăng cường', key: 'tangCuong', width: 12 },
+        { header: 'Tàu Lễ, Tết', key: 'leTet', width: 12 },
+      ];
+
+      const headerRow = wsSummary.getRow(1);
+      headerRow.eachCell((cell) => {
+        cell.fill = headerFill;
+        cell.font = headerFont;
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = allBorder;
+      });
+      headerRow.height = 28;
+
+      let rowIdx = 0;
+      for (const driver of allDrivers) {
+        const subs = driverSubsMap.get(driver.id) || [];
+        if (subs.length === 0) continue;
+
+        // Group by plan for this driver
+        const planGroups = new Map<string, { sl: any; subs: any[] }>();
+        for (const sub of subs) {
+          let key: string;
+          let sl: any;
+          if (sub.shippingLineId) { key = `id:${sub.shippingLineId}`; sl = slMap.get(sub.shippingLineId); }
+          else { key = `${sub.shippingLine}||${sub.route || ''}`; sl = null; }
+          if (!planGroups.has(key)) planGroups.set(key, { sl, subs: [] });
+          planGroups.get(key)!.subs.push(sub);
+        }
+
+        for (const [planName, group] of planGroups) {
+          const sl = group.sl;
+          const tenTuyen = group.subs[0].route || sl?.routeName || '';
+          let h20 = 0, h40 = 0, v20 = 0, v40 = 0, v20fr = 0, v40fr = 0, vsl = 0, kv = 0, tip = 0;
+
+          for (const sub of group.subs) {
+            h20 += parseFloat(sub.hang20) || 0;
+            h40 += parseFloat(sub.hang40) || 0;
+            v20 += parseFloat(sub.vo20) || 0;
+            v40 += parseFloat(sub.vo40) || 0;
+            v20fr += parseFloat(sub.vo20fr) || 0;
+            v40fr += parseFloat(sub.vo40fr) || 0;
+            vsl += parseFloat(sub.veSinhLai) || 0;
+            kv += parseFloat(sub.keoVe) || 0;
+            tip += parseFloat(sub.tip) || 0;
+          }
+
+          rowIdx++;
+          const row = wsSummary.addRow({
+            xe: driver.stt || '',
+            bks: driver.soXe || '',
+            driverName: driver.fullName,
+            plan: sl ? planDisplayName(sl) : planName.split('||')[0] + (planName.includes('||') ? ` - ${planName.split('||')[1] || ''}` : ''),
+            route: tenTuyen,
+            hang20: h20 || '',
+            hang40: h40 || '',
+            vo20: v20 || '',
+            vo40: v40 || '',
+            vo20fr: v20fr || '',
+            vo40fr: v40fr || '',
+            veSinhLai: vsl || '',
+            keoVe: kv || '',
+            tip: tip || '',
+            tangCuong: sl?.tangCuong ? 'x' : '',
+            leTet: sl?.leTet ? 'x' : '',
+          });
+          row.eachCell((cell) => {
+            cell.border = allBorder;
+            cell.alignment = { vertical: 'middle' };
+          });
+          if (rowIdx % 2 === 0) {
+            row.eachCell((cell) => {
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FF' } } as ExcelJS.Fill;
+            });
+          }
+        }
+      }
+    }
+
     // For HR: create per-driver sheets
     if (role === 'hr') {
       const driverSubsMap = new Map<number, any[]>();
@@ -740,6 +952,16 @@ export class SubmissionsService {
         wsDriver.getColumn(4).numFmt = '#,##0';
         wsDriver.getColumn(14).numFmt = '#,##0';
       }
+    }
+
+    if (isMonthly) {
+      // Skip main sheet for monthly mode (already has summary sheet)
+      let filename = `KeHoachThang_${String(filter.month).padStart(2, '0')}_${filter.year}.xlsx`;
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+      await workbook.xlsx.write(res);
+      res.end();
+      return;
     }
 
     // Main sheet: "Tổng hợp" (for OPS, created last = bottom)

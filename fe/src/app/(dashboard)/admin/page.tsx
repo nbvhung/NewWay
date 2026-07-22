@@ -9,15 +9,17 @@ import { UsersTab } from '@/components/admin/UsersTab';
 import { ShippingLinesTab } from '@/components/admin/ShippingLinesTab';
 import { RoutesTab } from '@/components/admin/RoutesTab';
 import { CompletedPlansTab } from '@/components/admin/CompletedPlansTab';
+import { MonthlyPlansTab } from '@/components/admin/MonthlyPlansTab';
 import { api } from '@/lib/api-client';
 import { User, ShippingLine, Route } from '@/types';
 
-type Tab = 'data' | 'users' | 'shipping-lines' | 'routes' | 'completed-plans';
+type Tab = 'data' | 'users' | 'shipping-lines' | 'routes' | 'monthly-plans' | 'completed-plans';
 
 const ALL_TABS: (role?: string) => { key: Tab; label: string; icon: string }[] = (role) => [
   { key: 'data', label: role === 'ops' ? 'Thống kê' : role === 'hr' ? 'Lương chuyến' : 'Tất cả dữ liệu', icon: '📊' },
   { key: 'users', label: 'Quản lý tài khoản', icon: '👥' },
   { key: 'shipping-lines', label: role === 'ops' ? 'Quản lý/Tạo kế hoạch' : 'Quản lý kế hoạch', icon: '🚢' },
+  { key: 'monthly-plans', label: 'Kế hoạch theo tháng', icon: '📅' },
   { key: 'completed-plans', label: 'Kế hoạch đã hoàn thành', icon: '✅' },
   { key: 'routes', label: 'Quản lý tuyến đường', icon: '🛤️' },
 ];
@@ -28,6 +30,7 @@ export default function AdminPage() {
 
   const TABS = ALL_TABS(user?.role).filter(t => {
     if (t.key === 'completed-plans' && (user?.role === 'laixe' || user?.role === 'hr')) return false;
+    if (t.key === 'monthly-plans' && (user?.role === 'laixe' || user?.role === 'hr')) return false;
     if (t.key === 'routes' && user?.role === 'ops') return false;
     if (t.key === 'shipping-lines' && user?.role === 'hr') return false;
     if (t.key === 'users' && user?.role !== 'admin' && user?.role !== 'supper_admin') return false;
@@ -120,6 +123,9 @@ export default function AdminPage() {
           onRefresh={() => { loadShippingLines(); loadRoutes(); }}
           toast={toast}
         />
+      )}
+      {activeTab === 'monthly-plans' && (
+        <MonthlyPlansTab user={user} />
       )}
       {activeTab === 'completed-plans' && (
         <CompletedPlansTab />
