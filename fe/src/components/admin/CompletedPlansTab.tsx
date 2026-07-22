@@ -58,7 +58,7 @@ export function CompletedPlansTab({ user, onRefresh }: Props) {
   const revertPlan = useCallback(async (p: ShippingLine) => {
     if (!confirm(`Chuyển kế hoạch "${planDisplayName(p)}" về trạng thái chưa hoàn thành?`)) return;
     try {
-      await api.put(`/admin/shipping-lines/${p.id}`, { ...p, completed: false });
+      await api.put(`/admin/shipping-lines/${p.id}`, { completed: false });
       setCompletedPlans(prev => prev.filter(x => x.id !== p.id));
       onRefresh?.();
     } catch {}
