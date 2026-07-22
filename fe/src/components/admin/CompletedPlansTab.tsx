@@ -7,9 +7,10 @@ import { fmtNgay } from '@/lib/utils';
 
 interface Props {
   user?: any;
+  onRefresh?: () => void;
 }
 
-export function CompletedPlansTab({ user }: Props) {
+export function CompletedPlansTab({ user, onRefresh }: Props) {
   const [completedPlans, setCompletedPlans] = useState<ShippingLine[]>([]);
   const [loading, setLoading] = useState(true);
   const now = new Date();
@@ -59,8 +60,9 @@ export function CompletedPlansTab({ user }: Props) {
     try {
       await api.put(`/admin/shipping-lines/${p.id}`, { ...p, completed: false });
       setCompletedPlans(prev => prev.filter(x => x.id !== p.id));
+      onRefresh?.();
     } catch {}
-  }, []);
+  }, [onRefresh]);
 
   const planDisplayName = (p: ShippingLine) => {
     return [p.name, p.soChuyen, p.routeName, fmtNgay(p.ngay)].filter(Boolean).join(' / ');

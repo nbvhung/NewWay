@@ -128,7 +128,7 @@ export default function AdminPage() {
         <MonthlyPlansTab user={user} />
       )}
       {activeTab === 'completed-plans' && (
-        <CompletedPlansTab user={user} />
+        <CompletedPlansTab user={user} onRefresh={loadShippingLines} />
       )}
       {activeTab === 'routes' && (
         <RoutesTab
