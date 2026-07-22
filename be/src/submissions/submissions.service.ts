@@ -382,51 +382,51 @@ export class SubmissionsService {
         const titleFont: Partial<ExcelJS.Font> = { bold: true, size: 11 };
 
         // Row 1: XUẤT TÀU + Ngày
-        ws2.mergeCells(1, 1, 1, 6);
+        ws2.mergeCells(1, 1, 1, 7);
         const r1 = ws2.getRow(1);
         r1.getCell(1).value = `XUẤT TÀU: ${planDisplayName(slSafe)}`;
         r1.getCell(1).font = titleFont;
-        ws2.mergeCells(1, 9, 1, 12);
-        r1.getCell(9).value = `Ngày : ${slSafe.ngay || ''}`;
-        r1.getCell(9).font = titleFont;
-        r1.getCell(9).alignment = { horizontal: 'right', vertical: 'middle' };
+        ws2.mergeCells(1, 10, 1, 14);
+        r1.getCell(10).value = `Ngày : ${slSafe.ngay || ''}`;
+        r1.getCell(10).font = titleFont;
+        r1.getCell(10).alignment = { horizontal: 'right', vertical: 'middle' };
         r1.height = 25;
 
         // Row 2: TUYẾN ĐƯỜNG + Tàu tăng cường
-        ws2.mergeCells(2, 1, 2, 6);
+        ws2.mergeCells(2, 1, 2, 7);
         const r2 = ws2.getRow(2);
         r2.getCell(1).value = `TUYẾN ĐƯỜNG: ${slSafe.routeName || ''}`;
         r2.getCell(1).font = titleFont;
-        ws2.mergeCells(2, 9, 2, 10);
-        r2.getCell(9).value = 'Tàu tăng cường';
-        r2.getCell(9).font = titleFont;
-        r2.getCell(9).alignment = { horizontal: 'right', vertical: 'middle' };
-        ws2.mergeCells(2, 11, 2, 12);
-        r2.getCell(11).value = slSafe.tangCuong ? 'x' : '';
-        r2.getCell(11).font = { ...titleFont, color: { argb: 'FFFF0000' } };
-        r2.getCell(11).alignment = { horizontal: 'center', vertical: 'middle' };
+        ws2.mergeCells(2, 10, 2, 12);
+        r2.getCell(10).value = 'Tàu tăng cường';
+        r2.getCell(10).font = titleFont;
+        r2.getCell(10).alignment = { horizontal: 'right', vertical: 'middle' };
+        ws2.mergeCells(2, 13, 2, 14);
+        r2.getCell(13).value = slSafe.tangCuong ? 'x' : '';
+        r2.getCell(13).font = { ...titleFont, color: { argb: 'FFFF0000' } };
+        r2.getCell(13).alignment = { horizontal: 'center', vertical: 'middle' };
         r2.height = 22;
 
         // Row 3: XE VẬN TẢI + Tàu Lễ, Tết
-        ws2.mergeCells(3, 1, 3, 6);
+        ws2.mergeCells(3, 1, 3, 7);
         const r3 = ws2.getRow(3);
         r3.getCell(1).value = `XE VẬN TẢI: NW, ${filter.vendorKhac || ''}`;
         r3.getCell(1).font = titleFont;
-        ws2.mergeCells(3, 9, 3, 10);
-        r3.getCell(9).value = 'Tàu Lễ, Tết';
-        r3.getCell(9).font = titleFont;
-        r3.getCell(9).alignment = { horizontal: 'right', vertical: 'middle' };
-        ws2.mergeCells(3, 11, 3, 12);
-        r3.getCell(11).value = slSafe.leTet ? 'x' : '';
-        r3.getCell(11).font = { ...titleFont, color: { argb: 'FFFF0000' } };
-        r3.getCell(11).alignment = { horizontal: 'center', vertical: 'middle' };
+        ws2.mergeCells(3, 10, 3, 12);
+        r3.getCell(10).value = 'Tàu Lễ, Tết';
+        r3.getCell(10).font = titleFont;
+        r3.getCell(10).alignment = { horizontal: 'right', vertical: 'middle' };
+        ws2.mergeCells(3, 13, 3, 14);
+        r3.getCell(13).value = slSafe.leTet ? 'x' : '';
+        r3.getCell(13).font = { ...titleFont, color: { argb: 'FFFF0000' } };
+        r3.getCell(13).alignment = { horizontal: 'center', vertical: 'middle' };
         r3.height = 22;
 
         // Row 4: empty
         ws2.getRow(4).height = 10;
 
         // Row 5: VENDOR NEWWAY
-        ws2.mergeCells(5, 1, 5, 12);
+        ws2.mergeCells(5, 1, 5, 14);
         const r5 = ws2.getRow(5);
         r5.getCell(1).value = 'VENDOR NEWWAY';
         r5.getCell(1).font = { bold: true, size: 13 };
@@ -444,12 +444,14 @@ export class SubmissionsService {
         ws2.getColumn(8).width = 8;   // VỎ 40'
         ws2.getColumn(9).width = 8;   // VỎ 20FR
         ws2.getColumn(10).width = 8;  // VỎ 40FR
-        ws2.getColumn(11).width = 14; // GHI CHÚ
-        ws2.getColumn(12).width = 14; // NGƯỜI NHẬP
+        ws2.getColumn(11).width = 10; // VỆ SINH LẠI
+        ws2.getColumn(12).width = 10; // KÉO VỀ
+        ws2.getColumn(13).width = 10; // TIP
+        ws2.getColumn(14).width = 14; // NGƯỜI NHẬP
 
         // Row 6: Main header
         const hRow = ws2.getRow(6);
-        const hCells = ['STT', 'SỐ XE', 'TÊN', 'SĐT', 'HÀNG', '', 'VỎ', '', '', '', 'GHI CHÚ', 'NGƯỜI NHẬP'];
+        const hCells = ['STT', 'SỐ XE', 'TÊN', 'SĐT', 'HÀNG', '', 'VỎ', '', '', '', 'VỆ SINH LẠI', 'KÉO VỀ', 'TIP', 'NGƯỜI NHẬP'];
         hCells.forEach((v, i) => { hRow.getCell(i + 1).value = v; });
         ws2.mergeCells(6, 5, 6, 6);   // HÀNG spans row 6, cols 5-6
         ws2.mergeCells(6, 7, 6, 10);  // VỎ spans row 6, cols 7-10
@@ -463,7 +465,7 @@ export class SubmissionsService {
 
         // Row 7: Sub-header
         const shRow = ws2.getRow(7);
-        const shCells = ['', '', '', '', '20\'', '40\'', '20\'', '40\'', '20FR', '40FR', '(VSL/KV/TIP)', ''];
+        const shCells = ['', '', '', '', '20\'', '40\'', '20\'', '40\'', '20FR', '40FR', '(Chuyến)', '(Chuyến)', '(x 1.000đ)', ''];
         shCells.forEach((v, i) => { shRow.getCell(i + 1).value = v; });
         shRow.eachCell((cell) => {
           cell.font = { bold: true, size: 9 };
@@ -511,8 +513,6 @@ export class SubmissionsService {
           totalH20 += h20; totalH40 += h40; totalV20 += v20; totalV40 += v40; totalV20fr += v20fr; totalV40fr += v40fr;
           totalVsl += vsl; totalTip += tip; totalKv += kv;
 
-          const ghiChu = [vsl || '', kv || '', tip || ''].filter(Boolean).join(' / ');
-
           const row = ws2.getRow(dataStartRow + rowIdx);
           row.getCell(1).value = driver.stt || '';
           row.getCell(2).value = driver.soXe || '';
@@ -524,8 +524,10 @@ export class SubmissionsService {
           row.getCell(8).value = v40 || '';
           row.getCell(9).value = v20fr || '';
           row.getCell(10).value = v40fr || '';
-          row.getCell(11).value = ghiChu;
-          row.getCell(12).value = '';
+          row.getCell(11).value = vsl || '';
+          row.getCell(12).value = kv || '';
+          row.getCell(13).value = tip || '';
+          row.getCell(14).value = '';
 
           row.eachCell((cell) => {
             cell.border = allBorder;
@@ -548,8 +550,10 @@ export class SubmissionsService {
         totalRow.getCell(8).value = totalV40 || '';
         totalRow.getCell(9).value = totalV20fr || '';
         totalRow.getCell(10).value = totalV40fr || '';
-        totalRow.getCell(11).value = [totalVsl || '', totalKv || '', totalTip || ''].filter(Boolean).join(' / ');
-        totalRow.getCell(12).value = '';
+        totalRow.getCell(11).value = totalVsl || '';
+        totalRow.getCell(12).value = totalKv || '';
+        totalRow.getCell(13).value = totalTip || '';
+        totalRow.getCell(14).value = '';
         totalRow.eachCell((cell) => {
           cell.border = allBorder;
           cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -570,8 +574,10 @@ export class SubmissionsService {
           opsRow.getCell(8).value = opsSub?.vo40 || '';
           opsRow.getCell(9).value = opsSub?.vo20fr || '';
           opsRow.getCell(10).value = opsSub?.vo40fr || '';
-          opsRow.getCell(11).value = '';
-          opsRow.getCell(12).value = filter.tenNguoiNhap || '';
+          opsRow.getCell(11).value = opsSub?.veSinhLai || '';
+          opsRow.getCell(12).value = opsSub?.keoVe || '';
+          opsRow.getCell(13).value = opsSub?.tip || '';
+          opsRow.getCell(14).value = filter.tenNguoiNhap || '';
           opsRow.eachCell((cell) => {
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } } as ExcelJS.Fill;
             cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
