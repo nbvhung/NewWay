@@ -64,6 +64,15 @@ export function CompletedPlansTab({ user, onRefresh }: Props) {
     } catch {}
   }, [onRefresh]);
 
+  const deletePlan = useCallback(async (p: ShippingLine) => {
+    if (!confirm(`Xoá kế hoạch "${planDisplayName(p)}"? Hành động này không thể hoàn tác!`)) return;
+    try {
+      await api.delete(`/admin/shipping-lines/${p.id}`);
+      setCompletedPlans(prev => prev.filter(x => x.id !== p.id));
+      onRefresh?.();
+    } catch {}
+  }, [onRefresh]);
+
   const planDisplayName = (p: ShippingLine) => {
     return [p.name, p.soChuyen, p.routeName, fmtNgay(p.ngay)].filter(Boolean).join(' / ');
   };
@@ -119,6 +128,10 @@ export function CompletedPlansTab({ user, onRefresh }: Props) {
                   {(user?.role === 'admin' || user?.role === 'supper_admin') && (
                     <button onClick={() => revertPlan(p)}
                       className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">↩️</button>
+                  )}
+                  {user?.role === 'supper_admin' && (
+                    <button onClick={() => deletePlan(p)}
+                      className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">🗑️</button>
                   )}
                   <button onClick={() => exportPlan(p)}
                     className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white cursor-pointer">📥</button>
