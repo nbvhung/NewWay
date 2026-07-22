@@ -311,7 +311,7 @@ export default function MyDataPage() {
           <div className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] to-[#34d399]">
             {formatMoney(salarySummary?.totalSalary)}
           </div>
-          <p className="text-[10px] text-[#94a3b8] mt-1">* Chưa bao gồm lương cứng, các khoản hỗ trợ,...( nếu có )</p>
+          <p className="text-xs font-medium text-[#64748b] mt-1">* Chưa bao gồm lương cứng, các khoản hỗ trợ,...( nếu có )</p>
           <p className="text-xs text-[#64748b] mt-1">🎉 Thật là tuyệt vời !!!</p>
         </div>
       </div>
