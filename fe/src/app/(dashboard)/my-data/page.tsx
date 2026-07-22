@@ -217,15 +217,15 @@ export default function MyDataPage() {
                 <tr className="bg-[#f8fafc]">
                   <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">#</th>
                   <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Kế hoạch</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">H20</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">H40</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">V20</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">V40</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">V20FR</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">V40FR</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">VSL</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">KV</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">TIP (x 1.000đ)</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">H20</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">H40</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">V20</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">V40</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">V20FR</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">V40FR</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">VSL</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">KV</th>
+                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">TIP (x 1.000đ)</th>
                   {user?.role !== 'ops' && <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Lương</th>}
                   <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Sửa</th>
                   <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Thao tác</th>
@@ -236,15 +236,15 @@ export default function MyDataPage() {
                   <tr key={s.id} className="border-b border-[rgba(0,0,0,0.04)] hover:bg-[rgba(0,0,0,0.03)]">
                     <td className="px-3.5 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#64748b]">{i + 1}</span></td>
                     <td className="px-3.5 py-3"><span className="text-sm font-semibold text-blue-700">{s.planDisplayName || s.shippingLine}</span></td>
-                    <td className="px-3.5 py-3">{s.hang20 || '—'}</td>
-                    <td className="px-3.5 py-3">{s.hang40 || '—'}</td>
-                    <td className="px-3.5 py-3">{s.vo20 || '—'}</td>
-                    <td className="px-3.5 py-3">{s.vo40 || '—'}</td>
-                    <td className="px-3.5 py-3">{s.vo20fr || '—'}</td>
-                    <td className="px-3.5 py-3">{s.vo40fr || '—'}</td>
-                    <td className="px-3.5 py-3">{s.veSinhLai || '—'}</td>
-                    <td className="px-3.5 py-3">{s.keoVe || '—'}</td>
-                    <td className="px-3.5 py-3">{s.tip || '—'}</td>
+                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.hang20 || '—'}</td>
+                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.hang40 || '—'}</td>
+                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.vo20 || '—'}</td>
+                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.vo40 || '—'}</td>
+                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.vo20fr || '—'}</td>
+                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.vo40fr || '—'}</td>
+                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.veSinhLai || '—'}</td>
+                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.keoVe || '—'}</td>
+                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.tip || '—'}</td>
                     {user?.role !== 'ops' && <td className="px-3.5 py-3">{formatMoney(s.salary)}</td>}
                     <td className="px-3.5 py-3">
                       {s.editCount > 0 ? (
