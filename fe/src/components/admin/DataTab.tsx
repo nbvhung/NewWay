@@ -42,6 +42,12 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
   const [exportTenNguoiNhap, setExportTenNguoiNhap] = useState('');
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
+  const [totalShipOpen, setTotalShipOpen] = useState(false);
+  const [totalShipSlId, setTotalShipSlId] = useState<number | null>(null);
+  const [totalShipForm, setTotalShipForm] = useState({
+    hang20: '', hang40: '', vo20: '', vo40: '', vo20fr: '', vo40fr: '',
+    veSinhLai: '', keoVe: '', tip: '',
+  });
 
   const { page, pageSize, totalPages, totalItems, paged: pagedSubmissions, setPage, setPageSize } = usePagination(submissions, 20);
 
@@ -146,6 +152,66 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
       setExportConfirmOpen(true);
     } else {
       exportExcel();
+    }
+  };
+
+  const openTotalShipForm = () => {
+    if (!filterSl) {
+      alert('Vui lòng chọn một kế hoạch trước khi nhập SL Tổng Tàu.');
+      return;
+    }
+    const slId = Number(filterSl);
+    setTotalShipSlId(slId);
+    const existing = submissions.find(s => s.userId === user?.id && s.shippingLineId === slId);
+    if (existing) {
+      setTotalShipForm({
+        hang20: existing.hang20 || '',
+        hang40: existing.hang40 || '',
+        vo20: existing.vo20 || '',
+        vo40: existing.vo40 || '',
+        vo20fr: existing.vo20fr || '',
+        vo40fr: existing.vo40fr || '',
+        veSinhLai: existing.veSinhLai || '',
+        keoVe: existing.keoVe || '',
+        tip: existing.tip || '',
+      });
+    } else {
+      setTotalShipForm({ hang20: '', hang40: '', vo20: '', vo40: '', vo20fr: '', vo40fr: '', veSinhLai: '', keoVe: '', tip: '' });
+    }
+    setExportConfirmOpen(false);
+    setTimeout(() => setTotalShipOpen(true), 150);
+  };
+
+  const saveTotalShip = async () => {
+    const sl = allShippingLines.find(sl => sl.id === totalShipSlId);
+    if (!sl) return;
+    setSaving(true);
+    try {
+      const payload = {
+        shippingLine: sl.name,
+        shippingLineId: sl.id,
+        route: sl.routeName || '',
+        ...totalShipForm,
+      };
+      let existing = submissions.find(s => s.userId === user?.id && s.shippingLineId === totalShipSlId);
+      if (!existing) {
+        try {
+          const mySubs = await api.get<any[]>('/submissions/my');
+          existing = mySubs.find(s => s.shippingLineId === totalShipSlId);
+        } catch {}
+      }
+      if (existing) {
+        await api.put(`/submissions/${existing.id}`, payload);
+      } else {
+        await api.post('/submissions', payload);
+      }
+      setTotalShipOpen(false);
+      loadSubmissions();
+      exportExcel(exportVendorKhac, exportTenNguoiNhap);
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -327,9 +393,9 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         title="📋 Xác nhận xuất Excel"
         footer={
           <div className="flex gap-2 w-full">
-            <button onClick={() => setExportConfirmOpen(false)}
-              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">
-              Hủy
+            <button onClick={() => { openTotalShipForm(); }}
+              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.3)] cursor-pointer">
+              📊 Tổng SL Tàu
             </button>
             <button onClick={() => { setExportConfirmOpen(false); exportExcel(exportVendorKhac, exportTenNguoiNhap); }}
               className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-[0_4px_15px_rgba(16,185,129,0.3)] cursor-pointer">
@@ -347,6 +413,80 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
           <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Tên người nhập</label>
           <input type="text" value={exportTenNguoiNhap} onChange={e => setExportTenNguoiNhap(e.target.value)} placeholder="Nhập tên người nhập..."
             className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+        </div>
+      </Modal>
+
+      <Modal
+        open={totalShipOpen}
+        onClose={() => setTotalShipOpen(false)}
+        title="📊 Nhập SL Tổng Tàu"
+        footer={
+          <div className="flex gap-2 w-full">
+            <button onClick={() => setTotalShipOpen(false)}
+              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">
+              Đóng
+            </button>
+            <button onClick={saveTotalShip}
+              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-[0_4px_15px_rgba(16,185,129,0.3)] cursor-pointer">
+              📥 Xuất Excel
+            </button>
+          </div>
+        }
+      >
+        <div className="mb-4">
+          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Kế hoạch</label>
+          <div className="px-3.5 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a]">
+            {allShippingLines.find(sl => sl.id === totalShipSlId)
+              ? [allShippingLines.find(sl => sl.id === totalShipSlId)?.name, allShippingLines.find(sl => sl.id === totalShipSlId)?.soChuyen, allShippingLines.find(sl => sl.id === totalShipSlId)?.routeName, allShippingLines.find(sl => sl.id === totalShipSlId)?.ngay].filter(Boolean).join(' / ')
+              : '—'}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 mb-2">
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số hàng 20</label>
+            <input type="number" min="0" value={totalShipForm.hang20} onChange={e => setTotalShipForm(f => ({ ...f, hang20: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số hàng 40</label>
+            <input type="number" min="0" value={totalShipForm.hang40} onChange={e => setTotalShipForm(f => ({ ...f, hang40: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20</label>
+            <input type="number" min="0" value={totalShipForm.vo20} onChange={e => setTotalShipForm(f => ({ ...f, vo20: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40</label>
+            <input type="number" min="0" value={totalShipForm.vo40} onChange={e => setTotalShipForm(f => ({ ...f, vo40: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
+            <input type="number" min="0" value={totalShipForm.vo20fr} onChange={e => setTotalShipForm(f => ({ ...f, vo20fr: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
+            <input type="number" min="0" value={totalShipForm.vo40fr} onChange={e => setTotalShipForm(f => ({ ...f, vo40fr: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Vệ sinh lại <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
+            <input type="number" min="0" value={totalShipForm.veSinhLai} onChange={e => setTotalShipForm(f => ({ ...f, veSinhLai: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Kéo về <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
+            <input type="number" min="0" value={totalShipForm.keoVe} onChange={e => setTotalShipForm(f => ({ ...f, keoVe: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">TIP (x 1.000đ)</label>
+            <input type="number" min="0" value={totalShipForm.tip} onChange={e => setTotalShipForm(f => ({ ...f, tip: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
         </div>
       </Modal>
 
