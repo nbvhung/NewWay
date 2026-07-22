@@ -139,6 +139,10 @@ export default function MyDataPage() {
     const dateStr = s.planDate || s.createdAt;
     const d = new Date(dateStr);
     return d.getMonth() + 1 === viewMonth && d.getFullYear() === viewYear;
+  }).sort((a, b) => {
+    if (a.completed && !b.completed) return 1;
+    if (!a.completed && b.completed) return -1;
+    return 0;
   });
   const stats = {
     total: filteredData.length,
@@ -228,14 +232,22 @@ export default function MyDataPage() {
                   <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">TIP (x 1.000đ)</th>
                   {user?.role !== 'ops' && <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Lương</th>}
                   <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Sửa</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredData.map((s, i) => (
                   <tr key={s.id} className="border-b border-[rgba(0,0,0,0.04)] hover:bg-[rgba(0,0,0,0.03)]">
                     <td className="px-3.5 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#64748b]">{i + 1}</span></td>
-                    <td className="px-3.5 py-3"><span className="text-sm font-semibold text-blue-700">{s.planDisplayName || s.shippingLine}</span></td>
+                    <td className="px-3.5 py-3">
+                      <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-blue-700">{s.planDisplayName || s.shippingLine}</span>
+                      {s.completed ? (
+                        <span className="px-2 py-0.5 rounded text-[9px] font-medium bg-[rgba(16,185,129,0.15)] text-emerald-600">✅</span>
+                      ) : (
+                        <button onClick={() => openEdit(s)} className="px-2 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️ Sửa</button>
+                      )}
+                      </div>
+                    </td>
                     <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.hang20 || '—'}</td>
                     <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.hang40 || '—'}</td>
                     <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.vo20 || '—'}</td>
@@ -251,15 +263,6 @@ export default function MyDataPage() {
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(245,158,11,0.2)] text-amber-700">✏️ {s.editCount}</span>
                       ) : (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#64748b]">0</span>
-                      )}
-                    </td>
-                    <td className="px-3.5 py-3">
-                      {s.completed ? (
-                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-medium bg-[rgba(16,185,129,0.2)] text-emerald-700">✅</span>
-                      ) : (
-                        <button onClick={() => openEdit(s)} className="px-2.5 py-1 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white hover:-translate-y-px transition-all cursor-pointer">
-                          ✏️ Sửa
-                        </button>
                       )}
                     </td>
                   </tr>
