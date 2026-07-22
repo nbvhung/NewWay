@@ -76,7 +76,8 @@ export class SubmissionsService {
       if (sl.completed) completedSlIds.add(sl.id);
     }
     const planDisplayName = (sl: ShippingLine) => {
-      return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
+      const ngay = sl.ngay ? sl.ngay.split('-').reverse().join('-') : '';
+      return [sl.name, sl.soChuyen, sl.routeName, ngay].filter(Boolean).join(' / ');
     };
 
     const result: any[] = [];
@@ -185,7 +186,8 @@ export class SubmissionsService {
       slNameMap.set(sl.name, sl);
     }
     const planDisplayName = (sl: ShippingLine) => {
-      return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
+      const ngay = sl.ngay ? sl.ngay.split('-').reverse().join('-') : '';
+      return [sl.name, sl.soChuyen, sl.routeName, ngay].filter(Boolean).join(' / ');
     };
 
     // Fetch all submissions, then filter by plan date (sl.ngay) instead of createdAt
@@ -321,8 +323,9 @@ export class SubmissionsService {
       slMap.set(sl.id, sl);
       slNameMap.set(sl.name, sl);
     }
+    const fmtNgay = (d: string | null | undefined) => d ? d.split('-').reverse().join('-') : '';
     const planDisplayName = (sl: ShippingLine) => {
-      return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
+      return [sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ');
     };
 
     const allRoutes = await this.routesRepository.find();
@@ -376,7 +379,7 @@ export class SubmissionsService {
         const opsSub = subs.find((s: any) => s.userId === user.id) || null;
 
         // Build sheet name from plan info; replace chars not allowed by Excel
-        const sheetName = [slSafe.name, slSafe.soChuyen, slSafe.routeName, slSafe.ngay].filter(Boolean).join(' - ').substring(0, 31);
+        const sheetName = [slSafe.name, slSafe.soChuyen, slSafe.routeName, fmtNgay(slSafe.ngay)].filter(Boolean).join(' - ').substring(0, 31);
         const ws2 = workbook.addWorksheet(sheetName);
 
         const titleFont: Partial<ExcelJS.Font> = { bold: true, size: 11 };
@@ -387,7 +390,7 @@ export class SubmissionsService {
         r1.getCell(1).value = `XUẤT TÀU: ${planDisplayName(slSafe)}`;
         r1.getCell(1).font = titleFont;
         ws2.mergeCells(1, 10, 1, 14);
-        r1.getCell(10).value = `Ngày : ${slSafe.ngay || ''}`;
+        r1.getCell(10).value = `Ngày : ${fmtNgay(slSafe.ngay) || ''}`;
         r1.getCell(10).font = titleFont;
         r1.getCell(10).alignment = { horizontal: 'right', vertical: 'middle' };
         r1.height = 25;
@@ -1089,7 +1092,7 @@ export class SubmissionsService {
     } else if (role === 'hr') {
       filename = `Tổng hợp lương tháng_${monthStr.replace('-', '_')}.xlsx`;
     } else {
-      filename = `SanLuongXeNewWay_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      const today = new Date(); filename = `SanLuongXeNewWay_${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}.xlsx`;
     }
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
