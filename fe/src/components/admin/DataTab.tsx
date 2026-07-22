@@ -268,7 +268,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
               <select value={filterSl} onChange={e => { setFilterSl(e.target.value); setPage(1); }}
                 className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
                 <option value="">Tất cả</option>
-                {allShippingLines.map(sl => <option key={sl.id} value={sl.id}>{[sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ')}</option>)}
+                {(user?.role === 'ops' ? allShippingLines.filter(p => !p.completed) : allShippingLines).map(sl => <option key={sl.id} value={sl.id}>{[sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ')}</option>)}
               </select>
             </div>
             <div>
