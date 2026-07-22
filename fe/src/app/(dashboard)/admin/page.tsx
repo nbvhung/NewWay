@@ -128,7 +128,7 @@ export default function AdminPage() {
         <MonthlyPlansTab user={user} />
       )}
       {activeTab === 'completed-plans' && (
-        <CompletedPlansTab />
+        <CompletedPlansTab user={user} />
       )}
       {activeTab === 'routes' && (
         <RoutesTab

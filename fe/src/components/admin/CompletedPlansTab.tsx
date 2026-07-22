@@ -1,11 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ShippingLine } from '@/types';
 import { api } from '@/lib/api-client';
 import { fmtNgay } from '@/lib/utils';
 
-export function CompletedPlansTab() {
+interface Props {
+  user?: any;
+}
+
+export function CompletedPlansTab({ user }: Props) {
   const [completedPlans, setCompletedPlans] = useState<ShippingLine[]>([]);
   const [loading, setLoading] = useState(true);
   const now = new Date();
@@ -49,6 +53,14 @@ export function CompletedPlansTab() {
       URL.revokeObjectURL(url);
     } catch {}
   };
+
+  const revertPlan = useCallback(async (p: ShippingLine) => {
+    if (!confirm(`Chuyển kế hoạch "${planDisplayName(p)}" về trạng thái chưa hoàn thành?`)) return;
+    try {
+      await api.put(`/admin/shipping-lines/${p.id}`, { ...p, completed: false });
+      setCompletedPlans(prev => prev.filter(x => x.id !== p.id));
+    } catch {}
+  }, []);
 
   const planDisplayName = (p: ShippingLine) => {
     return [p.name, p.soChuyen, p.routeName, fmtNgay(p.ngay)].filter(Boolean).join(' / ');
@@ -102,6 +114,10 @@ export function CompletedPlansTab() {
                   <span className="text-sm">{display}</span>
                 </div>
                 <div className="flex gap-1 shrink-0">
+                  {(user?.role === 'admin' || user?.role === 'supper_admin') && (
+                    <button onClick={() => revertPlan(p)}
+                      className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">↩️</button>
+                  )}
                   <button onClick={() => exportPlan(p)}
                     className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white cursor-pointer">📥</button>
                 </div>
