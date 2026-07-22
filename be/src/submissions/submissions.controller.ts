@@ -68,7 +68,7 @@ export class SubmissionsController {
       shippingLineId: shippingLineId ? +shippingLineId : undefined,
       fromDate,
       toDate,
-      excludeCompleted: !['admin', 'supper_admin'].includes(user.role),
+      excludeCompleted: false,
     }, user.role);
     return { data: result };
   }

@@ -83,7 +83,6 @@ export class SubmissionsService {
     const result: any[] = [];
     for (const sub of submissions) {
       const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
-      if (sl?.completed) continue;
       const history = await this.editHistoryRepository.find({
         where: { submissionId: sub.id },
         order: { editedAt: 'DESC' },
@@ -103,7 +102,7 @@ export class SubmissionsService {
       const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
       const salary = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo + tip * 1000;
       const planDate = sl?.ngay || null;
-      result.push({ ...sub, history, salary, planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine, planDate });
+      result.push({ ...sub, history, salary, planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine, planDate, completed: sl?.completed || false });
     }
     return result;
   }

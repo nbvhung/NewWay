@@ -57,6 +57,7 @@ export interface Submission {
   updatedAt: string;
   history: EditHistory[];
   user?: { id: number; username: string };
+  completed?: boolean;
   salary?: number;
   planDisplayName?: string;
   planDate?: string;

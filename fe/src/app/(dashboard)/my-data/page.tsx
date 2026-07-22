@@ -254,9 +254,13 @@ export default function MyDataPage() {
                       )}
                     </td>
                     <td className="px-3.5 py-3">
-                      <button onClick={() => openEdit(s)} className="px-2.5 py-1 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white hover:-translate-y-px transition-all cursor-pointer">
-                        ✏️ Sửa
-                      </button>
+                      {s.completed ? (
+                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-medium bg-[rgba(16,185,129,0.2)] text-emerald-700">✅</span>
+                      ) : (
+                        <button onClick={() => openEdit(s)} className="px-2.5 py-1 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white hover:-translate-y-px transition-all cursor-pointer">
+                          ✏️ Sửa
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -22,6 +22,9 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const slDisplayMapById = new Map(allShippingLines.map(sl => [sl.id, [sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ')]));
   const slDisplayMapByName = new Map(allShippingLines.map(sl => [sl.name, [sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ')]));
+  const completedSlIds = new Set(allShippingLines.filter(sl => sl.completed).map(sl => sl.id));
+  const completedSlNames = new Set(allShippingLines.filter(sl => sl.completed).map(sl => sl.name));
+  const isCompleted = (s: Submission) => s.shippingLineId ? completedSlIds.has(s.shippingLineId) : completedSlNames.has(s.shippingLine);
   const getSlDisplay = (s: Submission) => {
     if (s.shippingLineId) return slDisplayMapById.get(s.shippingLineId) || s.shippingLine;
     return slDisplayMapByName.get(s.shippingLine) || s.shippingLine;
@@ -265,7 +268,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
               <select value={filterSl} onChange={e => { setFilterSl(e.target.value); setPage(1); }}
                 className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
                 <option value="">Tất cả</option>
-                {(user?.role === 'ops' ? allShippingLines.filter(p => !p.completed) : allShippingLines).map(sl => <option key={sl.id} value={sl.id}>{[sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ')}</option>)}
+                {allShippingLines.map(sl => <option key={sl.id} value={sl.id}>{[sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ')}</option>)}
               </select>
             </div>
             <div>
@@ -352,10 +355,16 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
                         : <span className="px-1.5 py-0.5 rounded-full bg-[rgba(100,116,139,0.15)] text-[#64748b]">0</span>}
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap flex gap-1">
-                      <button onClick={() => openEditSub(s)}
-                        className="px-2 py-1 rounded text-[10px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️</button>
-                      <button onClick={() => deleteSub(s.id)}
-                        className="px-2 py-1 rounded text-[10px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">🗑️</button>
+                      {isCompleted(s) ? (
+                        <span className="px-2 py-1 rounded text-[10px] font-medium bg-[rgba(16,185,129,0.2)] text-emerald-700">✅</span>
+                      ) : (
+                        <>
+                          <button onClick={() => openEditSub(s)}
+                            className="px-2 py-1 rounded text-[10px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️</button>
+                          <button onClick={() => deleteSub(s.id)}
+                            className="px-2 py-1 rounded text-[10px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">🗑️</button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}
