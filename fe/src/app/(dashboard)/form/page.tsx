@@ -6,6 +6,7 @@ import { useAuth } from '@/providers/auth-provider';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api-client';
 import { ShippingLine } from '@/types';
+import { fmtNgay } from '@/lib/utils';
 
 export default function FormPage() {
   const { user } = useAuth();
@@ -44,7 +45,7 @@ export default function FormPage() {
   const selectedLine = shippingLines.find((sl) => sl.id === selectedShippingLineId);
 
   const planDisplayName = (sl: ShippingLine) => {
-    return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
+    return [sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ');
   };
 
   const handleSubmit = async (e: FormEvent) => {

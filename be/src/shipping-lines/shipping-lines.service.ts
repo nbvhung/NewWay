@@ -16,7 +16,7 @@ export class ShippingLinesService {
     const qb = this.shippingLinesRepository
       .createQueryBuilder('sl')
       .leftJoinAndSelect('sl.route', 'route')
-      .orderBy('sl.created_at', 'DESC');
+      .orderBy('sl.ngay', 'DESC');
     if (completed !== undefined) {
       qb.andWhere('sl.completed = :completed', { completed });
     }

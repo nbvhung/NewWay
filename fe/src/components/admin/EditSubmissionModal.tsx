@@ -2,7 +2,7 @@
 
 import { Modal } from '@/components/ui/modal';
 import { ShippingLine, Submission } from '@/types';
-import { fmtDate, FIELD_LABELS } from '@/lib/utils';
+import { fmtDate, FIELD_LABELS, fmtNgay } from '@/lib/utils';
 
 interface Props {
   open: boolean;
@@ -18,7 +18,7 @@ interface Props {
 
 export function EditSubmissionModal({ open, onClose, editForm, setEditForm, allShippingLines, saving, onSave, submission, userRole }: Props) {
   const planDisplayName = (sl: ShippingLine) => {
-    return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
+    return [sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ');
   };
   const selectedPlanId = editForm.shippingLineId ?? null;
   return (

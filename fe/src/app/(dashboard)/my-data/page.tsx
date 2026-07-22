@@ -9,7 +9,7 @@ import { StatsCard } from '@/components/ui/stats-card';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { api } from '@/lib/api-client';
 import { ShippingLine, Submission } from '@/types';
-import { fmtDate, FIELD_LABELS, formatMoney } from '@/lib/utils';
+import { fmtDate, FIELD_LABELS, formatMoney, fmtNgay } from '@/lib/utils';
 
 interface EditFormData {
   shippingLine: string;
@@ -50,7 +50,7 @@ export default function MyDataPage() {
   const [salaryYear, setSalaryYear] = useState(now.getFullYear());
 
   const planDisplayName = (sl: ShippingLine) => {
-    return [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ');
+    return [sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ');
   };
 
   useEffect(() => {

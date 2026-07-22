@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ShippingLine, Route } from '@/types';
 import { api } from '@/lib/api-client';
+import { fmtNgay } from '@/lib/utils';
 import { Modal } from '@/components/ui/modal';
 import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/use-pagination';
@@ -115,7 +116,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
   };
 
   const planDisplayName = (p: ShippingLine) => {
-    return [p.name, p.soChuyen, p.routeName, p.ngay].filter(Boolean).join(' / ');
+    return [p.name, p.soChuyen, p.routeName, fmtNgay(p.ngay)].filter(Boolean).join(' / ');
   };
 
   return (

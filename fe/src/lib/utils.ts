@@ -4,6 +4,13 @@ export function fmtDate(dt: string | null | undefined): string {
   return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
 }
 
+export function fmtNgay(ngay: string | null | undefined): string {
+  if (!ngay) return '';
+  const parts = ngay.split('-');
+  if (parts.length !== 3) return ngay;
+  return `${parts[2]}-${parts[1]}-${parts[0]}`;
+}
+
 export const ROLE_LABELS: Record<string, string> = {
   supper_admin: 'Super Admin',
   admin: 'Admin',

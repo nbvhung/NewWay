@@ -8,7 +8,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/use-pagination';
 import { Submission, User, ShippingLine } from '@/types';
 import { api } from '@/lib/api-client';
-import { ROLE_LABELS } from '@/lib/utils';
+import { ROLE_LABELS, fmtNgay } from '@/lib/utils';
 
 interface Props {
   user: any;
@@ -20,8 +20,8 @@ interface Props {
 
 export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShippingLines }: Props) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const slDisplayMapById = new Map(allShippingLines.map(sl => [sl.id, [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ')]));
-  const slDisplayMapByName = new Map(allShippingLines.map(sl => [sl.name, [sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ')]));
+  const slDisplayMapById = new Map(allShippingLines.map(sl => [sl.id, [sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ')]));
+  const slDisplayMapByName = new Map(allShippingLines.map(sl => [sl.name, [sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ')]));
   const getSlDisplay = (s: Submission) => {
     if (s.shippingLineId) return slDisplayMapById.get(s.shippingLineId) || s.shippingLine;
     return slDisplayMapByName.get(s.shippingLine) || s.shippingLine;
@@ -265,7 +265,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
               <select value={filterSl} onChange={e => { setFilterSl(e.target.value); setPage(1); }}
                 className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]">
                 <option value="">Tất cả</option>
-                {(user?.role === 'ops' ? allShippingLines.filter(p => !p.completed) : allShippingLines).map(sl => <option key={sl.id} value={sl.id}>{[sl.name, sl.soChuyen, sl.routeName, sl.ngay].filter(Boolean).join(' / ')}</option>)}
+                {(user?.role === 'ops' ? allShippingLines.filter(p => !p.completed) : allShippingLines).map(sl => <option key={sl.id} value={sl.id}>{[sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ')}</option>)}
               </select>
             </div>
             <div>
@@ -437,7 +437,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
           <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Kế hoạch</label>
           <div className="px-3.5 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a]">
             {allShippingLines.find(sl => sl.id === totalShipSlId)
-              ? [allShippingLines.find(sl => sl.id === totalShipSlId)?.name, allShippingLines.find(sl => sl.id === totalShipSlId)?.soChuyen, allShippingLines.find(sl => sl.id === totalShipSlId)?.routeName, allShippingLines.find(sl => sl.id === totalShipSlId)?.ngay].filter(Boolean).join(' / ')
+              ? [allShippingLines.find(sl => sl.id === totalShipSlId)?.name, allShippingLines.find(sl => sl.id === totalShipSlId)?.soChuyen, allShippingLines.find(sl => sl.id === totalShipSlId)?.routeName, fmtNgay(allShippingLines.find(sl => sl.id === totalShipSlId)?.ngay)].filter(Boolean).join(' / ')
               : '—'}
           </div>
         </div>
