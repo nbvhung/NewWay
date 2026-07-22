@@ -97,9 +97,9 @@ export function CompletedPlansTab() {
             const display = planDisplayName(p);
             return (
               <div key={p.id} className="flex items-center justify-between gap-2 px-3 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs">
-                <div className="flex items-center gap-2 truncate">
+                <div className="flex items-center gap-2">
                   <span className="text-emerald-400 shrink-0">✅</span>
-                  <span className="truncate">{display}</span>
+                  <span className="text-sm">{display}</span>
                 </div>
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => exportPlan(p)}

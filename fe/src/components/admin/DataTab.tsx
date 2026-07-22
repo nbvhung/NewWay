@@ -263,7 +263,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
             <div>
               <label className="block text-[10px] font-medium text-[#64748b] mb-1">Kế hoạch</label>
               <select value={filterSl} onChange={e => { setFilterSl(e.target.value); setPage(1); }}
-                className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]">
+                className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
                 <option value="">Tất cả</option>
                 {(user?.role === 'ops' ? allShippingLines.filter(p => !p.completed) : allShippingLines).map(sl => <option key={sl.id} value={sl.id}>{[sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ')}</option>)}
               </select>
@@ -336,7 +336,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
                       )}
                     </td>
                     <td className="px-3 py-2.5 font-medium">{s.driverName}</td>
-                    <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(16,185,129,0.2)] text-emerald-700 max-w-[160px] inline-block truncate">{getSlDisplay(s)}</span></td>
+                    <td className="px-3 py-2.5"><span className="text-sm font-semibold text-emerald-700">{getSlDisplay(s)}</span></td>
                     <td className="px-3 py-2.5">{s.hang20 || '—'}</td>
                     <td className="px-3 py-2.5">{s.hang40 || '—'}</td>
                     <td className="px-3 py-2.5">{s.vo20 || '—'}</td>

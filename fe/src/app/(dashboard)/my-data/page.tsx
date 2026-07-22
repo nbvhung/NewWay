@@ -235,7 +235,7 @@ export default function MyDataPage() {
                 {filteredData.map((s, i) => (
                   <tr key={s.id} className="border-b border-[rgba(0,0,0,0.04)] hover:bg-[rgba(0,0,0,0.03)]">
                     <td className="px-3.5 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#64748b]">{i + 1}</span></td>
-                    <td className="px-3.5 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(26,86,219,0.2)] text-blue-700 max-w-[160px] inline-block truncate">{s.planDisplayName || s.shippingLine}</span></td>
+                    <td className="px-3.5 py-3"><span className="text-sm font-semibold text-blue-700">{s.planDisplayName || s.shippingLine}</span></td>
                     <td className="px-3.5 py-3">{s.hang20 || '—'}</td>
                     <td className="px-3.5 py-3">{s.hang40 || '—'}</td>
                     <td className="px-3.5 py-3">{s.vo20 || '—'}</td>
@@ -349,7 +349,7 @@ export default function MyDataPage() {
                 }`}>
                   {editForm.shippingLineId === sl.id && <div className="w-1.5 h-1.5 rounded-full bg-[#1a56db]" />}
                 </div>
-                <span>{planDisplayName(sl)}{sl.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-400">x3</span> : sl.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-700">+15%</span> : null}</span>
+                <span className="text-sm">{planDisplayName(sl)}{sl.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-400">x3</span> : sl.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-700">+15%</span> : null}</span>
               </label>
             ))}
           </div>
