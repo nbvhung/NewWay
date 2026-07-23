@@ -10,4 +10,6 @@ export const submissionsApi = {
   updateAdmin: (id: number, data: Record<string, unknown>) =>
     api.put<Submission>(`/admin/submissions/${id}`, data),
   delete: (id: number) => api.delete(`/admin/submissions/${id}`),
+  getSalarySummary: (month: number, year: number) =>
+    api.get('/submissions/salary-summary', { params: { month, year } }),
 };
