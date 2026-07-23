@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ShippingLine } from '@/types';
-import { api } from '@/lib/api-client';
+import { shippingLinesApi } from '@/lib/api-shipping-lines';
+import { submissionsApi } from '@/lib/api-submissions';
 import { fmtNgay } from '@/lib/utils';
 
 interface Props {
@@ -20,8 +21,8 @@ export function CompletedPlansTab({ user, onRefresh }: Props) {
   const loadCompleted = async () => {
     setLoading(true);
     try {
-      const res = await api.get<any>('/admin/shipping-lines');
-      const all = Array.isArray(res) ? res : (res as any).data || [];
+      const res = await shippingLinesApi.getAllAdmin();
+      const all = Array.isArray(res.data) ? res.data : (res.data as any).data || [];
       setCompletedPlans(all.filter((p: ShippingLine) => p.completed));
     } catch {}
     finally { setLoading(false); }
@@ -33,19 +34,17 @@ export function CompletedPlansTab({ user, onRefresh }: Props) {
 
   const exportPlan = async (p: ShippingLine) => {
     try {
-      const params = new URLSearchParams();
-      params.append('shippingLineId', String(p.id));
-      params.append('done', 'true');
-      if (p.vendorKhac) params.append('vendorKhac', p.vendorKhac);
-      if (p.tenNguoiNhap) params.append('tenNguoiNhap', p.tenNguoiNhap);
-      const res = await fetch(`/api/admin/export?${params}`, {
-        credentials: 'include',
-      });
-      if (!res.ok) return;
-      const disposition = res.headers.get('Content-Disposition') || '';
+      const params: Record<string, string> = {
+        shippingLineId: String(p.id),
+        done: 'true',
+      };
+      if (p.vendorKhac) params.vendorKhac = p.vendorKhac;
+      if (p.tenNguoiNhap) params.tenNguoiNhap = p.tenNguoiNhap;
+      const res = await submissionsApi.exportExcel(params);
+      const disposition = res.headers['content-disposition'] || '';
       const match = disposition.match(/filename\*?=(?:UTF-8''|)([^;]+)/);
       const filename = match ? decodeURIComponent(match[1]) : `SanLuongXeNewWay_${new Date().toISOString().slice(0, 10)}.xlsx`;
-      const blob = await res.blob();
+      const blob = res.data;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -58,7 +57,7 @@ export function CompletedPlansTab({ user, onRefresh }: Props) {
   const revertPlan = useCallback(async (p: ShippingLine) => {
     if (!confirm(`Chuyển kế hoạch "${planDisplayName(p)}" về trạng thái chưa hoàn thành?`)) return;
     try {
-      await api.put(`/admin/shipping-lines/${p.id}`, { completed: false });
+      await shippingLinesApi.update(p.id, { completed: false });
       setCompletedPlans(prev => prev.filter(x => x.id !== p.id));
       onRefresh?.();
     } catch {}
@@ -67,7 +66,7 @@ export function CompletedPlansTab({ user, onRefresh }: Props) {
   const deletePlan = useCallback(async (p: ShippingLine) => {
     if (!confirm(`Xoá kế hoạch "${planDisplayName(p)}"? Hành động này không thể hoàn tác!`)) return;
     try {
-      await api.delete(`/admin/shipping-lines/${p.id}`);
+      await shippingLinesApi.delete(p.id);
       setCompletedPlans(prev => prev.filter(x => x.id !== p.id));
       onRefresh?.();
     } catch {}

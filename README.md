@@ -9,11 +9,12 @@ admin quản lý user và danh mục.
 | Layer | Technology |
 |---|---|
 | **Backend** | NestJS (Express) + TypeORM |
-| **Frontend** | Next.js 14 (App Router) + Tailwind CSS |
+| **Frontend Web** | Next.js 16 (App Router) + Tailwind CSS |
+| **Mobile App** | React Native (Expo) + Expo Router |
 | **Database** | PostgreSQL 15+ |
 | **Cache** | Redis 7+ |
-| **Auth** | JWT access_token + refresh_token (httpOnly cookies) |
-| **Auth Strategy** | Passport JWT |
+| **Auth** | JWT access_token + refresh_token (Web: httpOnly cookies / Mobile: Bearer token) |
+| **HTTP Client** | Axios (thống nhất web & mobile) |
 | **Password** | bcryptjs |
 | **Export** | ExcelJS |
 
@@ -23,6 +24,7 @@ admin quản lý user và danh mục.
 - npm 9+
 - PostgreSQL 15+
 - Redis 7+
+- Expo Go (trên điện thoại) — để test mobile app
 
 ## Cài đặt & Chạy (phát triển)
 
@@ -36,6 +38,10 @@ npm install
 # Frontend
 cd ../fe
 npm install
+
+# Mobile
+cd ../app
+npm install
 ```
 
 ### 2. Cấu hình môi trường
@@ -48,6 +54,12 @@ npm install
 BACKEND_URL=http://localhost:4000
 ```
 
+**Mobile** — `app/.env`:
+
+```env
+EXPO_PUBLIC_API_URL=http://192.168.1.x:4000/api
+```
+
 ### 3. Chạy dev
 
 ```bash
@@ -56,12 +68,16 @@ cd be && npm run start:dev
 
 # Terminal 2: Frontend (port 3000)
 cd fe && npm run dev
+
+# Terminal 3: Mobile (quét QR bằng Expo Go)
+cd app && npx expo start
 ```
 
 ### 4. Truy cập
 
-- **Frontend**: http://localhost:3000
+- **Frontend Web**: http://localhost:3000
 - **Backend API**: http://localhost:4000/api
+- **Mobile App**: Quét QR từ terminal Expo bằng Expo Go
 - **Tài khoản mặc định**: `admin` / `admin123`
 
 ## Triển khai sản xuất (Production)
@@ -81,13 +97,13 @@ Xem thư mục `deploy/`:
 ### Kiến trúc production
 
 ```
-Internet (tài xế)
+Internet (tài xế) ─── Mobile App (Expo APK)
     │
     ▼
 VPS (Hetzner $6/th)
 ├── Nginx (80→443, SSL Let's Encrypt)
 ├── Frontend (Next.js, :3000)
-├── Backend API (NestJS, :4000)
+├── Backend API (NestJS, :4000)  ← Mobile gọi thẳng API
 └── Redis (:6379)
     │
     └── WireGuard tunnel ─── Server công ty
@@ -137,6 +153,12 @@ D:\WebLab\NewWay\
 │   │   └── types/                # TypeScript types
 │   ├── Dockerfile
 │   └── .env.local
+│
+├── app/                          # React Native (Expo) Mobile App
+│   ├── app/                      # Expo Router screens
+│   ├── src/                      # API client, store, utils, types
+│   ├── app.json
+│   └── package.json
 │
 ├── deploy/                       # Production deployment
 │   ├── docker-compose.yml

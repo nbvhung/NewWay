@@ -10,7 +10,9 @@ import { ShippingLinesTab } from '@/components/admin/ShippingLinesTab';
 import { RoutesTab } from '@/components/admin/RoutesTab';
 import { CompletedPlansTab } from '@/components/admin/CompletedPlansTab';
 import { MonthlyPlansTab } from '@/components/admin/MonthlyPlansTab';
-import { api } from '@/lib/api-client';
+import { usersApi } from '@/lib/api-users';
+import { shippingLinesApi } from '@/lib/api-shipping-lines';
+import { routesApi } from '@/lib/api-routes';
 import { User, ShippingLine, Route } from '@/types';
 
 type Tab = 'data' | 'users' | 'shipping-lines' | 'routes' | 'monthly-plans' | 'completed-plans';
@@ -48,22 +50,22 @@ export default function AdminPage() {
 
   const loadUsers = async () => {
     try {
-      const res = await api.get<User[]>('/admin/users');
-      setAllUsers(Array.isArray(res) ? res : (res as any).data || []);
+      const res = await usersApi.getAll();
+      setAllUsers(Array.isArray(res.data) ? res.data : (res.data as any).data || []);
     } catch {}
   };
 
   const loadShippingLines = async () => {
     try {
-      const res = await api.get<ShippingLine[]>('/admin/shipping-lines');
-      setAllShippingLines(Array.isArray(res) ? res : (res as any).data || []);
+      const res = await shippingLinesApi.getAllAdmin();
+      setAllShippingLines(Array.isArray(res.data) ? res.data : (res.data as any).data || []);
     } catch {}
   };
 
   const loadRoutes = async () => {
     try {
-      const res = await api.get<Route[]>('/admin/routes');
-      setAllRoutes(Array.isArray(res) ? res : (res as any).data || []);
+      const res = await routesApi.getAll();
+      setAllRoutes(Array.isArray(res.data) ? res.data : (res.data as any).data || []);
     } catch {}
   };
 

@@ -5,7 +5,7 @@ import { EditUserModal } from './EditUserModal';
 import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/use-pagination';
 import { User } from '@/types';
-import { api } from '@/lib/api-client';
+import { usersApi } from '@/lib/api-users';
 import { ROLE_LABELS } from '@/lib/utils';
 
 interface Props {
@@ -51,7 +51,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
       return;
     }
     try {
-      await api.post('/admin/users', newUser);
+      await usersApi.create(newUser);
       toast(`Đã thêm tài khoản: ${newUser.username}`, 'success');
       setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', stt: '', sdt: '' });
       onRefresh();
@@ -66,7 +66,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
   const saveUser = async () => {
     if (!editUserData) return;
     try {
-      await api.put(`/admin/users/${editUserData.id}`, {
+      await usersApi.update(editUserData.id, {
         fullName: editUserData.fullName,
         role: editUserData.role,
         soXe: editUserData.soXe || '',
@@ -83,7 +83,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
   const deleteUser = async (id: number) => {
     if (!confirm('Bạn chắc chắn muốn XÓA tài khoản này?')) return;
     try {
-      await api.delete(`/admin/users/${id}`);
+      await usersApi.delete(id);
       toast('Đã xóa tài khoản', 'success');
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }

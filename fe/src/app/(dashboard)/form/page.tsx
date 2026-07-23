@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import { useToast } from '@/components/ui/toast';
-import { api } from '@/lib/api-client';
+import { shippingLinesApi } from '@/lib/api-shipping-lines';
+import { submissionsApi } from '@/lib/api-submissions';
 import { ShippingLine } from '@/types';
 import { fmtNgay } from '@/lib/utils';
 
@@ -34,7 +35,7 @@ export default function FormPage() {
 
   const loadShippingLines = async () => {
     try {
-      const data = await api.get<ShippingLine[]>('/shipping-lines');
+      const { data } = await shippingLinesApi.getAll();
       setShippingLines(Array.isArray(data) ? data : (data as any).data || []);
     } catch (err: any) {
       toast(err.message, 'error');
@@ -58,7 +59,7 @@ export default function FormPage() {
 
     setSubmitting(true);
     try {
-      await api.post('/submissions', {
+      await submissionsApi.create({
         shippingLine: selectedLine?.name || '',
         shippingLineId: selectedLine?.id || undefined,
         route: selectedLine?.routeName || '',

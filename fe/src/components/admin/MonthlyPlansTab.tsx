@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { StatsCard } from '@/components/ui/stats-card';
 import { Submission } from '@/types';
-import { api } from '@/lib/api-client';
+import { submissionsApi } from '@/lib/api-submissions';
 
 interface Props {
   user: any;
@@ -23,8 +23,8 @@ export function MonthlyPlansTab({ user }: Props) {
     try {
       const fromDate = `${year}-${String(month).padStart(2, '0')}-01`;
       const toDate = new Date(year, month, 0).toISOString().slice(0, 10);
-      const res = await api.get<any>('/admin/submissions', { from_date: fromDate, to_date: toDate });
-      setSubmissions(Array.isArray(res) ? res : res.data || []);
+      const res = await submissionsApi.getAll({ from_date: fromDate, to_date: toDate });
+      setSubmissions(Array.isArray(res.data) ? res.data : (res.data as any).data || []);
     } catch {}
     finally { setLoading(false); }
   };
@@ -35,16 +35,15 @@ export function MonthlyPlansTab({ user }: Props) {
 
   const exportExcel = async () => {
     try {
-      const params = new URLSearchParams();
-      params.append('mode', 'monthly');
-      params.append('month', String(month));
-      params.append('year', String(year));
-      const res = await fetch(`/api/admin/export?${params}`, { credentials: 'include' });
-      if (!res.ok) return;
-      const disposition = res.headers.get('Content-Disposition') || '';
+      const res = await submissionsApi.exportExcel({
+        mode: 'monthly',
+        month: String(month),
+        year: String(year),
+      });
+      const disposition = res.headers['content-disposition'] || '';
       const match = disposition.match(/filename\*?=(?:UTF-8''|)([^;]+)/);
       const filename = match ? decodeURIComponent(match[1]) : `KeHoachThang_${String(month).padStart(2, '0')}_${year}.xlsx`;
-      const blob = await res.blob();
+      const blob = res.data;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

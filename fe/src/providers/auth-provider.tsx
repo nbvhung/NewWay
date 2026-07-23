@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User } from '@/types';
-import { api } from '@/lib/api-client';
+import { authApi } from '@/lib/api-auth';
 
 interface AuthContextType {
   user: User | null;
@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const data = await api.get<{ user: User }>('/auth/me');
+      const { data } = await authApi.me();
       setUser(data.user);
     } catch {
       try {
@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           headers: { 'Content-Type': 'application/json' },
         });
         if (refreshRes.ok) {
-          const data = await api.get<{ user: User }>('/auth/me');
+          const { data } = await authApi.me();
           setUser(data.user);
         } else {
           setUser(null);
@@ -54,14 +54,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshUser]);
 
   const login = async (username: string, password: string): Promise<User> => {
-    const data = await api.post<{ user: User }>('/auth/login', { username, password });
+    const { data } = await authApi.login(username, password);
     setUser(data.user);
     return data.user;
   };
 
   const logout = async () => {
     try {
-      await api.post('/auth/logout');
+      await authApi.logout();
     } catch {}
     setUser(null);
     if (typeof window !== 'undefined') {

@@ -7,7 +7,8 @@ import { useToast } from '@/components/ui/toast';
 import { Modal } from '@/components/ui/modal';
 import { StatsCard } from '@/components/ui/stats-card';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { api } from '@/lib/api-client';
+import { submissionsApi } from '@/lib/api-submissions';
+import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { ShippingLine, Submission } from '@/types';
 import { fmtDate, FIELD_LABELS, formatMoney, fmtNgay } from '@/lib/utils';
 
@@ -60,11 +61,11 @@ export default function MyDataPage() {
   const loadData = async () => {
     try {
       const [subRes, slRes] = await Promise.all([
-        api.get<any>('/submissions/my'),
-        api.get<ShippingLine[]>('/shipping-lines'),
+        submissionsApi.getMy(),
+        shippingLinesApi.getAll(),
       ]);
-      setData(Array.isArray(subRes) ? subRes : subRes.data || []);
-      setShippingLines(Array.isArray(slRes) ? slRes : (slRes as any).data || []);
+      setData(Array.isArray(subRes.data) ? subRes.data : (subRes.data as any).data || []);
+      setShippingLines(Array.isArray(slRes.data) ? slRes.data : (slRes.data as any).data || []);
     } catch (err: any) {
       toast(err.message, 'error');
     } finally {
@@ -74,8 +75,8 @@ export default function MyDataPage() {
 
   const fetchSalarySummary = async (month: number, year: number) => {
     try {
-      const res = await api.get<any>(`/submissions/salary-summary?month=${month}&year=${year}`);
-      return res?.data || res || { totalSalary: 0, count: 0 };
+      const res = await submissionsApi.getSalarySummary(month, year);
+      return res.data || { totalSalary: 0, count: 0 };
     } catch {
       return { totalSalary: 0, count: 0 };
     }
@@ -123,7 +124,7 @@ export default function MyDataPage() {
     }
     setSaving(true);
     try {
-      await api.put(`/submissions/${editSub.id}`, editForm);
+      await submissionsApi.update(editSub.id, editForm as unknown as Record<string, unknown>);
       toast('Đã lưu thay đổi thành công!', 'success');
       setEditModal(false);
       loadData();

@@ -52,6 +52,14 @@ export class AuthService {
     await this.clearRefreshTokens(userId);
   }
 
+  verifyRefreshToken(token: string): { sub: number } {
+    try {
+      return this.jwtService.verify(token, { secret: process.env.JWT_REFRESH_SECRET });
+    } catch {
+      throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn');
+    }
+  }
+
   async findRefreshTokenHash(userId: number): Promise<string | null> {
     const cached = await this.redisService.getRefreshToken(userId);
     if (cached) return cached;

@@ -7,7 +7,8 @@ import { Modal } from '@/components/ui/modal';
 import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/use-pagination';
 import { Submission, User, ShippingLine } from '@/types';
-import { api } from '@/lib/api-client';
+import { submissionsApi } from '@/lib/api-submissions';
+import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { ROLE_LABELS, fmtNgay } from '@/lib/utils';
 
 interface Props {
@@ -61,8 +62,8 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
       if (filterSl) params.shippingLineId = filterSl;
       if (filterFrom) params.from_date = filterFrom;
       if (filterTo) params.to_date = filterTo;
-      const res = await api.get<any>('/admin/submissions', params);
-      setSubmissions(Array.isArray(res) ? res : res.data || []);
+      const res = await submissionsApi.getAll(params);
+      setSubmissions(Array.isArray(res.data) ? res.data : (res.data as any).data || []);
     } catch (err: any) {
       // toast handled by parent
       console.error(err);
@@ -83,7 +84,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
     if (!editSub) return;
     setSaving(true);
     try {
-      await api.put(`/admin/submissions/${editSub.id}`, {
+      await submissionsApi.updateAdmin(editSub.id, {
         shippingLine: editForm.shippingLine,
         shippingLineId: editForm.shippingLineId || undefined,
         route: editForm.route || '',
@@ -109,7 +110,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
   const deleteSub = async (id: number) => {
     if (!confirm('Bạn chắc chắn muốn XÓA bản ghi này?')) return;
     try {
-      await api.delete(`/admin/submissions/${id}`);
+      await submissionsApi.delete(id);
       loadSubmissions();
     } catch (err: any) {
       console.error(err);
@@ -118,27 +119,24 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
 
   const exportExcel = async (vendorKhac?: string, tenNguoiNhap?: string) => {
     try {
-      const params = new URLSearchParams();
+      const params: Record<string, string> = {};
       if (user?.role === 'hr') {
         const fromDate = `${hrYear}-${String(hrMonth).padStart(2, '0')}-01`;
         const toDate = new Date(hrYear, hrMonth, 0).toISOString().slice(0, 10);
-        params.append('from_date', fromDate);
-        params.append('to_date', toDate);
+        params.from_date = fromDate;
+        params.to_date = toDate;
       }
-      if (filterUser) params.append('user_id', filterUser);
-      if (filterSl) params.append('shippingLineId', filterSl);
-      if (filterFrom) params.append('from_date', filterFrom);
-      if (filterTo) params.append('to_date', filterTo);
-      if (vendorKhac) params.append('vendorKhac', vendorKhac);
-      if (tenNguoiNhap) params.append('tenNguoiNhap', tenNguoiNhap);
-      const res = await fetch(`/api/admin/export?${params}`, {
-        credentials: 'include',
-      });
-      if (!res.ok) return;
-      const disposition = res.headers.get('Content-Disposition') || '';
+      if (filterUser) params.user_id = filterUser;
+      if (filterSl) params.shippingLineId = filterSl;
+      if (filterFrom) params.from_date = filterFrom;
+      if (filterTo) params.to_date = filterTo;
+      if (vendorKhac) params.vendorKhac = vendorKhac;
+      if (tenNguoiNhap) params.tenNguoiNhap = tenNguoiNhap;
+      const res = await submissionsApi.exportExcel(params);
+      const disposition = res.headers['content-disposition'] || '';
       const match = disposition.match(/filename\*?=(?:UTF-8''|)([^;]+)/);
       const filename = match ? decodeURIComponent(match[1]) : `SanLuongXeNewWay_${new Date().toISOString().slice(0, 10)}.xlsx`;
-      const blob = await res.blob();
+      const blob = res.data;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -199,14 +197,14 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
       let existing = submissions.find(s => s.userId === user?.id && s.shippingLineId === totalShipSlId);
       if (!existing) {
         try {
-          const mySubs = await api.get<any[]>('/submissions/my');
-          existing = mySubs.find(s => s.shippingLineId === totalShipSlId);
+          const mySubs = await submissionsApi.getMy();
+          existing = mySubs.data.find((s: any) => s.shippingLineId === totalShipSlId);
         } catch {}
       }
       if (existing) {
-        await api.put(`/submissions/${existing.id}`, payload);
+        await submissionsApi.update(existing.id, payload);
       } else {
-        await api.post('/submissions', payload);
+        await submissionsApi.create(payload);
       }
       setTotalShipOpen(false);
       loadSubmissions();
@@ -514,7 +512,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
               setDeleteAllOpen(false);
               setDeletePassword('');
               try {
-                await api.delete('/admin/submissions');
+                await submissionsApi.deleteAll();
                 loadSubmissions();
               } catch {}
             }}

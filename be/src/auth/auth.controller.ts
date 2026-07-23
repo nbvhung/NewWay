@@ -1,8 +1,10 @@
-import { Controller, Post, Get, Body, Req, Res, UseGuards, HttpCode, ForbiddenException } from '@nestjs/common';
+import { Controller, Post, Get, Body, Req, Res, UseGuards, HttpCode, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import type { Request, Response } from 'express';
+import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { MobileLoginDto } from './dto/mobile-login.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -16,6 +18,30 @@ export class AuthController {
     const result = await this.authService.login(dto.username, dto.password);
     this.setTokenCookies(res, result.accessToken, result.refreshToken);
     return { user: result.user };
+  }
+
+  @Post('mobile-login')
+  @HttpCode(200)
+  async mobileLogin(@Body() dto: MobileLoginDto) {
+    return this.authService.login(dto.username, dto.password);
+  }
+
+  @Post('mobile-refresh')
+  @HttpCode(200)
+  async mobileRefresh(@Body() body: { refreshToken: string }) {
+    if (!body.refreshToken) {
+      throw new UnauthorizedException('Refresh token không được để trống');
+    }
+    const payload = this.authService.verifyRefreshToken(body.refreshToken);
+    const storedHash = await this.authService.findRefreshTokenHash(payload.sub);
+    if (!storedHash) {
+      throw new UnauthorizedException('Refresh token không hợp lệ');
+    }
+    const isValid = bcrypt.compareSync(body.refreshToken, storedHash);
+    if (!isValid) {
+      throw new UnauthorizedException('Refresh token không hợp lệ');
+    }
+    return this.authService.refresh(payload.sub);
   }
 
   @Post('refresh')

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Route } from '@/types';
-import { api } from '@/lib/api-client';
+import { routesApi } from '@/lib/api-routes';
 import { Modal } from '@/components/ui/modal';
 
 interface Props {
@@ -23,7 +23,7 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
   const addRoute = async () => {
     if (!name.trim()) { toast('Vui lòng nhập tên tuyến đường', 'error'); return; }
     try {
-      await api.post('/admin/routes', { name: name.trim(), money: money ? parseFloat(money) : 0 });
+      await routesApi.create({ name: name.trim(), money: money ? parseFloat(money) : 0 });
       toast(`Đã thêm tuyến: ${name.trim()}`, 'success');
       setName('');
       setMoney('');
@@ -42,7 +42,7 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
     if (!editName.trim()) { toast('Vui lòng nhập tên tuyến đường', 'error'); return; }
     setSaving(true);
     try {
-      await api.put(`/admin/routes/${editRoute.id}`, {
+      await routesApi.update(editRoute.id, {
         name: editName.trim(),
         money: editMoney ? parseFloat(editMoney) : 0,
       });
@@ -56,7 +56,7 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
   const deleteRoute = async (id: number, name: string) => {
     if (!confirm(`Xóa tuyến đường "${name}"?`)) return;
     try {
-      await api.delete(`/admin/routes/${id}`);
+      await routesApi.delete(id);
       toast(`Đã xóa: ${name}`, 'success');
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }

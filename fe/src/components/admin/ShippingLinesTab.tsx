@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ShippingLine, Route } from '@/types';
-import { api } from '@/lib/api-client';
+import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { fmtNgay } from '@/lib/utils';
 import { Modal } from '@/components/ui/modal';
 import { Pagination } from '@/components/ui/pagination';
@@ -51,7 +51,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
     if (!name.trim()) { toast('Vui lòng nhập tên kế hoạch', 'error'); return; }
     setSaving(true);
     try {
-      await api.post('/admin/shipping-lines', {
+      await shippingLinesApi.create({
         name: name.trim(),
         soChuyen: soChuyen.trim(),
         routeName: routeName.trim(),
@@ -82,7 +82,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
     if (!editName.trim()) { toast('Tên kế hoạch/Tên Tàu không được để trống', 'error'); return; }
     setSaving(true);
     try {
-      await api.put(`/admin/shipping-lines/${editTarget.id}`, {
+      await shippingLinesApi.update(editTarget.id, {
         name: editName.trim(),
         soChuyen: editSoChuyen.trim(),
         routeName: editRouteName.trim(),
@@ -100,7 +100,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
   const completePlan = async (id: number, displayName: string) => {
     if (!confirm(`Hoàn thành kế hoạch "${displayName}"?`)) return;
     try {
-      await api.put(`/admin/shipping-lines/${id}`, { completed: true });
+      await shippingLinesApi.update(id, { completed: true });
       toast(`Đã hoàn thành: ${displayName}`, 'success');
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
@@ -109,7 +109,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
   const deletePlan = async (id: number, displayName: string) => {
     if (!confirm(`Xóa kế hoạch "${displayName}"?`)) return;
     try {
-      await api.delete(`/admin/shipping-lines/${id}`);
+      await shippingLinesApi.delete(id);
       toast(`Đã xóa: ${displayName}`, 'success');
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
