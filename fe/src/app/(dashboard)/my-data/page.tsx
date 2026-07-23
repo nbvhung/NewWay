@@ -49,6 +49,7 @@ export default function MyDataPage() {
   const [salarySummary, setSalarySummary] = useState<{ totalSalary: number; count: number } | null>(null);
   const [salaryMonth, setSalaryMonth] = useState(now.getMonth() + 1);
   const [salaryYear, setSalaryYear] = useState(now.getFullYear());
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const planDisplayName = (sl: ShippingLine) => {
     return [sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ');
@@ -284,14 +285,19 @@ export default function MyDataPage() {
               </div>
             </div>
             {/* ── Đã hoàn thành ── */}
-            <div>
-              <div className="flex items-center gap-2 px-1 mb-2 mt-6">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="text-xs font-bold text-[#475569] uppercase tracking-wider">Đã hoàn thành</span>
-              </div>
-              <div className="overflow-x-auto rounded-xl border border-[rgba(0,0,0,0.06)]">
+            <div className="mt-6">
+              <button onClick={() => setShowCompleted(!showCompleted)}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-[rgba(0,0,0,0.08)] hover:bg-[#f8fafc] transition-all cursor-pointer">
+                <span className={`w-2 h-2 rounded-full bg-emerald-500 shrink-0 ${showCompleted ? '' : 'animate-pulse'}`} />
+                <span className="text-xs font-bold text-[#475569] uppercase tracking-wider flex-1 text-left">Đã hoàn thành</span>
+                <span className="text-[#94a3b8] text-xs font-medium">{filteredData.filter(s => s.completed).length} bản ghi</span>
+                <span className="text-[#94a3b8] text-sm">{showCompleted ? '▲' : '▼'}</span>
+              </button>
+              {showCompleted && (
+              <div className="overflow-x-auto rounded-xl border border-[rgba(0,0,0,0.06)] mt-2">
                 <RenderTable data={filteredData.filter(s => s.completed)} />
               </div>
+              )}
             </div>
           </>
         ) : (
