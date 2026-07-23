@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, useRef, FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api-client';
@@ -11,9 +11,10 @@ import { fmtNgay } from '@/lib/utils';
 export default function FormPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [shippingLines, setShippingLines] = useState<ShippingLine[]>([]);
-  const [selectedShippingLineId, setSelectedShippingLineId] = useState<number | null>(null);
+  const [selectedShippingLineId, setSelectedShippingLineId] = useState<number | ''>('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -81,7 +82,7 @@ export default function FormPage() {
   };
 
   const resetForm = () => {
-    setSelectedShippingLineId(null);
+    setSelectedShippingLineId('');
     setHang20('');
     setHang40('');
     setVo20('');
@@ -91,143 +92,240 @@ export default function FormPage() {
     setVeSinhLai('');
     setKeoVe('');
     setTip('');
+    Object.values(inputRefs.current).forEach(el => {
+      if (el) el.value = '';
+    });
   };
 
-  return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl font-extrabold">📝 Nhập liệu sản lượng</h1>
-        <p className="text-xs text-[#64748b] mt-1">Điền đầy đủ thông tin bên dưới và nhấn Gửi xác nhận</p>
-      </div>
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-      <div className="max-w-[680px] mx-auto bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5 sm:p-6">
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">
-              Kế hoạch <span className="text-[#ef4444]">*</span>
-            </label>
+  const NumCell = ({
+    id,
+    label,
+    value,
+    onChange,
+    labelColor = '#111827',
+    borderColor = '#d1d5db',
+  }: {
+    id: string;
+    label: string;
+    value: string;
+    onChange: (v: string) => void;
+    labelColor?: string;
+    borderColor?: string;
+  }) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <label style={{ fontSize: 13, fontWeight: 700, color: labelColor, lineHeight: 1.2 }}>{label}</label>
+      <input
+        ref={(el) => { inputRefs.current[id] = el; }}
+        type="text"
+        inputMode="numeric"
+        defaultValue={value}
+        placeholder="0"
+        onBlur={(e) => {
+          const v = e.target.value.replace(/\D/g, '');
+          onChange(v);
+        }}
+        style={{
+          width: '100%',
+          padding: '10px 8px',
+          fontSize: 26,
+          fontWeight: 700,
+          textAlign: 'center',
+          border: `2px solid ${borderColor}`,
+          borderRadius: 10,
+          outline: 'none',
+          background: '#fff',
+          color: '#111',
+          boxSizing: 'border-box',
+        } as React.CSSProperties}
+      />
+    </div>
+  );
+
+  return (
+    <>
+      {/* Hide number input spinners */}
+      <style>{`
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+      `}</style>
+
+      <div style={{ maxWidth: 480, margin: '0 auto', fontFamily: 'Inter, system-ui, sans-serif' }}>
+        {/* ── Sticky blue header ── */}
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 20,
+          background: 'linear-gradient(135deg,#1155cc,#1976d2)',
+          borderRadius: 12,
+          marginBottom: 18,
+          overflow: 'hidden',
+        }}>
+          <div style={{ padding: '14px 16px' }}>
+            <h1 style={{
+              margin: 0, textAlign: 'center', color: '#fff',
+              fontSize: 18, fontWeight: 900, letterSpacing: 0.8,
+            }}>
+              BÁO SẢN LƯỢNG
+            </h1>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          {/* ── 1. Chọn kế hoạch ── */}
+          <section>
+            <p style={{ fontSize: 15, fontWeight: 800, color: '#1155cc', marginBottom: 8 }}>1. Chọn kế hoạch</p>
             {loading ? (
-              <div className="flex items-center gap-2 text-xs text-[#64748b] py-2">
-                <span className="animate-spin w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full" />
-                Đang tải...
+              <div style={{
+                padding: 14, background: '#fff', borderRadius: 10,
+                border: '2px solid #c7d9f9', textAlign: 'center', color: '#888', fontSize: 14,
+              }}>
+                ⏳ Đang tải danh sách kế hoạch...
               </div>
             ) : (
-              <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto">
-                {shippingLines.map((sl) => (
-                  <label
-                    key={sl.id}
-                    className={`flex items-center gap-2.5 px-3.5 py-2.5 bg-[#ffffff] border rounded-lg cursor-pointer transition-all select-none hover:border-[#1a56db] hover:bg-[rgba(26,86,219,0.08)] ${
-                      selectedShippingLineId === sl.id
-                        ? 'border-[#1a56db] bg-[rgba(26,86,219,0.12)]'
-                        : 'border-[rgba(0,0,0,0.08)]'
-                    }`}
-                    onClick={() => {
-                      setSelectedShippingLineId(sl.id);
-                    }}
-                  >
-                    <div className={`w-[18px] h-[18px] border-2 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                      selectedShippingLineId === sl.id ? 'border-[#1a56db]' : 'border-[rgba(0,0,0,0.08)]'
-                    }`}>
-                      {selectedShippingLineId === sl.id && (
-                        <div className="w-2 h-2 rounded-full bg-[#1a56db]" />
-                      )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
+                {shippingLines.map((sl) => {
+                  const sel = selectedShippingLineId === sl.id;
+                  return (
+                    <div
+                      key={sl.id}
+                      onClick={() => setSelectedShippingLineId(sl.id)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '10px 14px',
+                        border: `2px solid ${sel ? '#1976d2' : '#e2e8f0'}`,
+                        borderRadius: 10,
+                        background: sel ? 'rgba(25,118,210,0.08)' : '#fff',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                        userSelect: 'none',
+                      }}
+                    >
+                      <div style={{
+                        width: 20, height: 20, borderRadius: '50%',
+                        border: `2px solid ${sel ? '#1976d2' : '#cbd5e1'}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                      }}>
+                        {sel && <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#1976d2' }} />}
+                      </div>
+                      <span style={{ fontSize: 14, fontWeight: sel ? 700 : 500, color: '#111' }}>
+                        {planDisplayName(sl)}
+                      </span>
+                      {sl.leTet ? <span style={{ marginLeft: 'auto', padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: 'rgba(239,68,68,0.15)', color: '#dc2626' }}>x3</span> : sl.tangCuong ? <span style={{ marginLeft: 'auto', padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: 'rgba(245,158,11,0.15)', color: '#d97706' }}>+15%</span> : null}
                     </div>
-                    <span className="text-sm font-medium">{planDisplayName(sl)}{sl.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-600">x3</span> : sl.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-600">+15%</span> : null}</span>
-                  </label>
-                ))}
+                  );
+                })}
                 {shippingLines.length === 0 && (
-                  <p className="text-xs text-[#64748b] py-2">Chưa có kế hoạch nào.</p>
+                  <div style={{ padding: 14, textAlign: 'center', color: '#888', fontSize: 14 }}>Chưa có kế hoạch nào.</div>
                 )}
               </div>
             )}
-          </div>
+          </section>
 
-          <div className="h-px bg-[rgba(0,0,0,0.08)] my-5" />
+          {/* ── 2. Lái xe NW ── */}
+          <section>
+            <p style={{ fontSize: 15, fontWeight: 800, color: '#1155cc', marginBottom: 8 }}>2. Lái Xe NW</p>
+            <div style={{
+              background: '#e8f0fe', border: '2px solid #1976d2',
+              borderRadius: 10, padding: '14px 16px', textAlign: 'center',
+            }}>
+              <span style={{ fontSize: 22, fontWeight: 900, color: '#1976d2', letterSpacing: 1 }}>
+                {user?.fullName || user?.username || '—'}
+              </span>
+            </div>
+            <p style={{ fontSize: 12, color: '#eab308', fontWeight: 700, marginTop: 6 }}>
+              * Dữ liệu sẽ được ghi nhận vào tài khoản này.
+            </p>
+          </section>
 
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Lái xe NW</label>
-            <input
-              type="text"
-              value={user?.fullName || ''}
-              readOnly
-              className="w-full px-3.5 py-2.5 bg-[rgba(26,86,219,0.08)] border border-[rgba(26,86,219,0.3)] rounded-lg text-sm text-[#0f172a] cursor-default"
-            />
-            <small className="text-[#64748b] mt-1 block">ℹ️ Thông tin này được lấy tự động từ tài khoản đăng nhập</small>
-          </div>
+          {/* ── 3. Nhập Sản Lượng Đã Chạy ── */}
+          <section>
+            <p style={{ fontSize: 15, fontWeight: 800, color: '#1155cc', marginBottom: 10 }}>3. Nhập Sản Lượng Đã Chạy</p>
 
-          <div className="h-px bg-[rgba(0,0,0,0.08)] my-5" />
+            {/* Green box – Standard containers */}
+            <div style={{
+              border: '2px solid #22c55e', borderRadius: 12,
+              padding: '14px 12px', background: '#fff',
+              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+              marginBottom: 10,
+            }}>
+              <NumCell id="hang20" label="Hàng 20'" value={hang20} onChange={setHang20} borderColor="#d1d5db" />
+              <NumCell id="hang40" label="Hàng 40'" value={hang40} onChange={setHang40} borderColor="#d1d5db" />
+              <NumCell id="vo20"  label="Vỏ 20'"  value={vo20}  onChange={setVo20}  borderColor="#d1d5db" />
+              <NumCell id="vo40"  label="Vỏ 40'"  value={vo40}  onChange={setVo40}  borderColor="#d1d5db" />
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="mb-4 sm:mb-0">
-              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số hàng 20</label>
-              <input type="number" min="0" value={hang20} onChange={(e) => setHang20(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
+            {/* Red box – FR containers */}
+            <div style={{
+              border: '2px solid #ef4444', borderRadius: 12,
+              padding: '14px 12px', background: '#fff',
+              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+              marginBottom: 10,
+            }}>
+              <NumCell id="vo20fr" label="Hàng 20' FR" value={vo20fr} onChange={setVo20fr}
+                labelColor="#dc2626" borderColor="#fca5a5" />
+              <NumCell id="vo40fr" label="Hàng 40' FR" value={vo40fr} onChange={setVo40fr}
+                labelColor="#dc2626" borderColor="#fca5a5" />
             </div>
-            <div className="mb-4 sm:mb-0">
-              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số hàng 40</label>
-              <input type="number" min="0" value={hang40} onChange={(e) => setHang40(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
-            </div>
-            <div className="mb-4 sm:mb-0">
-              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20</label>
-              <input type="number" min="0" value={vo20} onChange={(e) => setVo20(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
-            </div>
-            <div className="mb-4 sm:mb-0">
-              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40</label>
-              <input type="number" min="0" value={vo40} onChange={(e) => setVo40(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
-            </div>
-            <div className="mb-4 sm:mb-0">
-              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
-              <input type="number" min="0" value={vo20fr} onChange={(e) => setVo20fr(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
-            </div>
-            <div className="mb-4 sm:mb-0">
-              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
-              <input type="number" min="0" value={vo40fr} onChange={(e) => setVo40fr(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Vệ sinh lại <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
-              <input type="number" min="0" value={veSinhLai} onChange={(e) => setVeSinhLai(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#64748b] mb-1.5">Kéo về <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
-              <input type="number" min="0" value={keoVe} onChange={(e) => setKeoVe(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#64748b] mb-1.5">TIP (x 1.000đ)</label>
-              <input type="number" min="0" value={tip} onChange={(e) => setTip(e.target.value)} placeholder="0"
-                className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]" />
-            </div>
-          </div>
 
-          <div className="h-px bg-[rgba(0,0,0,0.08)] my-5" />
+            {/* Yellow box – Extra trip services */}
+            <div style={{
+              border: '2px solid #fbbf24', borderRadius: 12,
+              padding: '14px 12px', background: '#fff',
+              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+              marginBottom: 10,
+            }}>
+              <NumCell id="veSinhLai" label="Vệ sinh lại (chuyến)" value={veSinhLai} onChange={setVeSinhLai}
+                labelColor="#d97706" borderColor="#fcd34d" />
+              <NumCell id="keoVe" label="Kéo về (chuyến)" value={keoVe} onChange={setKeoVe}
+                labelColor="#d97706" borderColor="#fcd34d" />
+            </div>
 
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <Link href="/my-data" className="text-xs font-medium text-[#64748b] px-3.5 py-2 rounded-lg border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all">
-              📊 Xem dữ liệu của tôi
-            </Link>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="px-7 py-3 rounded-lg bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white font-semibold text-sm shadow-[0_4px_15px_rgba(26,86,219,0.4)] transition-all hover:shadow-[0_6px_20px_rgba(26,86,219,0.5)] hover:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {submitting ? (
-                <span className="inline-flex items-center gap-2">
-                  <span className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
-                  Đang xử lý...
-                </span>
-              ) : (
-                '✅ Gửi xác nhận'
-              )}
-            </button>
-          </div>
+            {/* TIP */}
+            <div style={{
+              border: '2px solid #e2e8f0', borderRadius: 12,
+              padding: '14px 12px', background: '#fff',
+              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+            }}>
+              <NumCell id="tip" label="TIP (×1.000đ)" value={tip} onChange={setTip} borderColor="#d1d5db" />
+            </div>
+          </section>
+
+          {/* ── Submit ── */}
+          <button
+            type="submit"
+            disabled={submitting}
+            style={{
+              width: '100%', padding: '16px',
+              background: submitting
+                ? '#93c5fd'
+                : 'linear-gradient(135deg,#1155cc,#1976d2)',
+              color: '#fff', border: 'none', borderRadius: 12,
+              fontSize: 16, fontWeight: 900, letterSpacing: 0.5,
+              cursor: submitting ? 'not-allowed' : 'pointer',
+              boxShadow: submitting ? 'none' : '0 4px 16px rgba(21,101,192,0.4)',
+            }}
+          >
+            {submitting ? '⏳ Đang xử lý...' : '✅ GỬI XÁC NHẬN'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => router.push('/my-data')}
+            style={{
+              width: '100%', padding: '13px',
+              background: 'transparent', color: '#1155cc',
+              border: '2px solid #1155cc', borderRadius: 12,
+              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              marginBottom: 24,
+            }}
+          >
+            📊 Xem dữ liệu của tôi
+          </button>
         </form>
       </div>
-    </div>
+    </>
   );
 }

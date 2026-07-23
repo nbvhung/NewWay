@@ -96,21 +96,15 @@ export function Navbar() {
         </button>
 
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-[#ffffff] rounded-lg border border-[rgba(0,0,0,0.08)] text-xs">
-            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#1a56db] to-[#06b6d4] flex items-center justify-center font-bold text-[10px] text-white">
-              {(user.fullName || user.username || '?')[0].toUpperCase()}
-            </div>
-            <span className="text-sm font-medium">{user.fullName}</span>
-            <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide ${roleClass}`}>
-              {ROLE_LABELS[user.role] || user.role}
-            </span>
+          <div className="hidden sm:block text-sm font-medium text-[#0f172a] px-3 py-1.5 bg-[#ffffff] rounded-lg border border-[rgba(0,0,0,0.08)]">
+            {user.fullName}
           </div>
 
           <button
             onClick={() => setShowLogoutConfirm(true)}
-            className="text-xs font-medium text-[#64748b] px-2.5 py-1.5 rounded-lg border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer"
+            className="text-xs font-medium text-[#64748b] px-3 py-1.5 rounded-lg border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer"
           >
-            🚪
+            🚪 Đăng xuất
           </button>
         </div>
       </div>
