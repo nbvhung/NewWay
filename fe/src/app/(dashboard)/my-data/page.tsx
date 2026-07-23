@@ -151,6 +151,60 @@ export default function MyDataPage() {
     today: filteredData.filter((s) => (s.createdAt || '').slice(0, 10) === today).length,
   };
 
+  const RenderTable = ({ data, showEdit }: { data: Submission[]; showEdit?: boolean }) => (
+    <table className="w-full text-xs border-collapse">
+      <thead>
+        <tr className="bg-[#f8fafc]">
+          {user?.role !== 'laixe' && <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">#</th>}
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Kế hoạch</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">H20</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">H40</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">V20</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">V40</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">V20FR</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">V40FR</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">VSL</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">KV</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">TIP (x 1.000đ)</th>
+          {user?.role !== 'ops' && <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Lương</th>}
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Sửa</th>
+        </tr>
+      </thead>
+      <tbody>
+        {data.map((s, i) => (
+          <tr key={s.id} className="border-b border-[rgba(0,0,0,0.04)] hover:bg-[rgba(0,0,0,0.03)]">
+            {user?.role !== 'laixe' && <td className="px-3.5 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#64748b]">{i + 1}</span></td>}
+            <td className="px-3.5 py-3">
+              <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-blue-700">{s.planDisplayName || s.shippingLine}</span>
+              {showEdit && !s.completed && (
+                <button onClick={() => openEdit(s)} className="px-2 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️ Sửa</button>
+              )}
+              </div>
+            </td>
+            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.hang20 || '—'}</td>
+            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.hang40 || '—'}</td>
+            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.vo20 || '—'}</td>
+            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.vo40 || '—'}</td>
+            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.vo20fr || '—'}</td>
+            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.vo40fr || '—'}</td>
+            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.veSinhLai || '—'}</td>
+            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.keoVe || '—'}</td>
+            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.tip || '—'}</td>
+            {user?.role !== 'ops' && <td className="px-3.5 py-3">{formatMoney(s.salary)}</td>}
+            <td className="px-3.5 py-3">
+              {s.editCount > 0 ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(245,158,11,0.2)] text-amber-700">✏️ {s.editCount}</span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#64748b]">0</span>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+
   if (loading) return <LoadingSpinner className="min-h-[60vh]" />;
 
   return (
@@ -165,11 +219,13 @@ export default function MyDataPage() {
         </Link>
       </div>
 
+      {user?.role !== 'laixe' && (
       <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
         <StatsCard icon="📋" value={stats.total} label="Tổng kế hoạch" />
         <StatsCard icon="✏️" value={stats.edits} label="Tổng lần sửa" />
         <StatsCard icon="📅" value={stats.today} label="Hôm nay" />
       </div>
+      )}
 
       <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl">
         <div className="flex items-center justify-between flex-wrap gap-3 px-5 pt-5 pb-3">
@@ -215,61 +271,32 @@ export default function MyDataPage() {
             <p className="text-sm">Chưa có bản ghi nào trong {MONTHS_VI[viewMonth]}/{viewYear}.</p>
             <Link href="/form" className="text-[#1a56db] text-sm hover:underline">Nhập liệu ngay →</Link>
           </div>
+        ) : user?.role === 'laixe' ? (
+          <>
+            {/* ── Chưa hoàn thành ── */}
+            <div className="mb-4">
+              <div className="flex items-center gap-2 px-1 mb-2">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                <span className="text-xs font-bold text-[#475569] uppercase tracking-wider">Chưa hoàn thành</span>
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-[rgba(0,0,0,0.06)]">
+                <RenderTable data={filteredData.filter(s => !s.completed)} showEdit />
+              </div>
+            </div>
+            {/* ── Đã hoàn thành ── */}
+            <div>
+              <div className="flex items-center gap-2 px-1 mb-2 mt-6">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="text-xs font-bold text-[#475569] uppercase tracking-wider">Đã hoàn thành</span>
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-[rgba(0,0,0,0.06)]">
+                <RenderTable data={filteredData.filter(s => s.completed)} />
+              </div>
+            </div>
+          </>
         ) : (
           <div className="overflow-x-auto" style={{ maxHeight: '480px', overflowY: 'auto' }}>
-            <table className="w-full text-xs border-collapse">
-              <thead>
-                <tr className="bg-[#f8fafc]">
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">#</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Kế hoạch</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">H20</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">H40</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">V20</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">V40</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">V20FR</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">V40FR</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">VSL</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">KV</th>
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">TIP (x 1.000đ)</th>
-                  {user?.role !== 'ops' && <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Lương</th>}
-                  <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Sửa</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredData.map((s, i) => (
-                  <tr key={s.id} className="border-b border-[rgba(0,0,0,0.04)] hover:bg-[rgba(0,0,0,0.03)]">
-                    <td className="px-3.5 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#64748b]">{i + 1}</span></td>
-                    <td className="px-3.5 py-3">
-                      <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-blue-700">{s.planDisplayName || s.shippingLine}</span>
-                      {s.completed ? (
-                        <span className="px-2 py-0.5 rounded text-[9px] font-medium bg-[rgba(16,185,129,0.15)] text-emerald-600">✅</span>
-                      ) : (
-                        <button onClick={() => openEdit(s)} className="px-2 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️ Sửa</button>
-                      )}
-                      </div>
-                    </td>
-                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.hang20 || '—'}</td>
-                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.hang40 || '—'}</td>
-                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.vo20 || '—'}</td>
-                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.vo40 || '—'}</td>
-                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.vo20fr || '—'}</td>
-                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.vo40fr || '—'}</td>
-                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.veSinhLai || '—'}</td>
-                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.keoVe || '—'}</td>
-                    <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.tip || '—'}</td>
-                    {user?.role !== 'ops' && <td className="px-3.5 py-3">{formatMoney(s.salary)}</td>}
-                    <td className="px-3.5 py-3">
-                      {s.editCount > 0 ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(245,158,11,0.2)] text-amber-700">✏️ {s.editCount}</span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#64748b]">0</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <RenderTable data={filteredData} />
           </div>
         )}
       </div>
