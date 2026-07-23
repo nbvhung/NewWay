@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/store/auth-store';
 import { shippingLinesApi } from '../../src/api/shipping-lines';
 import { submissionsApi } from '../../src/api/submissions';
@@ -16,6 +16,9 @@ const planDisplayName = (sl: ShippingLine) =>
 export default function EntryForm() {
   const { user } = useAuthStore();
   const router = useRouter();
+
+  // Chỉ laixe mới được vào trang nhập liệu
+  if (user && user.role !== 'laixe') return <Redirect href="/(tabs)/admin" />;
 
   const [shippingLines, setShippingLines] = useState<ShippingLine[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);

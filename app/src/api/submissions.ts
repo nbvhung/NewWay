@@ -12,4 +12,9 @@ export const submissionsApi = {
   delete: (id: number) => api.delete(`/admin/submissions/${id}`),
   getSalarySummary: (month: number, year: number) =>
     api.get('/submissions/salary-summary', { params: { month, year } }),
+  deleteAll: () => api.delete('/admin/submissions'),
+  exportExcel: (params?: Record<string, string>) => {
+    const searchParams = new URLSearchParams(params || {});
+    return api.get<string>(`/admin/export?${searchParams}`);
+  },
 };

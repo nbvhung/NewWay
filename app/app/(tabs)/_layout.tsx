@@ -27,6 +27,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      initialRouteName={isAdmin ? 'admin' : 'index'}
       screenOptions={{
         headerShown: true,
         headerStyle: { backgroundColor: '#f1f5f9' },
@@ -49,7 +50,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="my-data"
         options={{
-          title: isLaixe ? 'Dữ liệu của tôi' : 'Sản lượng',
+          title: user?.role === 'ops' ? 'SL TỔNG TÀU' : 'Dữ liệu của tôi',
+          href: (user?.role === 'hr' || user?.role === 'admin' || user?.role === 'supper_admin') ? null : undefined,
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 18, color }}>📊</Text>,
         }}
       />
@@ -64,6 +66,7 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
 
 const styles = StyleSheet.create({
   logoutBtn: {
