@@ -450,11 +450,15 @@ export default function MyDataPage() {
           </>
         }
       >
-        <div className="mb-4">
-          <label className="block text-xs font-medium text-[#64748b] mb-1.5">Kế hoạch</label>
+        <p style={{ fontSize: 13, fontWeight: 800, color: '#1155cc', marginBottom: 6 }}>1. Kế hoạch</p>
           {user?.role === 'laixe' ? (
-            <div className="px-3 py-2 bg-[rgba(148,163,184,0.1)] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#64748b]">
-              {editForm.route ? `${editForm.shippingLine} - ${editForm.route}` : editForm.shippingLine}
+            <div style={{
+              background: '#fffbeb', border: '2px solid #f59e0b',
+              borderRadius: 10, padding: '12px 16px', textAlign: 'center',
+            }}>
+              <span style={{ fontSize: 16, fontWeight: 900, color: '#d97706', letterSpacing: 0.5 }}>
+                {editForm.route ? `${editForm.shippingLine} - ${editForm.route}` : editForm.shippingLine}
+              </span>
             </div>
           ) : (
           <div className="flex flex-col gap-1.5 max-h-[180px] overflow-y-auto">
@@ -480,8 +484,7 @@ export default function MyDataPage() {
             ))}
           </div>
           )}
-        </div>
-
+        
         <div className="h-px bg-[rgba(0,0,0,0.08)] my-4" />
 
         {user?.role === 'laixe' ? (

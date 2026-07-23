@@ -184,10 +184,18 @@ export default function FormPage() {
               }}>
                 ⏳ Đang tải danh sách kế hoạch...
               </div>
+            ) : selectedShippingLineId !== '' ? (
+              <div style={{
+                background: '#fffbeb', border: '2px solid #f59e0b',
+                borderRadius: 10, padding: '12px 16px', textAlign: 'center',
+              }}>
+                <span style={{ fontSize: 16, fontWeight: 900, color: '#d97706', letterSpacing: 0.5 }}>
+                  {planDisplayName(shippingLines.find(sl => sl.id === selectedShippingLineId)!)}
+                </span>
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
                 {shippingLines.map((sl) => {
-                  const sel = selectedShippingLineId === sl.id;
                   return (
                     <div
                       key={sl.id}
@@ -195,9 +203,9 @@ export default function FormPage() {
                       style={{
                         display: 'flex', alignItems: 'center', gap: 10,
                         padding: '10px 14px',
-                        border: `2px solid ${sel ? '#1976d2' : '#e2e8f0'}`,
+                        border: '2px solid #e2e8f0',
                         borderRadius: 10,
-                        background: sel ? 'rgba(25,118,210,0.08)' : '#fff',
+                        background: '#fff',
                         cursor: 'pointer',
                         transition: 'all 0.15s',
                         userSelect: 'none',
@@ -205,13 +213,11 @@ export default function FormPage() {
                     >
                       <div style={{
                         width: 20, height: 20, borderRadius: '50%',
-                        border: `2px solid ${sel ? '#1976d2' : '#cbd5e1'}`,
+                        border: '2px solid #cbd5e1',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         flexShrink: 0,
-                      }}>
-                        {sel && <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#1976d2' }} />}
-                      </div>
-                      <span style={{ fontSize: 14, fontWeight: sel ? 700 : 500, color: '#111' }}>
+                      }} />
+                      <span style={{ fontSize: 14, fontWeight: 500, color: '#111' }}>
                         {planDisplayName(sl)}
                       </span>
                       {sl.leTet ? <span style={{ marginLeft: 'auto', padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: 'rgba(239,68,68,0.15)', color: '#dc2626' }}>x3</span> : sl.tangCuong ? <span style={{ marginLeft: 'auto', padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: 'rgba(245,158,11,0.15)', color: '#d97706' }}>+15%</span> : null}
