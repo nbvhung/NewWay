@@ -225,6 +225,8 @@ export default function FormPage() {
             )}
           </section>
 
+          {selectedShippingLineId !== '' && (
+          <>
           {/* ── 2. Lái xe NW ── */}
           <section>
             <p style={{ fontSize: 15, fontWeight: 800, color: '#1155cc', marginBottom: 8 }}>2. Lái Xe NW</p>
@@ -265,9 +267,9 @@ export default function FormPage() {
               display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
               marginBottom: 10,
             }}>
-              <NumCell id="vo20fr" label="Hàng 20' FR" value={vo20fr} onChange={setVo20fr}
+              <NumCell id="vo20fr" label="20FR (1 bó = 4 cái)" value={vo20fr} onChange={setVo20fr}
                 labelColor="#dc2626" borderColor="#fca5a5" />
-              <NumCell id="vo40fr" label="Hàng 40' FR" value={vo40fr} onChange={setVo40fr}
+              <NumCell id="vo40fr" label="40FR (1 bó = 4 cái)" value={vo40fr} onChange={setVo40fr}
                 labelColor="#dc2626" borderColor="#fca5a5" />
             </div>
 
@@ -293,6 +295,8 @@ export default function FormPage() {
               <NumCell id="tip" label="TIP (×1.000đ)" value={tip} onChange={setTip} borderColor="#d1d5db" />
             </div>
           </section>
+          </>
+          )}
 
           {/* ── Submit ── */}
           <button

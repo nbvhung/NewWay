@@ -152,6 +152,96 @@ export default function MyDataPage() {
     today: filteredData.filter((s) => (s.createdAt || '').slice(0, 10) === today).length,
   };
 
+  const CONT_CFG: { key: keyof Submission; label: string }[] = [
+    { key: 'hang20', label: 'H20' },
+    { key: 'hang40', label: 'H40' },
+    { key: 'vo20', label: 'V20' },
+    { key: 'vo40', label: 'V40' },
+    { key: 'vo20fr', label: '20FR' },
+    { key: 'vo40fr', label: '40FR' },
+  ];
+
+  const MISC_CFG: { key: keyof Submission; label: string }[] = [
+    { key: 'veSinhLai', label: 'VSL(Chuyến)' },
+    { key: 'keoVe', label: 'KV(Chuyến)' },
+    { key: 'tip', label: 'TIP(k)' },
+  ];
+
+  const nonZero = (s: Submission, key: keyof Submission) => {
+    const v = s[key];
+    if (v === '' || v === undefined || v === null) return false;
+    const n = Number(v);
+    if (isNaN(n)) return v !== '' && v !== '0';
+    return n !== 0;
+  };
+
+  const InputCell = ({ label, value, onChange, labelColor = '#111827', borderColor = '#d1d5db' }: {
+    label: string; value: string; onChange: (v: string) => void;
+    labelColor?: string; borderColor?: string;
+  }) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <label style={{ fontSize: 13, fontWeight: 700, color: labelColor, lineHeight: 1.2 }}>{label}</label>
+      <input type="text" inputMode="numeric" value={value}
+        onChange={(e) => {
+          const v = e.target.value.replace(/\D/g, '');
+          onChange(v);
+        }}
+        placeholder="0"
+        style={{
+          width: '100%', padding: '10px 12px', fontSize: 16, fontWeight: 700,
+          border: `2px solid ${borderColor}`,
+          borderRadius: 10, outline: 'none', background: '#fff', color: '#111',
+          boxSizing: 'border-box',
+        } as React.CSSProperties}
+      />
+    </div>
+  );
+
+  const RenderCard = ({ data, showEdit }: { data: Submission[]; showEdit?: boolean }) => (
+    <div className="flex flex-col gap-2" style={{ maxWidth: 480, margin: '0 auto' }}>
+      {data.map((s) => (
+        <div key={s.id} className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-3">
+          {/* Row 1: Plan name + Edit button */}
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-sm font-bold text-blue-700 leading-tight">{s.planDisplayName || s.shippingLine}</span>
+            {showEdit && !s.completed && (
+              <button onClick={() => openEdit(s)} className="px-3 py-1 rounded-lg text-[11px] font-bold bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shrink-0">✏️ Sửa</button>
+            )}
+          </div>
+          {/* Row 2: Container fields – spread across card */}
+          <div className="flex justify-between gap-x-1 mb-1.5">
+            {CONT_CFG.map(({ key, label }) => {
+              if (!nonZero(s, key)) return <span key={key} className="flex-1 text-center" />;
+              const v = s[key];
+              const display = typeof v === 'string' || typeof v === 'number' ? String(v) : '';
+              return (
+                <span key={key} className="flex-1 text-center text-[13px] font-bold text-[#0f172a] tracking-tight">
+                  {label}: {display}
+                </span>
+              );
+            })}
+          </div>
+          {/* Row 3: Misc fields + salary */}
+          <div className="flex items-center justify-between gap-x-2">
+            <div className="flex items-center gap-x-4 flex-wrap">
+              {MISC_CFG.map(({ key, label }) => {
+                if (!nonZero(s, key)) return null;
+                const v = s[key];
+                const display = typeof v === 'string' || typeof v === 'number' ? String(v) : '';
+                return (
+                  <span key={key} className="text-[13px] font-bold text-[#0f172a] tracking-tight">{label}: {display}</span>
+                );
+              })}
+            </div>
+            {user?.role !== 'ops' && s.salary != null && s.salary !== 0 && (
+              <span className="text-[15px] font-extrabold text-amber-500 shrink-0">Lương: {formatMoney(s.salary)}</span>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   const RenderTable = ({ data, showEdit }: { data: Submission[]; showEdit?: boolean }) => (
     <table className="w-full text-xs border-collapse">
       <thead>
@@ -280,9 +370,7 @@ export default function MyDataPage() {
                 <span className="w-2 h-2 rounded-full bg-amber-500" />
                 <span className="text-xs font-bold text-[#475569] uppercase tracking-wider">Chưa hoàn thành</span>
               </div>
-              <div className="overflow-x-auto rounded-xl border border-[rgba(0,0,0,0.06)]">
-                <RenderTable data={filteredData.filter(s => !s.completed)} showEdit />
-              </div>
+              <RenderCard data={filteredData.filter(s => !s.completed)} showEdit />
             </div>
             {/* ── Đã hoàn thành ── */}
             <div className="mt-6">
@@ -293,11 +381,7 @@ export default function MyDataPage() {
                 <span className="text-[#94a3b8] text-xs font-medium">{filteredData.filter(s => s.completed).length} bản ghi</span>
                 <span className="text-[#94a3b8] text-sm">{showCompleted ? '▲' : '▼'}</span>
               </button>
-              {showCompleted && (
-              <div className="overflow-x-auto rounded-xl border border-[rgba(0,0,0,0.06)] mt-2">
-                <RenderTable data={filteredData.filter(s => s.completed)} />
-              </div>
-              )}
+              {showCompleted && <RenderCard data={filteredData.filter(s => s.completed)} />}
             </div>
           </>
         ) : (
@@ -400,34 +484,98 @@ export default function MyDataPage() {
 
         <div className="h-px bg-[rgba(0,0,0,0.08)] my-4" />
 
+        {user?.role === 'laixe' ? (
+        <>
+        <div style={{ marginBottom: 12 }}>
+          <p style={{ fontSize: 13, fontWeight: 800, color: '#1155cc', marginBottom: 6 }}>2. Lái Xe NW</p>
+          <div style={{
+            background: '#e8f0fe', border: '2px solid #1976d2',
+            borderRadius: 10, padding: '10px 16px', textAlign: 'center',
+          }}>
+            <span style={{ fontSize: 18, fontWeight: 900, color: '#1976d2', letterSpacing: 1 }}>
+              {editSub?.driverName || user?.fullName || user?.username || '—'}
+            </span>
+          </div>
+        </div>
+
+        <p style={{ fontSize: 13, fontWeight: 800, color: '#1155cc', marginBottom: 8 }}>3. Nhập Sản Lượng Đã Chạy</p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Green box – Standard containers */}
+          <div style={{
+            border: '2px solid #22c55e', borderRadius: 12,
+            padding: '14px 12px', background: '#fff',
+            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+          }}>
+            <InputCell label="Hàng 20'" value={editForm.hang20} onChange={(v) => updateField('hang20', v)} borderColor="#d1d5db" />
+            <InputCell label="Hàng 40'" value={editForm.hang40} onChange={(v) => updateField('hang40', v)} borderColor="#d1d5db" />
+            <InputCell label="Vỏ 20'" value={editForm.vo20} onChange={(v) => updateField('vo20', v)} borderColor="#d1d5db" />
+            <InputCell label="Vỏ 40'" value={editForm.vo40} onChange={(v) => updateField('vo40', v)} borderColor="#d1d5db" />
+          </div>
+
+          {/* Red box – FR containers */}
+          <div style={{
+            border: '2px solid #ef4444', borderRadius: 12,
+            padding: '14px 12px', background: '#fff',
+            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+          }}>
+            <InputCell label="20FR (1 bó = 4 cái)" value={editForm.vo20fr} onChange={(v) => updateField('vo20fr', v)}
+              labelColor="#dc2626" borderColor="#fca5a5" />
+            <InputCell label="40FR (1 bó = 4 cái)" value={editForm.vo40fr} onChange={(v) => updateField('vo40fr', v)}
+              labelColor="#dc2626" borderColor="#fca5a5" />
+          </div>
+
+          {/* Yellow box – Extra trip services */}
+          <div style={{
+            border: '2px solid #fbbf24', borderRadius: 12,
+            padding: '14px 12px', background: '#fff',
+            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+          }}>
+            <InputCell label="Vệ sinh lại (chuyến)" value={editForm.veSinhLai} onChange={(v) => updateField('veSinhLai', v)}
+              labelColor="#d97706" borderColor="#fcd34d" />
+            <InputCell label="KV (chuyến)" value={editForm.keoVe} onChange={(v) => updateField('keoVe', v)}
+              labelColor="#d97706" borderColor="#fcd34d" />
+          </div>
+
+          {/* TIP */}
+          <div style={{
+            border: '2px solid #e2e8f0', borderRadius: 12,
+            padding: '14px 12px', background: '#fff',
+            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+          }}>
+            <InputCell label="TIP (×1.000đ)" value={editForm.tip} onChange={(v) => updateField('tip', v)} borderColor="#d1d5db" />
+          </div>
+        </div>
+        </>
+        ) : (
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Tổng số hàng 20</label>
+            <label className="block text-xs font-medium text-[#64748b] mb-1">Hàng 20</label>
             <input type="number" min="0" value={editForm.hang20} onChange={(e) => updateField('hang20', e.target.value)} placeholder="0"
               className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Tổng số hàng 40</label>
+            <label className="block text-xs font-medium text-[#64748b] mb-1">Hàng 40</label>
             <input type="number" min="0" value={editForm.hang40} onChange={(e) => updateField('hang40', e.target.value)} placeholder="0"
               className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Tổng số vỏ 20</label>
+            <label className="block text-xs font-medium text-[#64748b] mb-1">Vỏ 20</label>
             <input type="number" min="0" value={editForm.vo20} onChange={(e) => updateField('vo20', e.target.value)} placeholder="0"
               className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Tổng số vỏ 40</label>
+            <label className="block text-xs font-medium text-[#64748b] mb-1">Vỏ 40</label>
             <input type="number" min="0" value={editForm.vo40} onChange={(e) => updateField('vo40', e.target.value)} placeholder="0"
               className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Tổng số vỏ 20FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
+            <label className="block text-xs font-medium text-[#64748b] mb-1">Vỏ 20FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
             <input type="number" min="0" value={editForm.vo20fr} onChange={(e) => updateField('vo20fr', e.target.value)} placeholder="0"
               className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Tổng số vỏ 40FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
+            <label className="block text-xs font-medium text-[#64748b] mb-1">Vỏ 40FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
             <input type="number" min="0" value={editForm.vo40fr} onChange={(e) => updateField('vo40fr', e.target.value)} placeholder="0"
               className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
@@ -447,6 +595,7 @@ export default function MyDataPage() {
               className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
         </div>
+        )}
 
         {editSub && editSub.history && editSub.history.length > 0 && (user?.role === 'admin' || user?.role === 'supper_admin') && (
           <>
