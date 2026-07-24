@@ -393,7 +393,7 @@ export default function FormPage() {
                   fontSize: 14, fontWeight: 700, cursor: 'pointer',
                   boxShadow: '0 4px 12px rgba(245,158,11,0.3)',
                 }}>
-                ✏️ Sửa kế hoạch
+                ✏️ Sửa sản lượng
               </button>
               <button onClick={() => setDuplicatePlan(null)}
                 style={{

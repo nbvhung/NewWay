@@ -18,7 +18,11 @@ interface Props {
 }
 
 export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, onRefresh, toast }: Props) {
-  const drivers = allUsers.filter(u => u.role === 'laixe');
+  const drivers = allUsers.filter(u => u.role === 'laixe').sort((a, b) => {
+    const aStt = a.stt ? parseInt(String(a.stt), 10) : 999999;
+    const bStt = b.stt ? parseInt(String(b.stt), 10) : 999999;
+    return aStt - bStt;
+  });
   const [name, setName] = useState('');
   const [soChuyen, setSoChuyen] = useState('');
   const [routeName, setRouteName] = useState('');

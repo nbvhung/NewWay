@@ -14,19 +14,22 @@ interface Props {
 export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
   const [name, setName] = useState('');
   const [money, setMoney] = useState('');
+  const [effectiveDate, setEffectiveDate] = useState('');
 
   const [editRoute, setEditRoute] = useState<Route | null>(null);
   const [editName, setEditName] = useState('');
   const [editMoney, setEditMoney] = useState('');
+  const [editEffectiveDate, setEditEffectiveDate] = useState('');
   const [saving, setSaving] = useState(false);
 
   const addRoute = async () => {
     if (!name.trim()) { toast('Vui lòng nhập tên tuyến đường', 'error'); return; }
     try {
-      await routesApi.create({ name: name.trim(), money: money ? parseFloat(money) : 0 });
+      await routesApi.create({ name: name.trim(), money: money ? parseFloat(money) : 0, effectiveDate: effectiveDate || undefined });
       toast(`Đã thêm tuyến: ${name.trim()}`, 'success');
       setName('');
       setMoney('');
+      setEffectiveDate('');
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
   };
@@ -35,6 +38,7 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
     setEditRoute(r);
     setEditName(r.name);
     setEditMoney(r.money ? String(r.money) : '');
+    setEditEffectiveDate(r.effectiveDate || '');
   };
 
   const saveEdit = async () => {
@@ -45,6 +49,7 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
       await routesApi.update(editRoute.id, {
         name: editName.trim(),
         money: editMoney ? parseFloat(editMoney) : 0,
+        effectiveDate: editEffectiveDate || undefined,
       });
       toast('Đã cập nhật tuyến đường', 'success');
       setEditRoute(null);
@@ -81,6 +86,7 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="truncate">🛤️ {r.name}</span>
                   {r.money > 0 && <span className="shrink-0 px-1.5 py-0.5 rounded bg-[rgba(16,185,129,0.2)] text-emerald-600 text-[10px]">{fmtMoney(r.money)}</span>}
+                  {r.effectiveDate && <span className="shrink-0 px-1.5 py-0.5 rounded bg-[rgba(59,130,246,0.2)] text-blue-600 text-[10px]">📅 {r.effectiveDate}</span>}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => openEdit(r)}
@@ -105,6 +111,11 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
             <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tiền</label>
             <input type="number" value={money} onChange={e => setMoney(e.target.value)} placeholder="vd: 500000"
               className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div className="mb-3">
+            <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Ngày hiệu lực</label>
+            <input type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)}
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" />
           </div>
           <button onClick={addRoute}
             className="w-full py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] cursor-pointer">
@@ -135,6 +146,11 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
         <div className="mb-4">
           <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Tiền</label>
           <input type="number" value={editMoney} onChange={e => setEditMoney(e.target.value)}
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+        </div>
+        <div className="mb-4">
+          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Ngày hiệu lực</label>
+          <input type="date" value={editEffectiveDate} onChange={e => setEditEffectiveDate(e.target.value)}
             className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
         </div>
       </Modal>
