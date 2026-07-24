@@ -29,9 +29,23 @@ export default function FormPage() {
   const [keoVe, setKeoVe] = useState('');
   const [tip, setTip] = useState('');
 
+  const [mySubmissions, setMySubmissions] = useState<Map<number, any>>(new Map());
+  const [duplicatePlan, setDuplicatePlan] = useState<ShippingLine | null>(null);
+
   useEffect(() => {
     loadShippingLines();
+    loadMySubmissions();
   }, []);
+
+  const loadMySubmissions = async () => {
+    try {
+      const res = await submissionsApi.getMy();
+      const list = Array.isArray(res.data) ? res.data : (res.data as any).data || [];
+      const map = new Map<number, any>();
+      list.forEach((s: any) => { if (s.shippingLineId) map.set(s.shippingLineId, s); });
+      setMySubmissions(map);
+    } catch {}
+  };
 
   const loadShippingLines = async () => {
     try {
@@ -41,6 +55,14 @@ export default function FormPage() {
       toast(err.message, 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePlanClick = (sl: ShippingLine) => {
+    if (mySubmissions.has(sl.id)) {
+      setDuplicatePlan(sl);
+    } else {
+      setSelectedShippingLineId(sl.id);
     }
   };
 
@@ -199,7 +221,7 @@ export default function FormPage() {
                   return (
                     <div
                       key={sl.id}
-                      onClick={() => setSelectedShippingLineId(sl.id)}
+                      onClick={() => handlePlanClick(sl)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 10,
                         padding: '10px 14px',
@@ -337,6 +359,51 @@ export default function FormPage() {
           </button>
         </form>
       </div>
+
+      {duplicatePlan && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 20,
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 16, maxWidth: 340, width: '100%',
+            padding: '24px 20px 20px', position: 'relative', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+          }}>
+            <button onClick={() => setDuplicatePlan(null)}
+              style={{
+                position: 'absolute', top: 12, right: 14, background: 'none', border: 'none',
+                fontSize: 20, color: '#94a3b8', cursor: 'pointer', lineHeight: 1, padding: 0,
+              }}>✕</button>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 36, marginBottom: 8 }}>⚠️</div>
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>
+                Kế hoạch này bạn đã điền rồi
+              </p>
+              <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 16px' }}>
+                {planDisplayName(duplicatePlan)}
+              </p>
+              <button onClick={() => router.push('/my-data')}
+                style={{
+                  width: '100%', padding: '11px', borderRadius: 10, border: 'none',
+                  background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#fff',
+                  fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(245,158,11,0.3)',
+                }}>
+                ✏️ Sửa kế hoạch
+              </button>
+              <button onClick={() => setDuplicatePlan(null)}
+                style={{
+                  width: '100%', padding: '10px', borderRadius: 10, border: '2px solid #e2e8f0',
+                  background: '#fff', color: '#64748b', fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', marginTop: 8,
+                }}>
+                Chọn tàu khác
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
