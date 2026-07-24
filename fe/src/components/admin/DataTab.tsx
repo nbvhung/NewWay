@@ -122,7 +122,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
       const params: Record<string, string> = {};
       if (user?.role === 'hr') {
         const fromDate = `${hrYear}-${String(hrMonth).padStart(2, '0')}-01`;
-        const toDate = new Date(hrYear, hrMonth, 0).toISOString().slice(0, 10);
+        const toDate = `${hrYear}-${String(hrMonth).padStart(2, '0')}-${String(new Date(hrYear, hrMonth, 0).getDate()).padStart(2, '0')}`;
         params.from_date = fromDate;
         params.to_date = toDate;
       }
