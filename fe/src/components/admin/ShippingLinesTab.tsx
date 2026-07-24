@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ShippingLine, Route } from '@/types';
+import { ShippingLine, Route, User } from '@/types';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { fmtNgay } from '@/lib/utils';
 import { Modal } from '@/components/ui/modal';
@@ -12,17 +12,21 @@ interface Props {
   user?: any;
   allShippingLines: ShippingLine[];
   allRoutes: Route[];
+  allUsers: User[];
   onRefresh: () => void;
   toast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh, toast }: Props) {
+export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, onRefresh, toast }: Props) {
+  const drivers = allUsers.filter(u => u.role === 'laixe');
   const [name, setName] = useState('');
   const [soChuyen, setSoChuyen] = useState('');
   const [routeName, setRouteName] = useState('');
   const [ngay, setNgay] = useState('');
   const [tangCuong, setTangCuong] = useState(false);
   const [leTet, setLeTet] = useState(false);
+  const [driverIds, setDriverIds] = useState<number[]>([]);
+  const [allDrivers, setAllDrivers] = useState(true);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ShippingLine | null>(null);
@@ -32,6 +36,8 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
   const [editNgay, setEditNgay] = useState('');
   const [editTangCuong, setEditTangCuong] = useState(false);
   const [editLeTet, setEditLeTet] = useState(false);
+  const [editDriverIds, setEditDriverIds] = useState<number[]>([]);
+  const [editAllDrivers, setEditAllDrivers] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const activePlans = allShippingLines.filter(p => !p.completed);
@@ -45,6 +51,8 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
     setNgay('');
     setTangCuong(false);
     setLeTet(false);
+    setDriverIds([]);
+    setAllDrivers(true);
   };
 
   const addPlan = async () => {
@@ -58,6 +66,8 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
         ngay: ngay || undefined,
         tangCuong,
         leTet,
+        driverIds: allDrivers ? [] : driverIds,
+        allDrivers,
       });
       toast(`Đã thêm kế hoạch: ${name.trim()}`, 'success');
       resetForm();
@@ -74,6 +84,8 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
     setEditNgay(p.ngay);
     setEditTangCuong(p.tangCuong);
     setEditLeTet(p.leTet);
+    try { setEditDriverIds(JSON.parse(p.driverIds || '[]')); } catch { setEditDriverIds([]); }
+    setEditAllDrivers(p.allDrivers);
     setEditOpen(true);
   };
 
@@ -89,6 +101,8 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
         ngay: editNgay || undefined,
         tangCuong: editTangCuong,
         leTet: editLeTet,
+        driverIds: editAllDrivers ? [] : editDriverIds,
+        allDrivers: editAllDrivers,
       });
       toast('Đã cập nhật kế hoạch', 'success');
       setEditOpen(false);
@@ -119,6 +133,33 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
     return [p.name, p.soChuyen, p.routeName, fmtNgay(p.ngay)].filter(Boolean).join(' / ');
   };
 
+  const driversText = (p: ShippingLine) => {
+    if (p.allDrivers) return 'Tất cả';
+    try {
+      const ids = JSON.parse(p.driverIds || '[]') as number[];
+      return ids.map(id => drivers.find(d => d.id === id)?.stt || `#${id}`).join(', ') || 'Không có';
+    } catch { return 'Không có'; }
+  };
+
+  const renderDriverChips = (selected: number[], onChange: (ids: number[]) => void) => (
+    <div className="flex flex-wrap gap-1 p-2 border border-[rgba(0,0,0,0.08)] rounded-lg max-h-[140px] overflow-y-auto">
+      {drivers.length > 0 ? drivers.map(d => {
+        const sel = selected.includes(d.id);
+        return (
+          <label key={d.id}
+            className={`px-2 py-1 rounded text-[10px] border cursor-pointer ${
+              sel
+                ? 'border-[#1a56db] bg-[rgba(26,86,219,0.15)]'
+                : 'border-[rgba(0,0,0,0.08)] hover:border-[#1a56db]'
+            }`}
+            onClick={() => onChange(sel ? selected.filter(id => id !== d.id) : [...selected, d.id])}>
+            {d.stt || d.fullName || d.username}
+          </label>
+        );
+      }) : <span className="text-[10px] text-[#64748b]">Chưa có tài khoản lái xe</span>}
+    </div>
+  );
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 items-start">
       <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
@@ -131,7 +172,10 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
             const display = planDisplayName(p);
             return (
               <div key={p.id} className="flex items-center justify-between gap-2 px-3 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs">
-                <span className="text-sm">{display}{p.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-600">x3</span> : p.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-600">+15%</span> : null}</span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm">{display}{p.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-600">x3</span> : p.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-600">+15%</span> : null}</span>
+                  <div className="text-[9px] text-[#64748b] mt-0.5">Lái xe: {driversText(p)}</div>
+                </div>
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => openEdit(p)}
                     className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️</button>
@@ -187,6 +231,15 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
               </label>
             )) : <span className="text-[10px] text-[#64748b]">Chưa có tuyến đường</span>}
           </div>
+        </div>
+        <div className="mb-3">
+          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Phân công lái xe</label>
+          <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
+            <input type="checkbox" checked={allDrivers} onChange={e => setAllDrivers(e.target.checked)}
+              className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+            <span className="text-xs font-medium text-[#64748b]">Tất cả lái xe</span>
+          </label>
+          {!allDrivers && renderDriverChips(driverIds, setDriverIds)}
         </div>
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Ngày</label>
@@ -247,6 +300,15 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh,
               </label>
             )) : <span className="text-[10px] text-[#64748b]">Chưa có tuyến đường</span>}
           </div>
+        </div>
+        <div className="mb-3">
+          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Phân công lái xe</label>
+          <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
+            <input type="checkbox" checked={editAllDrivers} onChange={e => setEditAllDrivers(e.target.checked)}
+              className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+            <span className="text-xs font-medium text-[#64748b]">Tất cả lái xe</span>
+          </label>
+          {!editAllDrivers && renderDriverChips(editDriverIds, setEditDriverIds)}
         </div>
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Ngày</label>

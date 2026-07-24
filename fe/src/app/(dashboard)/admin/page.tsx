@@ -122,6 +122,7 @@ export default function AdminPage() {
           user={user}
           allShippingLines={allShippingLines}
           allRoutes={allRoutes}
+          allUsers={allUsers}
           onRefresh={() => { loadShippingLines(); loadRoutes(); }}
           toast={toast}
         />

@@ -27,6 +27,11 @@ export class UsersService {
         where: [{ role: 'laixe' }, { role: 'ops' }, { role: 'hr' }],
         order: { createdAt: 'DESC' },
       });
+    } else if (currentRole === 'ops') {
+      users = await this.usersRepository.find({
+        where: { role: 'laixe' },
+        order: { createdAt: 'DESC' },
+      });
     } else {
       users = await this.usersRepository.find({
         where: [{ role: 'laixe' }, { role: 'ops' }],

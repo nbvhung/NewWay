@@ -5,6 +5,7 @@ import { UpdateShippingLineDto } from './dto/update-shipping-line.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller()
 export class ShippingLinesController {
@@ -12,8 +13,8 @@ export class ShippingLinesController {
 
   @Get('shipping-lines')
   @UseGuards(JwtAuthGuard)
-  findAllForUser() {
-    return this.shippingLinesService.findAll(false);
+  findAllForUser(@CurrentUser('id') userId: number) {
+    return this.shippingLinesService.findAll(false, userId);
   }
 
   @Get('admin/shipping-lines')

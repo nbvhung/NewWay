@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsArray } from 'class-validator';
 
 export class UpdateShippingLineDto {
   @IsOptional()
@@ -40,4 +40,12 @@ export class UpdateShippingLineDto {
   @IsOptional()
   @IsBoolean()
   completed?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  driverIds?: number[];
+
+  @IsOptional()
+  @IsBoolean()
+  allDrivers?: boolean;
 }

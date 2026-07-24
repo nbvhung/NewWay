@@ -36,6 +36,12 @@ export class ShippingLine {
   @Column({ name: 'completed', type: 'boolean', default: false })
   completed: boolean;
 
+  @Column({ name: 'driver_ids', type: 'text', default: '[]' })
+  driverIds: string;
+
+  @Column({ name: 'all_drivers', type: 'boolean', default: true })
+  allDrivers: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
