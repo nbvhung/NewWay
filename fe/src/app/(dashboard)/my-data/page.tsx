@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import { useToast } from '@/components/ui/toast';
 import { Modal } from '@/components/ui/modal';
@@ -32,6 +33,7 @@ const MONTHS_VI = ['', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5
 export default function MyDataPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const [data, setData] = useState<Submission[]>([]);
   const [shippingLines, setShippingLines] = useState<ShippingLine[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,8 +67,18 @@ export default function MyDataPage() {
         submissionsApi.getMy(),
         shippingLinesApi.getAll(),
       ]);
-      setData(Array.isArray(subRes.data) ? subRes.data : (subRes.data as any).data || []);
+      const submissions = Array.isArray(subRes.data) ? subRes.data : (subRes.data as any).data || [];
+      setData(submissions);
       setShippingLines(Array.isArray(slRes.data) ? slRes.data : (slRes.data as any).data || []);
+
+      const editId = searchParams.get('editId');
+      if (editId) {
+        const id = Number(editId);
+        if (!isNaN(id)) {
+          const sub = submissions.find((s: Submission) => s.id === id);
+          if (sub) setTimeout(() => openEdit(sub), 100);
+        }
+      }
     } catch (err: any) {
       toast(err.message, 'error');
     } finally {
