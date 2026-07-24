@@ -31,6 +31,7 @@ export default function DataTab({ user, allUsers, allShippingLines, onRefresh }:
   const [hrYear, setHrYear] = useState(now.getFullYear());
 
   const isHr = user?.role === 'hr';
+  const showExportModal = user?.role === 'ops' || user?.role === 'admin' || user?.role === 'supper_admin';
 
   const pageSize = 20;
   const pagedSubmissions = useMemo(() => {
@@ -124,7 +125,20 @@ export default function DataTab({ user, allUsers, allShippingLines, onRefresh }:
   const [deletePassword, setDeletePassword] = useState('');
 
   // Export
-  const exportExcel = async () => {
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportVendorKhac, setExportVendorKhac] = useState('');
+  const [exportTenNguoiNhap, setExportTenNguoiNhap] = useState('');
+
+  // Total Ship
+  const [totalShipOpen, setTotalShipOpen] = useState(false);
+  const [totalShipSlId, setTotalShipSlId] = useState<number | null>(null);
+  const [totalShipForm, setTotalShipForm] = useState({
+    hang20: '', hang40: '', vo20: '', vo40: '',
+    vo20fr: '', vo40fr: '', veSinhLai: '', keoVe: '', tip: '',
+  });
+  const [totalShipSaving, setTotalShipSaving] = useState(false);
+
+  const exportExcel = async (vendorKhac?: string, tenNguoiNhap?: string) => {
     try {
       const params: Record<string, string> = {};
       if (isHr) {
@@ -137,10 +151,87 @@ export default function DataTab({ user, allUsers, allShippingLines, onRefresh }:
         if (filterFrom) params.from_date = filterFrom;
         if (filterTo) params.to_date = filterTo;
       }
+      if (vendorKhac) params.vendorKhac = vendorKhac;
+      if (tenNguoiNhap) params.tenNguoiNhap = tenNguoiNhap;
       await submissionsApi.exportExcel(params);
       Alert.alert('Thành công', 'Đã xuất Excel, kiểm tra thư mục tải về');
     } catch (err: any) {
       Alert.alert('Lỗi', err.message || 'Xuất Excel thất bại');
+    }
+  };
+
+  const handleExportClick = () => {
+    if (showExportModal) {
+      setExportVendorKhac('');
+      setExportTenNguoiNhap('');
+      setExportModalOpen(true);
+    } else {
+      exportExcel();
+    }
+  };
+
+  const openTotalShipForm = () => {
+    if (!filterSl) {
+      Alert.alert('Lỗi', 'Vui lòng chọn một kế hoạch trước khi nhập SL Tổng Tàu.');
+      return;
+    }
+    const slId = Number(filterSl);
+    setTotalShipSlId(slId);
+    const existing = submissions.find(s => s.userId === user?.id && s.shippingLineId === slId);
+    if (existing) {
+      setTotalShipForm({
+        hang20: existing.hang20 || '',
+        hang40: existing.hang40 || '',
+        vo20: existing.vo20 || '',
+        vo40: existing.vo40 || '',
+        vo20fr: existing.vo20fr || '',
+        vo40fr: existing.vo40fr || '',
+        veSinhLai: existing.veSinhLai || '',
+        keoVe: existing.keoVe || '',
+        tip: existing.tip || '',
+      });
+    } else {
+      setTotalShipForm({ hang20: '', hang40: '', vo20: '', vo40: '', vo20fr: '', vo40fr: '', veSinhLai: '', keoVe: '', tip: '' });
+    }
+    setExportModalOpen(false);
+    setTimeout(() => setTotalShipOpen(true), 200);
+  };
+
+  const saveTotalShip = async () => {
+    const sl = allShippingLines.find(sl => sl.id === totalShipSlId);
+    if (!sl) return;
+    setTotalShipSaving(true);
+    try {
+      const payload = {
+        shippingLine: sl.name,
+        shippingLineId: sl.id,
+        route: sl.routeName || '',
+        ...totalShipForm,
+      };
+      let existing = submissions.find(s => s.userId === user?.id && s.shippingLineId === totalShipSlId);
+      if (!existing) {
+        try {
+          const mySubs = await submissionsApi.getMy();
+          existing = (Array.isArray(mySubs.data) ? mySubs.data : (mySubs.data as any).data || []).find((s: any) => s.shippingLineId === totalShipSlId);
+        } catch {}
+      }
+      if (existing) {
+        await submissionsApi.update(existing.id, payload);
+      } else {
+        await submissionsApi.create(payload);
+      }
+      const params: Record<string, string> = {};
+      if (filterSl) params.shippingLineId = filterSl;
+      if (filterFrom) params.from_date = filterFrom;
+      if (filterTo) params.to_date = filterTo;
+      await submissionsApi.exportExcel(params);
+      setTotalShipOpen(false);
+      Alert.alert('Thành công', 'Đã lưu và xuất Excel!');
+      loadSubmissions();
+    } catch (err: any) {
+      Alert.alert('Lỗi', err.message || 'Thao tác thất bại');
+    } finally {
+      setTotalShipSaving(false);
     }
   };
 
@@ -183,7 +274,7 @@ export default function DataTab({ user, allUsers, allShippingLines, onRefresh }:
               </View>
             </View>
           </View>
-          <TouchableOpacity style={styles.exportBtn} onPress={exportExcel}>
+          <TouchableOpacity style={styles.exportBtn} onPress={() => exportExcel()}>
             <Text style={styles.exportBtnText}>📥 Xuất Excel</Text>
           </TouchableOpacity>
         </View>
@@ -264,7 +355,7 @@ export default function DataTab({ user, allUsers, allShippingLines, onRefresh }:
               <TouchableOpacity style={styles.filterBtn} onPress={() => { setPage(1); loadSubmissions(); }}>
                 <Text style={styles.filterBtnText}>🔍 Lọc</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.exportBtn} onPress={exportExcel}>
+              <TouchableOpacity style={styles.exportBtn} onPress={handleExportClick}>
                 <Text style={styles.exportBtnText}>📥 Xuất Excel</Text>
               </TouchableOpacity>
             </View>
@@ -425,6 +516,82 @@ export default function DataTab({ user, allUsers, allShippingLines, onRefresh }:
           placeholderTextColor="#94a3b8"
         />
       </Modal>
+
+      {/* Export Confirmation Modal */}
+      <Modal
+        visible={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        title="📋 Xác nhận xuất Excel"
+        footer={
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity style={styles.totalShipBtn} onPress={openTotalShipForm}>
+              <Text style={styles.totalShipBtnText}>📊 Tổng SL Tàu</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.exportConfirmBtn} onPress={() => {
+              setExportModalOpen(false);
+              exportExcel(exportVendorKhac, exportTenNguoiNhap);
+            }}>
+              <Text style={styles.exportConfirmBtnText}>📥 Xuất Excel</Text>
+            </TouchableOpacity>
+          </View>
+        }
+      >
+        <View style={{ marginBottom: 16 }}>
+          <Text style={styles.fieldLabel}>Vendor khác (nếu có)</Text>
+          <TextInput
+            style={styles.modalInput}
+            value={exportVendorKhac}
+            onChangeText={setExportVendorKhac}
+            placeholder="Nhập vendor khác..."
+            placeholderTextColor="#94a3b8"
+          />
+        </View>
+        <View style={{ marginBottom: 8 }}>
+          <Text style={styles.fieldLabel}>Tên người nhập</Text>
+          <TextInput
+            style={styles.modalInput}
+            value={exportTenNguoiNhap}
+            onChangeText={setExportTenNguoiNhap}
+            placeholder="Nhập tên người nhập..."
+            placeholderTextColor="#94a3b8"
+          />
+        </View>
+      </Modal>
+
+      {/* Total Ship Modal */}
+      <Modal
+        visible={totalShipOpen}
+        onClose={() => setTotalShipOpen(false)}
+        title="📊 Nhập SL Tổng Tàu"
+        footer={
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => setTotalShipOpen(false)}>
+              <Text style={styles.cancelBtnText}>Đóng</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.exportConfirmBtn, totalShipSaving && { opacity: 0.5 }]} onPress={saveTotalShip} disabled={totalShipSaving}>
+              <Text style={styles.exportConfirmBtnText}>{totalShipSaving ? '⏳ Đang xử lý...' : '📥 Xuất Excel'}</Text>
+            </TouchableOpacity>
+          </View>
+        }
+      >
+        <Text style={styles.fieldLabel}>Kế hoạch</Text>
+        <View style={styles.totalShipPlanDisplay}>
+          <Text style={{ fontSize: 12, color: '#0f172a' }}>
+            {totalShipSlId ? planDisplayName(allShippingLines.find(sl => sl.id === totalShipSlId)!) : '—'}
+          </Text>
+        </View>
+        <View style={styles.divider} />
+        <View style={styles.editGrid}>
+          {(['hang20','hang40','vo20','vo40','vo20fr','vo40fr','veSinhLai','keoVe','tip'] as const).map(f => (
+            <NumericInput
+              key={f}
+              label={FIELD_LABELS[f] || f}
+              value={(totalShipForm as any)[f] || ''}
+              onChange={(v) => setTotalShipForm((prev) => ({ ...prev, [f]: v }))}
+            />
+          ))}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -490,4 +657,10 @@ const styles = StyleSheet.create({
   emptyText: { textAlign: 'center', paddingVertical: 20, fontSize: 13, color: '#64748b' },
   historyItem: { backgroundColor: '#f8fafc', borderRadius: 6, padding: 8, borderLeftWidth: 3, borderLeftColor: '#f59e0b', marginBottom: 4 },
   passwordInput: { borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)', borderRadius: 8, padding: 10, fontSize: 14, color: '#0f172a' },
+  exportConfirmBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: '#10b981' },
+  exportConfirmBtnText: { fontSize: 12, fontWeight: '600', color: '#fff' },
+  modalInput: { borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)', borderRadius: 8, padding: 10, fontSize: 13, color: '#0f172a' },
+  totalShipBtn: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8, backgroundColor: '#f59e0b' },
+  totalShipBtnText: { fontSize: 11, fontWeight: '600', color: '#fff' },
+  totalShipPlanDisplay: { padding: 10, backgroundColor: '#f8fafc', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)', marginBottom: 8 },
 });

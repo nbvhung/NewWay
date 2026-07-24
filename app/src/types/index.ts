@@ -25,12 +25,15 @@ export interface ShippingLine {
   createdAt: string;
   routeId?: number;
   route?: Route;
+  driverIds?: string;
+  allDrivers?: boolean;
 }
 
 export interface Route {
   id: number;
   name: string;
   money: number;
+  effectiveDate: string | null;
   createdAt: string;
 }
 

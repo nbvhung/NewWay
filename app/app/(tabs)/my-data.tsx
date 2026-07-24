@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert,
 } from 'react-native';
-import { Redirect, useRouter } from 'expo-router';
+import { Redirect, useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../src/store/auth-store';
 import { submissionsApi } from '../../src/api/submissions';
 import { shippingLinesApi } from '../../src/api/shipping-lines';
@@ -34,6 +34,7 @@ const planDisplayName = (sl: ShippingLine) =>
 export default function MyDataScreen() {
   const { user } = useAuthStore();
   const router = useRouter();
+  const params = useLocalSearchParams<{ editId?: string }>();
 
   // hr, admin, supper_admin không có trang này — redirect sang quản lý
   if (user && (user.role === 'hr' || user.role === 'admin' || user.role === 'supper_admin')) {
@@ -59,6 +60,14 @@ export default function MyDataScreen() {
   const [salaryYear, setSalaryYear] = useState(now.getFullYear());
 
   useEffect(() => { loadData(); }, []);
+
+  // Auto-open edit modal if editId param is present
+  useEffect(() => {
+    if (!loading && params.editId && data.length > 0) {
+      const target = data.find(s => String(s.id) === params.editId);
+      if (target) openEdit(target);
+    }
+  }, [loading, params.editId, data]);
 
   const loadData = async () => {
     try {

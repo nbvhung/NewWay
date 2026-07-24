@@ -15,11 +15,13 @@ interface Props {
 export default function RoutesTab({ allRoutes, onRefresh }: Props) {
   const [name, setName] = useState('');
   const [money, setMoney] = useState('');
+  const [effectiveDate, setEffectiveDate] = useState('');
 
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Route | null>(null);
   const [editName, setEditName] = useState('');
   const [editMoney, setEditMoney] = useState('');
+  const [editEffectiveDate, setEditEffectiveDate] = useState('');
   const [saving, setSaving] = useState(false);
 
   const [page, setPage] = useState(1);
@@ -31,9 +33,9 @@ export default function RoutesTab({ allRoutes, onRefresh }: Props) {
     if (!name.trim()) { Alert.alert('Lỗi', 'Vui lòng nhập tên tuyến đường'); return; }
     setSaving(true);
     try {
-      await routesApi.create({ name: name.trim(), money: money ? Number(money) : undefined });
+      await routesApi.create({ name: name.trim(), money: money ? Number(money) : undefined, effectiveDate: effectiveDate || undefined });
       Alert.alert('Thành công', `Đã thêm: ${name.trim()}`);
-      setName(''); setMoney(''); onRefresh();
+      setName(''); setMoney(''); setEffectiveDate(''); onRefresh();
     } catch (err: any) { Alert.alert('Lỗi', err.message || 'Thêm thất bại'); }
     finally { setSaving(false); }
   };
@@ -42,6 +44,7 @@ export default function RoutesTab({ allRoutes, onRefresh }: Props) {
     setEditTarget(r);
     setEditName(r.name);
     setEditMoney(String(r.money || ''));
+    setEditEffectiveDate(r.effectiveDate || '');
     setEditOpen(true);
   };
 
@@ -49,7 +52,7 @@ export default function RoutesTab({ allRoutes, onRefresh }: Props) {
     if (!editTarget || !editName.trim()) { Alert.alert('Lỗi', 'Tên không được để trống'); return; }
     setSaving(true);
     try {
-      await routesApi.update(editTarget.id, { name: editName.trim(), money: editMoney ? Number(editMoney) : undefined });
+      await routesApi.update(editTarget.id, { name: editName.trim(), money: editMoney ? Number(editMoney) : undefined, effectiveDate: editEffectiveDate || undefined });
       Alert.alert('Thành công', 'Đã cập nhật');
       setEditOpen(false); onRefresh();
     } catch (err: any) { Alert.alert('Lỗi', err.message); }
@@ -78,7 +81,10 @@ export default function RoutesTab({ allRoutes, onRefresh }: Props) {
           <View key={r.id} style={styles.routeRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.routeName}>{r.name}</Text>
-              {r.money ? <Text style={styles.routeMoney}>{r.money.toLocaleString('vi-VN')} ₫</Text> : null}
+              <View style={{ flexDirection: 'row', gap: 6, marginTop: 2 }}>
+                {r.money ? <Text style={styles.routeMoney}>{r.money.toLocaleString('vi-VN')} ₫</Text> : null}
+                {r.effectiveDate ? <Text style={styles.routeDate}>📅 {r.effectiveDate}</Text> : null}
+              </View>
             </View>
             <View style={styles.routeActions}>
               <TouchableOpacity style={styles.editBtn} onPress={() => openEdit(r)}>
@@ -99,6 +105,7 @@ export default function RoutesTab({ allRoutes, onRefresh }: Props) {
         <Text style={styles.cardTitle}>➕ Thêm tuyến đường</Text>
         <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Tên tuyến đường *" placeholderTextColor="#94a3b8" />
         <TextInput style={styles.input} value={money} onChangeText={setMoney} placeholder="Tiền (VNĐ)" placeholderTextColor="#94a3b8" keyboardType="numeric" />
+        <TextInput style={styles.input} value={effectiveDate} onChangeText={setEffectiveDate} placeholder="Ngày hiệu lực (YYYY-MM-DD)" placeholderTextColor="#94a3b8" />
         <TouchableOpacity style={[styles.addBtn, saving && { opacity: 0.5 }]} onPress={addRoute} disabled={saving}>
           <Text style={styles.addBtnText}>➕ Thêm tuyến đường</Text>
         </TouchableOpacity>
@@ -120,6 +127,7 @@ export default function RoutesTab({ allRoutes, onRefresh }: Props) {
       >
         <TextInput style={styles.input} value={editName} onChangeText={setEditName} placeholder="Tên tuyến đường *" placeholderTextColor="#94a3b8" />
         <TextInput style={styles.input} value={editMoney} onChangeText={setEditMoney} placeholder="Tiền (VNĐ)" placeholderTextColor="#94a3b8" keyboardType="numeric" />
+        <TextInput style={styles.input} value={editEffectiveDate} onChangeText={setEditEffectiveDate} placeholder="Ngày hiệu lực (YYYY-MM-DD)" placeholderTextColor="#94a3b8" />
       </Modal>
     </View>
   );
@@ -133,7 +141,8 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a', marginBottom: 12 },
   routeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#f8fafc', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)', marginBottom: 6 },
   routeName: { fontSize: 13, fontWeight: '600', color: '#0f172a' },
-  routeMoney: { fontSize: 11, color: '#10b981', fontWeight: '600', marginTop: 2 },
+  routeMoney: { fontSize: 11, color: '#10b981', fontWeight: '600' },
+  routeDate: { fontSize: 10, color: '#1a56db', fontWeight: '600', backgroundColor: 'rgba(59,130,246,0.15)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, overflow: 'hidden' },
   routeActions: { flexDirection: 'row', gap: 4, marginLeft: 8 },
   editBtn: { padding: 4, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' },
   editBtnText: { fontSize: 11 },

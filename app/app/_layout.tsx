@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Slot } from 'expo-router';
 import { useAuthStore } from '../src/store/auth-store';
+import { ToastProvider } from '../src/components/Toast';
 
 export default function RootLayout() {
   const { restoreSession, loading } = useAuthStore();
@@ -11,5 +12,9 @@ export default function RootLayout() {
 
   if (loading) return null;
 
-  return <Slot />;
+  return (
+    <ToastProvider>
+      <Slot />
+    </ToastProvider>
+  );
 }

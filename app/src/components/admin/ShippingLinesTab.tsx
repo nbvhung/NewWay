@@ -6,25 +6,34 @@ import Modal from '../Modal';
 import Pagination from '../Pagination';
 import { shippingLinesApi } from '../../api/shipping-lines';
 import { fmtNgay } from '../../utils';
-import type { ShippingLine, Route } from '../../types';
+import type { ShippingLine, Route, User } from '../../types';
 
 interface Props {
   user?: any;
   allShippingLines: ShippingLine[];
   allRoutes: Route[];
+  allUsers?: User[];
   onRefresh: () => void;
 }
 
 const planDisplayName = (p: ShippingLine) =>
   [p.name, p.soChuyen, p.routeName, fmtNgay(p.ngay)].filter(Boolean).join(' / ');
 
-export default function ShippingLinesTab({ user, allShippingLines, allRoutes, onRefresh }: Props) {
+export default function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, onRefresh }: Props) {
+  const drivers = (allUsers || []).filter(u => u.role === 'laixe').sort((a, b) => {
+    const aStt = parseInt(a.stt || '999999', 10);
+    const bStt = parseInt(b.stt || '999999', 10);
+    return aStt - bStt;
+  });
+
   const [name, setName] = useState('');
   const [soChuyen, setSoChuyen] = useState('');
   const [routeName, setRouteName] = useState('');
   const [ngay, setNgay] = useState('');
   const [tangCuong, setTangCuong] = useState(false);
   const [leTet, setLeTet] = useState(false);
+  const [driverIds, setDriverIds] = useState<number[]>([]);
+  const [allDrivers, setAllDrivers] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const [editOpen, setEditOpen] = useState(false);
@@ -35,6 +44,8 @@ export default function ShippingLinesTab({ user, allShippingLines, allRoutes, on
   const [editNgay, setEditNgay] = useState('');
   const [editTangCuong, setEditTangCuong] = useState(false);
   const [editLeTet, setEditLeTet] = useState(false);
+  const [editDriverIds, setEditDriverIds] = useState<number[]>([]);
+  const [editAllDrivers, setEditAllDrivers] = useState(true);
 
   const [page, setPage] = useState(1);
   const pageSize = 10;
@@ -42,13 +53,13 @@ export default function ShippingLinesTab({ user, allShippingLines, allRoutes, on
   const pagedLines = activePlans.slice((page - 1) * pageSize, page * pageSize);
   const totalPages = Math.max(1, Math.ceil(activePlans.length / pageSize));
 
-  const resetForm = () => { setName(''); setSoChuyen(''); setRouteName(''); setNgay(''); setTangCuong(false); setLeTet(false); };
+  const resetForm = () => { setName(''); setSoChuyen(''); setRouteName(''); setNgay(''); setTangCuong(false); setLeTet(false); setDriverIds([]); setAllDrivers(true); };
 
   const addPlan = async () => {
     if (!name.trim()) { Alert.alert('Lỗi', 'Vui lòng nhập tên kế hoạch'); return; }
     setSaving(true);
     try {
-      await shippingLinesApi.create({ name: name.trim(), soChuyen: soChuyen.trim(), routeName: routeName.trim(), ngay: ngay || undefined, tangCuong, leTet });
+      await shippingLinesApi.create({ name: name.trim(), soChuyen: soChuyen.trim(), routeName: routeName.trim(), ngay: ngay || undefined, tangCuong, leTet, driverIds: allDrivers ? [] : driverIds, allDrivers });
       Alert.alert('Thành công', `Đã thêm: ${name.trim()}`);
       resetForm(); onRefresh();
     } catch (err: any) { Alert.alert('Lỗi', err.message || 'Thêm thất bại'); }
@@ -59,6 +70,8 @@ export default function ShippingLinesTab({ user, allShippingLines, allRoutes, on
     setEditTarget(p);
     setEditName(p.name); setEditSoChuyen(p.soChuyen); setEditRouteName(p.routeName);
     setEditNgay(p.ngay); setEditTangCuong(p.tangCuong); setEditLeTet(p.leTet);
+    try { setEditDriverIds(JSON.parse(p.driverIds || '[]')); } catch { setEditDriverIds([]); }
+    setEditAllDrivers(p.allDrivers ?? true);
     setEditOpen(true);
   };
 
@@ -66,7 +79,7 @@ export default function ShippingLinesTab({ user, allShippingLines, allRoutes, on
     if (!editTarget || !editName.trim()) { Alert.alert('Lỗi', 'Tên không được để trống'); return; }
     setSaving(true);
     try {
-      await shippingLinesApi.update(editTarget.id, { name: editName.trim(), soChuyen: editSoChuyen.trim(), routeName: editRouteName.trim(), ngay: editNgay || undefined, tangCuong: editTangCuong, leTet: editLeTet });
+      await shippingLinesApi.update(editTarget.id, { name: editName.trim(), soChuyen: editSoChuyen.trim(), routeName: editRouteName.trim(), ngay: editNgay || undefined, tangCuong: editTangCuong, leTet: editLeTet, driverIds: editAllDrivers ? [] : editDriverIds, allDrivers: editAllDrivers });
       Alert.alert('Thành công', 'Đã cập nhật');
       setEditOpen(false); onRefresh();
     } catch (err: any) { Alert.alert('Lỗi', err.message); }
@@ -93,6 +106,33 @@ export default function ShippingLinesTab({ user, allShippingLines, allRoutes, on
     ]);
   };
 
+  const driversText = (p: ShippingLine) => {
+    if (p.allDrivers ?? false) return 'Tất cả';
+    try {
+      const ids = JSON.parse(p.driverIds || '[]') as number[];
+      return ids.map(id => drivers.find(d => d.id === id)?.stt || `#${id}`).join(', ') || 'Không có';
+    } catch { return 'Không có'; }
+  };
+
+  const renderDriverChips = (selected: number[], onChange: (ids: number[]) => void) => (
+    <View style={styles.driverChipsContainer}>
+      {drivers.length > 0 ? drivers.map(d => {
+        const sel = selected.includes(d.id);
+        return (
+          <TouchableOpacity
+            key={d.id}
+            style={[styles.driverChip, sel && styles.driverChipSel]}
+            onPress={() => onChange(sel ? selected.filter(id => id !== d.id) : [...selected, d.id])}
+          >
+            <Text style={[styles.driverChipText, sel && styles.driverChipTextSel]}>
+              {d.stt || d.fullName || d.username}
+            </Text>
+          </TouchableOpacity>
+        );
+      }) : <Text style={{ fontSize: 10, color: '#64748b' }}>Chưa có tài khoản lái xe</Text>}
+    </View>
+  );
+
   const isAdmin = user?.role === 'admin' || user?.role === 'supper_admin';
   const isOps = user?.role === 'ops';
 
@@ -108,10 +148,13 @@ export default function ShippingLinesTab({ user, allShippingLines, allRoutes, on
           const display = planDisplayName(p);
           return (
             <View key={p.id} style={styles.planRow}>
-              <Text style={styles.planName} numberOfLines={2}>
-                {display}
-                {p.leTet ? <Text style={styles.badgeRed}> x3</Text> : p.tangCuong ? <Text style={styles.badgeAmber}> +15%</Text> : null}
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.planName} numberOfLines={2}>
+                  {display}
+                  {p.leTet ? <Text style={styles.badgeRed}> x3</Text> : p.tangCuong ? <Text style={styles.badgeAmber}> +15%</Text> : null}
+                </Text>
+                <Text style={styles.driverAssignText}>Lái xe: {driversText(p)}</Text>
+              </View>
               <View style={styles.planActions}>
                 <TouchableOpacity style={styles.editPlanBtn} onPress={() => openEdit(p)}>
                   <Text style={styles.actionBtnText}>✏️</Text>
@@ -161,6 +204,12 @@ export default function ShippingLinesTab({ user, allShippingLines, allRoutes, on
           <Switch value={leTet} onValueChange={setLeTet} trackColor={{ false: '#e2e8f0', true: 'rgba(239,68,68,0.3)' }} thumbColor={leTet ? '#dc2626' : '#cbd5e1'} />
           <Text style={styles.switchLabel}>🎉 Tàu Lễ, Tết <Text style={{ color: '#dc2626', fontWeight: '700' }}>x3</Text></Text>
         </View>
+        <Text style={styles.fieldLabel}>Phân công lái xe</Text>
+        <View style={styles.switchRow}>
+          <Switch value={allDrivers} onValueChange={setAllDrivers} trackColor={{ false: '#e2e8f0', true: 'rgba(26,86,219,0.3)' }} thumbColor={allDrivers ? '#1a56db' : '#cbd5e1'} />
+          <Text style={styles.switchLabel}>Tất cả lái xe</Text>
+        </View>
+        {!allDrivers && renderDriverChips(driverIds, setDriverIds)}
         <TouchableOpacity style={[styles.addBtn, saving && { opacity: 0.5 }]} onPress={addPlan} disabled={saving}>
           <Text style={styles.addBtnText}>➕ Thêm kế hoạch</Text>
         </TouchableOpacity>
@@ -203,6 +252,12 @@ export default function ShippingLinesTab({ user, allShippingLines, allRoutes, on
           <Switch value={editLeTet} onValueChange={setEditLeTet} trackColor={{ false: '#e2e8f0', true: 'rgba(239,68,68,0.3)' }} thumbColor={editLeTet ? '#dc2626' : '#cbd5e1'} />
           <Text style={styles.switchLabel}>🎉 Lễ, Tết x3</Text>
         </View>
+        <Text style={styles.fieldLabel}>Phân công lái xe</Text>
+        <View style={styles.switchRow}>
+          <Switch value={editAllDrivers} onValueChange={setEditAllDrivers} trackColor={{ false: '#e2e8f0', true: 'rgba(26,86,219,0.3)' }} thumbColor={editAllDrivers ? '#1a56db' : '#cbd5e1'} />
+          <Text style={styles.switchLabel}>Tất cả lái xe</Text>
+        </View>
+        {!editAllDrivers && renderDriverChips(editDriverIds, setEditDriverIds)}
       </Modal>
     </View>
   );
@@ -215,7 +270,13 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   cardTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a', marginBottom: 12 },
   planRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10, backgroundColor: '#f8fafc', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)', marginBottom: 6 },
-  planName: { fontSize: 12, flex: 1, color: '#0f172a' },
+  planName: { fontSize: 12, color: '#0f172a' },
+  driverAssignText: { fontSize: 9, color: '#64748b', marginTop: 2 },
+  driverChipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10, padding: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)', borderRadius: 8, maxHeight: 120 },
+  driverChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' },
+  driverChipSel: { borderColor: '#1a56db', backgroundColor: 'rgba(26,86,219,0.1)' },
+  driverChipText: { fontSize: 10, color: '#64748b' },
+  driverChipTextSel: { color: '#1a56db', fontWeight: '700' },
   badgeRed: { color: '#dc2626', fontWeight: '700' },
   badgeAmber: { color: '#d97706', fontWeight: '700' },
   planActions: { flexDirection: 'row', gap: 4, marginLeft: 8 },

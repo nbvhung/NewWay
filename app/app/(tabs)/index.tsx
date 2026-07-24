@@ -7,6 +7,7 @@ import { useAuthStore } from '../../src/store/auth-store';
 import { shippingLinesApi } from '../../src/api/shipping-lines';
 import { submissionsApi } from '../../src/api/submissions';
 import NumericInput from '../../src/components/NumericInput';
+import Modal from '../../src/components/Modal';
 import { fmtNgay } from '../../src/utils';
 import type { ShippingLine } from '../../src/types';
 
@@ -35,7 +36,24 @@ export default function EntryForm() {
   const [keoVe, setKeoVe] = useState('');
   const [tip, setTip] = useState('');
 
-  useEffect(() => { loadShippingLines(); }, []);
+  // Duplicate detection
+  const [mySubmissions, setMySubmissions] = useState<Map<number, any>>(new Map());
+  const [duplicatePlan, setDuplicatePlan] = useState<ShippingLine | null>(null);
+
+  useEffect(() => {
+    loadShippingLines();
+    loadMySubmissions();
+  }, []);
+
+  const loadMySubmissions = async () => {
+    try {
+      const res = await submissionsApi.getMy();
+      const list = Array.isArray(res.data) ? res.data : (res.data as any).data || [];
+      const map = new Map<number, any>();
+      list.forEach((s: any) => { if (s.shippingLineId) map.set(s.shippingLineId, s); });
+      setMySubmissions(map);
+    } catch {}
+  };
 
   const loadShippingLines = async () => {
     try {
@@ -46,6 +64,14 @@ export default function EntryForm() {
       Alert.alert('Lỗi', err.response?.data?.message || err.message || 'Không thể tải danh sách kế hoạch');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePlanClick = (sl: ShippingLine) => {
+    if (mySubmissions.has(sl.id)) {
+      setDuplicatePlan(sl);
+    } else {
+      setSelectedId(sl.id);
     }
   };
 
@@ -107,7 +133,7 @@ export default function EntryForm() {
                 <TouchableOpacity
                   key={sl.id}
                   style={[styles.planItem, sel && styles.planItemSelected]}
-                  onPress={() => setSelectedId(sl.id)}
+                  onPress={() => handlePlanClick(sl)}
                   activeOpacity={0.7}
                 >
                   <View style={[styles.radio, sel && styles.radioSelected]}>
@@ -190,6 +216,40 @@ export default function EntryForm() {
           <Text style={styles.viewDataBtnText}>📊 Xem dữ liệu của tôi</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Duplicate Plan Modal */}
+      <Modal
+        visible={!!duplicatePlan}
+        onClose={() => setDuplicatePlan(null)}
+        title="⚠️ Kế hoạch đã tồn tại"
+        footer={
+          <View style={{ flexDirection: 'column', gap: 8 }}>
+            <TouchableOpacity
+              style={styles.editDupeBtn}
+              onPress={() => {
+                const sub = duplicatePlan ? mySubmissions.get(duplicatePlan.id) : null;
+                setDuplicatePlan(null);
+                if (sub) router.push(`/(tabs)/my-data?editId=${sub.id}`);
+                else router.push('/(tabs)/my-data');
+              }}
+            >
+              <Text style={styles.editDupeBtnText}>✏️ Sửa sản lượng</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelDupeBtn} onPress={() => setDuplicatePlan(null)}>
+              <Text style={styles.cancelDupeBtnText}>Chọn tàu khác</Text>
+            </TouchableOpacity>
+          </View>
+        }
+      >
+        <Text style={{ fontSize: 14, color: '#64748b', textAlign: 'center', marginBottom: 4 }}>
+          Kế hoạch này bạn đã điền rồi
+        </Text>
+        {duplicatePlan && (
+          <Text style={{ fontSize: 12, color: '#0f172a', fontWeight: '600', textAlign: 'center' }}>
+            {[duplicatePlan.name, duplicatePlan.soChuyen, duplicatePlan.routeName, fmtNgay(duplicatePlan.ngay)].filter(Boolean).join(' / ')}
+          </Text>
+        )}
+      </Modal>
     </ScrollView>
   );
 }
@@ -374,5 +434,28 @@ const styles = StyleSheet.create({
     color: '#1155cc',
     fontSize: 14,
     fontWeight: '700',
+  },
+  editDupeBtn: {
+    backgroundColor: '#f59e0b',
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+  },
+  editDupeBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  cancelDupeBtn: {
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    padding: 11,
+    alignItems: 'center',
+  },
+  cancelDupeBtnText: {
+    color: '#64748b',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

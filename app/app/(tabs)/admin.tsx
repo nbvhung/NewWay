@@ -110,7 +110,7 @@ export default function AdminScreen() {
           <UsersTab currentUser={user} allUsers={allUsers} onRefresh={loadUsers} />
         )}
         {activeTab === 'shipping-lines' && (
-          <ShippingLinesTab user={user} allShippingLines={allShippingLines} allRoutes={allRoutes} onRefresh={() => { loadShippingLines(); loadRoutes(); }} />
+          <ShippingLinesTab user={user} allShippingLines={allShippingLines} allRoutes={allRoutes} allUsers={allUsers} onRefresh={() => { loadShippingLines(); loadRoutes(); }} />
         )}
         {activeTab === 'monthly-plans' && (
           <MonthlyPlansTab user={user} />
