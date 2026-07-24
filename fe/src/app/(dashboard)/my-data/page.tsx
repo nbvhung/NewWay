@@ -77,7 +77,8 @@ export default function MyDataPage() {
   const fetchSalarySummary = async (month: number, year: number) => {
     try {
       const res = await submissionsApi.getSalarySummary(month, year);
-      return res.data || { totalSalary: 0, count: 0 };
+      const payload = (res.data as any)?.data || res.data;
+      return payload || { totalSalary: 0, count: 0 };
     } catch {
       return { totalSalary: 0, count: 0 };
     }
