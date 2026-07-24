@@ -35,6 +35,7 @@ export interface Route {
   name: string;
   money: number;
   effectiveDate: string | null;
+  type: string;
   createdAt: string;
 }
 

@@ -15,21 +15,26 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
   const [name, setName] = useState('');
   const [money, setMoney] = useState('');
   const [effectiveDate, setEffectiveDate] = useState('');
+  const [type, setType] = useState('CB');
 
   const [editRoute, setEditRoute] = useState<Route | null>(null);
   const [editName, setEditName] = useState('');
   const [editMoney, setEditMoney] = useState('');
   const [editEffectiveDate, setEditEffectiveDate] = useState('');
+  const [editType, setEditType] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const TYPES = ['XT', 'CB', 'ĐH'];
 
   const addRoute = async () => {
     if (!name.trim()) { toast('Vui lòng nhập tên tuyến đường', 'error'); return; }
     try {
-      await routesApi.create({ name: name.trim(), money: money ? parseFloat(money) : 0, effectiveDate: effectiveDate || undefined });
+      await routesApi.create({ name: name.trim(), money: money ? parseFloat(money) : 0, effectiveDate: effectiveDate || undefined, type: type || undefined });
       toast(`Đã thêm tuyến: ${name.trim()}`, 'success');
       setName('');
       setMoney('');
       setEffectiveDate('');
+      setType('CB');
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
   };
@@ -39,6 +44,7 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
     setEditName(r.name);
     setEditMoney(r.money ? String(r.money) : '');
     setEditEffectiveDate(r.effectiveDate || '');
+    setEditType(r.type || '');
   };
 
   const saveEdit = async () => {
@@ -50,6 +56,7 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
         name: editName.trim(),
         money: editMoney ? parseFloat(editMoney) : 0,
         effectiveDate: editEffectiveDate || undefined,
+        type: editType || undefined,
       });
       toast('Đã cập nhật tuyến đường', 'success');
       setEditRoute(null);
@@ -85,6 +92,11 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
               <div key={r.id} className="flex items-center justify-between gap-2 px-3 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs">
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="truncate">🛤️ {r.name}</span>
+                  <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                    r.type === 'XT' ? 'bg-[rgba(239,68,68,0.2)] text-red-600' :
+                    r.type === 'ĐH' ? 'bg-[rgba(139,92,246,0.2)] text-violet-600' :
+                    'bg-[rgba(59,130,246,0.2)] text-blue-600'
+                  }`}>{r.type || 'CB'}</span>
                   {r.money > 0 && <span className="shrink-0 px-1.5 py-0.5 rounded bg-[rgba(16,185,129,0.2)] text-emerald-600 text-[10px]">{fmtMoney(r.money)}</span>}
                   {r.effectiveDate && <span className="shrink-0 px-1.5 py-0.5 rounded bg-[rgba(59,130,246,0.2)] text-blue-600 text-[10px]">📅 {r.effectiveDate}</span>}
                 </div>
@@ -116,6 +128,22 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
             <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Ngày hiệu lực</label>
             <input type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)}
               className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" />
+          </div>
+          <div className="mb-3">
+            <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Hình thức</label>
+            <div className="flex gap-1.5">
+              {TYPES.map(t => (
+                <label key={t}
+                  className={`flex-1 px-2 py-1.5 rounded text-[11px] font-bold border text-center cursor-pointer ${
+                    type === t
+                      ? 'border-[#1a56db] bg-[rgba(26,86,219,0.15)] text-[#1a56db]'
+                      : 'border-[rgba(0,0,0,0.08)] text-[#64748b] hover:border-[#1a56db]'
+                  }`}
+                  onClick={() => setType(t)}>
+                  {t}
+                </label>
+              ))}
+            </div>
           </div>
           <button onClick={addRoute}
             className="w-full py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] cursor-pointer">
@@ -152,6 +180,22 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
           <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Ngày hiệu lực</label>
           <input type="date" value={editEffectiveDate} onChange={e => setEditEffectiveDate(e.target.value)}
             className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+        </div>
+        <div className="mb-4">
+          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Hình thức</label>
+          <div className="flex gap-2">
+            {TYPES.map(t => (
+              <label key={t}
+                className={`flex-1 px-3 py-2 rounded text-sm font-bold border text-center cursor-pointer ${
+                  editType === t
+                    ? 'border-[#1a56db] bg-[rgba(26,86,219,0.15)] text-[#1a56db]'
+                    : 'border-[rgba(0,0,0,0.08)] text-[#64748b] hover:border-[#1a56db]'
+                }`}
+                onClick={() => setEditType(t)}>
+                {t}
+              </label>
+            ))}
+          </div>
         </div>
       </Modal>
     </>

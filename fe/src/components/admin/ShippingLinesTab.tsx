@@ -43,6 +43,9 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
   const [editDriverIds, setEditDriverIds] = useState<number[]>([]);
   const [editAllDrivers, setEditAllDrivers] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [routeTypeFilter, setRouteTypeFilter] = useState('Tất cả');
+  const [editRouteTypeFilter, setEditRouteTypeFilter] = useState('Tất cả');
+  const ROUTE_TYPES = ['Tất cả', 'XT', 'CB', 'ĐH'];
 
   const activePlans = allShippingLines.filter(p => !p.completed);
 
@@ -222,8 +225,22 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
         </div>
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tuyến đường</label>
+          <div className="flex gap-1 mb-2">
+            {ROUTE_TYPES.map(t => (
+              <label key={t}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold border cursor-pointer ${
+                  routeTypeFilter === t
+                    ? 'border-[#1a56db] bg-[rgba(26,86,219,0.15)] text-[#1a56db]'
+                    : 'border-[rgba(0,0,0,0.08)] text-[#64748b] hover:border-[#1a56db]'
+                }`}
+                onClick={() => setRouteTypeFilter(t)}>
+                {t}
+              </label>
+            ))}
+          </div>
           <div className="flex flex-wrap gap-1 p-2 border border-[rgba(0,0,0,0.08)] rounded-lg max-h-[140px] overflow-y-auto">
-            {allRoutes.length > 0 ? allRoutes.map(r => (
+            {(routeTypeFilter === 'Tất cả' ? allRoutes : allRoutes.filter(r => r.type === routeTypeFilter)).length > 0
+              ? (routeTypeFilter === 'Tất cả' ? allRoutes : allRoutes.filter(r => r.type === routeTypeFilter)).map(r => (
               <label key={r.id}
                 className={`px-2 py-1 rounded text-[10px] border cursor-pointer ${
                   routeName === r.name
@@ -291,8 +308,22 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
         </div>
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tuyến đường</label>
+          <div className="flex gap-1 mb-2">
+            {ROUTE_TYPES.map(t => (
+              <label key={t}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold border cursor-pointer ${
+                  editRouteTypeFilter === t
+                    ? 'border-[#1a56db] bg-[rgba(26,86,219,0.15)] text-[#1a56db]'
+                    : 'border-[rgba(0,0,0,0.08)] text-[#64748b] hover:border-[#1a56db]'
+                }`}
+                onClick={() => setEditRouteTypeFilter(t)}>
+                {t}
+              </label>
+            ))}
+          </div>
           <div className="flex flex-wrap gap-1 p-2 border border-[rgba(0,0,0,0.08)] rounded-lg max-h-[140px] overflow-y-auto">
-            {allRoutes.length > 0 ? allRoutes.map(r => (
+            {(editRouteTypeFilter === 'Tất cả' ? allRoutes : allRoutes.filter(r => r.type === editRouteTypeFilter)).length > 0
+              ? (editRouteTypeFilter === 'Tất cả' ? allRoutes : allRoutes.filter(r => r.type === editRouteTypeFilter)).map(r => (
               <label key={r.id}
                 className={`px-2 py-1 rounded text-[10px] border cursor-pointer ${
                   editRouteName === r.name
