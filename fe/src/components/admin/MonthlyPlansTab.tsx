@@ -22,7 +22,7 @@ export function MonthlyPlansTab({ user }: Props) {
     setLoading(true);
     try {
       const fromDate = `${year}-${String(month).padStart(2, '0')}-01`;
-      const toDate = new Date(year, month, 0).toISOString().slice(0, 10);
+      const toDate = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
       const res = await submissionsApi.getAll({ from_date: fromDate, to_date: toDate });
       setSubmissions(Array.isArray(res.data) ? res.data : (res.data as any).data || []);
     } catch {}

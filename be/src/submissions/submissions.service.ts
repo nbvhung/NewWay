@@ -330,7 +330,7 @@ export class SubmissionsService {
     const isMonthly = filter.mode === 'monthly';
     if (isMonthly && filter.month && filter.year) {
       filter.fromDate = `${filter.year}-${String(filter.month).padStart(2, '0')}-01`;
-      filter.toDate = new Date(filter.year, filter.month, 0).toISOString().slice(0, 10);
+      filter.toDate = `${filter.year}-${String(filter.month).padStart(2, '0')}-${String(new Date(filter.year, filter.month, 0).getDate()).padStart(2, '0')}`;
     }
     const role = filter.done ? 'ops' : user.role;
     const showLuong = role !== 'ops' && !isMonthly;
