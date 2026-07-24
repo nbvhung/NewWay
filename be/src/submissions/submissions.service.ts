@@ -251,6 +251,7 @@ export class SubmissionsService {
     const query = this.submissionsRepository
       .createQueryBuilder('s')
       .leftJoinAndSelect('s.user', 'user')
+      .leftJoinAndSelect('s.shippingLineRef', 'sl')
       .orderBy('s.createdAt', 'DESC');
 
     if (role !== 'admin' && role !== 'supper_admin') {
@@ -267,10 +268,10 @@ export class SubmissionsService {
       query.andWhere('s.shippingLine = :shippingLine', { shippingLine: filter.shippingLine });
     }
     if (filter.fromDate) {
-      query.andWhere('DATE(s.createdAt) >= :fromDate', { fromDate: filter.fromDate });
+      query.andWhere('(sl.ngay IS NOT NULL AND sl.ngay >= :fromDate OR sl.ngay IS NULL AND DATE(s.createdAt) >= :fromDate)', { fromDate: filter.fromDate });
     }
     if (filter.toDate) {
-      query.andWhere('DATE(s.createdAt) <= :toDate', { toDate: filter.toDate });
+      query.andWhere('(sl.ngay IS NOT NULL AND sl.ngay <= :toDate OR sl.ngay IS NULL AND DATE(s.createdAt) <= :toDate)', { toDate: filter.toDate });
     }
 
     let submissions = await query.getMany();
