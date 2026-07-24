@@ -28,6 +28,28 @@ interface EditFormData {
   keoVe: string;
 }
 
+const InputCell = ({ label, value, onChange, labelColor = '#111827', borderColor = '#d1d5db' }: {
+  label: string; value: string; onChange: (v: string) => void;
+  labelColor?: string; borderColor?: string;
+}) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+    <label style={{ fontSize: 13, fontWeight: 700, color: labelColor, lineHeight: 1.2 }}>{label}</label>
+    <input type="text" inputMode="numeric" value={value}
+      onChange={(e) => {
+        const v = e.target.value.replace(/\D/g, '');
+        onChange(v);
+      }}
+      placeholder="0"
+      style={{
+        width: '100%', padding: '10px 12px', fontSize: 16, fontWeight: 700,
+        border: `2px solid ${borderColor}`,
+        borderRadius: 10, outline: 'none', background: '#fff', color: '#111',
+        boxSizing: 'border-box',
+      } as React.CSSProperties}
+    />
+  </div>
+);
+
 const MONTHS_VI = ['', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
 
 export default function MyDataPage() {
@@ -187,28 +209,6 @@ export default function MyDataPage() {
     if (isNaN(n)) return v !== '' && v !== '0';
     return n !== 0;
   };
-
-  const InputCell = ({ label, value, onChange, labelColor = '#111827', borderColor = '#d1d5db' }: {
-    label: string; value: string; onChange: (v: string) => void;
-    labelColor?: string; borderColor?: string;
-  }) => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <label style={{ fontSize: 13, fontWeight: 700, color: labelColor, lineHeight: 1.2 }}>{label}</label>
-      <input type="text" inputMode="numeric" value={value}
-        onChange={(e) => {
-          const v = e.target.value.replace(/\D/g, '');
-          onChange(v);
-        }}
-        placeholder="0"
-        style={{
-          width: '100%', padding: '10px 12px', fontSize: 16, fontWeight: 700,
-          border: `2px solid ${borderColor}`,
-          borderRadius: 10, outline: 'none', background: '#fff', color: '#111',
-          boxSizing: 'border-box',
-        } as React.CSSProperties}
-      />
-    </div>
-  );
 
   const RenderCard = ({ data, showEdit }: { data: Submission[]; showEdit?: boolean }) => (
     <div className="flex flex-col gap-2" style={{ maxWidth: 480, margin: '0 auto' }}>
