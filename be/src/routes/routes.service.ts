@@ -30,6 +30,7 @@ export class RoutesService {
       name: dto.name.trim(),
       money: dto.money ?? 0,
       effectiveDate: dto.effectiveDate || null,
+      type: dto.type || 'CB',
     });
     return this.routesRepository.save(route);
   }
@@ -55,6 +56,9 @@ export class RoutesService {
     }
     if (dto.effectiveDate !== undefined) {
       route.effectiveDate = dto.effectiveDate || null;
+    }
+    if (dto.type !== undefined) {
+      route.type = dto.type;
     }
 
     return this.routesRepository.save(route);

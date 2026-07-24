@@ -12,4 +12,8 @@ export class CreateRouteDto {
   @IsOptional()
   @IsString()
   effectiveDate?: string;
+
+  @IsOptional()
+  @IsString()
+  type?: string;
 }

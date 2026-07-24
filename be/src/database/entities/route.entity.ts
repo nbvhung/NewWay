@@ -14,6 +14,9 @@ export class Route {
   @Column({ name: 'effective_date', type: 'date', nullable: true })
   effectiveDate: string | null;
 
+  @Column({ name: 'type', length: 10, default: 'CB' })
+  type: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
