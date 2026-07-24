@@ -12,13 +12,19 @@ export class ShippingLinesService {
     private shippingLinesRepository: Repository<ShippingLine>,
   ) {}
 
-  async findAll(completed?: boolean): Promise<any[]> {
+  async findAll(completed?: boolean, userId?: number): Promise<any[]> {
     const qb = this.shippingLinesRepository
       .createQueryBuilder('sl')
       .leftJoinAndSelect('sl.route', 'route')
       .orderBy('sl.ngay', 'DESC');
     if (completed !== undefined) {
       qb.andWhere('sl.completed = :completed', { completed });
+    }
+    if (userId) {
+      qb.andWhere(
+        '(sl.all_drivers = true OR sl.driver_ids LIKE :userPattern)',
+        { userPattern: `%"${userId}"%` },
+      );
     }
     return qb.getMany();
   }
@@ -39,6 +45,8 @@ export class ShippingLinesService {
       leTet: dto.leTet || false,
       vendorKhac: dto.vendorKhac?.trim() || '',
       tenNguoiNhap: dto.tenNguoiNhap?.trim() || '',
+      driverIds: JSON.stringify(dto.driverIds || []),
+      allDrivers: dto.allDrivers !== undefined ? dto.allDrivers : true,
     });
     if (dto.routeId) {
       (plan as any).routeId = dto.routeId;
@@ -68,6 +76,8 @@ export class ShippingLinesService {
     if (dto.vendorKhac !== undefined) plan.vendorKhac = dto.vendorKhac.trim();
     if (dto.tenNguoiNhap !== undefined) plan.tenNguoiNhap = dto.tenNguoiNhap.trim();
     if (dto.completed !== undefined) plan.completed = dto.completed;
+    if (dto.driverIds !== undefined) plan.driverIds = JSON.stringify(dto.driverIds);
+    if (dto.allDrivers !== undefined) plan.allDrivers = dto.allDrivers;
 
     return this.shippingLinesRepository.save(plan);
   }

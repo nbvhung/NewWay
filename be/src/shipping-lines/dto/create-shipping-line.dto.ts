@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsArray } from 'class-validator';
 
 export class CreateShippingLineDto {
   @IsString()
@@ -39,4 +39,12 @@ export class CreateShippingLineDto {
   @IsOptional()
   @IsString()
   tenNguoiNhap?: string;
+
+  @IsOptional()
+  @IsArray()
+  driverIds?: number[];
+
+  @IsOptional()
+  @IsBoolean()
+  allDrivers?: boolean;
 }

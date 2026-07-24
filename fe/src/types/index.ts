@@ -23,6 +23,8 @@ export interface ShippingLine {
   vendorKhac: string;
   tenNguoiNhap: string;
   completed: boolean;
+  driverIds: string;
+  allDrivers: boolean;
   createdAt: string;
   routeId?: number;
   route?: Route;
