@@ -61,10 +61,16 @@ export class SubmissionsService {
     });
 
     const allRoutes = await this.routesRepository.find();
-    const routeMoneyMap = new Map<string, number>();
+    const routeMap = new Map<string, { money: number; effectiveDate: string | null }>();
     for (const r of allRoutes) {
-      routeMoneyMap.set(r.name, Number(r.money) || 0);
+      routeMap.set(r.name, { money: Number(r.money) || 0, effectiveDate: r.effectiveDate || null });
     }
+    const getRouteMoney = (name: string, planDate: string | null | undefined): number => {
+      const rt = routeMap.get(name);
+      if (!rt) return 0;
+      if (rt.effectiveDate && planDate && planDate < rt.effectiveDate) return 0;
+      return rt.money;
+    };
 
     const allShippingLines = await this.shippingLinesRepository.find();
     const slMap = new Map<number, ShippingLine>();
@@ -88,7 +94,7 @@ export class SubmissionsService {
         order: { editedAt: 'DESC' },
       });
       const tenTuyen = sub.route || sl?.routeName || '';
-      const donGia = routeMoneyMap.get(tenTuyen) || 0;
+      const donGia = getRouteMoney(tenTuyen, sl?.ngay);
       const h20 = parseFloat(sub.hang20) || 0;
       const h40 = parseFloat(sub.hang40) || 0;
       const v20 = parseFloat(sub.vo20) || 0;
@@ -172,10 +178,16 @@ export class SubmissionsService {
 
   async getSalarySummary(userId: number, month: number, year: number): Promise<any> {
     const allRoutes = await this.routesRepository.find();
-    const routeMoneyMap = new Map<string, number>();
+    const routeMap = new Map<string, { money: number; effectiveDate: string | null }>();
     for (const r of allRoutes) {
-      routeMoneyMap.set(r.name, Number(r.money) || 0);
+      routeMap.set(r.name, { money: Number(r.money) || 0, effectiveDate: r.effectiveDate || null });
     }
+    const getRouteMoney = (name: string, planDate: string | null | undefined): number => {
+      const rt = routeMap.get(name);
+      if (!rt) return 0;
+      if (rt.effectiveDate && planDate && planDate < rt.effectiveDate) return 0;
+      return rt.money;
+    };
 
     const allShippingLines = await this.shippingLinesRepository.find();
     const slMap = new Map<number, ShippingLine>();
@@ -207,7 +219,7 @@ export class SubmissionsService {
       if (refDate.getMonth() + 1 !== month || refDate.getFullYear() !== year) continue;
 
       const tenTuyen = sub.route || sl?.routeName || '';
-      const donGia = routeMoneyMap.get(tenTuyen) || 0;
+      const donGia = getRouteMoney(tenTuyen, sl?.ngay);
       const h20 = parseFloat(sub.hang20) || 0;
       const h40 = parseFloat(sub.hang40) || 0;
       const v20 = parseFloat(sub.vo20) || 0;
@@ -336,10 +348,16 @@ export class SubmissionsService {
     };
 
     const allRoutes = await this.routesRepository.find();
-    const routeMoneyMap = new Map<string, number>();
+    const routeMap = new Map<string, { money: number; effectiveDate: string | null }>();
     for (const r of allRoutes) {
-      routeMoneyMap.set(r.name, Number(r.money) || 0);
+      routeMap.set(r.name, { money: Number(r.money) || 0, effectiveDate: r.effectiveDate || null });
     }
+    const getRouteMoney = (name: string, planDate: string | null | undefined): number => {
+      const rt = routeMap.get(name);
+      if (!rt) return 0;
+      if (rt.effectiveDate && planDate && planDate < rt.effectiveDate) return 0;
+      return rt.money;
+    };
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Hệ thống New Way';
@@ -872,7 +890,7 @@ export class SubmissionsService {
           for (const [planName, group] of planGroups) {
             const sl = group.sl;
             const tenTuyen = group.subs[0].route || sl?.routeName || '';
-            const donGia = routeMoneyMap.get(tenTuyen) || 0;
+            const donGia = getRouteMoney(tenTuyen, sl?.ngay);
             let h20 = 0, h40 = 0, v20 = 0, v40 = 0, v20fr = 0, v40fr = 0, vsl = 0, kv = 0, tip = 0;
 
             for (const sub of group.subs) {
@@ -1072,7 +1090,7 @@ export class SubmissionsService {
       if (showLuong) {
         const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
         const tenTuyen = sub.route || sl?.routeName || '';
-        const donGia = routeMoneyMap.get(tenTuyen) || 0;
+        const donGia = getRouteMoney(tenTuyen, sl?.ngay);
         const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
         const tongSub = (parseFloat(sub.hang20) || 0) + (parseFloat(sub.hang40) || 0) + Math.ceil((parseFloat(sub.vo20) || 0) / 2) + (parseFloat(sub.vo40) || 0) + Math.ceil((parseFloat(sub.vo20fr) || 0) / 8) + Math.ceil((parseFloat(sub.vo40fr) || 0) / 4);
         const vslSub = parseFloat(sub.veSinhLai) || 0;
@@ -1298,7 +1316,7 @@ export class SubmissionsService {
         const name = sub.user?.fullName || sub.driverName;
         const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
         const tenTuyen = sub.route || sl?.routeName || '';
-        const donGia = routeMoneyMap.get(tenTuyen) || 0;
+        const donGia = getRouteMoney(tenTuyen, sl?.ngay);
         const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
         const h20 = parseFloat(sub.hang20) || 0;
         const h40 = parseFloat(sub.hang40) || 0;
