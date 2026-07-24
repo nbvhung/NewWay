@@ -22,8 +22,8 @@ export class ShippingLinesService {
     }
     if (userId) {
       qb.andWhere(
-        '(sl.all_drivers = true OR sl.driver_ids LIKE :userPattern)',
-        { userPattern: `%"${userId}"%` },
+        '(sl.all_drivers = true OR CAST(sl.driver_ids AS JSONB) @> CAST(:userIds AS JSONB))',
+        { userIds: JSON.stringify([userId]) },
       );
     }
     return qb.getMany();
