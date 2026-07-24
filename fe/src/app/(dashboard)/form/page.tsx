@@ -383,7 +383,10 @@ export default function FormPage() {
               <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 16px' }}>
                 {planDisplayName(duplicatePlan)}
               </p>
-              <button onClick={() => router.push('/my-data')}
+              <button onClick={() => {
+                const sub = mySubmissions.get(duplicatePlan.id);
+                router.push(sub ? `/my-data?editId=${sub.id}` : '/my-data');
+              }}
                 style={{
                   width: '100%', padding: '11px', borderRadius: 10, border: 'none',
                   background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#fff',
