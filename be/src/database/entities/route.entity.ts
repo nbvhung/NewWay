@@ -11,6 +11,9 @@ export class Route {
   @Column({ name: 'money', type: 'decimal', precision: 15, scale: 2, default: 0 })
   money: number;
 
+  @Column({ name: 'effective_date', type: 'date', nullable: true })
+  effectiveDate: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

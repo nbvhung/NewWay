@@ -8,4 +8,8 @@ export class UpdateRouteDto {
   @IsOptional()
   @IsNumber()
   money?: number;
+
+  @IsOptional()
+  @IsString()
+  effectiveDate?: string;
 }

@@ -29,6 +29,7 @@ export class RoutesService {
     const route = this.routesRepository.create({
       name: dto.name.trim(),
       money: dto.money ?? 0,
+      effectiveDate: dto.effectiveDate || null,
     });
     return this.routesRepository.save(route);
   }
@@ -51,6 +52,9 @@ export class RoutesService {
     }
     if (dto.money !== undefined) {
       route.money = dto.money;
+    }
+    if (dto.effectiveDate !== undefined) {
+      route.effectiveDate = dto.effectiveDate || null;
     }
 
     return this.routesRepository.save(route);
