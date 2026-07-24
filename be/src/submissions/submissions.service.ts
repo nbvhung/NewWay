@@ -954,6 +954,32 @@ export class SubmissionsService {
       }
     }
 
+    // Route prices sheet — right before main sheet (HR only)
+    if (role === 'hr') {
+      const wsPrices = workbook.addWorksheet('Bảng đơn giá');
+      wsPrices.columns = [
+        { header: 'Tuyến đường', key: 'route', width: 30 },
+        { header: 'Đơn giá', key: 'price', width: 18 },
+      ];
+      const hRow = wsPrices.getRow(1);
+      hRow.eachCell((cell) => {
+        cell.fill = headerFill;
+        cell.font = headerFont;
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = allBorder;
+      });
+      hRow.height = 28;
+
+      for (const r of allRoutes) {
+        const row = wsPrices.addRow({ route: r.name, price: Number(r.money) || 0 });
+        row.eachCell((cell) => {
+          cell.border = allBorder;
+          cell.alignment = { vertical: 'middle' };
+        });
+      }
+      wsPrices.getColumn(2).numFmt = '#,##0';
+    }
+
     if (isMonthly) {
       // Skip main sheet for monthly mode (already has summary sheet)
       let filename = `KeHoachThang_${String(filter.month).padStart(2, '0')}_${filter.year}.xlsx`;

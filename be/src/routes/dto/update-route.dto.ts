@@ -12,4 +12,8 @@ export class UpdateRouteDto {
   @IsOptional()
   @IsString()
   effectiveDate?: string;
+
+  @IsOptional()
+  @IsString()
+  type?: string;
 }
