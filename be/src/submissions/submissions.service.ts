@@ -106,7 +106,7 @@ export class SubmissionsService {
       const tip = parseFloat(sub.tip) || 0;
       const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
       const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
-      const salary = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo + tip * 1000;
+      const salary = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
       const planDate = sl?.ngay || null;
       result.push({ ...sub, history, salary, planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine, planDate, completed: sl?.completed || false });
     }
@@ -208,6 +208,7 @@ export class SubmissionsService {
     });
 
     let totalSalary = 0;
+    let totalTip = 0;
     let count = 0;
     const details: any[] = [];
 
@@ -231,13 +232,14 @@ export class SubmissionsService {
       const tip = parseFloat(sub.tip) || 0;
       const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
       const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
-      const salary = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo + tip * 1000;
+      const salary = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
       totalSalary += salary;
+      totalTip += tip * 1000;
       count++;
       details.push({ ...sub, salary, planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine });
     }
 
-    return { totalSalary, count, month, year, details };
+    return { totalSalary, totalTip, count, month, year, details };
   }
 
   async findAll(filter: {
@@ -851,6 +853,7 @@ export class SubmissionsService {
           { header: 'Kéo về', key: 'keoVe', width: 10 },
           { header: 'TIP (Nghìn đ)', key: 'tip', width: 12 },
           { header: 'Lương', key: 'luong', width: 16 },
+          { header: 'Tổng thanh toán', key: 'tongThanhToan', width: 16 },
           { header: 'Tàu tăng cường', key: 'tangCuong', width: 12 },
           { header: 'Tàu Lễ, Tết', key: 'leTet', width: 12 },
         ];
@@ -865,7 +868,7 @@ export class SubmissionsService {
         headerRow.height = 28;
 
         if (subs.length === 0) {
-          wsDriver.addRow({ stt: '', plan: 'Không có dữ liệu', route: '', donGia: '', hang20: '', hang40: '', vo20: '', vo40: '', vo20fr: '', vo40fr: '', veSinhLai: '', keoVe: '', tip: '', luong: '', tangCuong: '', leTet: '' });
+          wsDriver.addRow({ stt: '', plan: 'Không có dữ liệu', route: '', donGia: '', hang20: '', hang40: '', vo20: '', vo40: '', vo20fr: '', vo40fr: '', veSinhLai: '', keoVe: '', tip: '', luong: '', tongThanhToan: '', tangCuong: '', leTet: '' });
         } else {
           // Group by plan, sum quantities
           const planGroups = new Map<string, { sl: any; subs: any[] }>();
@@ -886,7 +889,7 @@ export class SubmissionsService {
           }
 
           let rowIdx = 0;
-          let sumH20 = 0, sumH40 = 0, sumV20 = 0, sumV40 = 0, sumV20fr = 0, sumV40fr = 0, sumVsl = 0, sumKv = 0, sumTip = 0, sumLuong = 0;
+          let sumH20 = 0, sumH40 = 0, sumV20 = 0, sumV40 = 0, sumV20fr = 0, sumV40fr = 0, sumVsl = 0, sumKv = 0, sumTip = 0, sumLuong = 0, sumTongThanhToan = 0;
 
           for (const [planName, group] of planGroups) {
             const sl = group.sl;
@@ -908,9 +911,10 @@ export class SubmissionsService {
 
             const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
             const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
-            const luong = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo + tip * 1000;
+            const luong = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
+            const tongThanhToan = luong + tip * 1000;
 
-            sumH20 += h20; sumH40 += h40; sumV20 += v20; sumV40 += v40; sumV20fr += v20fr; sumV40fr += v40fr; sumVsl += vsl; sumKv += kv; sumTip += tip; sumLuong += luong;
+            sumH20 += h20; sumH40 += h40; sumV20 += v20; sumV40 += v40; sumV20fr += v20fr; sumV40fr += v40fr; sumVsl += vsl; sumKv += kv; sumTip += tip; sumLuong += luong; sumTongThanhToan += tongThanhToan;
 
             rowIdx++;
             const row = wsDriver.addRow({
@@ -928,6 +932,7 @@ export class SubmissionsService {
               keoVe: kv || '',
               tip: tip || '',
               luong: luong,
+              tongThanhToan: tongThanhToan,
               tangCuong: sl?.tangCuong ? 'x' : '',
               leTet: sl?.leTet ? 'x' : '',
             });
@@ -958,6 +963,7 @@ export class SubmissionsService {
             keoVe: sumKv || '',
             tip: sumTip || '',
             luong: sumLuong,
+            tongThanhToan: sumTongThanhToan,
             tangCuong: '',
             leTet: '',
           });
@@ -970,6 +976,7 @@ export class SubmissionsService {
         }
         wsDriver.getColumn(4).numFmt = '#,##0';
         wsDriver.getColumn(14).numFmt = '#,##0';
+        wsDriver.getColumn(15).numFmt = '#,##0';
       }
     }
 
@@ -1034,6 +1041,7 @@ export class SubmissionsService {
         { header: 'Kéo về', key: 'keoVe', width: 10 },
         { header: 'TIP', key: 'tip', width: 10 },
         { header: 'Lương', key: 'luong', width: 16 },
+        { header: 'Tổng thanh toán', key: 'tongThanhToan', width: 16 },
       ];
     } else {
       ws.columns = [
@@ -1097,12 +1105,12 @@ export class SubmissionsService {
         const vslSub = parseFloat(sub.veSinhLai) || 0;
         const kvSub = parseFloat(sub.keoVe) || 0;
         const tipSub = parseFloat(sub.tip) || 0;
-        d.salary += donGia * tongSub * heSo + vslSub * 40000 * heSo + kvSub * donGia * heSo + tipSub * 1000;
+        d.salary += donGia * tongSub * heSo + vslSub * 40000 * heSo + kvSub * donGia * heSo;
       }
     }
 
     let rowIdx = 0;
-    let sumH20 = 0, sumH40 = 0, sumV20 = 0, sumV40 = 0, sumV20fr = 0, sumV40fr = 0, sumVsl = 0, sumKv = 0, sumTip = 0, sumLuong = 0;
+    let sumH20 = 0, sumH40 = 0, sumV20 = 0, sumV40 = 0, sumV20fr = 0, sumV40fr = 0, sumVsl = 0, sumKv = 0, sumTip = 0, sumLuong = 0, sumTongThanhToan = 0;
     for (const driver of allDrivers) {
       const d = driverDataMap.get(driver.id);
       const h20 = d?.h20 || 0;
@@ -1115,8 +1123,9 @@ export class SubmissionsService {
       const tip = d?.tip || 0;
       const kv = d?.kv || 0;
       const salary = showLuong ? (d?.salary || 0) : 0;
+      const tongThanhToan = showLuong ? (salary + tip * 1000) : 0;
 
-      sumH20 += h20; sumH40 += h40; sumV20 += v20; sumV40 += v40; sumV20fr += v20fr; sumV40fr += v40fr; sumVsl += vsl; sumKv += kv; sumTip += tip; sumLuong += salary;
+      sumH20 += h20; sumH40 += h40; sumV20 += v20; sumV40 += v40; sumV20fr += v20fr; sumV40fr += v40fr; sumVsl += vsl; sumKv += kv; sumTip += tip; sumLuong += salary; sumTongThanhToan += tongThanhToan;
 
       rowIdx++;
       if (role === 'hr') {
@@ -1135,6 +1144,7 @@ export class SubmissionsService {
           keoVe: kv || '',
           tip: tip || '',
           luong: salary || 0,
+          tongThanhToan: tongThanhToan || 0,
         });
         row.eachCell((cell) => {
           cell.border = allBorder;
@@ -1302,6 +1312,7 @@ export class SubmissionsService {
       wsSalary.columns = [
         { header: 'Tên', key: 'name', width: 30 },
         { header: 'Lương', key: 'luong', width: 20 },
+        { header: 'Tổng thanh toán', key: 'tongThanhToan', width: 20 },
       ];
       const salaryRow = wsSalary.getRow(1);
       salaryRow.eachCell((cell) => {
@@ -1312,7 +1323,7 @@ export class SubmissionsService {
       });
       salaryRow.height = 28;
 
-      const salaryMap = new Map<string, number>();
+      const salaryMap = new Map<string, { luong: number; tongThanhToan: number }>();
       for (const sub of submissions as any[]) {
         const name = sub.user?.fullName || sub.driverName;
         const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
@@ -1329,13 +1340,15 @@ export class SubmissionsService {
         const kv = parseFloat(sub.keoVe) || 0;
         const tip = parseFloat(sub.tip) || 0;
         const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
-        salaryMap.set(name, (salaryMap.get(name) || 0) + donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo + tip * 1000);
+        const luong = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
+        const prev = salaryMap.get(name) || { luong: 0, tongThanhToan: 0 };
+        salaryMap.set(name, { luong: prev.luong + luong, tongThanhToan: prev.tongThanhToan + luong + tip * 1000 });
       }
 
       let idx = 0;
-      for (const [name, luong] of salaryMap) {
+      for (const [name, val] of salaryMap) {
         idx++;
-        const row = wsSalary.addRow({ name, luong: luong });
+        const row = wsSalary.addRow({ name, luong: val.luong, tongThanhToan: val.tongThanhToan });
         row.eachCell((cell) => {
           cell.border = allBorder;
           cell.alignment = { vertical: 'middle' };
@@ -1347,6 +1360,7 @@ export class SubmissionsService {
         }
       }
       wsSalary.getColumn(2).numFmt = '#,##0';
+      wsSalary.getColumn(3).numFmt = '#,##0';
     }
 
     let filename: string;
