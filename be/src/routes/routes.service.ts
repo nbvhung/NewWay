@@ -13,9 +13,11 @@ export class RoutesService {
   ) {}
 
   async findAll() {
-    return this.routesRepository.find({
-      order: { name: 'ASC' },
-    });
+    return this.routesRepository
+      .createQueryBuilder('r')
+      .orderBy("CASE WHEN r.type = 'XT' THEN 1 WHEN r.type = 'CB' THEN 2 WHEN r.type = 'ĐH' THEN 3 ELSE 4 END")
+      .addOrderBy('r.name', 'ASC')
+      .getMany();
   }
 
   async create(dto: CreateRouteDto) {
