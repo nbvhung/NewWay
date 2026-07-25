@@ -93,7 +93,11 @@ export class ShippingLinesService {
     if (!plan) {
       throw new NotFoundException('Không tìm thấy kế hoạch');
     }
-    await this.submissionsRepository.update({ shippingLineId: id }, { shippingLineId: null });
+    if (!plan.completed) {
+      await this.submissionsRepository.delete({ shippingLineId: id });
+    } else {
+      await this.submissionsRepository.update({ shippingLineId: id }, { shippingLineId: null });
+    }
     await this.shippingLinesRepository.remove(plan);
     return { message: 'Đã xóa kế hoạch' };
   }
