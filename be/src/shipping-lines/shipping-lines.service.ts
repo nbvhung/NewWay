@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
+import { Submission } from '../database/entities/submission.entity';
 import { CreateShippingLineDto } from './dto/create-shipping-line.dto';
 import { UpdateShippingLineDto } from './dto/update-shipping-line.dto';
 
@@ -10,6 +11,8 @@ export class ShippingLinesService {
   constructor(
     @InjectRepository(ShippingLine)
     private shippingLinesRepository: Repository<ShippingLine>,
+    @InjectRepository(Submission)
+    private submissionsRepository: Repository<Submission>,
   ) {}
 
   async findAll(completed?: boolean, userId?: number): Promise<any[]> {
@@ -68,7 +71,10 @@ export class ShippingLinesService {
       plan.name = dto.name.trim();
     }
     if (dto.soChuyen !== undefined) plan.soChuyen = dto.soChuyen.trim();
-    if (dto.routeName !== undefined) plan.routeName = dto.routeName.trim();
+    if (dto.routeName !== undefined) {
+      plan.routeName = dto.routeName.trim();
+      await this.submissionsRepository.update({ shippingLineId: id }, { route: dto.routeName.trim() });
+    }
     if (dto.ngay !== undefined) plan.ngay = dto.ngay;
     if (dto.vendor !== undefined) plan.vendor = dto.vendor.trim();
     if (dto.tangCuong !== undefined) plan.tangCuong = dto.tangCuong;
@@ -87,6 +93,7 @@ export class ShippingLinesService {
     if (!plan) {
       throw new NotFoundException('Không tìm thấy kế hoạch');
     }
+    await this.submissionsRepository.update({ shippingLineId: id }, { shippingLineId: null });
     await this.shippingLinesRepository.remove(plan);
     return { message: 'Đã xóa kế hoạch' };
   }
