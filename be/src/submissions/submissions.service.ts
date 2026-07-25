@@ -66,7 +66,7 @@ export class SubmissionsService {
       routeMap.set(r.name, { money: Number(r.money) || 0, effectiveDate: r.effectiveDate || null });
     }
     const getRouteMoney = (name: string, planDate: string | null | undefined, frozenMoney?: number | null): number => {
-      if (frozenMoney) return frozenMoney;
+      if (frozenMoney !== null && frozenMoney !== undefined) return Number(frozenMoney);
       const rt = routeMap.get(name);
       if (!rt) return 0;
       if (rt.effectiveDate && planDate && planDate < rt.effectiveDate) return 0;
@@ -184,7 +184,7 @@ export class SubmissionsService {
       routeMap.set(r.name, { money: Number(r.money) || 0, effectiveDate: r.effectiveDate || null });
     }
     const getRouteMoney = (name: string, planDate: string | null | undefined, frozenMoney?: number | null): number => {
-      if (frozenMoney) return frozenMoney;
+      if (frozenMoney !== null && frozenMoney !== undefined) return Number(frozenMoney);
       const rt = routeMap.get(name);
       if (!rt) return 0;
       if (rt.effectiveDate && planDate && planDate < rt.effectiveDate) return 0;
@@ -358,7 +358,7 @@ export class SubmissionsService {
       routeMap.set(r.name, { money: Number(r.money) || 0, effectiveDate: r.effectiveDate || null });
     }
     const getRouteMoney = (name: string, planDate: string | null | undefined, frozenMoney?: number | null): number => {
-      if (frozenMoney) return frozenMoney;
+      if (frozenMoney !== null && frozenMoney !== undefined) return Number(frozenMoney);
       const rt = routeMap.get(name);
       if (!rt) return 0;
       if (rt.effectiveDate && planDate && planDate < rt.effectiveDate) return 0;

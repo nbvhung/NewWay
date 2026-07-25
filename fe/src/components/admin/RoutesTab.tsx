@@ -23,8 +23,10 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
   const [editEffectiveDate, setEditEffectiveDate] = useState('');
   const [editType, setEditType] = useState('');
   const [saving, setSaving] = useState(false);
+  const [typeFilter, setTypeFilter] = useState('Tất cả');
 
   const TYPES = ['XT', 'CB', 'ĐH'];
+  const filteredRoutes = typeFilter === 'Tất cả' ? allRoutes : allRoutes.filter(r => r.type === typeFilter);
 
   const addRoute = async () => {
     if (!name.trim()) { toast('Vui lòng nhập tên tuyến đường', 'error'); return; }
@@ -84,11 +86,26 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 items-start">
         <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-bold">🛤️ Danh sách tuyến đường</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold">🛤️ Danh sách tuyến đường</h3>
+              <div className="flex gap-1">
+                {['Tất cả', ...TYPES].map(t => (
+                  <label key={t}
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold border cursor-pointer ${
+                      typeFilter === t
+                        ? 'border-[#1a56db] bg-[rgba(26,86,219,0.15)] text-[#1a56db]'
+                        : 'border-[rgba(0,0,0,0.08)] text-[#64748b] hover:border-[#1a56db]'
+                    }`}
+                    onClick={() => setTypeFilter(t)}>
+                    {t}
+                  </label>
+                ))}
+              </div>
+            </div>
             <button onClick={onRefresh} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">🔄 Làm mới</button>
           </div>
           <div className="flex flex-col gap-1.5">
-            {allRoutes.map(r => (
+            {filteredRoutes.map(r => (
               <div key={r.id} className="flex items-center justify-between gap-2 px-3 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs">
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="truncate">🛤️ {r.name}</span>
@@ -108,7 +125,7 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
                 </div>
               </div>
             ))}
-            {allRoutes.length === 0 && <div className="text-center w-full py-8 text-[#64748b] text-sm">Chưa có tuyến đường</div>}
+            {filteredRoutes.length === 0 && <div className="text-center w-full py-8 text-[#64748b] text-sm">Chưa có tuyến đường</div>}
           </div>
         </div>
 

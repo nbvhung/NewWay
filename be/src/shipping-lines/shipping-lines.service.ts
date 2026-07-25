@@ -86,7 +86,7 @@ export class ShippingLinesService {
     if (dto.tenNguoiNhap !== undefined) plan.tenNguoiNhap = dto.tenNguoiNhap.trim();
     if (dto.completed !== undefined) {
       plan.completed = dto.completed;
-      if (dto.completed && !plan.frozenMoney) {
+      if (dto.completed && plan.frozenMoney === null) {
         const route = plan.routeName
           ? await this.routesRepository.findOne({ where: { name: plan.routeName } })
           : null;
