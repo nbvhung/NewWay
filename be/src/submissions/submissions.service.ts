@@ -936,7 +936,7 @@ export class SubmissionsService {
               veSinhLai: vsl || '',
               keoVe: kv || '',
               tip: tip || '',
-              soChuyen: tong,
+              soChuyen: tong + kv,
               luong: luong,
               tongThanhToan: tongThanhToan,
               tangCuong: sl?.tangCuong ? 'x' : '',
@@ -1134,7 +1134,7 @@ export class SubmissionsService {
       const kv = d?.kv || 0;
       const salary = showLuong ? (d?.salary || 0) : 0;
       const tongThanhToan = showLuong ? (salary + tip * 1000) : 0;
-      const soChuyen = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+      const soChuyen = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4) + kv;
 
       sumH20 += h20; sumH40 += h40; sumV20 += v20; sumV40 += v40; sumV20fr += v20fr; sumV40fr += v40fr; sumVsl += vsl; sumKv += kv; sumTip += tip; sumSoChuyen += soChuyen; sumLuong += salary; sumTongThanhToan += tongThanhToan;
 
