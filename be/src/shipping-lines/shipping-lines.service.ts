@@ -92,9 +92,13 @@ export class ShippingLinesService {
           ? await this.routesRepository.findOne({ where: { name: plan.routeName } })
           : null;
         plan.frozenMoney = route ? Number(route.money) || 0 : 0;
+        console.log(`[FREEZE] Plan ${plan.id} "${plan.name}" -> frozenMoney = ${plan.frozenMoney}, routeName = "${plan.routeName}", route found = ${!!route}, route.money = ${route?.money}`);
       } else if (!dto.completed) {
         // Khi bỏ hoàn thành, reset frozenMoney để có thể set lại khi complete lần sau
+        console.log(`[UNFREEZE] Plan ${plan.id} "${plan.name}" -> reset frozenMoney from ${plan.frozenMoney} to null`);
         plan.frozenMoney = null;
+      } else {
+        console.log(`[FREEZE-SKIP] Plan ${plan.id} "${plan.name}" -> frozenMoney already set = ${plan.frozenMoney} (type: ${typeof plan.frozenMoney})`);
       }
     }
     if (dto.driverIds !== undefined) plan.driverIds = JSON.stringify(dto.driverIds);

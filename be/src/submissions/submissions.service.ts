@@ -96,6 +96,7 @@ export class SubmissionsService {
       });
       const tenTuyen = sub.route || sl?.routeName || '';
       const donGia = getRouteMoney(tenTuyen, sl?.ngay, sl?.frozenMoney);
+      console.log(`[SALARY] Sub ${sub.id}, plan ${sl?.id}, tenTuyen="${tenTuyen}", frozenMoney=${sl?.frozenMoney} (type: ${typeof sl?.frozenMoney}), completed=${sl?.completed}, donGia=${donGia}`);
       const h20 = parseFloat(sub.hang20) || 0;
       const h40 = parseFloat(sub.hang40) || 0;
       const v20 = parseFloat(sub.vo20) || 0;
