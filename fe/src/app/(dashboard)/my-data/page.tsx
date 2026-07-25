@@ -70,7 +70,7 @@ export default function MyDataPage() {
   const now = new Date();
   const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
   const [viewYear, setViewYear] = useState(now.getFullYear());
-  const [salarySummary, setSalarySummary] = useState<{ totalSalary: number; count: number } | null>(null);
+  const [salarySummary, setSalarySummary] = useState<{ totalSalary: number; totalTip: number; count: number } | null>(null);
   const [salaryMonth, setSalaryMonth] = useState(now.getMonth() + 1);
   const [salaryYear, setSalaryYear] = useState(now.getFullYear());
   const [showCompleted, setShowCompleted] = useState(false);
@@ -112,9 +112,9 @@ export default function MyDataPage() {
     try {
       const res = await submissionsApi.getSalarySummary(month, year);
       const payload = (res.data as any)?.data || res.data;
-      return payload || { totalSalary: 0, count: 0 };
+      return payload || { totalSalary: 0, totalTip: 0, count: 0 };
     } catch {
-      return { totalSalary: 0, count: 0 };
+      return { totalSalary: 0, totalTip: 0, count: 0 };
     }
   };
 
@@ -409,7 +409,7 @@ export default function MyDataPage() {
         <div className="bg-gradient-to-br from-[#ffffff] to-[#f1f5f9] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold">💰 Thu nhập của bạn là:</h3>
+              <h3 className="text-base font-bold">💰 Thu nhập:</h3>
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 bg-[#ffffff] border border-[rgba(0,0,0,0.06)] rounded-lg px-2 py-1">
@@ -442,6 +442,12 @@ export default function MyDataPage() {
           <div className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] to-[#34d399]">
             {formatMoney(salarySummary?.totalSalary)}
           </div>
+          {salarySummary && !!salarySummary.totalTip && salarySummary.totalTip > 0 && (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-xs font-medium text-[#64748b]">📌 TIP:</span>
+              <span className="text-base font-bold text-[#f59e0b]">{formatMoney(salarySummary.totalTip)}</span>
+            </div>
+          )}
           <p className="text-xs font-medium text-[#64748b] mt-1">* Chưa bao gồm lương cứng, các khoản hỗ trợ,...( nếu có )</p>
           <p className="text-xs text-[#64748b] mt-1">🎉 Thật là tuyệt vời !!!</p>
         </div>
