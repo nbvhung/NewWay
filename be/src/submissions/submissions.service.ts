@@ -65,7 +65,8 @@ export class SubmissionsService {
     for (const r of allRoutes) {
       routeMap.set(r.name, { money: Number(r.money) || 0, effectiveDate: r.effectiveDate || null });
     }
-    const getRouteMoney = (name: string, planDate: string | null | undefined): number => {
+    const getRouteMoney = (name: string, planDate: string | null | undefined, frozenMoney?: number | null): number => {
+      if (frozenMoney) return frozenMoney;
       const rt = routeMap.get(name);
       if (!rt) return 0;
       if (rt.effectiveDate && planDate && planDate < rt.effectiveDate) return 0;
@@ -94,7 +95,7 @@ export class SubmissionsService {
         order: { editedAt: 'DESC' },
       });
       const tenTuyen = sub.route || sl?.routeName || '';
-      const donGia = getRouteMoney(tenTuyen, sl?.ngay);
+      const donGia = getRouteMoney(tenTuyen, sl?.ngay, sl?.frozenMoney);
       const h20 = parseFloat(sub.hang20) || 0;
       const h40 = parseFloat(sub.hang40) || 0;
       const v20 = parseFloat(sub.vo20) || 0;
@@ -182,7 +183,8 @@ export class SubmissionsService {
     for (const r of allRoutes) {
       routeMap.set(r.name, { money: Number(r.money) || 0, effectiveDate: r.effectiveDate || null });
     }
-    const getRouteMoney = (name: string, planDate: string | null | undefined): number => {
+    const getRouteMoney = (name: string, planDate: string | null | undefined, frozenMoney?: number | null): number => {
+      if (frozenMoney) return frozenMoney;
       const rt = routeMap.get(name);
       if (!rt) return 0;
       if (rt.effectiveDate && planDate && planDate < rt.effectiveDate) return 0;
@@ -220,7 +222,7 @@ export class SubmissionsService {
       if (refDate.getMonth() + 1 !== month || refDate.getFullYear() !== year) continue;
 
       const tenTuyen = sub.route || sl?.routeName || '';
-      const donGia = getRouteMoney(tenTuyen, sl?.ngay);
+      const donGia = getRouteMoney(tenTuyen, sl?.ngay, sl?.frozenMoney);
       const h20 = parseFloat(sub.hang20) || 0;
       const h40 = parseFloat(sub.hang40) || 0;
       const v20 = parseFloat(sub.vo20) || 0;
@@ -355,7 +357,8 @@ export class SubmissionsService {
     for (const r of allRoutes) {
       routeMap.set(r.name, { money: Number(r.money) || 0, effectiveDate: r.effectiveDate || null });
     }
-    const getRouteMoney = (name: string, planDate: string | null | undefined): number => {
+    const getRouteMoney = (name: string, planDate: string | null | undefined, frozenMoney?: number | null): number => {
+      if (frozenMoney) return frozenMoney;
       const rt = routeMap.get(name);
       if (!rt) return 0;
       if (rt.effectiveDate && planDate && planDate < rt.effectiveDate) return 0;
@@ -894,7 +897,7 @@ export class SubmissionsService {
           for (const [planName, group] of planGroups) {
             const sl = group.sl;
             const tenTuyen = group.subs[0].route || sl?.routeName || '';
-            const donGia = getRouteMoney(tenTuyen, sl?.ngay);
+            const donGia = getRouteMoney(tenTuyen, sl?.ngay, sl?.frozenMoney);
             let h20 = 0, h40 = 0, v20 = 0, v40 = 0, v20fr = 0, v40fr = 0, vsl = 0, kv = 0, tip = 0;
 
             for (const sub of group.subs) {
@@ -1099,7 +1102,7 @@ export class SubmissionsService {
       if (showLuong) {
         const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
         const tenTuyen = sub.route || sl?.routeName || '';
-        const donGia = getRouteMoney(tenTuyen, sl?.ngay);
+        const donGia = getRouteMoney(tenTuyen, sl?.ngay, sl?.frozenMoney);
         const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
         const tongSub = (parseFloat(sub.hang20) || 0) + (parseFloat(sub.hang40) || 0) + Math.ceil((parseFloat(sub.vo20) || 0) / 2) + (parseFloat(sub.vo40) || 0) + Math.ceil((parseFloat(sub.vo20fr) || 0) / 8) + Math.ceil((parseFloat(sub.vo40fr) || 0) / 4);
         const vslSub = parseFloat(sub.veSinhLai) || 0;
@@ -1328,7 +1331,7 @@ export class SubmissionsService {
         const name = sub.user?.fullName || sub.driverName;
         const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
         const tenTuyen = sub.route || sl?.routeName || '';
-        const donGia = getRouteMoney(tenTuyen, sl?.ngay);
+        const donGia = getRouteMoney(tenTuyen, sl?.ngay, sl?.frozenMoney);
         const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
         const h20 = parseFloat(sub.hang20) || 0;
         const h40 = parseFloat(sub.hang40) || 0;

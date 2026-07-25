@@ -36,6 +36,9 @@ export class ShippingLine {
   @Column({ name: 'completed', type: 'boolean', default: false })
   completed: boolean;
 
+  @Column({ name: 'frozen_money', type: 'decimal', precision: 15, scale: 2, nullable: true, default: null })
+  frozenMoney: number | null;
+
   @Column({ name: 'driver_ids', type: 'text', default: '[]' })
   driverIds: string;
 

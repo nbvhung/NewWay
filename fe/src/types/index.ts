@@ -23,6 +23,7 @@ export interface ShippingLine {
   vendorKhac: string;
   tenNguoiNhap: string;
   completed: boolean;
+  frozenMoney: number | null;
   driverIds: string;
   allDrivers: boolean;
   createdAt: string;

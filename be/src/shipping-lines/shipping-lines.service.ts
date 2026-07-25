@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Submission } from '../database/entities/submission.entity';
+import { Route } from '../database/entities/route.entity';
 import { CreateShippingLineDto } from './dto/create-shipping-line.dto';
 import { UpdateShippingLineDto } from './dto/update-shipping-line.dto';
 
@@ -13,6 +14,8 @@ export class ShippingLinesService {
     private shippingLinesRepository: Repository<ShippingLine>,
     @InjectRepository(Submission)
     private submissionsRepository: Repository<Submission>,
+    @InjectRepository(Route)
+    private routesRepository: Repository<Route>,
   ) {}
 
   async findAll(completed?: boolean, userId?: number): Promise<any[]> {
@@ -81,7 +84,15 @@ export class ShippingLinesService {
     if (dto.leTet !== undefined) plan.leTet = dto.leTet;
     if (dto.vendorKhac !== undefined) plan.vendorKhac = dto.vendorKhac.trim();
     if (dto.tenNguoiNhap !== undefined) plan.tenNguoiNhap = dto.tenNguoiNhap.trim();
-    if (dto.completed !== undefined) plan.completed = dto.completed;
+    if (dto.completed !== undefined) {
+      plan.completed = dto.completed;
+      if (dto.completed && !plan.frozenMoney) {
+        const route = plan.routeName
+          ? await this.routesRepository.findOne({ where: { name: plan.routeName } })
+          : null;
+        plan.frozenMoney = route ? Number(route.money) || 0 : 0;
+      }
+    }
     if (dto.driverIds !== undefined) plan.driverIds = JSON.stringify(dto.driverIds);
     if (dto.allDrivers !== undefined) plan.allDrivers = dto.allDrivers;
 
