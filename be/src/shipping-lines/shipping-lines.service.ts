@@ -86,17 +86,51 @@ export class ShippingLinesService {
     if (dto.tenNguoiNhap !== undefined) plan.tenNguoiNhap = dto.tenNguoiNhap.trim();
     if (dto.completed !== undefined) {
       plan.completed = dto.completed;
-      if (dto.completed && plan.frozenMoney === null) {
+      if (dto.completed && (plan.frozenMoney == null)) {
+        // Đóng băng giá tuyến đường tại thời điểm hoàn thành kế hoạch
         const route = plan.routeName
           ? await this.routesRepository.findOne({ where: { name: plan.routeName } })
           : null;
         plan.frozenMoney = route ? Number(route.money) || 0 : 0;
+      } else if (!dto.completed) {
+        // Khi bỏ hoàn thành, reset frozenMoney để có thể set lại khi complete lần sau
+        plan.frozenMoney = null;
       }
     }
     if (dto.driverIds !== undefined) plan.driverIds = JSON.stringify(dto.driverIds);
     if (dto.allDrivers !== undefined) plan.allDrivers = dto.allDrivers;
 
     return this.shippingLinesRepository.save(plan);
+  }
+
+  /**
+   * Backfill frozenMoney cho các kế hoạch đã hoàn thành nhưng chưa có frozenMoney (do bug cũ).
+   * Gọi API này 1 lần để fix dữ liệu cũ.
+   */
+  async backfillFrozenMoney(): Promise<{ fixed: number; skipped: number }> {
+    const completedPlans = await this.shippingLinesRepository.find({ where: { completed: true } });
+    const allRoutes = await this.routesRepository.find();
+    const routeMap = new Map<string, number>();
+    for (const r of allRoutes) {
+      routeMap.set(r.name, Number(r.money) || 0);
+    }
+
+    let fixed = 0;
+    let skipped = 0;
+
+    for (const plan of completedPlans) {
+      if (plan.frozenMoney != null) {
+        skipped++;
+        continue;
+      }
+      // frozenMoney chưa được set — đóng băng giá hiện tại của route
+      const money = plan.routeName ? (routeMap.get(plan.routeName) ?? 0) : 0;
+      plan.frozenMoney = money;
+      await this.shippingLinesRepository.save(plan);
+      fixed++;
+    }
+
+    return { fixed, skipped };
   }
 
   async remove(id: number) {

@@ -44,4 +44,11 @@ export class ShippingLinesController {
   remove(@Param('id') id: string) {
     return this.shippingLinesService.remove(+id);
   }
+
+  @Post('admin/shipping-lines/backfill-frozen-money')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'supper_admin')
+  backfillFrozenMoney() {
+    return this.shippingLinesService.backfillFrozenMoney();
+  }
 }
