@@ -17,6 +17,7 @@ export function MonthlyPlansTab({ user }: Props) {
   const [year, setYear] = useState(now.getFullYear());
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const loadData = async () => {
     setLoading(true);
@@ -25,7 +26,10 @@ export function MonthlyPlansTab({ user }: Props) {
       const toDate = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
       const res = await submissionsApi.getAll({ from_date: fromDate, to_date: toDate });
       setSubmissions(Array.isArray(res.data) ? res.data : (res.data as any).data || []);
-    } catch {}
+      setError('');
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e?.message || 'Không thể tải dữ liệu');
+    }
     finally { setLoading(false); }
   };
 
@@ -50,7 +54,9 @@ export function MonthlyPlansTab({ user }: Props) {
       a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
-    } catch {}
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e?.message || 'Xuất Excel thất bại');
+    }
   };
 
   const driverDataMap = new Map<number, { fullName: string; username: string; stt: string; soXe: string; h20: number; h40: number; v20: number; v40: number; v20fr: number; v40fr: number; vsl: number; tip: number; kv: number }>();
@@ -111,6 +117,12 @@ export function MonthlyPlansTab({ user }: Props) {
           🔄 Làm mới
         </button>
       </div>
+
+      {error && (
+        <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/12 border border-red-500/30 text-[#f87171] text-sm font-medium">
+          {error}
+        </div>
+      )}
 
       <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl overflow-x-auto">
         {loading ? (
