@@ -51,7 +51,8 @@ export default function AdminPage() {
   const loadUsers = async () => {
     try {
       const res = await usersApi.getAll();
-      setAllUsers(Array.isArray(res.data) ? res.data : (res.data as any).data || []);
+      const list: User[] = Array.isArray(res.data) ? res.data : (res.data as any).data || [];
+      setAllUsers(list.sort((a, b) => (parseInt(a.stt) || 999999) - (parseInt(b.stt) || 999999)));
     } catch {}
   };
 
