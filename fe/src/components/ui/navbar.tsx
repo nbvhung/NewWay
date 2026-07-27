@@ -7,14 +7,12 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import { ROLE_LABELS } from '@/lib/utils';
 import { Modal } from '@/components/ui/modal';
-import { DienHoModal } from '@/components/admin/DienHoModal';
 
 export function Navbar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [dienHoOpen, setDienHoOpen] = useState(false);
 
   if (!user) return null;
 
@@ -49,10 +47,14 @@ export function Navbar() {
 
           <div className="hidden md:flex items-center gap-1">
             {user.role === 'ops' && (
-            <button onClick={() => setDienHoOpen(true)}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium text-[#64748b] hover:text-[#0f172a] transition-all cursor-pointer">
+            <Link href="/dien-ho"
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                isActive('/dien-ho')
+                  ? 'bg-[#ffffff] text-[#0f172a]'
+                  : 'text-[#64748b] hover:text-[#0f172a]'
+              }`}>
               📝 Điền hộ
-            </button>
+            </Link>
             )}
             {user.role !== 'hr' && user.role !== 'admin' && user.role !== 'ops' && (
             <Link
@@ -120,10 +122,9 @@ export function Navbar() {
           {menuOpen && (
         <div className="md:hidden border-t border-[rgba(0,0,0,0.08)] bg-[rgba(241,245,249,0.98)] px-4 pb-4 pt-2 flex flex-col gap-1">
           {user.role === 'ops' && (
-          <button onClick={() => { setMenuOpen(false); setDienHoOpen(true); }}
-            className="px-3 py-2 rounded-lg text-sm text-left cursor-pointer">
+          <Link href="/dien-ho" className="px-3 py-2 rounded-lg text-sm" onClick={() => setMenuOpen(false)}>
             📝 Điền hộ
-          </button>
+          </Link>
           )}
           {user.role !== 'hr' && user.role !== 'admin' && user.role !== 'ops' && (
           <Link href="/form" className="px-3 py-2 rounded-lg text-sm" onClick={() => setMenuOpen(false)}>
@@ -145,7 +146,6 @@ export function Navbar() {
           </div>
         </div>
       )}
-      <DienHoModal open={dienHoOpen} onClose={() => setDienHoOpen(false)} />
       <Modal
         open={showLogoutConfirm}
         onClose={() => setShowLogoutConfirm(false)}
