@@ -70,11 +70,11 @@ export function DienHoModal({ open, onClose }: Props) {
       footer={
         <div className="flex gap-2 w-full">
           <button onClick={onClose}
-            className="px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">
+            className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">
             Đóng
           </button>
           <button onClick={handleSubmit} disabled={saving}
-            className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] hover:shadow-[0_6px_20px_rgba(26,86,219,0.5)] transition-all disabled:opacity-50 cursor-pointer">
+            className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-[0_4px_15px_rgba(16,185,129,0.3)] cursor-pointer disabled:opacity-50">
             {saving ? 'Đang lưu...' : '💾 Lưu'}
           </button>
         </div>
@@ -87,9 +87,9 @@ export function DienHoModal({ open, onClose }: Props) {
         )}
 
         <div>
-          <label className="block text-xs font-medium text-[#64748b] mb-1">Lái xe <span className="text-[#ef4444]">*</span></label>
+          <label className="block text-xs font-medium text-[#64748b] mb-1.5">Lái xe <span className="text-[#ef4444]">*</span></label>
           <select value={selectedDriver} onChange={e => setSelectedDriver(e.target.value)}
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
             <option value="">-- Chọn lái xe --</option>
             {drivers.map(d => (
               <option key={d.id} value={d.id}>{d.fullName} ({d.username}){d.soXe ? ` - ${d.soXe}` : ''}</option>
@@ -98,9 +98,9 @@ export function DienHoModal({ open, onClose }: Props) {
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-[#64748b] mb-1">Kế hoạch <span className="text-[#ef4444]">*</span></label>
+          <label className="block text-xs font-medium text-[#64748b] mb-1.5">Kế hoạch <span className="text-[#ef4444]">*</span></label>
           <select value={selectedPlan} onChange={e => setSelectedPlan(e.target.value)}
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
             <option value="">-- Chọn kế hoạch --</option>
             {plans.map(sl => (
               <option key={sl.id} value={sl.id}>
@@ -110,51 +110,51 @@ export function DienHoModal({ open, onClose }: Props) {
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 mb-2">
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Hàng 20</label>
-            <input type="number" value={form.hang20} onChange={e => setForm(f => ({ ...f, hang20: e.target.value }))}
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số hàng 20</label>
+            <input type="number" min="0" value={form.hang20} onChange={e => setForm(f => ({ ...f, hang20: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Hàng 40</label>
-            <input type="number" value={form.hang40} onChange={e => setForm(f => ({ ...f, hang40: e.target.value }))}
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số hàng 40</label>
+            <input type="number" min="0" value={form.hang40} onChange={e => setForm(f => ({ ...f, hang40: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Vỏ 20</label>
-            <input type="number" value={form.vo20} onChange={e => setForm(f => ({ ...f, vo20: e.target.value }))}
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20</label>
+            <input type="number" min="0" value={form.vo20} onChange={e => setForm(f => ({ ...f, vo20: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Vỏ 40</label>
-            <input type="number" value={form.vo40} onChange={e => setForm(f => ({ ...f, vo40: e.target.value }))}
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40</label>
+            <input type="number" min="0" value={form.vo40} onChange={e => setForm(f => ({ ...f, vo40: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Vỏ 20FR <span className="text-[#94a3b8]">(1 bó = 4 cái)</span></label>
-            <input type="number" value={form.vo20fr} onChange={e => setForm(f => ({ ...f, vo20fr: e.target.value }))}
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
+            <input type="number" min="0" value={form.vo20fr} onChange={e => setForm(f => ({ ...f, vo20fr: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Vỏ 40FR <span className="text-[#94a3b8]">(1 bó = 4 cái)</span></label>
-            <input type="number" value={form.vo40fr} onChange={e => setForm(f => ({ ...f, vo40fr: e.target.value }))}
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
+            <input type="number" min="0" value={form.vo40fr} onChange={e => setForm(f => ({ ...f, vo40fr: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Vệ sinh lại <span className="text-[#94a3b8]">(Chuyến)</span></label>
-            <input type="number" value={form.veSinhLai} onChange={e => setForm(f => ({ ...f, veSinhLai: e.target.value }))}
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Vệ sinh lại <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
+            <input type="number" min="0" value={form.veSinhLai} onChange={e => setForm(f => ({ ...f, veSinhLai: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Kéo về <span className="text-[#94a3b8]">(Chuyến)</span></label>
-            <input type="number" value={form.keoVe} onChange={e => setForm(f => ({ ...f, keoVe: e.target.value }))}
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Kéo về <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
+            <input type="number" min="0" value={form.keoVe} onChange={e => setForm(f => ({ ...f, keoVe: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">TIP <span className="text-[#94a3b8]">(x 1.000đ)</span></label>
-            <input type="number" value={form.tip} onChange={e => setForm(f => ({ ...f, tip: e.target.value }))}
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">TIP (x 1.000đ)</label>
+            <input type="number" min="0" value={form.tip} onChange={e => setForm(f => ({ ...f, tip: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
         </div>
       </div>
