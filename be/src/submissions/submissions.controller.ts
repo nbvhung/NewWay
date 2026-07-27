@@ -15,7 +15,7 @@ export class SubmissionsController {
   @Post('submissions')
   @UseGuards(JwtAuthGuard)
   async create(@Body() dto: CreateSubmissionDto, @CurrentUser() user: any) {
-    const result = await this.submissionsService.create(dto, user.id, user.fullName || user.username);
+    const result = await this.submissionsService.create(dto, user.id, user.fullName || user.username, user.role);
     return { data: result };
   }
 

@@ -48,4 +48,7 @@ export class CreateSubmissionDto {
   @IsOptional()
   @IsString()
   keoVe?: string;
+
+  @IsOptional()
+  driverId?: number;
 }

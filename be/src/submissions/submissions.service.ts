@@ -26,21 +26,33 @@ export class SubmissionsService {
     private usersRepository: Repository<User>,
   ) {}
 
-  async create(dto: CreateSubmissionDto, userId: number, fullName: string) {
+  async create(dto: CreateSubmissionDto, userId: number, fullName: string, userRole?: string) {
+    let targetUserId = userId;
+    let targetFullName = fullName;
+
+    if (dto.driverId && dto.driverId !== userId && userRole && ['ops', 'admin', 'supper_admin'].includes(userRole)) {
+      const driver = await this.usersRepository.findOne({ where: { id: dto.driverId } });
+      if (!driver || driver.role !== 'laixe') {
+        throw new BadRequestException('Lái xe không hợp lệ');
+      }
+      targetUserId = driver.id;
+      targetFullName = driver.fullName;
+    }
+
     const existing = await this.submissionsRepository.findOne({
       where: dto.shippingLineId
-        ? { userId, shippingLineId: dto.shippingLineId }
-        : { userId, shippingLine: dto.shippingLine },
+        ? { userId: targetUserId, shippingLineId: dto.shippingLineId }
+        : { userId: targetUserId, shippingLine: dto.shippingLine },
     });
     if (existing) {
-      throw new BadRequestException('Bạn đã nhập liệu cho kế hoạch này rồi. Chỉ được phép sửa, không được tạo thêm.');
+      throw new BadRequestException('Lái xe này đã nhập liệu cho kế hoạch này rồi.');
     }
     const submission = new Submission();
-    submission.userId = userId;
+    submission.userId = targetUserId;
     submission.shippingLine = dto.shippingLine;
     submission.shippingLineId = dto.shippingLineId ?? null;
     submission.route = dto.route || '';
-    submission.driverName = fullName;
+    submission.driverName = targetFullName;
     submission.hang20 = dto.hang20 || '';
     submission.hang40 = dto.hang40 || '';
     submission.vo20 = dto.vo20 || '';
