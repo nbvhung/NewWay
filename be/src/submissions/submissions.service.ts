@@ -402,7 +402,7 @@ export class SubmissionsService {
     };
 
     // For OPS: create per-ship sheets first (so main sheet appears at bottom)
-    if (role === 'ops' && !isMonthly) {
+    if (role === 'ops') {
       const groupedBySl = new Map<string, any[]>();
       for (const sub of submissions as any[]) {
         const key = sub.shippingLineId
