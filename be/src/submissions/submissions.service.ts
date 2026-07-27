@@ -319,6 +319,22 @@ export class SubmissionsService {
     return { message: 'Đã xóa tất cả dữ liệu' };
   }
 
+  private sanitizeSheetName(raw: string, usedNames: Set<string>): string {
+    let s = raw.replace(/[\\\/\?\*\[\]\:]/g, ' ').replace(/\s+/g, ' ').trim();
+    s = s.substring(0, 31);
+    if (!s) s = 'Sheet';
+    let unique = s;
+    let i = 1;
+    while (usedNames.has(unique.toLowerCase())) {
+      const suffix = ` (${i})`;
+      const maxLen = 31 - suffix.length;
+      unique = s.substring(0, Math.max(0, maxLen)) + suffix;
+      i++;
+    }
+    usedNames.add(unique.toLowerCase());
+    return unique;
+  }
+
   async exportExcel(res: Response, user: any, filter: {
     userId?: number;
     shippingLine?: string;
@@ -369,6 +385,7 @@ export class SubmissionsService {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Hệ thống New Way';
     workbook.created = new Date();
+    const usedSheetNames = new Set<string>();
 
     const allDrivers = await this.usersRepository.find({ where: { role: 'laixe' } });
     allDrivers.sort((a, b) => (parseInt(a.stt) || 0) - (parseInt(b.stt) || 0) || a.fullName.localeCompare(b.fullName));
@@ -385,7 +402,7 @@ export class SubmissionsService {
     };
 
     // For OPS: create per-ship sheets first (so main sheet appears at bottom)
-    if (role === 'ops') {
+    if (role === 'ops' && !isMonthly) {
       const groupedBySl = new Map<string, any[]>();
       for (const sub of submissions as any[]) {
         const key = sub.shippingLineId
@@ -411,7 +428,7 @@ export class SubmissionsService {
         const opsSub = subs.find((s: any) => s.userId === user.id) || null;
 
         // Build sheet name from plan info; replace chars not allowed by Excel
-        const sheetName = [slSafe.name, slSafe.soChuyen, slSafe.routeName, fmtNgay(slSafe.ngay)].filter(Boolean).join(' - ').substring(0, 31);
+        const sheetName = this.sanitizeSheetName([slSafe.name, slSafe.soChuyen, slSafe.routeName, fmtNgay(slSafe.ngay)].filter(Boolean).join(' - '), usedSheetNames);
         const ws2 = workbook.addWorksheet(sheetName);
 
         const titleFont: Partial<ExcelJS.Font> = { bold: true, size: 11 };
@@ -636,7 +653,7 @@ export class SubmissionsService {
 
       for (const driver of allDrivers) {
         const subs = driverSubsMap.get(driver.id) || [];
-        const wsDriver = workbook.addWorksheet(`${driver.fullName} - ${driver.soXe || ''}`.substring(0, 31));
+        const wsDriver = workbook.addWorksheet(this.sanitizeSheetName(`${driver.fullName} - ${driver.soXe || ''}`, usedSheetNames));
 
         wsDriver.columns = [
           { header: 'STT', key: 'stt', width: 5 },
@@ -734,7 +751,7 @@ export class SubmissionsService {
 
       // Summary sheet: combined driver data, STT→Xe, no totals
       const monthStr = `${String(filter.month).padStart(2, '0')}-${filter.year}`;
-      const wsSummary = workbook.addWorksheet(`Tổng hợp tháng ${monthStr}`);
+      const wsSummary = workbook.addWorksheet(this.sanitizeSheetName(`Tổng hợp tháng ${monthStr}`, usedSheetNames));
 
       wsSummary.columns = [
         { header: 'Xe', key: 'xe', width: 8 },
@@ -840,7 +857,7 @@ export class SubmissionsService {
 
       for (const driver of allDrivers) {
         const subs = driverSubsMap.get(driver.id) || [];
-        const wsDriver = workbook.addWorksheet(`${driver.fullName} - ${driver.soXe || ''}`.substring(0, 31));
+        const wsDriver = workbook.addWorksheet(this.sanitizeSheetName(`${driver.fullName} - ${driver.soXe || ''}`, usedSheetNames));
 
         wsDriver.columns = [
           { header: 'STT', key: 'stt', width: 5 },
@@ -990,7 +1007,7 @@ export class SubmissionsService {
 
     // Route prices sheet — right before main sheet (HR only)
     if (role === 'hr') {
-      const wsPrices = workbook.addWorksheet('Bảng đơn giá');
+      const wsPrices = workbook.addWorksheet(this.sanitizeSheetName('Bảng đơn giá', usedSheetNames));
       wsPrices.columns = [
         { header: 'Tuyến đường', key: 'route', width: 30 },
         { header: 'Đơn giá', key: 'price', width: 18 },
@@ -1025,11 +1042,12 @@ export class SubmissionsService {
     }
 
     // Main sheet: "Tổng hợp" (for OPS, created last = bottom)
-    const monthStr = filter.fromDate
+    const monthStr2 = filter.fromDate
       ? `${String(new Date(filter.fromDate).getMonth() + 1).padStart(2, '0')}-${new Date(filter.fromDate).getFullYear()}`
       : `${String(new Date().getMonth() + 1).padStart(2, '0')}-${new Date().getFullYear()}`;
+    const mainSheetName = role === 'ops' ? 'Tổng hợp' : role === 'hr' ? `Tổng hợp lương tháng ${monthStr2}` : 'Sản lượng xe New Way';
     const ws = workbook.addWorksheet(
-      role === 'ops' ? 'Tổng hợp' : role === 'hr' ? `Tổng hợp lương tháng ${monthStr}` : 'Sản lượng xe New Way',
+      this.sanitizeSheetName(mainSheetName, usedSheetNames),
       { pageSetup: { paperSize: 9, orientation: 'landscape' } },
     );
 
@@ -1258,7 +1276,7 @@ export class SubmissionsService {
     if (showLuong && ws.getColumn('luong')) ws.getColumn('luong').numFmt = '#,##0';
 
     if (role === 'admin' || role === 'supper_admin') {
-      const wsHistory = workbook.addWorksheet('Lịch sử chỉnh sửa');
+      const wsHistory = workbook.addWorksheet(this.sanitizeSheetName('Lịch sử chỉnh sửa', usedSheetNames));
       wsHistory.columns = [
         { header: 'STT', key: 'stt', width: 6 },
         { header: 'ID bản ghi', key: 'submissionId', width: 12 },
@@ -1322,7 +1340,7 @@ export class SubmissionsService {
     }
 
     if (showLuong && role !== 'hr') {
-      const wsSalary = workbook.addWorksheet('Tổng hợp lương');
+      const wsSalary = workbook.addWorksheet(this.sanitizeSheetName('Tổng hợp lương', usedSheetNames));
       wsSalary.columns = [
         { header: 'Tên', key: 'name', width: 30 },
         { header: 'Lương', key: 'luong', width: 20 },
@@ -1384,7 +1402,7 @@ export class SubmissionsService {
         : (filter.shippingLine || 'All');
       filename = `SL_${slFilterName.replace(/[/\\?%*:|"<>]/g, '_')}${filter.done ? '(done)' : ''}.xlsx`;
     } else if (role === 'hr') {
-      filename = `Tổng hợp lương tháng_${monthStr.replace('-', '_')}.xlsx`;
+      filename = `Tổng hợp lương tháng_${monthStr2.replace('-', '_')}.xlsx`;
     } else {
       const today = new Date(); filename = `SanLuongXeNewWay_${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}.xlsx`;
     }

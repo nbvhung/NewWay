@@ -449,7 +449,7 @@ export default function MyDataPage() {
             </div>
           )}
           <p className="text-xs font-medium text-[#64748b] mt-1">* Chưa bao gồm lương cứng, các khoản hỗ trợ,...( nếu có )</p>
-          <p className="text-xs text-[#64748b] mt-1">🎉 Thật là tuyệt vời !!!</p>
+          <p className="text-xs text-[#64748b] mt-1">📌 Dữ liệu chỉ mang tính chất tham khảo</p>
         </div>
       </div>
       )}
