@@ -31,7 +31,7 @@ export function DienHoModal({ open, onClose }: Props) {
     Promise.all([
       usersApi.getAll().then(res => {
         const list = Array.isArray(res.data) ? res.data : (res.data as any).data || [];
-        setDrivers(list.filter((u: User) => u.role === 'laixe'));
+        setDrivers(list.filter((u: User) => u.role === 'laixe').sort((a: User, b: User) => (parseInt(a.stt) || 999999) - (parseInt(b.stt) || 999999)));
       }),
       shippingLinesApi.getAllAdmin().then(res => {
         const list = Array.isArray(res.data) ? res.data : (res.data as any).data || [];
