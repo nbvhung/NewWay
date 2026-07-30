@@ -366,7 +366,7 @@ export class SubmissionsService {
       filter.toDate = `${filter.year}-${String(filter.month).padStart(2, '0')}-${String(new Date(filter.year, filter.month, 0).getDate()).padStart(2, '0')}`;
     }
     const role = filter.done ? 'ops' : user.role;
-    const showLuong = role !== 'ops' && !isMonthly;
+    const showLuong = role !== 'ops';
     const submissions = await this.findAll(filter, role);
 
     const allShippingLines = await this.shippingLinesRepository.find({ relations: { route: true } });
@@ -671,6 +671,7 @@ export class SubmissionsService {
           { header: 'STT', key: 'stt', width: 5 },
           { header: 'Kế hoạch', key: 'plan', width: 20 },
           { header: 'Tuyến đường', key: 'route', width: 18 },
+          { header: 'Đơn giá', key: 'donGia', width: 12 },
           { header: 'Hàng 20', key: 'hang20', width: 10 },
           { header: 'Hàng 40', key: 'hang40', width: 10 },
           { header: 'Vỏ 20', key: 'vo20', width: 10 },
@@ -680,6 +681,9 @@ export class SubmissionsService {
           { header: 'Vệ sinh lại', key: 'veSinhLai', width: 10 },
           { header: 'Kéo về', key: 'keoVe', width: 10 },
           { header: 'TIP (Nghìn đ)', key: 'tip', width: 12 },
+          { header: 'Số chuyến', key: 'soChuyen', width: 10 },
+          { header: 'Lương', key: 'luong', width: 16 },
+          { header: 'Tổng thanh toán', key: 'tongThanhToan', width: 16 },
           { header: 'Tàu tăng cường', key: 'tangCuong', width: 12 },
           { header: 'Tàu Lễ, Tết', key: 'leTet', width: 12 },
         ];
@@ -694,7 +698,7 @@ export class SubmissionsService {
         headerRow.height = 28;
 
         if (subs.length === 0) {
-          wsDriver.addRow({ stt: '', plan: 'Không có dữ liệu', route: '', hang20: '', hang40: '', vo20: '', vo40: '', vo20fr: '', vo40fr: '', veSinhLai: '', keoVe: '', tip: '', tangCuong: '', leTet: '' });
+          wsDriver.addRow({ stt: '', plan: 'Không có dữ liệu', route: '', donGia: '', hang20: '', hang40: '', vo20: '', vo40: '', vo20fr: '', vo40fr: '', veSinhLai: '', keoVe: '', tip: '', soChuyen: '', luong: '', tongThanhToan: '', tangCuong: '', leTet: '' });
         } else {
           const planGroups = new Map<string, { sl: any; subs: any[] }>();
           for (const sub of subs) {
@@ -714,9 +718,12 @@ export class SubmissionsService {
           }
 
           let rowIdx = 0;
+          let sumH20 = 0, sumH40 = 0, sumV20 = 0, sumV40 = 0, sumV20fr = 0, sumV40fr = 0, sumVsl = 0, sumKv = 0, sumTip = 0, sumSoChuyen = 0, sumLuong = 0, sumTongThanhToan = 0;
+
           for (const [planName, group] of planGroups) {
             const sl = group.sl;
             const tenTuyen = group.subs[0].route || sl?.routeName || '';
+            const donGia = getRouteMoney(tenTuyen, sl?.ngay, sl?.frozenMoney);
             let h20 = 0, h40 = 0, v20 = 0, v40 = 0, v20fr = 0, v40fr = 0, vsl = 0, kv = 0, tip = 0;
 
             for (const sub of group.subs) {
@@ -731,11 +738,19 @@ export class SubmissionsService {
               tip += parseFloat(sub.tip) || 0;
             }
 
+            const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+            const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
+            const luong = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
+            const tongThanhToan = luong + tip * 1000;
+
+            sumH20 += h20; sumH40 += h40; sumV20 += v20; sumV40 += v40; sumV20fr += v20fr; sumV40fr += v40fr; sumVsl += vsl; sumKv += kv; sumTip += tip; sumSoChuyen += tong; sumLuong += luong; sumTongThanhToan += tongThanhToan;
+
             rowIdx++;
             const row = wsDriver.addRow({
               stt: driver.stt || '',
               plan: sl ? planDisplayName(sl) : planName.split('||')[0] + (planName.includes('||') ? ` - ${planName.split('||')[1] || ''}` : ''),
               route: tenTuyen,
+              donGia: donGia,
               hang20: h20 || '',
               hang40: h40 || '',
               vo20: v20 || '',
@@ -745,6 +760,9 @@ export class SubmissionsService {
               veSinhLai: vsl || '',
               keoVe: kv || '',
               tip: tip || '',
+              soChuyen: tong + kv,
+              luong: luong,
+              tongThanhToan: tongThanhToan,
               tangCuong: sl?.tangCuong ? 'x' : '',
               leTet: sl?.leTet ? 'x' : '',
             });
@@ -758,6 +776,38 @@ export class SubmissionsService {
               });
             }
           }
+
+          // Total row
+          const totalRow = wsDriver.addRow({
+            stt: '',
+            plan: 'TỔNG CỘNG',
+            route: '',
+            donGia: '',
+            hang20: sumH20 || '',
+            hang40: sumH40 || '',
+            vo20: sumV20 || '',
+            vo40: sumV40 || '',
+            vo20fr: sumV20fr || '',
+            vo40fr: sumV40fr || '',
+            veSinhLai: sumVsl || '',
+            keoVe: sumKv || '',
+            tip: sumTip || '',
+            soChuyen: sumSoChuyen,
+            luong: sumLuong,
+            tongThanhToan: sumTongThanhToan,
+            tangCuong: '',
+            leTet: '',
+          });
+          totalRow.eachCell((cell) => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } } as ExcelJS.Fill;
+            cell.font = { bold: true, size: 10 };
+            cell.border = allBorder;
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          });
+          wsDriver.getColumn(4).numFmt = '#,##0';
+          wsDriver.getColumn(15).numFmt = '#,##0';
+          wsDriver.getColumn(16).numFmt = '#,##0';
+          wsDriver.getColumn(17).numFmt = '#,##0';
         }
       }
 
@@ -780,6 +830,9 @@ export class SubmissionsService {
         { header: 'Vệ sinh lại', key: 'veSinhLai', width: 10 },
         { header: 'Kéo về', key: 'keoVe', width: 10 },
         { header: 'TIP (Nghìn đ)', key: 'tip', width: 12 },
+        { header: 'Số chuyến', key: 'soChuyen', width: 10 },
+        { header: 'Lương', key: 'luong', width: 16 },
+        { header: 'Tổng thanh toán', key: 'tongThanhToan', width: 16 },
         { header: 'Tàu tăng cường', key: 'tangCuong', width: 12 },
         { header: 'Tàu Lễ, Tết', key: 'leTet', width: 12 },
       ];
@@ -812,6 +865,7 @@ export class SubmissionsService {
         for (const [planName, group] of planGroups) {
           const sl = group.sl;
           const tenTuyen = group.subs[0].route || sl?.routeName || '';
+          const donGia = getRouteMoney(tenTuyen, sl?.ngay, sl?.frozenMoney);
           let h20 = 0, h40 = 0, v20 = 0, v40 = 0, v20fr = 0, v40fr = 0, vsl = 0, kv = 0, tip = 0;
 
           for (const sub of group.subs) {
@@ -825,6 +879,11 @@ export class SubmissionsService {
             kv += parseFloat(sub.keoVe) || 0;
             tip += parseFloat(sub.tip) || 0;
           }
+
+          const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+          const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
+          const luong = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
+          const tongThanhToan = luong + tip * 1000;
 
           rowIdx++;
           const row = wsSummary.addRow({
@@ -842,6 +901,9 @@ export class SubmissionsService {
             veSinhLai: vsl || '',
             keoVe: kv || '',
             tip: tip || '',
+            soChuyen: tong + kv,
+            luong: luong,
+            tongThanhToan: tongThanhToan,
             tangCuong: sl?.tangCuong ? 'x' : '',
             leTet: sl?.leTet ? 'x' : '',
           });
@@ -855,6 +917,9 @@ export class SubmissionsService {
             });
           }
         }
+        wsSummary.getColumn(15).numFmt = '#,##0';
+        wsSummary.getColumn(16).numFmt = '#,##0';
+        wsSummary.getColumn(17).numFmt = '#,##0';
       }
     }
 
@@ -1292,8 +1357,10 @@ export class SubmissionsService {
       wsHistory.columns = [
         { header: 'STT', key: 'stt', width: 6 },
         { header: 'ID bản ghi', key: 'submissionId', width: 12 },
+        { header: 'Lái xe', key: 'driverName', width: 18 },
         { header: 'Người sửa', key: 'editedByName', width: 18 },
         { header: 'Nội dung thay đổi', key: 'changes', width: 50 },
+        { header: 'Ngày tạo', key: 'createdAt', width: 14 },
         { header: 'Thời gian sửa', key: 'editedAt', width: 20 },
       ];
 
@@ -1321,28 +1388,47 @@ export class SubmissionsService {
       const allHistory = await this.editHistoryRepository
         .createQueryBuilder('eh')
         .leftJoinAndSelect('eh.editedBy', 'user')
+        .leftJoinAndMapOne('eh.submission', Submission, 'sub', 'eh.submission_id = sub.id')
+        .leftJoinAndMapOne('sub.creator', User, 'creator', 'sub.user_id = creator.id')
         .orderBy('eh.editedAt', 'DESC')
         .getMany();
+
+      const FIELD_ORDER: (keyof typeof fieldLabels)[] = ['shippingLine', 'route', 'hang20', 'hang40', 'vo20', 'vo40', 'vo20fr', 'vo40fr', 'veSinhLai', 'keoVe', 'tip'];
 
       allHistory.forEach((h: any, idx: number) => {
         let changesText = '';
         try {
           const changes = JSON.parse(h.changes);
-          changesText = Object.entries(changes)
-            .map(([k, v]: [string, any]) => {
+          changesText = FIELD_ORDER
+            .filter((k) => k in changes)
+            .map((k) => {
+              const v = changes[k];
               const label = fieldLabels[k] || k;
               return `${label}: "${v.old || '(trống)'}" → "${v.new || '(trống)'}"`;
             })
             .join('; ');
+          // Also append any unknown fields not in FIELD_ORDER
+          for (const [k, v] of Object.entries(changes)) {
+            if (!FIELD_ORDER.includes(k as any)) {
+              const label = fieldLabels[k as string] || k;
+              changesText += (changesText ? '; ' : '') + `${label}: "${(v as any).old || '(trống)'}" → "${(v as any).new || '(trống)'}"`;
+            }
+          }
         } catch {
           changesText = h.changes;
         }
 
+        const sub = h.submission as any;
+        const creatorName = sub?.creator?.fullName || sub?.driverName || '—';
+        const createdDate = sub?.createdAt ? new Date(sub.createdAt).toLocaleDateString('vi-VN') : '—';
+
         const row = wsHistory.addRow({
           stt: idx + 1,
           submissionId: h.submissionId,
+          driverName: creatorName,
           editedByName: h.editedByName,
           changes: changesText,
+          createdAt: createdDate,
           editedAt: new Date(h.editedAt).toLocaleString('vi-VN'),
         });
         row.eachCell((cell) => {
