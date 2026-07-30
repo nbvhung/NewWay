@@ -197,7 +197,10 @@ export default function MyDataScreen() {
     <View key={s.id} style={styles.subRow}>
       <View style={styles.subRowMain}>
         <View style={styles.subInfo}>
-          <Text style={styles.planName}>{s.planDisplayName || s.shippingLine}</Text>
+          <Text style={styles.planName}>
+            {s.planDisplayName || s.shippingLine}
+            {s.leTet ? <Text style={styles.badgeLeTet}> x3</Text> : s.tangCuong ? <Text style={styles.badgeTangCuong}> +15%</Text> : null}
+          </Text>
           <View style={styles.subValues}>
             <Text style={styles.subValue}>H20: {s.hang20 || '—'}</Text>
             <Text style={styles.subValue}>H40: {s.hang40 || '—'}</Text>
@@ -507,6 +510,8 @@ const styles = StyleSheet.create({
   subRowMain: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   subInfo: { flex: 1 },
   planName: { fontSize: 14, fontWeight: '700', color: '#1a56db', marginBottom: 4 },
+  badgeLeTet: { fontSize: 11, fontWeight: '800', color: '#dc2626', backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, overflow: 'hidden' },
+  badgeTangCuong: { fontSize: 11, fontWeight: '800', color: '#d97706', backgroundColor: 'rgba(245,158,11,0.15)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, overflow: 'hidden' },
   subValues: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 4 },
   subValue: { fontSize: 11, color: '#475569', backgroundColor: '#f8fafc', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   subMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },

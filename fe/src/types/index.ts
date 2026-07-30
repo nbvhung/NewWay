@@ -66,6 +66,8 @@ export interface Submission {
   salary?: number;
   planDisplayName?: string;
   planDate?: string;
+  tangCuong?: boolean;
+  leTet?: boolean;
 }
 
 export interface EditHistory {

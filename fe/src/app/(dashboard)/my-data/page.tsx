@@ -216,7 +216,10 @@ export default function MyDataPage() {
         <div key={s.id} className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-3">
           {/* Row 1: Plan name + Edit button */}
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-sm font-bold text-blue-700 leading-tight">{s.planDisplayName || s.shippingLine}</span>
+            <span className="text-sm font-bold text-blue-700 leading-tight">
+                {s.planDisplayName || s.shippingLine}
+                {s.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-600">x3</span> : s.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-700">+15%</span> : null}
+              </span>
             {showEdit && !s.completed && (
               <button onClick={() => openEdit(s)} className="px-3 py-1 rounded-lg text-[11px] font-bold bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shrink-0">✏️ Sửa</button>
             )}
@@ -280,7 +283,7 @@ export default function MyDataPage() {
             {user?.role !== 'laixe' && <td className="px-3.5 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#64748b]">{i + 1}</span></td>}
             <td className="px-3.5 py-3">
               <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-blue-700">{s.planDisplayName || s.shippingLine}</span>
+              <span className="text-sm font-semibold text-blue-700">{s.planDisplayName || s.shippingLine}{s.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-600">x3</span> : s.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-700">+15%</span> : null}</span>
               {showEdit && !s.completed && (
                 <button onClick={() => openEdit(s)} className="px-2 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️ Sửa</button>
               )}

@@ -122,7 +122,7 @@ export class SubmissionsService {
       const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
       const salary = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
       const planDate = sl?.ngay || null;
-      result.push({ ...sub, history, salary, planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine, planDate, completed: sl?.completed || false });
+      result.push({ ...sub, history, salary, planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine, planDate, completed: sl?.completed || false, tangCuong: sl?.tangCuong || false, leTet: sl?.leTet || false });
     }
     return result;
   }
@@ -251,7 +251,7 @@ export class SubmissionsService {
       totalSalary += salary;
       totalTip += tip * 1000;
       count++;
-      details.push({ ...sub, salary, planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine });
+      details.push({ ...sub, salary, planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine, tangCuong: sl?.tangCuong || false, leTet: sl?.leTet || false });
     }
 
     return { totalSalary, totalTip, count, month, year, details };
