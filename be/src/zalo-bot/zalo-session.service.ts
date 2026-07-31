@@ -3,8 +3,9 @@ import { RedisService } from '../redis/redis.service';
 
 export interface PendingCandidate {
   id: number;
-  code: string;
+  containerCode: string;
   type: string;
+  submissionId: number | null;
 }
 
 export interface PendingPlanOption {

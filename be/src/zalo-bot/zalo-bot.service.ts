@@ -192,6 +192,19 @@ export class ZaloBotService {
     }
 
     if (session.pendingCandidates?.length) {
+      if (/^\d{1,2}$/.test(text)) {
+        await this.handleCandidatePick(chatId, zaloUserId, text, session);
+        return;
+      }
+      const byCode = session.pendingCandidates.find(
+        (c: any) =>
+          (c.containerCode || c.code || '').toLowerCase() ===
+          text.toLowerCase(),
+      );
+      if (byCode) {
+        await this.upsertContainer(chatId, zaloUserId, byCode, session);
+        return;
+      }
       await this.zaloApi.sendMessage(
         chatId,
         this.formatCandidates(
@@ -402,6 +415,24 @@ export class ZaloBotService {
     await this.selectPlan(chatId, zaloUserId, plan, session);
   }
 
+  private async handleCandidatePick(
+    chatId: string,
+    zaloUserId: string,
+    text: string,
+    session: any,
+  ): Promise<void> {
+    const idx = parseInt(text, 10) - 1;
+    const candidate = session.pendingCandidates[idx];
+    if (!candidate) {
+      await this.zaloApi.sendMessage(
+        chatId,
+        'Số không hợp lệ, gửi lại số thứ tự trong danh sách nhé.',
+      );
+      return;
+    }
+    await this.upsertContainer(chatId, zaloUserId, candidate, session);
+  }
+
   private async selectPlan(
     chatId: string,
     zaloUserId: string,
@@ -462,24 +493,10 @@ export class ZaloBotService {
       return;
     }
 
-    if (session.pendingCandidates?.length) {
-      if (/^\d{1,2}$/.test(text)) {
-        const idx = parseInt(text, 10) - 1;
-        const candidate = session.pendingCandidates[idx];
-        if (!candidate) {
-          await this.zaloApi.sendMessage(
-            chatId,
-            'Số không hợp lệ, gửi lại số thứ tự trong danh sách nhé.',
-          );
-          return;
-        }
-        await this.upsertContainer(chatId, zaloUserId, candidate, session);
-        return;
-      }
-      // Nhắn mã mới → bỏ lựa chọn cũ
-      session.pendingCandidates = undefined;
-      session.pendingDigits = undefined;
-    }
+    // Nhắn mã container mới → bỏ lựa chọn cũ (nếu có)
+    session.pendingCandidates = undefined;
+    session.pendingDigits = undefined;
+    await this.sessionService.save(zaloUserId, session);
 
     const plan = await this.shippingLinesRepository.findOne({
       where: { id: session.planId },
@@ -541,7 +558,10 @@ export class ZaloBotService {
   private async upsertContainer(
     chatId: string,
     zaloUserId: string,
-    container: ContainerImport,
+    container: Pick<
+      ContainerImport,
+      'id' | 'containerCode' | 'type' | 'submissionId'
+    >,
     session: any,
   ): Promise<void> {
     try {
