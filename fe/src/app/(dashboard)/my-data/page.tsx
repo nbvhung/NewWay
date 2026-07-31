@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
@@ -67,6 +67,10 @@ export default function MyDataPage() {
   });
   const [saving, setSaving] = useState(false);
 
+  const prevLiveRef = useRef<any[] | null>(null);
+  const suppressUntilRef = useRef(0);
+  const pollLiveRef = useRef<() => Promise<void>>(async () => {});
+
   const now = new Date();
   const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
   const [viewYear, setViewYear] = useState(now.getFullYear());
@@ -101,8 +105,10 @@ export default function MyDataPage() {
           if (sub) setTimeout(() => openEdit(sub), 100);
         }
       }
+      return submissions;
     } catch (err: any) {
       toast(err.message, 'error');
+      return null;
     } finally {
       setLoading(false);
     }
@@ -162,6 +168,7 @@ export default function MyDataPage() {
     try {
       await submissionsApi.update(editSub.id, editForm as unknown as Record<string, unknown>);
       toast('Đã lưu thay đổi thành công!', 'success');
+      suppressUntilRef.current = Date.now() + 10000;
       setEditModal(false);
       loadData();
     } catch (err: any) {
@@ -170,6 +177,41 @@ export default function MyDataPage() {
       setSaving(false);
     }
   };
+
+  pollLiveRef.current = async () => {
+    if (Date.now() < suppressUntilRef.current) return;
+    try {
+      const res = await submissionsApi.getMyLive();
+      const live: any[] = Array.isArray(res.data) ? res.data : (res.data as any).data || [];
+      const prev = prevLiveRef.current;
+      prevLiveRef.current = live;
+      if (!prev) return;
+      const sigOf = (s: any) => `${s.id}|${s.editCount}|${s.updatedAt || ''}|${s.lastEditedAt || ''}`;
+      const prevSigs = new Map(prev.map((s) => [sigOf(s), true]));
+      const changed = live.filter((s) => !prevSigs.has(sigOf(s)));
+      if (changed.length === 0) return;
+      changed.sort((a: any, b: any) =>
+        new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
+      );
+      const target = changed[0];
+      const subs = await loadData();
+      if (!subs) return;
+      const full = subs.find((s: Submission) => s.id === target.id);
+      if (full) {
+        toast('🔔 Bot Zalo vừa ghi nhận container cho kế hoạch này', 'info');
+        openEdit(full);
+      }
+    } catch {
+      // bỏ qua lỗi mạng tạm thời khi polling
+    }
+  };
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      pollLiveRef.current();
+    }, 6000);
+    return () => clearInterval(t);
+  }, []);
 
   const today = new Date().toISOString().slice(0, 10);
   const filteredData = data.filter((s) => {
@@ -212,8 +254,12 @@ export default function MyDataPage() {
 
   const RenderCard = ({ data, showEdit }: { data: Submission[]; showEdit?: boolean }) => (
     <div className="flex flex-col gap-2" style={{ maxWidth: 480, margin: '0 auto' }}>
-      {data.map((s) => (
-        <div key={s.id} className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-3">
+      {data.map((s) => {
+        const editable = showEdit && !s.completed;
+        return (
+        <div key={s.id}
+          onClick={editable ? () => openEdit(s) : undefined}
+          className={`bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-3 ${editable ? 'cursor-pointer active:scale-[0.99] transition-transform' : ''}`}>
           {/* Row 1: Plan name + Edit button */}
           <div className="flex items-center justify-between gap-2 mb-2">
             <span className="text-sm font-bold text-blue-700 leading-tight">
@@ -254,7 +300,8 @@ export default function MyDataPage() {
             )}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 
@@ -300,11 +347,16 @@ export default function MyDataPage() {
             <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.tip || '—'}</td>
             {user?.role !== 'ops' && <td className="px-3.5 py-3">{formatMoney(s.salary)}</td>}
             <td className="px-3.5 py-3">
-              {s.editCount > 0 ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(245,158,11,0.2)] text-amber-700">✏️ {s.editCount}</span>
-              ) : (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#64748b]">0</span>
-              )}
+              <div className="flex items-center gap-2">
+                {s.editCount > 0 ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(245,158,11,0.2)] text-amber-700">✏️ {s.editCount}</span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#64748b]">0</span>
+                )}
+                {!s.completed && (
+                  <button onClick={() => openEdit(s)} className="px-2 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️ Sửa</button>
+                )}
+              </div>
             </td>
           </tr>
         ))}

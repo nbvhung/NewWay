@@ -197,7 +197,7 @@ UNIQUE(shippingLineId, name)
 - **Gửi tin**: `POST https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/sendMessage` body `{ chat_id, text }`.
 - **Voice**: webhook chỉ gửi `voice_url` → backend tải file (Authorization Bearer, fallback `access_token` query) → STT (OpenAI Whisper qua `OPENAI_API_KEY`, bắt buộc key) → lọc số.
 - **Session**: Redis key `zalo_session:{zaloUserId}`, TTL 3600. Lưu `userId`, `planId`, `planName`, `pendingCandidates`, `pendingDigits`, `pendingPlanOptions`.
-- **Lệnh bot**: `/help`, `/link <username> <password>` (liên kết qua bcrypt.compare + set `users.zalo_id`), `/doi-plan`. **Không có lệnh `/xong`** — ghi nhận real-time từng container.
+- **Lệnh bot**: `/help`, `/link <username> <password>` (liên kết qua bcrypt.compare + set `users.zalo_id`), `/doi-plan`, `/logout` (xóa session + set `users.zalo_id` = null). **Không có lệnh `/xong`** — ghi nhận real-time từng container.
 - **Hội thoại**: liên kết → chọn kế hoạch (match tên, hỗ trợ chọn số khi trùng) → gửi 7 số cuối / đọc số → tìm `RIGHT(container_code, 7)` trong plan:
   - 0 kết quả → "không nằm trong kế hoạch"
   - 1 kết quả → upsert submission + `claim` (set `container_imports.submission_id`)

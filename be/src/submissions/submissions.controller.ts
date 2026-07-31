@@ -26,6 +26,13 @@ export class SubmissionsController {
     return { data: result };
   }
 
+  @Get('submissions/my/live')
+  @UseGuards(JwtAuthGuard)
+  async getMyLive(@CurrentUser() user: any) {
+    const result = await this.submissionsService.findMyLive(user.id);
+    return { data: result };
+  }
+
   @Get('submissions/salary-summary')
   @UseGuards(JwtAuthGuard)
   async getSalarySummary(

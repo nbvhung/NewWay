@@ -159,6 +159,11 @@ export class ZaloBotService {
       return;
     }
 
+    if (lower.startsWith('/logout') || lower.startsWith('/dang xuat')) {
+      await this.handleLogout(chatId, zaloUserId);
+      return;
+    }
+
     if (
       lower.startsWith('/doi-plan') ||
       lower.startsWith('/doi plan') ||
@@ -221,6 +226,7 @@ export class ZaloBotService {
         '   • Hoặc gửi tin nhắn thoại đọc số',
         '',
         '4️⃣ Đổi kế hoạch: /doi-plan',
+        '   Đăng xuất: /logout',
         '',
         'Số liệu sẽ được cập nhật vào phần mềm ngay lập tức ✅',
       ].join('\n'),
@@ -282,6 +288,24 @@ export class ZaloBotService {
     await this.zaloApi.sendMessage(
       chatId,
       `✅ Đã liên kết tài khoản ${user.username} (${user.fullName}).\nGiờ anh/chị gửi tên kế hoạch để bắt đầu nhé.`,
+    );
+  }
+
+  private async handleLogout(
+    chatId: string,
+    zaloUserId: string,
+  ): Promise<void> {
+    const user = await this.usersRepository.findOne({
+      where: { zaloId: zaloUserId },
+    });
+    if (user && user.zaloId === zaloUserId) {
+      user.zaloId = null;
+      await this.usersRepository.save(user);
+    }
+    await this.sessionService.clear(zaloUserId);
+    await this.zaloApi.sendMessage(
+      chatId,
+      '✅ Đã đăng xuất. Zalo này không còn liên kết với tài khoản trên hệ thống.\nMuốn liên kết lại: /link <tên đăng nhập> <mật khẩu>',
     );
   }
 

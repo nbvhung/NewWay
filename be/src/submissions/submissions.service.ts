@@ -127,6 +127,23 @@ export class SubmissionsService {
     return result;
   }
 
+  async findMyLive(userId: number): Promise<any[]> {
+    const submissions = await this.submissionsRepository.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
+    return submissions.map((s) => ({
+      id: s.id,
+      shippingLine: s.shippingLine,
+      shippingLineId: s.shippingLineId,
+      route: s.route,
+      editCount: s.editCount || 0,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+      lastEditedAt: s.lastEditedAt,
+    }));
+  }
+
   async findByIdWithHistory(id: number): Promise<any> {
     const submission = await this.submissionsRepository.findOne({ where: { id } });
     if (!submission) return null;
