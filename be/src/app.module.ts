@@ -9,6 +9,8 @@ import { UsersModule } from './users/users.module';
 import { ShippingLinesModule } from './shipping-lines/shipping-lines.module';
 import { RoutesModule } from './routes/routes.module';
 import { SubmissionsModule } from './submissions/submissions.module';
+import { ContainerImportModule } from './container-import/container-import.module';
+import { ZaloBotModule } from './zalo-bot/zalo-bot.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 @Module({
@@ -22,6 +24,8 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     ShippingLinesModule,
     RoutesModule,
     SubmissionsModule,
+    ContainerImportModule,
+    ZaloBotModule,
   ],
   providers: [
     {

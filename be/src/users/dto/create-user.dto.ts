@@ -29,4 +29,8 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   sdt?: string;
+
+  @IsOptional()
+  @IsString()
+  zaloId?: string;
 }

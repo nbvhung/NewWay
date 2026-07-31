@@ -39,7 +39,7 @@ function roleOptionsFor(currentRole: string) {
 }
 
 export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
-  const [newUser, setNewUser] = useState({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', stt: '', sdt: '' });
+  const [newUser, setNewUser] = useState({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', stt: '', sdt: '', zaloId: '' });
   const [editUserData, setEditUserData] = useState<any>(null);
   const [editUserModalOpen, setEditUserModalOpen] = useState(false);
 
@@ -53,13 +53,13 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
     try {
       await usersApi.create(newUser);
       toast(`Đã thêm tài khoản: ${newUser.username}`, 'success');
-      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', stt: '', sdt: '' });
+      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', stt: '', sdt: '', zaloId: '' });
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
   };
 
   const openEditUser = (u: User) => {
-    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, soXe: u.soXe, stt: u.stt, sdt: u.sdt, password: '' });
+    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, soXe: u.soXe, stt: u.stt, sdt: u.sdt, zaloId: u.zaloId || '', password: '' });
     setEditUserModalOpen(true);
   };
 
@@ -72,6 +72,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         soXe: editUserData.soXe || '',
         stt: editUserData.stt || '',
         sdt: editUserData.sdt || '',
+        zaloId: editUserData.zaloId || '',
         ...(editUserData.password ? { password: editUserData.password } : {}),
       });
       toast('Đã cập nhật tài khoản', 'success');
@@ -105,6 +106,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold">{u.fullName} <span className={roleBadge(u.role)}>{ROLE_LABELS[u.role]}</span></div>
                 <div className="text-[10px] text-[#64748b] mt-0.5">@{u.username}</div>
+                {u.zaloId ? <div className="text-[9px] text-[#1a56db] mt-0.5">💬 Zalo đã liên kết</div> : null}
               </div>
               {canManageUser(currentUser.role, u.role) && (
                 <div className="flex gap-1.5 shrink-0">
@@ -157,6 +159,11 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Số điện thoại</label>
           <input type="text" value={newUser.sdt} onChange={e => setNewUser({ ...newUser, sdt: e.target.value })} placeholder="vd: 0912237755"
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+        </div>
+        <div className="mb-3">
+          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Zalo ID (tùy chọn)</label>
+          <input type="text" value={newUser.zaloId} onChange={e => setNewUser({ ...newUser, zaloId: e.target.value })} placeholder="vd: 5f9c8e1a2b3c4d5e6f7a8b9c"
             className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
         </div>
         <div className="mb-4">

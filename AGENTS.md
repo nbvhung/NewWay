@@ -62,6 +62,8 @@ VPS (Hetzner $6/th)
 | `shipping-lines/` | `/api/shipping-lines` (user), `/api/admin/shipping-lines` (admin) | JWT / JWT+Roles |
 | `routes/` | `/api/admin/routes` | JWT + Roles('ops','hr','admin','supper_admin') |
 | `submissions/` | `/api/submissions` (user), `/api/admin/submissions` (admin) | JWT / JWT+Roles |
+| `container-import/` | `/api/admin/container-import` | JWT + Roles('admin','supper_admin') |
+| `zalo-bot/` | `/api/zalo/webhook` | Public (verify `X-Bot-Api-Secret-Token`) |
 
 ## Database Schema
 
@@ -74,9 +76,22 @@ VPS (Hetzner $6/th)
 | passwordHash | VARCHAR(255) | NOT NULL |
 | fullName | VARCHAR(255) | NOT NULL |
 | role | VARCHAR(20) | NOT NULL, DEFAULT 'laixe' |
+| zaloId | VARCHAR(100) | NULLABLE (liên kết Zalo Bot) |
 | createdAt | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
 
 Role enum: `laixe` | `tonghop` | `hr` | `admin` | `supper_admin`
+
+### `container_imports`
+
+| Column | Type | Constraints |
+|---|---|---|
+| id | SERIAL | PK |
+| containerCode | VARCHAR(20) | NOT NULL, INDEX `idx_container_imports_code` |
+| type | VARCHAR(20) | NOT NULL (H20/H40/V20/V40/V20FR/V40FR/VSL/TIP) |
+| shippingLineId | INTEGER | FK → shipping_lines.id (plan) |
+| importedById | INTEGER | FK → users.id (người import) |
+| submissionId | INTEGER | FK → submissions.id, NULLABLE (đã ghi nhận chưa) |
+| createdAt | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
 
 ### `shipping_lines`
 
@@ -176,6 +191,23 @@ UNIQUE(shippingLineId, name)
   - veSinhLai → "Vệ sinh lại", tip → "TIP"
 - Hiển thị trên modal sửa dạng: `"Kế hoạch": "cũ" → "mới"`
 
+### Zalo Bot
+
+- **Webhook**: `POST /api/zalo/webhook` — verify header `X-Bot-Api-Secret-Token` (timing-safe compare, khớp `ZALO_WEBHOOK_SECRET`). Event types xử lý: `message.text.received`, `message.voice.received`.
+- **Gửi tin**: `POST https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/sendMessage` body `{ chat_id, text }`.
+- **Voice**: webhook chỉ gửi `voice_url` → backend tải file (Authorization Bearer, fallback `access_token` query) → STT (OpenAI Whisper qua `OPENAI_API_KEY`, bắt buộc key) → lọc số.
+- **Session**: Redis key `zalo_session:{zaloUserId}`, TTL 3600. Lưu `userId`, `planId`, `planName`, `pendingCandidates`, `pendingDigits`, `pendingPlanOptions`.
+- **Lệnh bot**: `/help`, `/link <username> <password>` (liên kết qua bcrypt.compare + set `users.zalo_id`), `/doi-plan`. **Không có lệnh `/xong`** — ghi nhận real-time từng container.
+- **Hội thoại**: liên kết → chọn kế hoạch (match tên, hỗ trợ chọn số khi trùng) → gửi 7 số cuối / đọc số → tìm `RIGHT(container_code, 7)` trong plan:
+  - 0 kết quả → "không nằm trong kế hoạch"
+  - 1 kết quả → upsert submission + `claim` (set `container_imports.submission_id`)
+  - >1 kết quả → liệt kê 1️⃣/2️⃣, tài xế nhắn số thứ tự hoặc mã đầy đủ
+- **Upsert submission**: tìm `submissions` theo `userId + shippingLineId`. Chưa có → tạo mới với field loại = `1`. Có → cộng `+1`, `editCount + 1`, `lastEditedAt`, ghi `edit_history` (`editedById` = lái xe, `editedByName` = fullName).
+- **Map loại → field**: H20→`hang20`, H40→`hang40`, V20→`vo20`, V40→`vo40`, V20FR→`vo20fr`, V40FR→`vo40fr`, VSL→`veSinhLai`, TIP→`tip`.
+- **Chặn ghi**: kế hoạch `completed` chặn import file lẫn ghi nhận qua bot; container đã có `submissionId` → báo "đã ghi nhận trước đó".
+- **Text parser** (`zalo-bot/text-parser.ts`): đọc số Việt (không/một/hai...chín), số nguyên theo cấp (nghìn/triệu), bỏ từ nhiễu (ờ, à, ơ...), trích chuỗi 7 số.
+- **Liên kết Zalo**: cả `/link` trên bot VÀ admin nhập `zalo_id` trong tab Users (CreateUserDto/UpdateUserDto có `zaloId` optional).
+
 ### Excel Export
 
 - Endpoint: `GET /api/admin/export` (có filter params)
@@ -227,6 +259,17 @@ UNIQUE(shippingLineId, name)
 | PUT | `/api/admin/submissions/:id` | tonghop+ | Sửa bất kỳ submission |
 | DELETE | `/api/admin/submissions/:id` | tonghop+ | Xóa submission |
 | GET | `/api/admin/export` | tonghop+ | Export Excel (cột Lương chỉ hiển thị với hr/admin/supper_admin) |
+| POST | `/api/admin/container-import` | admin+ | Import container từ file (multipart `file` + `planId`) |
+| GET | `/api/admin/container-import` | admin+ | Danh sách container đã import (`?planId=`) |
+| DELETE | `/api/admin/container-import/plan/:planId` | admin+ | Xóa toàn bộ container của kế hoạch |
+| DELETE | `/api/admin/container-import/:id` | admin+ | Xóa một container |
+
+### Zalo Bot
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/api/zalo/webhook` | Public (verify `X-Bot-Api-Secret-Token`) | Nhận event từ Zalo Bot |
+| GET | `/api/zalo` | Public | Health check bot (configured/STT) |
 
 ## Frontend Pages
 
@@ -317,6 +360,12 @@ CORS_ORIGIN=http://localhost:3000  # Frontend URL (cho CORS)
 DEFAULT_ADMIN_PASSWORD=admin123
 DEFAULT_SUPPER_PASSWORD=supper123
 SEED_SHIPPING_LINES=true
+
+# Zalo Bot
+ZALO_BOT_TOKEN=<bot token từ bot.zaloplatforms.com>
+ZALO_WEBHOOK_SECRET=<chuỗi bí mật tự đặt, dùng verify webhook>
+# STT giọng nói → chữ (OpenAI Whisper), điền key sau khi thanh toán xong
+# OPENAI_API_KEY=sk-...
 ```
 
 ### Frontend (`fe/.env.local`)
@@ -345,3 +394,5 @@ EXPO_PUBLIC_API_URL=http://192.168.1.x:4000/api  # IP máy local, mobile cùng W
 10. **Deployment** — xem `deploy/` cho Docker + setup script 1 lệnh
 11. **Axios pattern** — cả web (`fe`) và mobile (`app`) dùng axios với cùng pattern: mỗi module API là 1 object export các hàm gọi instance axios. Web dùng cookie auth, mobile dùng Bearer token.
 12. **Mobile auth** — mobile app không dùng httpOnly cookies. Dùng `POST /api/auth/mobile-login` nhận token JSON, lưu expo-secure-store, gửi Bearer token qua interceptor.
+13. **Zalo Bot** — không thêm lệnh `/xong`; ghi nhận real-time. Kế hoạch `completed` chặn import + ghi. Container trùng 7 số cuối → luôn cho chọn 1/2, không ghi nhận mặc định. STT phải qua bước lọc số (text-parser) vì voice-to-text hay sai/nhiễu.
+14. **Container import** — file định dạng `mã[TAB]loại` (xlsx hoặc txt), loại map qua `normalizeType`, chỉ admin/supper_admin.

@@ -7,6 +7,7 @@ import { fmtNgay } from '@/lib/utils';
 import { Modal } from '@/components/ui/modal';
 import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/use-pagination';
+import { ContainerImportModal } from '@/components/admin/ContainerImportModal';
 
 interface Props {
   user?: any;
@@ -34,6 +35,8 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
 
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ShippingLine | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importTarget, setImportTarget] = useState<ShippingLine | null>(null);
   const [editName, setEditName] = useState('');
   const [editSoChuyen, setEditSoChuyen] = useState('');
   const [editRouteName, setEditRouteName] = useState('');
@@ -186,6 +189,10 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => openEdit(p)}
                     className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️</button>
+                  {(user?.role === 'admin' || user?.role === 'supper_admin') ? (
+                    <button onClick={() => { setImportTarget(p); setImportOpen(true); }}
+                      className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#0ea5e9] to-[#0284c7] text-white cursor-pointer">📥</button>
+                  ) : null}
                   {user?.role === 'ops' || user?.role === 'admin' || user?.role === 'supper_admin' ? (
                     <button onClick={() => completePlan(p.id, display)}
                       className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white cursor-pointer">✅</button>
@@ -362,7 +369,13 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
         </label>
       </Modal>
 
-      
+      <ContainerImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        plan={importTarget}
+        toast={toast}
+      />
+
     </div>
   );
 }

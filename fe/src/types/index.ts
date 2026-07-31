@@ -6,6 +6,7 @@ export interface User {
   soXe: string;
   stt: string;
   sdt: string;
+  zaloId?: string | null;
   createdAt?: string;
 }
 

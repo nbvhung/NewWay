@@ -6,6 +6,7 @@ import { Route } from './entities/route.entity';
 import { Submission } from './entities/submission.entity';
 import { EditHistory } from './entities/edit-history.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
+import { ContainerImport } from './entities/container-import.entity';
 import { SeedService } from './seed.service';
 
 @Module({
@@ -18,7 +19,7 @@ import { SeedService } from './seed.service';
           return {
             type: 'postgres',
             url: dbUrl,
-            entities: [User, ShippingLine, Route, Submission, EditHistory, RefreshToken],
+            entities: [User, ShippingLine, Route, Submission, EditHistory, RefreshToken, ContainerImport],
             synchronize: !isProd,
             logging: false,
             ssl: { rejectUnauthorized: false },
@@ -31,14 +32,14 @@ import { SeedService } from './seed.service';
           username: process.env.DATABASE_USER || 'postgres',
           password: process.env.DATABASE_PASSWORD || 'postgres',
           database: process.env.DATABASE_NAME || 'newway',
-          entities: [User, ShippingLine, Route, Submission, EditHistory, RefreshToken],
+          entities: [User, ShippingLine, Route, Submission, EditHistory, RefreshToken, ContainerImport],
           synchronize: !isProd,
           logging: false,
           ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
         };
       },
     }),
-    TypeOrmModule.forFeature([User, ShippingLine, Route, Submission, EditHistory, RefreshToken]),
+    TypeOrmModule.forFeature([User, ShippingLine, Route, Submission, EditHistory, RefreshToken, ContainerImport]),
   ],
   providers: [SeedService],
   exports: [TypeOrmModule],
