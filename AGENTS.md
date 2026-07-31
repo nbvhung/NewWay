@@ -211,9 +211,10 @@ UNIQUE(shippingLineId, name)
 ### Excel Export
 
 - Endpoint: `GET /api/admin/export` (có filter params)
-- 2 sheets:
+- 2 sheets (cộng thêm theo role):
   1. **"Sản lượng xe New Way"** — dữ liệu submissions với các cột: STT, Tài khoản, Lái xe NW, Kế hoạch, Tuyến đường, Hàng 20, Hàng 40, Vỏ 20, Vỏ 40, Vỏ 20FR, Vỏ 40FR, Vệ sinh lại, TIP, Số lần sửa, Lần sửa cuối, Ngày tạo
   2. **"Lịch sử chỉnh sửa"** — các cột: STT, ID bản ghi, Người sửa, Nội dung thay đổi, Thời gian sửa
+  3. **"Container - Người chạy"** (chỉ role `ops`, filter `done=true` + `shippingLineId`) — ghi lại từng container đã import trong kế hoạch: STT, Số container, Loại, Kế hoạch, Người chạy (tài xế ghi nhận qua bot/submission, rỗng nếu chưa ghi nhận), Thời gian ghi nhận (submission.lastEditedAt/updatedAt). Nguồn: `container_imports` join `submissions`/`users` qua `submission_id`.
 - Header fill: màu `#1E3A5F`, chữ trắng, border `#CCCCCC`
 - Định dạng ngày: locale `vi-VN`
 - File name: `SanLuongXeNewWay_YYYY-MM-DD.xlsx`

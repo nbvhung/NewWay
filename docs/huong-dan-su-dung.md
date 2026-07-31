@@ -271,6 +271,8 @@ Vào **Admin → Tất cả dữ liệu** → Nhấn **📥 Xuất Excel**
 
 **Sheet riêng cho từng tàu (ops role):** Hiển thị chi tiết gộp theo tài xế, có tổng cộng.
 
+**Sheet "Container - Người chạy" (ops role):** Ghi lại từng container đã import trong kế hoạch — số container, loại, kế hoạch, **ai là người chạy/ghi nhận** container đó và thời gian ghi nhận. Container nào chưa có người chạy sẽ để trống cột "Người chạy" (để biết còn sót container chưa được tổng hợp).
+
 ---
 
 ## 8. Các lỗi thường gặp

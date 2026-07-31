@@ -8,6 +8,7 @@ import { EditHistory } from '../database/entities/edit-history.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Route } from '../database/entities/route.entity';
 import { User } from '../database/entities/user.entity';
+import { ContainerImport } from '../database/entities/container-import.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateSubmissionDto } from './dto/update-submission.dto';
 
@@ -24,6 +25,8 @@ export class SubmissionsService {
     private routesRepository: Repository<Route>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(ContainerImport)
+    private containerImportsRepository: Repository<ContainerImport>,
   ) {}
 
   async create(dto: CreateSubmissionDto, userId: number, fullName: string, userRole?: string) {
@@ -669,6 +672,58 @@ export class SubmissionsService {
         }
 
       }
+    }
+
+    // Sheet "Container - Người chạy" (OPS): ghi lại số container + ai chạy/ghi nhận
+    if (role === 'ops') {
+      const qb = this.containerImportsRepository
+        .createQueryBuilder('c')
+        .leftJoinAndSelect('c.submissionRef', 'sub')
+        .leftJoinAndSelect('sub.user', 'u')
+        .leftJoinAndSelect('c.shippingLineRef', 'sl');
+      if (filter.shippingLineId) {
+        qb.where('c.shippingLineId = :planId', { planId: filter.shippingLineId });
+      }
+      qb.orderBy('c.containerCode', 'ASC');
+      const containers = await qb.getMany();
+
+      const wsCont = workbook.addWorksheet(
+        this.sanitizeSheetName('Container - Người chạy', usedSheetNames),
+      );
+      wsCont.columns = [
+        { header: 'STT', key: 'stt', width: 6 },
+        { header: 'Số container', key: 'containerCode', width: 20 },
+        { header: 'Loại', key: 'type', width: 12 },
+        { header: 'Kế hoạch', key: 'plan', width: 28 },
+        { header: 'Người chạy', key: 'driver', width: 22 },
+        { header: 'Thời gian ghi nhận', key: 'claimedAt', width: 20 },
+      ];
+      const contHeader = wsCont.getRow(1);
+      contHeader.eachCell((cell) => {
+        cell.fill = headerFill;
+        cell.font = headerFont;
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = allBorder;
+      });
+      contHeader.height = 28;
+
+      containers.forEach((c: any, idx: number) => {
+        const sub = c.submissionRef;
+        const sl = c.shippingLineRef;
+        const claimedAt = sub ? sub.lastEditedAt || sub.updatedAt : null;
+        const row = wsCont.addRow({
+          stt: idx + 1,
+          containerCode: c.containerCode,
+          type: c.type,
+          plan: sl ? planDisplayName(sl) : c.shippingLineId ? `Plan #${c.shippingLineId}` : '',
+          driver: sub ? sub.user?.fullName || sub.driverName || '' : '',
+          claimedAt: claimedAt ? new Date(claimedAt).toLocaleString('vi-VN') : '',
+        });
+        row.eachCell((cell) => {
+          cell.border = allBorder;
+          cell.alignment = { vertical: 'middle' };
+        });
+      });
     }
 
     // For Monthly: per-driver sheets without Đơn giá & Lương, no totals

@@ -7,9 +7,10 @@ import { EditHistory } from '../database/entities/edit-history.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Route } from '../database/entities/route.entity';
 import { User } from '../database/entities/user.entity';
+import { ContainerImport } from '../database/entities/container-import.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Submission, EditHistory, ShippingLine, Route, User])],
+  imports: [TypeOrmModule.forFeature([Submission, EditHistory, ShippingLine, Route, User, ContainerImport])],
   controllers: [SubmissionsController],
   providers: [SubmissionsService],
 })
