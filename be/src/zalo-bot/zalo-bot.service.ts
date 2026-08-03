@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as bcrypt from 'bcryptjs';
 import { ZaloApiService } from './zalo-api.service';
 import { ZaloSttService } from './zalo-stt.service';
 import { ZaloSessionService } from './zalo-session.service';
@@ -79,6 +78,60 @@ export class ZaloBotService {
       .trim();
   }
 
+  private normalizePhone(sdt: string): string | null {
+    let s = (sdt || '').replace(/[\s.\-()]/g, '');
+    if (s.startsWith('+84')) s = '0' + s.slice(3);
+    else if (s.startsWith('84')) s = '0' + s.slice(2);
+    if (!/^0\d{9,10}$/.test(s)) return null;
+    return s;
+  }
+
+  private async handlePhoneLink(
+    chatId: string,
+    zaloUserId: string,
+    rawText: string,
+    phone: string,
+  ): Promise<void> {
+    const all = await this.usersRepository.find();
+    const user = all.find((u) => this.normalizePhone(u.sdt) === phone);
+    if (!user) {
+      await this.zaloApi.sendMessage(
+        chatId,
+        `SĐT ${rawText.trim()} chưa được đăng ký trong hệ thống.\nAnh/chị liên hệ admin để thêm SĐT vào tài khoản nhé.`,
+      );
+      return;
+    }
+
+    if (user.zaloId && user.zaloId !== zaloUserId) {
+      await this.zaloApi.sendMessage(
+        chatId,
+        'SĐT này đã được liên kết với một Zalo khác. Liên hệ admin để xử lý.',
+      );
+      return;
+    }
+
+    const other = await this.usersRepository.findOne({
+      where: { zaloId: zaloUserId },
+    });
+    if (other && other.id !== user.id) {
+      await this.zaloApi.sendMessage(
+        chatId,
+        'Zalo này đã liên kết với tài khoản khác. Liên hệ admin để xử lý.',
+      );
+      return;
+    }
+
+    user.zaloId = zaloUserId;
+    await this.usersRepository.save(user);
+
+    const session = { userId: user.id, userFullName: user.fullName };
+    await this.sessionService.save(zaloUserId, session);
+    await this.zaloApi.sendMessage(
+      chatId,
+      `✅ Xác nhận thành công! Anh/chị là ${user.fullName} (SĐT ${phone}).\nGiờ gửi tên kế hoạch để bắt đầu nhé.`,
+    );
+  }
+
   private planDisplayName(sl: ShippingLine): string {
     const ngay = sl.ngay ? sl.ngay.split('-').reverse().join('-') : '';
     return [sl.name, sl.soChuyen, sl.routeName, ngay]
@@ -154,11 +207,6 @@ export class ZaloBotService {
       return;
     }
 
-    if (lower.startsWith('/link')) {
-      await this.handleLink(chatId, zaloUserId, text);
-      return;
-    }
-
     if (lower.startsWith('/logout') || lower.startsWith('/dang xuat')) {
       await this.handleLogout(chatId, zaloUserId);
       return;
@@ -178,6 +226,23 @@ export class ZaloBotService {
     }
 
     const session = (await this.sessionService.get(zaloUserId)) || {};
+
+    if (!session.userId) {
+      const linked = await this.usersRepository.findOne({
+        where: { zaloId: zaloUserId },
+      });
+      if (linked) {
+        session.userId = linked.id;
+        session.userFullName = linked.fullName;
+        await this.sessionService.save(zaloUserId, session);
+      } else {
+        const phone = this.normalizePhone(text);
+        if (phone) {
+          await this.handlePhoneLink(chatId, zaloUserId, text, phone);
+          return;
+        }
+      }
+    }
 
     const digits = extractContainerCodes(text);
     if (digits.length > 0) {
@@ -229,8 +294,9 @@ export class ZaloBotService {
       [
         '📋 Hướng dẫn sử dụng Bot New Way',
         '',
-        '1️⃣ Liên kết tài khoản:',
-        '   /link <username> <password>',
+        '1️⃣ Lần đầu sử dụng:',
+        '   Gửi SĐT đã đăng ký trong tài khoản (vd: 0931234567)',
+        '   để xác nhận, chỉ cần làm 1 lần duy nhất.',
         '',
         '2️⃣ Chọn kế hoạch: gửi tên kế hoạch (vd: HUN TRÙNG / HUNTRUNG-DINHVU / 30-07-2026)',
         '',
@@ -239,68 +305,10 @@ export class ZaloBotService {
         '   • Hoặc gửi tin nhắn thoại đọc số',
         '',
         '4️⃣ Đổi kế hoạch: /doi-plan',
-        '   Đăng xuất: /logout',
+        '   Hủy kế hoạch hiện tại: /logout',
         '',
         'Số liệu sẽ được cập nhật vào phần mềm ngay lập tức ✅',
       ].join('\n'),
-    );
-  }
-
-  private async handleLink(
-    chatId: string,
-    zaloUserId: string,
-    text: string,
-  ): Promise<void> {
-    const parts = text.split(/\s+/).filter(Boolean);
-    const username = parts[1] || '';
-    const password = parts[2] || '';
-    if (!username || !password) {
-      await this.zaloApi.sendMessage(
-        chatId,
-        'Sai cú pháp. Gửi: /link <tên đăng nhập> <mật khẩu>',
-      );
-      return;
-    }
-
-    const user = await this.usersRepository.findOne({ where: { username } });
-    if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
-      await this.zaloApi.sendMessage(
-        chatId,
-        'Sai tên đăng nhập hoặc mật khẩu.',
-      );
-      return;
-    }
-
-    if (user.zaloId && user.zaloId !== zaloUserId) {
-      await this.zaloApi.sendMessage(
-        chatId,
-        'Tài khoản này đã liên kết với một Zalo khác. Liên hệ admin để đổi.',
-      );
-      return;
-    }
-
-    const other = await this.usersRepository.findOne({
-      where: { zaloId: zaloUserId },
-    });
-    if (other && other.id !== user.id) {
-      await this.zaloApi.sendMessage(
-        chatId,
-        'Zalo này đã liên kết với tài khoản khác. Liên hệ admin để đổi.',
-      );
-      return;
-    }
-
-    user.zaloId = zaloUserId;
-    await this.usersRepository.save(user);
-
-    const session = {
-      userId: user.id,
-      userFullName: user.fullName,
-    };
-    await this.sessionService.save(zaloUserId, session);
-    await this.zaloApi.sendMessage(
-      chatId,
-      `✅ Đã liên kết tài khoản ${user.username} (${user.fullName}).\nGiờ anh/chị gửi tên kế hoạch để bắt đầu nhé.`,
     );
   }
 
@@ -308,17 +316,10 @@ export class ZaloBotService {
     chatId: string,
     zaloUserId: string,
   ): Promise<void> {
-    const user = await this.usersRepository.findOne({
-      where: { zaloId: zaloUserId },
-    });
-    if (user && user.zaloId === zaloUserId) {
-      user.zaloId = null;
-      await this.usersRepository.save(user);
-    }
     await this.sessionService.clear(zaloUserId);
     await this.zaloApi.sendMessage(
       chatId,
-      '✅ Đã đăng xuất. Zalo này không còn liên kết với tài khoản trên hệ thống.\nMuốn liên kết lại: /link <tên đăng nhập> <mật khẩu>',
+      '✅ Đã xóa kế hoạch hiện tại. Anh/chị gửi tên kế hoạch để chọn lại nhé.',
     );
   }
 
@@ -331,7 +332,7 @@ export class ZaloBotService {
     if (!session.userId) {
       await this.zaloApi.sendMessage(
         chatId,
-        'Anh/chị cần liên kết tài khoản trước.\nGửi: /link <tên đăng nhập> <mật khẩu>\n\nXem hướng dẫn: /help',
+        'Zalo này chưa xác nhận. Anh/chị gửi SĐT đã đăng ký trong tài khoản để kích hoạt nhé (vd: 0931234567).',
       );
       return;
     }
@@ -480,7 +481,7 @@ export class ZaloBotService {
     if (!session.userId) {
       await this.zaloApi.sendMessage(
         chatId,
-        'Anh/chị cần liên kết tài khoản trước.\nGửi: /link <tên đăng nhập> <mật khẩu>\n\nXem hướng dẫn: /help',
+        'Zalo này chưa xác nhận. Anh/chị gửi SĐT đã đăng ký trong tài khoản để kích hoạt nhé (vd: 0931234567).',
       );
       return;
     }
