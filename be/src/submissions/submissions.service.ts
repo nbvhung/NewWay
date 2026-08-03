@@ -494,7 +494,7 @@ export class SubmissionsService {
         // Row 3: XE VẬN TẢI + Tàu Lễ, Tết
         ws2.mergeCells(3, 1, 3, 7);
         const r3 = ws2.getRow(3);
-        r3.getCell(1).value = `XE VẬN TẢI: NW, ${filter.vendorKhac || ''}`;
+        r3.getCell(1).value = `XE VẬN TẢI: NW, ${filter.vendorKhac || slSafe.vendorKhac || ''}`;
         r3.getCell(1).font = titleFont;
         ws2.mergeCells(3, 10, 3, 12);
         r3.getCell(10).value = 'Tàu Lễ, Tết';
@@ -661,7 +661,7 @@ export class SubmissionsService {
           opsRow.getCell(11).value = opsSub?.veSinhLai || '';
           opsRow.getCell(12).value = opsSub?.keoVe || '';
           opsRow.getCell(13).value = opsSub?.tip || '';
-          opsRow.getCell(14).value = filter.tenNguoiNhap || '';
+          opsRow.getCell(14).value = filter.tenNguoiNhap || slSafe.tenNguoiNhap || '';
           opsRow.eachCell((cell) => {
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } } as ExcelJS.Fill;
             cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };

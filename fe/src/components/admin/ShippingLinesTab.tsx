@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ShippingLine, Route, User } from '@/types';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
+import { submissionsApi } from '@/lib/api-submissions';
 import { fmtNgay } from '@/lib/utils';
 import { Modal } from '@/components/ui/modal';
 import { Pagination } from '@/components/ui/pagination';
@@ -34,6 +35,15 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
   const [allDrivers, setAllDrivers] = useState(true);
 
   const [editOpen, setEditOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addVendorKhac, setAddVendorKhac] = useState('');
+  const [addTenNguoiNhap, setAddTenNguoiNhap] = useState('');
+  const [totalShipOpen, setTotalShipOpen] = useState(false);
+  const [totalShipPlan, setTotalShipPlan] = useState<ShippingLine | null>(null);
+  const [totalShipForm, setTotalShipForm] = useState({
+    hang20: '', hang40: '', vo20: '', vo40: '', vo20fr: '', vo40fr: '',
+    veSinhLai: '', keoVe: '', tip: '',
+  });
   const [editTarget, setEditTarget] = useState<ShippingLine | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [importTarget, setImportTarget] = useState<ShippingLine | null>(null);
@@ -65,23 +75,71 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
     setAllDrivers(true);
   };
 
+  const createPlan = async (): Promise<ShippingLine | null> => {
+    if (!name.trim()) { toast('Vui lòng nhập tên kế hoạch', 'error'); return null; }
+    const res = await shippingLinesApi.create({
+      name: name.trim(),
+      soChuyen: soChuyen.trim(),
+      routeName: routeName.trim(),
+      ngay: ngay || undefined,
+      tangCuong,
+      leTet,
+      vendorKhac: addVendorKhac.trim(),
+      tenNguoiNhap: addTenNguoiNhap.trim(),
+      driverIds: allDrivers ? [] : driverIds,
+      allDrivers,
+    });
+    return res.data;
+  };
+
   const addPlan = async () => {
-    if (!name.trim()) { toast('Vui lòng nhập tên kế hoạch', 'error'); return; }
     setSaving(true);
     try {
-      await shippingLinesApi.create({
-        name: name.trim(),
-        soChuyen: soChuyen.trim(),
-        routeName: routeName.trim(),
-        ngay: ngay || undefined,
-        tangCuong,
-        leTet,
-        driverIds: allDrivers ? [] : driverIds,
-        allDrivers,
-      });
-      toast(`Đã thêm kế hoạch: ${name.trim()}`, 'success');
+      const created = await createPlan();
+      if (!created) return;
+      toast(`Đã thêm kế hoạch: ${created.name}`, 'success');
       resetForm();
+      setAddOpen(false);
       onRefresh();
+    } catch (err: any) { toast(err.message, 'error'); }
+    finally { setSaving(false); }
+  };
+
+  const addPlanThenTotalShip = async () => {
+    setSaving(true);
+    try {
+      const created = await createPlan();
+      if (!created) return;
+      resetForm();
+      setAddOpen(false);
+      setTotalShipPlan(created);
+      setTotalShipForm({ hang20: '', hang40: '', vo20: '', vo40: '', vo20fr: '', vo40fr: '', veSinhLai: '', keoVe: '', tip: '' });
+      setTotalShipOpen(true);
+      onRefresh();
+    } catch (err: any) { toast(err.message, 'error'); }
+    finally { setSaving(false); }
+  };
+
+  const saveTotalShip = async () => {
+    if (!totalShipPlan) return;
+    setSaving(true);
+    try {
+      await submissionsApi.create({
+        shippingLine: totalShipPlan.name,
+        shippingLineId: totalShipPlan.id,
+        route: totalShipPlan.routeName || '',
+        hang20: totalShipForm.hang20,
+        hang40: totalShipForm.hang40,
+        vo20: totalShipForm.vo20,
+        vo40: totalShipForm.vo40,
+        vo20fr: totalShipForm.vo20fr,
+        vo40fr: totalShipForm.vo40fr,
+        veSinhLai: totalShipForm.veSinhLai,
+        keoVe: totalShipForm.keoVe,
+        tip: totalShipForm.tip,
+      });
+      setTotalShipOpen(false);
+      toast('Đã lưu SL Tổng Tàu', 'success');
     } catch (err: any) { toast(err.message, 'error'); }
     finally { setSaving(false); }
   };
@@ -284,11 +342,114 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
             className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
           <span className="text-xs font-medium text-[#64748b]">🎉 Tàu Lễ, Tết <span className="text-red-600 font-bold">x3</span></span>
         </label>
-        <button onClick={addPlan}
+        <button onClick={() => { setAddVendorKhac(''); setAddTenNguoiNhap(''); setAddOpen(true); }}
           className="w-full py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] cursor-pointer">
           ➕ Thêm kế hoạch
         </button>
       </div>
+
+      <Modal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        title="📋 Xác nhận thêm kế hoạch"
+        footer={
+          <div className="flex gap-2 w-full">
+            <button onClick={addPlanThenTotalShip} disabled={saving}
+              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.3)] disabled:opacity-50 cursor-pointer">
+              📊 Tổng SL Tàu
+            </button>
+            <button onClick={addPlan} disabled={saving}
+              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-[0_4px_15px_rgba(16,185,129,0.3)] disabled:opacity-50 cursor-pointer">
+              {saving ? 'Đang thêm...' : '✅ Xong'}
+            </button>
+          </div>
+        }
+      >
+        <div className="mb-4">
+          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Vendor khác (nếu có)</label>
+          <input type="text" value={addVendorKhac} onChange={e => setAddVendorKhac(e.target.value)} placeholder="Nhập vendor khác..."
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+        </div>
+        <div className="mb-2">
+          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Tên người nhập</label>
+          <input type="text" value={addTenNguoiNhap} onChange={e => setAddTenNguoiNhap(e.target.value)} placeholder="Nhập tên người nhập..."
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+        </div>
+      </Modal>
+
+      <Modal
+        open={totalShipOpen}
+        onClose={() => setTotalShipOpen(false)}
+        title="📊 Nhập SL Tổng Tàu"
+        footer={
+          <div className="flex gap-2 w-full">
+            <button onClick={() => setTotalShipOpen(false)}
+              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">
+              Đóng
+            </button>
+            <button onClick={saveTotalShip} disabled={saving}
+              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-[0_4px_15px_rgba(16,185,129,0.3)] disabled:opacity-50 cursor-pointer">
+              {saving ? 'Đang lưu...' : '💾 Lưu'}
+            </button>
+          </div>
+        }
+      >
+        <div className="mb-4">
+          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Kế hoạch</label>
+          <div className="px-3.5 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a]">
+            {totalShipPlan
+              ? [totalShipPlan.name, totalShipPlan.soChuyen, totalShipPlan.routeName, fmtNgay(totalShipPlan.ngay)].filter(Boolean).join(' / ')
+              : '—'}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 mb-2">
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số hàng 20</label>
+            <input type="number" min="0" value={totalShipForm.hang20} onChange={e => setTotalShipForm(f => ({ ...f, hang20: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số hàng 40</label>
+            <input type="number" min="0" value={totalShipForm.hang40} onChange={e => setTotalShipForm(f => ({ ...f, hang40: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20</label>
+            <input type="number" min="0" value={totalShipForm.vo20} onChange={e => setTotalShipForm(f => ({ ...f, vo20: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40</label>
+            <input type="number" min="0" value={totalShipForm.vo40} onChange={e => setTotalShipForm(f => ({ ...f, vo40: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
+            <input type="number" min="0" value={totalShipForm.vo20fr} onChange={e => setTotalShipForm(f => ({ ...f, vo20fr: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
+            <input type="number" min="0" value={totalShipForm.vo40fr} onChange={e => setTotalShipForm(f => ({ ...f, vo40fr: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Vệ sinh lại <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
+            <input type="number" min="0" value={totalShipForm.veSinhLai} onChange={e => setTotalShipForm(f => ({ ...f, veSinhLai: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Kéo về <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
+            <input type="number" min="0" value={totalShipForm.keoVe} onChange={e => setTotalShipForm(f => ({ ...f, keoVe: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#64748b] mb-1.5">TIP (x 1.000đ)</label>
+            <input type="number" min="0" value={totalShipForm.tip} onChange={e => setTotalShipForm(f => ({ ...f, tip: e.target.value }))} placeholder="0"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={editOpen}
