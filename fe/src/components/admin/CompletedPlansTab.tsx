@@ -5,7 +5,6 @@ import { ShippingLine } from '@/types';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { submissionsApi } from '@/lib/api-submissions';
 import { fmtNgay } from '@/lib/utils';
-import { Modal } from '@/components/ui/modal';
 
 interface Props {
   user?: any;
@@ -18,11 +17,6 @@ export function CompletedPlansTab({ user, onRefresh }: Props) {
   const now = new Date();
   const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1);
   const [filterYear, setFilterYear] = useState(now.getFullYear());
-  const [editOpen, setEditOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<ShippingLine | null>(null);
-  const [editVendorKhac, setEditVendorKhac] = useState('');
-  const [editTenNguoiNhap, setEditTenNguoiNhap] = useState('');
-  const [saving, setSaving] = useState(false);
 
   const loadCompleted = async () => {
     setLoading(true);
@@ -77,27 +71,6 @@ export function CompletedPlansTab({ user, onRefresh }: Props) {
       onRefresh?.();
     } catch {}
   }, [onRefresh]);
-
-  const openEdit = (p: ShippingLine) => {
-    setEditTarget(p);
-    setEditVendorKhac(p.vendorKhac || '');
-    setEditTenNguoiNhap(p.tenNguoiNhap || '');
-    setEditOpen(true);
-  };
-
-  const saveEdit = async () => {
-    if (!editTarget) return;
-    setSaving(true);
-    try {
-      await shippingLinesApi.update(editTarget.id, {
-        vendorKhac: editVendorKhac.trim(),
-        tenNguoiNhap: editTenNguoiNhap.trim(),
-      });
-      setEditOpen(false);
-      loadCompleted();
-    } catch {}
-    finally { setSaving(false); }
-  };
 
   const planDisplayName = (p: ShippingLine) => {
     return [p.name, p.soChuyen, p.routeName, fmtNgay(p.ngay)].filter(Boolean).join(' / ');
@@ -155,10 +128,6 @@ export function CompletedPlansTab({ user, onRefresh }: Props) {
                     <button onClick={() => revertPlan(p)}
                       className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">↩️</button>
                   )}
-                  {(user?.role === 'admin' || user?.role === 'supper_admin') && (
-                    <button onClick={() => openEdit(p)} title="Sửa Vendor khác / Tên người nhập"
-                      className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white cursor-pointer">✏️</button>
-                  )}
                   {user?.role === 'supper_admin' && (
                     <button onClick={() => deletePlan(p)}
                       className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">🗑️</button>
@@ -172,36 +141,6 @@ export function CompletedPlansTab({ user, onRefresh }: Props) {
         )}
         {!loading && filteredPlans.length === 0 && <div className="text-center w-full py-8 text-[#64748b] text-sm">Không có kế hoạch hoàn thành trong tháng này</div>}
       </div>
-
-      <Modal
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
-        title="✏️ Sửa Vendor / Tên người nhập"
-        footer={
-          <>
-            <button onClick={() => setEditOpen(false)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">Hủy</button>
-            <button onClick={saveEdit} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] disabled:opacity-50 cursor-pointer">
-              {saving ? 'Đang lưu...' : '💾 Lưu'}
-            </button>
-          </>
-        }
-      >
-        {editTarget && (
-          <div className="mb-4 px-3.5 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a]">
-            {planDisplayName(editTarget)}
-          </div>
-        )}
-        <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Vendor khác (nếu có)</label>
-          <input type="text" value={editVendorKhac} onChange={e => setEditVendorKhac(e.target.value)} placeholder="Nhập vendor khác..."
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
-        </div>
-        <div className="mb-2">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tên người nhập</label>
-          <input type="text" value={editTenNguoiNhap} onChange={e => setEditTenNguoiNhap(e.target.value)} placeholder="Nhập tên người nhập..."
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
-        </div>
-      </Modal>
     </div>
   );
 }
