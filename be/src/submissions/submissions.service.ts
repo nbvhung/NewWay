@@ -389,6 +389,16 @@ export class SubmissionsService {
     const showLuong = role !== 'ops';
     const submissions = await this.findAll(filter, role);
 
+    // Persist vendor/người nhập do ops nhập khi export để tái sử dụng về sau
+    if (filter.shippingLineId && (filter.vendorKhac || filter.tenNguoiNhap)) {
+      try {
+        await this.shippingLinesRepository.update(filter.shippingLineId, {
+          vendorKhac: filter.vendorKhac || '',
+          tenNguoiNhap: filter.tenNguoiNhap || '',
+        });
+      } catch {}
+    }
+
     const allShippingLines = await this.shippingLinesRepository.find({ relations: { route: true } });
     const slMap = new Map<number, ShippingLine>();
     const slNameMap = new Map<string, ShippingLine>();
