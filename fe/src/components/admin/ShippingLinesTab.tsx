@@ -51,6 +51,8 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
   const [editSoChuyen, setEditSoChuyen] = useState('');
   const [editRouteName, setEditRouteName] = useState('');
   const [editNgay, setEditNgay] = useState('');
+  const [editVendorKhac, setEditVendorKhac] = useState('');
+  const [editTenNguoiNhap, setEditTenNguoiNhap] = useState('');
   const [editTangCuong, setEditTangCuong] = useState(false);
   const [editLeTet, setEditLeTet] = useState(false);
   const [editDriverIds, setEditDriverIds] = useState<number[]>([]);
@@ -150,6 +152,8 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
     setEditSoChuyen(p.soChuyen);
     setEditRouteName(p.routeName);
     setEditNgay(p.ngay);
+    setEditVendorKhac(p.vendorKhac || '');
+    setEditTenNguoiNhap(p.tenNguoiNhap || '');
     setEditTangCuong(p.tangCuong);
     setEditLeTet(p.leTet);
     try { setEditDriverIds(JSON.parse(p.driverIds || '[]')); } catch { setEditDriverIds([]); }
@@ -167,6 +171,8 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
         soChuyen: editSoChuyen.trim(),
         routeName: editRouteName.trim(),
         ngay: editNgay || undefined,
+        vendorKhac: editVendorKhac.trim(),
+        tenNguoiNhap: editTenNguoiNhap.trim(),
         tangCuong: editTangCuong,
         leTet: editLeTet,
         driverIds: editAllDrivers ? [] : editDriverIds,
@@ -517,6 +523,16 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Ngày</label>
           <input type="date" value={editNgay} onChange={e => setEditNgay(e.target.value)}
             className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" />
+        </div>
+        <div className="mb-3">
+          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Vendor khác (nếu có)</label>
+          <input type="text" value={editVendorKhac} onChange={e => setEditVendorKhac(e.target.value)}
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+        </div>
+        <div className="mb-3">
+          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tên người nhập</label>
+          <input type="text" value={editTenNguoiNhap} onChange={e => setEditTenNguoiNhap(e.target.value)}
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
         </div>
         <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
           <input type="checkbox" checked={editTangCuong} onChange={e => setEditTangCuong(e.target.checked)}
