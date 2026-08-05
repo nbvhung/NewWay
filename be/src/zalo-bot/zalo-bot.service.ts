@@ -202,6 +202,16 @@ export class ZaloBotService {
       return;
     }
 
+    if (
+      lower.startsWith('/doi-sdt') ||
+      lower.startsWith('/doi sdt') ||
+      lower.startsWith('/relink') ||
+      lower.startsWith('/lien ket lai')
+    ) {
+      await this.handleRelink(chatId, zaloUserId);
+      return;
+    }
+
     const session = (await this.sessionService.get(zaloUserId)) || {};
 
     if (!session.userId) {
@@ -279,6 +289,7 @@ export class ZaloBotService {
         '3️⃣ Nếu mã trùng → bot đưa danh sách, gửi số thứ tự để chọn.',
         '',
         'Hủy kế hoạch hiện tại / thao tác lại: /logout',
+        'Đổi sang SĐT tài khoản khác: /doi-sdt',
         'Số liệu sẽ được cập nhật vào phần mềm ngay lập tức ✅',
       ].join('\n'),
     );
@@ -292,6 +303,24 @@ export class ZaloBotService {
     await this.zaloApi.sendMessage(
       chatId,
       '✅ Đã làm mới phiên. Anh/chị gửi 7 số cuối mã container để ghi nhận nhé.',
+    );
+  }
+
+  private async handleRelink(
+    chatId: string,
+    zaloUserId: string,
+  ): Promise<void> {
+    const linked = await this.usersRepository.findOne({
+      where: { zaloId: zaloUserId },
+    });
+    if (linked) {
+      linked.zaloId = null;
+      await this.usersRepository.save(linked);
+    }
+    await this.sessionService.clear(zaloUserId);
+    await this.zaloApi.sendMessage(
+      chatId,
+      '🔄 Đã hủy liên kết tài khoản cũ.\nAnh/chị gửi SĐT mới đã đăng ký trong hệ thống (vd: 0931234567) để xác nhận lại nhé.',
     );
   }
 
