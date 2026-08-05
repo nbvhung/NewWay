@@ -42,13 +42,6 @@ export const containerImportApi = {
     return api.post<ImportResult>('/admin/container-import', form);
   },
 
-  addSingle: (planId: number, code: string, type: string) =>
-    api.post<ContainerImport>('/admin/container-import/single', {
-      planId,
-      code,
-      type,
-    }),
-
   searchByCode: (code: string) =>
     api.get<ContainerSearchResult[]>('/admin/container-import/search', {
       params: { code },

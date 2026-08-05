@@ -242,53 +242,6 @@ export class ContainerImportService {
     });
   }
 
-  /**
-   * Thêm 1 mã container đơn lẻ vào kế hoạch.
-   */
-  async addSingle(
-    planId: number,
-    code: string,
-    type: string,
-    userId: number,
-  ): Promise<ContainerImport> {
-    const plan = await this.shippingLinesRepository.findOne({
-      where: { id: planId },
-    });
-    if (!plan) {
-      throw new BadRequestException('Không tìm thấy kế hoạch');
-    }
-    if (plan.completed) {
-      throw new BadRequestException(
-        'Kế hoạch đã hoàn thành, không thể thêm container',
-      );
-    }
-    const nCode = this.normalizeCode(code);
-    if (!nCode) {
-      throw new BadRequestException(
-        'Mã container không hợp lệ (phải 4 chữ cái + 7 số hoặc 7 số)',
-      );
-    }
-    const nType = this.normalizeType(type);
-    if (!nType) {
-      throw new BadRequestException('Loại container không hợp lệ');
-    }
-    const existing = await this.containerImportsRepository.findOne({
-      where: { containerCode: nCode, shippingLineId: planId },
-    });
-    if (existing) {
-      throw new BadRequestException(
-        `Mã ${nCode} đã tồn tại trong kế hoạch "${plan.name}"`,
-      );
-    }
-    const entity = this.containerImportsRepository.create({
-      containerCode: nCode,
-      type: nType,
-      shippingLineId: planId,
-      importedById: userId,
-    });
-    return this.containerImportsRepository.save(entity);
-  }
-
   async findByCode(
     code: string,
     planId?: number,
