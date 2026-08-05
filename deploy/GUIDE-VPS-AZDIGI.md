@@ -1,151 +1,279 @@
-# ☁️ Hướng dẫn setup VPS AZDIGI — dành cho người quản lý hệ thống
+# ☁️ HƯỚNG DẪN TỪNG BƯỚC — Setup VPS AZDIGI (103.221.223.230)
 
-> Tài liệu dành cho **người quản lý hệ thống** thao tác trên VPS AZDIGI.
-> Member tại công ty sẽ làm phần server DB theo file `GUIDE-MEMBER-CONGTY.md`.
+> Dành cho **người quản lý hệ thống**. Làm từ **Bước 1** đến hết, theo đúng thứ tự.
+> VPS này chạy toàn bộ ứng dụng (web + API + Redis). Database nằm ở server công ty.
 
 ---
 
-## 1. Nhiệm vụ của bạn
+## TÓM TẮT
 
-Setup VPS AZDIGI chạy **toàn bộ ứng dụng**:
-- Nginx (cổng 80/443, SSL)
-- Frontend Next.js (cổng 3000)
-- Backend NestJS API (cổng 4000)
-- Redis (mật mã refresh token, rate limit)
-- WireGuard client (tunnel tới database server công ty)
+| Bước | Nội dung | Kiểm tra xong khi |
+|---|---|---|
+| 1 | Đổi mật khẩu root (bảo mật) | "password updated successfully" |
+| 2 | Kiểm tra hệ điều hành | Ubuntu 22.04/24.04 |
+| 3 | Cập nhật hệ thống | Không báo lỗi |
+| 4 | Cài Git + Docker | `docker --version` chạy được |
+| 5 | Chạy script setup VPS | "VPS setup complete!" |
+| 6 | Trao đổi key WireGuard | `ping 10.8.0.2` OK |
+| 7 | Điền `.env` | File đầy đủ thông tin |
+| 8 | Copy code + deploy | Ứng dụng chạy |
+| 9 | Trỏ domain + kiểm thử | Vào được web |
 
-Database **KHÔNG** nằm trên VPS — nó nằm ở server công ty.
+---
 
-## 2. Chuẩn bị
+## BƯỚC 1 — Đăng nhập lần đầu + ĐỔI MẬT KHẨU (LÀM NGAY)
 
-| Mục | Yêu cầu |
-|---|---|
-| VPS AZDIGI | Gói rẻ nhất (1–2GB RAM) là đủ, Ubuntu 22.04/24.04 |
-| Tên miền | VD `newwaycongty.com` (chưa trỏ DNS gì, chỉ cần sở hữu) |
-| Tool SSH | PuTTY (Windows) hoặc Terminal (Mac/Linux) |
-| File deploy | Trong repo: `deploy/setup-vps.sh`, `deploy/docker-compose.yml`, `deploy/nginx.conf`, `deploy/.env.production` |
+> Mật khẩu đã hiển thị trong email + trong cuộc trò chuyện này → **phải đổi ngay** để tránh bị chiếm quyền.
 
-## 3. Bước 1 — Reinstall VPS với Ubuntu
+**1.1. Mở SSH từ máy Windows của bạn:**
+- Nhấn `Windows + R` → gõ `cmd` → Enter.
+- Gõ lệnh:
+  ```cmd
+  ssh root@103.221.223.230
+  ```
+- Khi hỏi "Are you sure you want to continue connecting (yes/no)?" → gõ `yes` → Enter.
+- Nhập mật khẩu (dán từ email) → Enter.
+- Khi thấy `root@newwayaidept:~#` → ✅ đã vào VPS.
 
-1. Vào panel AZDIGI → chọn VPS → **Reinstall**.
-2. Chọn **Ubuntu 22.04 LTS** (hoặc 24.04).
-3. Xác nhận → chờ vài phút.
-4. Ghi lại: **IP** (VD `1.2.3.4`) + **password root** AZDIGI gửi qua email.
+**1.2. Đổi mật khẩu root:**
+```bash
+passwd
+```
+- Nhập mật khẩu cũ → nhập **mật khẩu mới** (dài, phức tạp) 2 lần.
+- **✅ Xong khi:** Báo `passwd: password updated successfully`.
 
-## 4. Bước 2 — Đăng nhập SSH
+> 🔒 Ghi mật khẩu mới ra giấy. KHÔNG đăng lên chat/email.
+
+---
+
+## BƯỚC 2 — Kiểm tra hệ điều hành
 
 ```bash
-ssh root@1.2.3.4
+cat /etc/os-release
 ```
-Windows dùng PuTTY: nhập IP → Open → login `root` + password.
+- Kỳ vọng: `Ubuntu 22.04` hoặc `24.04`.
+- Nếu là bản khác (CentOS/Alma), báo tôi — script cần điều chỉnh.
 
-## 5. Bước 3 — Chạy script setup VPS
+**✅ Xong khi:** Thấy `NAME="Ubuntu"`.
 
-Script cài: Docker, firewall (chỉ mở 80/443/51820), SSL Let's Encrypt, WireGuard client, monitor.
+---
+
+## BƯỚC 3 — Cập nhật hệ thống
 
 ```bash
-sudo su
-cd ~
-# copy file setup-vps.sh lên VPS (qua SCP/winSCP hoặc paste trực tiếp)
-chmod +x setup-vps.sh
-bash setup-vps.sh <domain-cua-ban.com>
+apt update -y && apt upgrade -y
 ```
+- Chờ vài phút. Nếu hỏi, bấm **Y** / Enter.
+- **✅ Xong khi:** Trở về dấu `#` không lỗi.
 
-Script chạy xong in ra **CLIENT_PUB** (public key WireGuard của VPS).
+---
 
-## 6. Bước 4 — Trao đổi public key với server công ty
-
-1. **Gửi** `CLIENT_PUB` cho member ở công ty.
-2. **Nhận** `SERVER_PUB` từ member → dán vào `/etc/wireguard/wg0.conf` của VPS:
-   ```bash
-   nano /etc/wireguard/wg0.conf
-   # thay PublicKey = <SERVER_PUB_KEY> bằng SERVER_PUB nhận được
-   systemctl restart wg-quick@wg0
-   ```
-3. Kiểm tra tunnel:
-   ```bash
-   ping 10.8.0.2
-   ```
-
-## 7. Bước 5 — Điền biến môi trường
+## BƯỚC 4 — Cài Git + Docker
 
 ```bash
-cd /opt/newway
-nano .env
+apt install -y git
+curl -fsSL https://get.docker.com | sh
+systemctl enable --now docker
+docker --version
+```
+- **✅ Xong khi:** `docker --version` in ra số phiên bản (VD `Docker version 27.x`).
+
+---
+
+## BƯỚC 5 — Clone code dự án lên VPS
+
+```bash
+cd /opt
+git clone https://github.com/nbvhung/NewWay.git newway
+cd newway
+git checkout main
+```
+> Nếu repo **private**, nhập username + Personal Access Token (không nhập mật khẩu GitHub thật) khi được hỏi.
+
+**✅ Xong khi:** Trong `/opt/newway` có các thư mục `be/`, `fe/`, `deploy/`.
+
+---
+
+## BƯỚC 6 — Cài WireGuard client
+
+```bash
+apt install -y wireguard
 ```
 
-Điền theo mẫu `deploy/.env.production`, trong đó:
+Tạo key riêng cho VPS (ghi lại `CLIENT_PUB`):
+```bash
+cd /etc/wireguard
+umask 077
+wg genkey | tee wg0.key | wg pubkey > wg0.pub
+cat wg0.pub
+```
+- **CLIENT_PUB** (dạng `abc123...`) → **gửi cho member ở công ty.**
+
+Tạo file cấu hình:
+```bash
+nano /etc/wireguard/wg0.conf
+```
+Dán nội dung (thay `<SERVER_PUB>` bằng public key member gửi lại):
+```ini
+[Interface]
+Address = 10.8.0.1/24
+PrivateKey = <dán-nội-dung-file-wg0.key>
+PostUp = iptables -A FORWARD -i wg0 -j ACCEPT
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT
+
+[Peer]
+PublicKey = <SERVER_PUB>            # từ member công ty
+Endpoint = <IP-server-cong-ty>:51820
+AllowedIPs = 10.8.0.2/32
+PersistentKeepalive = 25
+```
+Lưu: `Ctrl+O` → Enter → `Ctrl+X`.
+
+Khởi động + tự chạy khi boot:
+```bash
+systemctl enable --now wg-quick@wg0
+```
+
+**✅ Xong khi:** `systemctl status wg-quick@wg0` hiện "active". Và khi cả 2 bên xong key: `ping 10.8.0.2` có phản hồi.
+
+---
+
+## BƯỚC 7 — Chuẩn bị biến môi trường
+
+```bash
+cd /opt/newway/deploy
+cp .env.production /opt/newway/.env
+nano /opt/newway/.env
+```
+Điền các giá trị (bấm `Ctrl+O`, Enter, `Ctrl+X` để lưu):
 
 | Biến | Lấy từ |
 |---|---|
-| `DATABASE_PASSWORD` | Password `newway_app` — member giao trực tiếp qua điện thoại |
-| `DATABASE_HOST` | `10.8.0.2` (đã đúng) |
-| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | `openssl rand -hex 64` (chạy 2 lần) |
-| `CORS_ORIGIN` / `NEXT_PUBLIC_API_URL` | `https://domain-cua-ban.com` |
-| `DEFAULT_ADMIN_PASSWORD` / `DEFAULT_SUPPER_PASSWORD` | Tự đặt mật khẩu admin mạnh |
-| `OPENAI_API_KEY` | Bỏ trống nếu chưa dùng STT Zalo |
+| `DATABASE_PASSWORD` | Member công ty gọi điện báo (`newway_app` pass) |
+| `JWT_ACCESS_SECRET` | Chạy: `openssl rand -hex 64` |
+| `JWT_REFRESH_SECRET` | Chạy lần nữa: `openssl rand -hex 64` |
+| `CORS_ORIGIN` | `https://<domain>` |
+| `NEXT_PUBLIC_API_URL` | `https://<domain>/api` |
+| `DEFAULT_ADMIN_PASSWORD` | Tự đặt mật khẩu admin mạnh |
+| `DEFAULT_SUPPER_PASSWORD` | Tự đặt mật khẩu supper_admin mạnh |
 
-## 8. Bước 6 — Deploy ứng dụng
+> ⚠️ Cần **tên miền** cho các dòng `https://<domain>`. Nếu chưa có domain, chặn lại báo tôi — không thể chạy HTTPS nếu thiếu domain.
+
+---
+
+## BƯỚC 8 — Cài Nginx + SSL + Firewall
+
+```bash
+apt install -y nginx certbot python3-certbot-nginx ufw
+```
+
+Firewall — chỉ mở web + SSH:
+```bash
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw allow 22/tcp
+ufw --force enable
+```
+
+SSL (cần domain đã trỏ về IP VPS):
+```bash
+certbot --nginx -d <domain> -d www.<domain> --non-interactive --agree-tos -m admin@<domain>
+```
+
+Cấu hình Nginx — dùng file `deploy/nginx.conf`, sửa `<domain>` cho đúng, đặt vào:
+```bash
+cp /opt/newway/deploy/nginx.conf /etc/nginx/sites-available/newway
+nano /etc/nginx/sites-available/newway   # sửa <domain> trong 2 dòng ssl_certificate
+ln -s /etc/nginx/sites-available/newway /etc/nginx/sites-enabled/newway
+rm -f /etc/nginx/sites-enabled/default
+nginx -t
+systemctl reload nginx
+```
+- **✅ Xong khi:** `nginx -t` báo `test is successful`.
+
+---
+
+## BƯỚC 9 — Build và chạy ứng dụng
 
 ```bash
 cd /opt/newway
-# copy file: docker-compose.yml, nginx.conf (sửa <domain> trong nginx.conf)
-docker compose up -d
-docker compose logs -f   # theo dõi log, Ctrl+C để thoát
+cat > docker-compose.yml <<'EOF'
+version: "3.9"
+services:
+  backend:
+    build: ./be
+    restart: unless-stopped
+    env_file: .env
+    networks: [newway]
+  frontend:
+    build: ./fe
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - BACKEND_URL=http://backend:4000
+      - NEXT_PUBLIC_API_URL=https://<domain>/api
+    depends_on: [backend]
+    networks: [newway]
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks: [newway]
+networks:
+  newway:
+    driver: bridge
+EOF
+docker compose up -d --build
+```
+> Thay `<domain>` trong `NEXT_PUBLIC_API_URL`.
+
+- **✅ Xong khi:** `docker compose ps` hiện 3 container "Up".
+
+---
+
+## BƯỚC 10 — Trỏ DNS + kiểm thử
+
+1. Vào nhà đăng ký domain → thêm **A record**: `@` và `www` → `103.221.223.230`.
+2. Chờ 5–30 phút → mở `https://<domain>`:
+   - Thấy **trang đăng nhập** → 🎉 web OK.
+   - Mobile app: đổi `EXPO_PUBLIC_API_URL` thành `https://<domain>/api` → build lại.
+
+**Kiểm tra từng thành phần:**
+```bash
+docker compose ps                     # 3 container Up
+systemctl status wg-quick@wg0         # tunnel active
+ping 10.8.0.2                          # vào được DB
+curl https://<domain>/api/auth/me     # API phản hồi
 ```
 
-Nếu frontend/backend chưa có image, lệnh trên sẽ **build từ source** — cần có code trong `/opt/newway/fe` và `/opt/newway/be` (copy từ repo).
+---
 
-## 9. Bước 7 — Trỏ DNS
-
-1. Vào nhà đăng ký tên miền → DNS Management.
-2. Thêm 2 bản ghi **A**:
-   - `@` → IP VPS (VD `1.2.3.4`)
-   - `www` → IP VPS
-3. Chờ 5–30 phút DNS lan tỏa.
-
-> Nếu dùng domain mua từ AZDIGI: vào panel → Domain → chọn domain → thêm bản ghi DNS A.
-
-## 10. Bước 8 — Kiểm thử
-
-- [ ] Mở `https://domain-cua-ban.com` → thấy trang đăng nhập
-- [ ] Đăng nhập bằng account admin → vào được dashboard
-- [ ] Export thử 1 Excel
-- [ ] Mobile app cấu hình `EXPO_PUBLIC_API_URL=https://domain-cua-ban.com/api` → build lại → test login
-- [ ] SSH VPS chạy `ping 10.8.0.2` → OK (DB kết nối được)
-
-## 11. Vận hành
-
-### Nâng cấp VPS
-Panel AZDIGI → chọn VPS → **Upgrade** → chọn gói to hơn → xác nhận. Vài phút xong, dữ liệu giữ nguyên.
-
-### Monitor Telegram
-Điền `TELEGRAM_BOT` + `TELEGRAM_CHAT` vào `/opt/newway/monitor.sh` → alert tự gửi khi app/tunnel xuống.
+## VẬN HÀNH
 
 ### Deploy code mới
 ```bash
-cd /opt/newway
-git pull            # hoặc copy code mới vào
-docker compose up -d --build
+cd /opt/newway && git pull && docker compose up -d --build
 ```
 
-### Kiểm tra log khi lỗi
+### Xem log lỗi
 ```bash
 docker compose logs -f backend
 docker compose logs -f frontend
 ```
 
-### Restore database (khi server công ty hỏng)
-Làm theo `deploy/restore-guide.md`, cần GPG passphrase (member giữ).
-
-## 12. Checklist bảo mật
-
-- [ ] Firewall chỉ mở 80/443/51820 (script đã làm)
-- [ ] Đổi password root mặc định của AZDIGI
-- [ ] JWT secrets ngẫu nhiên, không dùng lại giá trị mẫu
-- [ ] Mật khẩu admin/supper mạnh, khác mật khẩu dev
-- [ ] Database không expose internet (chỉ qua tunnel WireGuard)
+### Nâng cấp gói VPS
+Panel AZDIGI → chọn VPS → **Upgrade** → chọn gói lớn hơn → vài phút xong, dữ liệu giữ nguyên.
 
 ---
 
-*Phiên bản: 1.0 — dành cho người quản lý hệ thống*
+## CHECKLIST BẢO MẬT
+
+- [ ] Đổi mật khẩu root (Bước 1) ✅
+- [ ] Firewall chỉ mở 80/443/22
+- [ ] JWT secrets ngẫu nhiên
+- [ ] Mật khẩu admin/supper mạnh
+- [ ] Database không expose internet (chỉ qua WireGuard)
+
+---
+
+*Phiên bản: 2.0 — VPS AZDIGI 103.221.223.230 (08/2026)*
