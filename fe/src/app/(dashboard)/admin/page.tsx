@@ -10,17 +10,19 @@ import { ShippingLinesTab } from '@/components/admin/ShippingLinesTab';
 import { RoutesTab } from '@/components/admin/RoutesTab';
 import { CompletedPlansTab } from '@/components/admin/CompletedPlansTab';
 import { MonthlyPlansTab } from '@/components/admin/MonthlyPlansTab';
+import { ContainerCodesTab } from '@/components/admin/ContainerCodesTab';
 import { usersApi } from '@/lib/api-users';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { routesApi } from '@/lib/api-routes';
 import { User, ShippingLine, Route } from '@/types';
 
-type Tab = 'data' | 'users' | 'shipping-lines' | 'routes' | 'monthly-plans' | 'completed-plans';
+type Tab = 'data' | 'users' | 'shipping-lines' | 'routes' | 'monthly-plans' | 'completed-plans' | 'container-codes';
 
 const ALL_TABS: (role?: string) => { key: Tab; label: string; icon: string }[] = (role) => [
   { key: 'data', label: role === 'ops' ? 'Thống kê' : role === 'hr' ? 'Lương chuyến' : 'Tất cả dữ liệu', icon: '📊' },
   { key: 'users', label: 'Quản lý tài khoản', icon: '👥' },
   { key: 'shipping-lines', label: role === 'ops' ? 'Quản lý/Tạo kế hoạch' : 'Quản lý kế hoạch', icon: '🚢' },
+  { key: 'container-codes', label: 'Mã Số Container', icon: '🗃️' },
   { key: 'monthly-plans', label: 'Kế hoạch theo tháng', icon: '📅' },
   { key: 'completed-plans', label: 'Kế hoạch đã hoàn thành', icon: '✅' },
   { key: 'routes', label: 'Quản lý tuyến đường', icon: '🛤️' },
@@ -35,6 +37,7 @@ export default function AdminPage() {
     if (t.key === 'monthly-plans' && (user?.role === 'laixe' || user?.role === 'hr')) return false;
     if (t.key === 'routes' && user?.role === 'ops') return false;
     if (t.key === 'shipping-lines' && user?.role === 'hr') return false;
+    if (t.key === 'container-codes' && user?.role !== 'ops' && user?.role !== 'admin' && user?.role !== 'supper_admin') return false;
     if (t.key === 'users' && user?.role !== 'admin' && user?.role !== 'supper_admin') return false;
     return true;
   });
@@ -130,6 +133,9 @@ export default function AdminPage() {
       )}
       {activeTab === 'monthly-plans' && (
         <MonthlyPlansTab user={user} />
+      )}
+      {activeTab === 'container-codes' && (
+        <ContainerCodesTab allShippingLines={allShippingLines} toast={toast} />
       )}
       {activeTab === 'completed-plans' && (
         <CompletedPlansTab user={user} onRefresh={loadShippingLines} />

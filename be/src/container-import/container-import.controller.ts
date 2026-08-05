@@ -21,7 +21,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('admin/container-import')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin', 'supper_admin')
+@Roles('ops', 'admin', 'supper_admin')
 export class ContainerImportController {
   constructor(private containerImportService: ContainerImportService) {}
 
@@ -41,6 +41,27 @@ export class ContainerImportController {
       throw new BadRequestException('Vui lòng chọn kế hoạch');
     }
     return this.containerImportService.importFile(file, body.planId, user.id);
+  }
+
+  @Post('single')
+  addSingle(
+    @Body() body: { planId?: number; code?: string; type?: string },
+    @CurrentUser() user: any,
+  ) {
+    if (!body.planId) {
+      throw new BadRequestException('Vui lòng chọn kế hoạch');
+    }
+    return this.containerImportService.addSingle(
+      +body.planId,
+      body.code || '',
+      body.type || '',
+      user.id,
+    );
+  }
+
+  @Get('search')
+  search(@Query('code') code?: string) {
+    return this.containerImportService.searchAllByCode(code || '');
   }
 
   @Get()

@@ -6,6 +6,8 @@ export interface PendingCandidate {
   containerCode: string;
   type: string;
   submissionId: number | null;
+  shippingLineId: number | null;
+  planName?: string;
 }
 
 export interface PendingPlanOption {
@@ -16,11 +18,8 @@ export interface PendingPlanOption {
 export interface ZaloSession {
   userId?: number;
   userFullName?: string;
-  planId?: number;
-  planName?: string;
   pendingCandidates?: PendingCandidate[];
   pendingDigits?: string;
-  pendingPlanOptions?: PendingPlanOption[];
 }
 
 const SESSION_TTL = 3600;

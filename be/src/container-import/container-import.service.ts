@@ -172,6 +172,123 @@ export class ContainerImportService {
     return qb.getMany();
   }
 
+  /**
+   * Tìm container theo 7 số cuối ở TẤT CẢ kế hoạch CHƯA hoàn thành (cho Zalo bot).
+   */
+  async searchActiveByDigits(
+    digits: string,
+  ): Promise<ContainerImport[]> {
+    const qb = this.containerImportsRepository.createQueryBuilder('c');
+    qb.leftJoinAndSelect('c.shippingLineRef', 'sl')
+      .where('RIGHT(c.container_code, 7) = :digits', { digits })
+      .andWhere('sl.completed = :completed', { completed: false })
+      .orderBy('c.container_code', 'ASC');
+    return qb.getMany();
+  }
+
+  /**
+   * Tìm container theo 7 số cuối ở TẤT CẢ kế hoạch (kể cả hoàn thành) — dùng để báo "đã ghi trước đó".
+   */
+  async searchAllByDigits(
+    digits: string,
+  ): Promise<ContainerImport[]> {
+    return this.containerImportsRepository.createQueryBuilder('c')
+      .where('RIGHT(c.container_code, 7) = :digits', { digits })
+      .orderBy('c.container_code', 'ASC')
+      .getMany();
+  }
+
+  /**
+   * Tra cứu mã container toàn bộ (web, ops/admin/supper_admin).
+   * Tìm theo mã đầy đủ HOẶC 7 số cuối; kèm thông tin kế hoạch + người ghi nhận.
+   */
+  async searchAllByCode(code: string): Promise<any[]> {
+    const q = (code || '').trim().toUpperCase();
+    if (!q) return [];
+    const qb = this.containerImportsRepository.createQueryBuilder('c');
+    qb.leftJoinAndSelect('c.shippingLineRef', 'sl')
+      .leftJoinAndSelect('c.submissionRef', 'sub')
+      .leftJoin('sub.user', 'u')
+      .addSelect(['u.id', 'u.fullName', 'u.username'])
+      .where('c.containerCode = :q OR RIGHT(c.containerCode, 7) = :q', { q })
+      .orderBy('c.containerCode', 'ASC')
+      .take(200);
+    const rows = await qb.getMany();
+    return rows.map((r) => {
+      const sub: any = (r as any).submissionRef;
+      const plan: any = (r as any).shippingLineRef;
+      const recordedBy = sub
+        ? sub.user?.fullName || sub.driverName || ''
+        : '';
+      return {
+        id: r.id,
+        containerCode: r.containerCode,
+        type: r.type,
+        createdAt: r.createdAt,
+        submissionId: r.submissionId,
+        recorded: !!r.submissionId,
+        recordedBy,
+        plan: plan
+          ? {
+              id: plan.id,
+              name: plan.name,
+              soChuyen: plan.soChuyen,
+              routeName: plan.routeName,
+              ngay: plan.ngay,
+              completed: plan.completed,
+            }
+          : null,
+      };
+    });
+  }
+
+  /**
+   * Thêm 1 mã container đơn lẻ vào kế hoạch.
+   */
+  async addSingle(
+    planId: number,
+    code: string,
+    type: string,
+    userId: number,
+  ): Promise<ContainerImport> {
+    const plan = await this.shippingLinesRepository.findOne({
+      where: { id: planId },
+    });
+    if (!plan) {
+      throw new BadRequestException('Không tìm thấy kế hoạch');
+    }
+    if (plan.completed) {
+      throw new BadRequestException(
+        'Kế hoạch đã hoàn thành, không thể thêm container',
+      );
+    }
+    const nCode = this.normalizeCode(code);
+    if (!nCode) {
+      throw new BadRequestException(
+        'Mã container không hợp lệ (phải 4 chữ cái + 7 số hoặc 7 số)',
+      );
+    }
+    const nType = this.normalizeType(type);
+    if (!nType) {
+      throw new BadRequestException('Loại container không hợp lệ');
+    }
+    const existing = await this.containerImportsRepository.findOne({
+      where: { containerCode: nCode, shippingLineId: planId },
+    });
+    if (existing) {
+      throw new BadRequestException(
+        `Mã ${nCode} đã tồn tại trong kế hoạch "${plan.name}"`,
+      );
+    }
+    const entity = this.containerImportsRepository.create({
+      containerCode: nCode,
+      type: nType,
+      shippingLineId: planId,
+      importedById: userId,
+    });
+    return this.containerImportsRepository.save(entity);
+  }
+
   async findByCode(
     code: string,
     planId?: number,
