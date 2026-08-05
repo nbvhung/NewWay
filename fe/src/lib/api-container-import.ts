@@ -10,6 +10,24 @@ export interface ContainerImport {
   createdAt: string;
 }
 
+export interface ContainerSearchResult {
+  id: number;
+  containerCode: string;
+  type: string;
+  createdAt: string;
+  submissionId: number | null;
+  recorded: boolean;
+  recordedBy: string | null;
+  plan: {
+    id: number;
+    name: string;
+    soChuyen?: string;
+    routeName?: string;
+    ngay?: string | null;
+    completed: boolean;
+  } | null;
+}
+
 export interface ImportResult {
   total: number;
   imported: number;
@@ -23,6 +41,18 @@ export const containerImportApi = {
     form.append('planId', String(planId));
     return api.post<ImportResult>('/admin/container-import', form);
   },
+
+  addSingle: (planId: number, code: string, type: string) =>
+    api.post<ContainerImport>('/admin/container-import/single', {
+      planId,
+      code,
+      type,
+    }),
+
+  searchByCode: (code: string) =>
+    api.get<ContainerSearchResult[]>('/admin/container-import/search', {
+      params: { code },
+    }),
 
   getAll: (planId?: number) =>
     api.get<ContainerImport[]>('/admin/container-import', {

@@ -68,16 +68,6 @@ export class ZaloBotService {
     private editHistoryRepository: Repository<EditHistory>,
   ) {}
 
-  private normalizeText(text: string): string {
-    return text
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/đ/g, 'd')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
   private normalizePhone(sdt: string): string | null {
     let s = (sdt || '').replace(/[\s.\-()]/g, '');
     if (s.startsWith('+84')) s = '0' + s.slice(3);
@@ -128,7 +118,7 @@ export class ZaloBotService {
     await this.sessionService.save(zaloUserId, session);
     await this.zaloApi.sendMessage(
       chatId,
-      `✅ Xác nhận thành công! Anh/chị là ${user.fullName} (SĐT ${phone}).\nGiờ gửi tên kế hoạch để bắt đầu nhé.`,
+      `✅ Xác nhận thành công! Anh/chị là ${user.fullName} (SĐT ${phone}).\nGiờ gửi 7 số cuối mã container (hoặc đọc to) để ghi nhận nhé.`,
     );
   }
 
@@ -212,19 +202,6 @@ export class ZaloBotService {
       return;
     }
 
-    if (
-      lower.startsWith('/doi-plan') ||
-      lower.startsWith('/doi plan') ||
-      lower.startsWith('/reset')
-    ) {
-      await this.sessionService.clear(zaloUserId);
-      await this.zaloApi.sendMessage(
-        chatId,
-        'Đã đổi kế hoạch. Anh/chị gửi tên kế hoạch để chọn lại nhé.',
-      );
-      return;
-    }
-
     const session = (await this.sessionService.get(zaloUserId)) || {};
 
     if (!session.userId) {
@@ -262,9 +239,7 @@ export class ZaloBotService {
         return;
       }
       const byCode = session.pendingCandidates.find(
-        (c: any) =>
-          (c.containerCode || c.code || '').toLowerCase() ===
-          text.toLowerCase(),
+        (c: any) => c.containerCode.toLowerCase() === text.toLowerCase(),
       );
       if (byCode) {
         await this.upsertContainer(chatId, zaloUserId, byCode, session);
@@ -280,12 +255,10 @@ export class ZaloBotService {
       return;
     }
 
-    if (/^\d{1,2}$/.test(text) && session.pendingPlanOptions?.length) {
-      await this.handlePlanPick(chatId, zaloUserId, text, session);
-      return;
-    }
-
-    await this.handlePlanSelect(chatId, zaloUserId, text, session);
+    await this.zaloApi.sendMessage(
+      chatId,
+      'Anh/chị gửi 7 số cuối mã container (hoặc đọc to số container) để ghi nhận nhé.',
+    );
   }
 
   private async sendHelp(chatId: string): Promise<void> {
@@ -298,15 +271,14 @@ export class ZaloBotService {
         '   Gửi SĐT đã đăng ký trong tài khoản (vd: 0931234567)',
         '   để xác nhận, chỉ cần làm 1 lần duy nhất.',
         '',
-        '2️⃣ Chọn kế hoạch: gửi tên kế hoạch (vd: HUN TRÙNG / HUNTRUNG-DINHVU / 30-07-2026)',
-        '',
-        '3️⃣ Báo container:',
+        '2️⃣ Báo container:',
         '   • Nhắn 7 số cuối mã container (vd: 6823203)',
         '   • Hoặc gửi tin nhắn thoại đọc số',
+        '   Bot sẽ tự tìm mã trong các kế hoạch đang chạy.',
         '',
-        '4️⃣ Đổi kế hoạch: /doi-plan',
-        '   Hủy kế hoạch hiện tại: /logout',
+        '3️⃣ Nếu mã trùng → bot đưa danh sách, gửi số thứ tự để chọn.',
         '',
+        'Hủy kế hoạch hiện tại / thao tác lại: /logout',
         'Số liệu sẽ được cập nhật vào phần mềm ngay lập tức ✅',
       ].join('\n'),
     );
@@ -319,101 +291,8 @@ export class ZaloBotService {
     await this.sessionService.clear(zaloUserId);
     await this.zaloApi.sendMessage(
       chatId,
-      '✅ Đã xóa kế hoạch hiện tại. Anh/chị gửi tên kế hoạch để chọn lại nhé.',
+      '✅ Đã làm mới phiên. Anh/chị gửi 7 số cuối mã container để ghi nhận nhé.',
     );
-  }
-
-  private async handlePlanSelect(
-    chatId: string,
-    zaloUserId: string,
-    text: string,
-    session: any,
-  ): Promise<void> {
-    if (!session.userId) {
-      await this.zaloApi.sendMessage(
-        chatId,
-        'Zalo này chưa xác nhận. Anh/chị gửi SĐT đã đăng ký trong tài khoản để kích hoạt nhé (vd: 0931234567).',
-      );
-      return;
-    }
-
-    if (session.planId && session.planName) {
-      await this.zaloApi.sendMessage(
-        chatId,
-        `Kế hoạch hiện tại: ${session.planName}\nGửi 7 số cuối mã container để ghi nhận.\nĐổi kế hoạch: /doi-plan`,
-      );
-      return;
-    }
-
-    const keyword = this.normalizeText(text);
-    const all = await this.shippingLinesRepository.find({
-      order: { createdAt: 'DESC' },
-    });
-    const matches = all.filter((sl) => {
-      const display = this.normalizeText(this.planDisplayName(sl));
-      return display.includes(keyword) || keyword.includes(display);
-    });
-
-    if (matches.length === 0) {
-      const recent = all.slice(0, 8);
-      const list = recent
-        .map((sl, i) => `${i + 1}. ${this.planDisplayName(sl)}`)
-        .join('\n');
-      await this.zaloApi.sendMessage(
-        chatId,
-        `Không tìm thấy kế hoạch "${text}".\nGửi lại tên kế hoạch chính xác hơn, hoặc chọn một trong các kế hoạch gần đây:\n\n${list}\n\n(Gửi số thứ tự để chọn)`,
-      );
-      session.pendingPlanOptions = recent.map((sl) => ({
-        id: sl.id,
-        name: this.planDisplayName(sl),
-      }));
-      await this.sessionService.save(zaloUserId, session);
-      return;
-    }
-
-    if (matches.length > 1) {
-      const list = matches
-        .slice(0, 6)
-        .map((sl, i) => `${i + 1}. ${this.planDisplayName(sl)}`)
-        .join('\n');
-      await this.zaloApi.sendMessage(
-        chatId,
-        `Có ${matches.length} kế hoạch giống nhau, anh/chị chọn số:\n\n${list}`,
-      );
-      session.pendingPlanOptions = matches
-        .slice(0, 6)
-        .map((sl) => ({ id: sl.id, name: this.planDisplayName(sl) }));
-      await this.sessionService.save(zaloUserId, session);
-      return;
-    }
-
-    await this.selectPlan(chatId, zaloUserId, matches[0], session);
-  }
-
-  private async handlePlanPick(
-    chatId: string,
-    zaloUserId: string,
-    text: string,
-    session: any,
-  ): Promise<void> {
-    const idx = parseInt(text, 10) - 1;
-    const option = session.pendingPlanOptions?.[idx];
-    if (!option) {
-      await this.zaloApi.sendMessage(
-        chatId,
-        'Số không hợp lệ, gửi lại số thứ tự trong danh sách nhé.',
-      );
-      return;
-    }
-    const plan = await this.shippingLinesRepository.findOne({
-      where: { id: option.id },
-    });
-    if (!plan) {
-      await this.zaloApi.sendMessage(chatId, 'Kế hoạch không tồn tại.');
-      return;
-    }
-    delete session.pendingPlanOptions;
-    await this.selectPlan(chatId, zaloUserId, plan, session);
   }
 
   private async handleCandidatePick(
@@ -434,34 +313,29 @@ export class ZaloBotService {
     await this.upsertContainer(chatId, zaloUserId, candidate, session);
   }
 
-  private async selectPlan(
-    chatId: string,
-    zaloUserId: string,
-    plan: ShippingLine,
-    session: any,
-  ): Promise<void> {
-    session.planId = plan.id;
-    session.planName = this.planDisplayName(plan);
-    session.pendingCandidates = undefined;
-    session.pendingDigits = undefined;
-    session.pendingPlanOptions = undefined;
-    await this.sessionService.save(zaloUserId, session);
-
-    const total = await this.containerImportService.countByPlan(plan.id);
-    await this.zaloApi.sendMessage(
-      chatId,
-      `✅ Kế hoạch: ${session.planName}\nContainer trong kế hoạch: ${total}\n\nGửi 7 số cuối mã container (hoặc đọc to) để ghi nhận nhé.`,
-    );
-  }
-
   private formatCandidates(
-    candidates: Array<{ containerCode?: string; code?: string; type: string }>,
+    candidates: Array<{
+      containerCode?: string;
+      code?: string;
+      type: string;
+      shippingLineRef?: { name?: string; soChuyen?: string; routeName?: string; ngay?: string | null };
+      planName?: string;
+    }>,
     digits: string,
   ): string {
-    const lines = candidates.map(
-      (c, i) =>
-        `${i + 1}. ${c.containerCode || c.code} — ${TYPE_LABEL[c.type] || c.type}`,
-    );
+    const lines = candidates.map((c, i) => {
+      const sl: any = (c as any).shippingLineRef;
+      const planName =
+        c.planName ||
+        (sl
+          ? [sl.name, sl.soChuyen, sl.routeName, sl.ngay ? sl.ngay.split('-').reverse().join('-') : '']
+              .filter(Boolean)
+              .join(' / ')
+          : '');
+      return `${i + 1}. ${c.containerCode || c.code} — ${
+        TYPE_LABEL[c.type] || c.type
+      }${planName ? ` — ${planName}` : ''}`;
+    });
     return [
       `Có ${candidates.length} container cùng 7 số cuối "${digits}":`,
       '',
@@ -486,48 +360,20 @@ export class ZaloBotService {
       return;
     }
 
-    if (!session.planId) {
-      await this.zaloApi.sendMessage(
-        chatId,
-        'Anh/chị chưa chọn kế hoạch.\nGửi tên kế hoạch (vd: HUN TRÙNG / HUNTRUNG-DINHVU / 30-07-2026) trước nhé.',
-      );
-      return;
-    }
-
     // Nhắn mã container mới → bỏ lựa chọn cũ (nếu có)
     session.pendingCandidates = undefined;
     session.pendingDigits = undefined;
     await this.sessionService.save(zaloUserId, session);
 
-    const plan = await this.shippingLinesRepository.findOne({
-      where: { id: session.planId },
-    });
-    if (!plan) {
-      session.planId = undefined;
-      session.planName = undefined;
-      await this.sessionService.save(zaloUserId, session);
-      await this.zaloApi.sendMessage(
-        chatId,
-        'Kế hoạch đã không còn tồn tại. Gửi tên kế hoạch khác nhé.',
-      );
-      return;
-    }
-
-    if (plan.completed) {
-      await this.zaloApi.sendMessage(
-        chatId,
-        `Kế hoạch "${this.planDisplayName(plan)}" đã hoàn thành, không thể ghi nhận thêm.`,
-      );
-      return;
-    }
-
-    const candidates = await this.containerImportService.searchByDigits(
+    // Tìm 7 số cuối ở TẤT CẢ kế hoạch CHƯA hoàn thành
+    const candidates = await this.containerImportService.searchActiveByDigits(
       digits,
-      plan.id,
     );
+
     if (candidates.length === 0) {
-      const alreadyClaimed =
-        await this.containerImportService.searchByDigits(digits);
+      const alreadyClaimed = await this.containerImportService.searchAllByDigits(
+        digits,
+      );
       if (alreadyClaimed.some((c) => c.submissionId)) {
         await this.zaloApi.sendMessage(
           chatId,
@@ -536,7 +382,7 @@ export class ZaloBotService {
       } else {
         await this.zaloApi.sendMessage(
           chatId,
-          `Không tìm thấy container có 7 số cuối ${digits} trong kế hoạch "${this.planDisplayName(plan)}".\nKiểm tra lại số hoặc nhờ admin thêm vào kế hoạch nhé.`,
+          `Không tìm thấy container có 7 số cuối ${digits} trong kế hoạch đang chạy.\nKiểm tra lại số hoặc nhờ admin thêm vào kế hoạch nhé.`,
         );
       }
       return;
@@ -561,7 +407,7 @@ export class ZaloBotService {
     zaloUserId: string,
     container: Pick<
       ContainerImport,
-      'id' | 'containerCode' | 'type' | 'submissionId'
+      'id' | 'containerCode' | 'type' | 'submissionId' | 'shippingLineId'
     >,
     session: any,
   ): Promise<void> {
@@ -576,8 +422,15 @@ export class ZaloBotService {
         );
         return;
       }
+      if (!container.shippingLineId) {
+        await this.zaloApi.sendMessage(
+          chatId,
+          'Container chưa gắn kế hoạch. Nhờ admin kiểm tra nhé.',
+        );
+        return;
+      }
       const plan = await this.shippingLinesRepository.findOne({
-        where: { id: session.planId },
+        where: { id: container.shippingLineId },
       });
       if (!plan) {
         await this.zaloApi.sendMessage(chatId, 'Kế hoạch không còn tồn tại.');
@@ -650,7 +503,7 @@ export class ZaloBotService {
 
       await this.zaloApi.sendMessage(
         chatId,
-        `✅ ${container.containerCode} (${label}) — đã ghi nhận.\n${session.planName} — ${label}: ${newTotal}`,
+        `✅ ${container.containerCode} (${label}) — đã ghi nhận.\n${this.planDisplayName(plan)} — ${label}: ${newTotal}`,
       );
     } catch (err: any) {
       this.logger.error(`upsertContainer failed: ${err.message}`, err.stack);
