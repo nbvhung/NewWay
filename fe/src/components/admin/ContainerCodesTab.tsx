@@ -10,8 +10,6 @@ interface Props {
   toast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-const CONTAINER_TYPES = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'VSL', 'TIP'];
-
 const TYPE_COLORS: Record<string, string> = {
   H20: 'bg-[rgba(26,86,219,0.15)] text-[#1a56db]',
   H40: 'bg-[rgba(26,86,219,0.25)] text-[#1a56db]',
@@ -35,9 +33,6 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
   const [items, setItems] = useState<ContainerImport[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [singleCode, setSingleCode] = useState('');
-  const [singleType, setSingleType] = useState('H20');
-  const [adding, setAdding] = useState(false);
   const [typeFilter, setTypeFilter] = useState('Tất cả');
   const [listSearch, setListSearch] = useState('');
 
@@ -86,22 +81,6 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
       toast(err.message, 'error');
     } finally {
       setUploading(false);
-    }
-  };
-
-  const addSingle = async () => {
-    if (!selectedPlan) { toast('Vui lòng chọn kế hoạch', 'error'); return; }
-    if (!singleCode.trim()) { toast('Vui lòng nhập mã container', 'error'); return; }
-    setAdding(true);
-    try {
-      await containerImportApi.addSingle(selectedPlan.id, singleCode.trim().toUpperCase(), singleType);
-      toast('Đã thêm container', 'success');
-      setSingleCode('');
-      await load(selectedPlan.id);
-    } catch (err: any) {
-      toast(err.message, 'error');
-    } finally {
-      setAdding(false);
     }
   };
 
@@ -222,29 +201,14 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
                 Kế hoạch đã hoàn thành — chỉ xem, không thêm/sửa/xóa được.
               </div>
             )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-              <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
-                <label className="block text-[10px] font-medium text-[#64748b] mb-1.5">📥 Import file (xlsx/txt — mỗi dòng: mã + loại)</label>
-                <input type="file" accept=".xlsx,.xls,.txt,.csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                  onChange={e => setFile(e.target.files?.[0] || null)} disabled={isLocked}
-                  className="w-full text-xs file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-[rgba(26,86,219,0.1)] file:text-[#1a56db] file:cursor-pointer disabled:opacity-40" />
-                <button onClick={upload} disabled={uploading || !file || isLocked} className={`${btnPrimary} w-full mt-2`}>
-                  {uploading ? 'Đang import...' : '⬆️ Import'}
-                </button>
-              </div>
-              <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
-                <label className="block text-[10px] font-medium text-[#64748b] mb-1.5">➕ Thêm mã container đơn lẻ</label>
-                <div className="flex gap-2">
-                  <input type="text" value={singleCode} onChange={e => setSingleCode(e.target.value)} disabled={isLocked}
-                    placeholder="Mã container (vd: BMOU6823203)" className={inputCls} />
-                  <select value={singleType} onChange={e => setSingleType(e.target.value)} disabled={isLocked} className={`${inputCls} w-[110px] shrink-0`}>
-                    {CONTAINER_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-                <button onClick={addSingle} disabled={adding || isLocked} className={`${btnPrimary} w-full mt-2`}>
-                  {adding ? 'Đang thêm...' : '➕ Thêm'}
-                </button>
-              </div>
+            <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3 mb-4">
+              <label className="block text-[10px] font-medium text-[#64748b] mb-1.5">📥 Import file (xlsx/txt — mỗi dòng: mã + loại)</label>
+              <input type="file" accept=".xlsx,.xls,.txt,.csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                onChange={e => setFile(e.target.files?.[0] || null)} disabled={isLocked}
+                className="w-full text-xs file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-[rgba(26,86,219,0.1)] file:text-[#1a56db] file:cursor-pointer disabled:opacity-40" />
+              <button onClick={upload} disabled={uploading || !file || isLocked} className={`${btnPrimary} w-full mt-2`}>
+                {uploading ? 'Đang import...' : '⬆️ Import'}
+              </button>
             </div>
 
             <div className="border-t border-[rgba(0,0,0,0.08)] pt-4">
