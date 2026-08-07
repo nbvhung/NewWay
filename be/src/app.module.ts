@@ -11,6 +11,7 @@ import { RoutesModule } from './routes/routes.module';
 import { SubmissionsModule } from './submissions/submissions.module';
 import { ContainerImportModule } from './container-import/container-import.module';
 import { ZaloBotModule } from './zalo-bot/zalo-bot.module';
+import { ZaloMessagesModule } from './zalo-messages/zalo-messages.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 @Module({
@@ -26,6 +27,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     SubmissionsModule,
     ContainerImportModule,
     ZaloBotModule,
+    ZaloMessagesModule,
   ],
   providers: [
     {

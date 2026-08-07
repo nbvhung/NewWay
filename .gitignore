@@ -6,6 +6,7 @@ dist/
 .env.development
 .env.production
 *.log
+*.out
 .DS_Store
 Thumbs.db
 package-lock.json

@@ -6,6 +6,7 @@ import { ZaloSttService } from './zalo-stt.service';
 import { ZaloSessionService } from './zalo-session.service';
 import { extractContainerCodes } from './text-parser';
 import { ContainerImportService } from '../container-import/container-import.service';
+import { ZaloMessagesService } from '../zalo-messages/zalo-messages.service';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { User } from '../database/entities/user.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
@@ -58,6 +59,7 @@ export class ZaloBotService {
     private zaloStt: ZaloSttService,
     private sessionService: ZaloSessionService,
     private containerImportService: ContainerImportService,
+    private zaloMessagesService: ZaloMessagesService,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     @InjectRepository(ShippingLine)
@@ -76,6 +78,23 @@ export class ZaloBotService {
     return s;
   }
 
+  private async resolveUserId(zaloUserId: string): Promise<number | null> {
+    const user = await this.usersRepository.findOne({
+      where: { zaloId: zaloUserId },
+    });
+    return user ? user.id : null;
+  }
+
+  private async reply(
+    chatId: string,
+    zaloUserId: string,
+    text: string,
+  ): Promise<void> {
+    const userId = await this.resolveUserId(zaloUserId);
+    await this.zaloMessagesService.log(zaloUserId, userId, 'bot', text);
+    await this.zaloApi.sendMessage(chatId, text);
+  }
+
   private async handlePhoneLink(
     chatId: string,
     zaloUserId: string,
@@ -85,16 +104,18 @@ export class ZaloBotService {
     const all = await this.usersRepository.find();
     const user = all.find((u) => this.normalizePhone(u.sdt) === phone);
     if (!user) {
-      await this.zaloApi.sendMessage(
+      await this.reply(
         chatId,
+        zaloUserId,
         `SĐT ${rawText.trim()} chưa được đăng ký trong hệ thống.\nAnh/chị liên hệ admin để thêm SĐT vào tài khoản nhé.`,
       );
       return;
     }
 
     if (user.zaloId && user.zaloId !== zaloUserId) {
-      await this.zaloApi.sendMessage(
+      await this.reply(
         chatId,
+        zaloUserId,
         'SĐT này đã được liên kết với một Zalo khác. Liên hệ admin để xử lý.',
       );
       return;
@@ -104,8 +125,9 @@ export class ZaloBotService {
       where: { zaloId: zaloUserId },
     });
     if (other && other.id !== user.id) {
-      await this.zaloApi.sendMessage(
+      await this.reply(
         chatId,
+        zaloUserId,
         'Zalo này đã liên kết với tài khoản khác. Liên hệ admin để xử lý.',
       );
       return;
@@ -116,8 +138,9 @@ export class ZaloBotService {
 
     const session = { userId: user.id, userFullName: user.fullName };
     await this.sessionService.save(zaloUserId, session);
-    await this.zaloApi.sendMessage(
+    await this.reply(
       chatId,
+      zaloUserId,
       `✅ Xác nhận thành công! Anh/chị là ${user.fullName} (SĐT ${phone}).\nGiờ gửi 7 số cuối mã container (hoặc đọc to) để ghi nhận nhé.`,
     );
   }
@@ -143,17 +166,19 @@ export class ZaloBotService {
     if (eventName === 'message.voice.received') {
       const voiceUrl = payload.message?.voice_url;
       if (!voiceUrl) {
-        await this.zaloApi.sendMessage(
+        await this.reply(
           chatId,
+          zaloUserId,
           'Tôi chưa nghe được file ghi âm, anh/chị nhắn lại số container giúp nhé.',
         );
         return;
       }
-      await this.zaloApi.sendMessage(chatId, 'Đang nghe...');
+      await this.reply(chatId, zaloUserId, 'Đang nghe...');
       const audio = await this.zaloApi.downloadFile(voiceUrl);
       if (!audio) {
-        await this.zaloApi.sendMessage(
+        await this.reply(
           chatId,
+          zaloUserId,
           'Không tải được file ghi âm, anh/chị nhắn 7 số cuối mã container giúp nhé.',
         );
         return;
@@ -163,8 +188,9 @@ export class ZaloBotService {
         : 'voice.m4a';
       text = await this.zaloStt.transcribe(audio, filename, 'audio/mp4');
       if (!text) {
-        await this.zaloApi.sendMessage(
+        await this.reply(
           chatId,
+          zaloUserId,
           'Chưa nhận diện được giọng nói (chưa cấu hình STT hoặc file hỏng). Anh/chị nhắn 7 số cuối mã container giúp nhé.',
         );
         return;
@@ -176,6 +202,12 @@ export class ZaloBotService {
       return;
     }
 
+    await this.zaloMessagesService.log(
+      zaloUserId,
+      await this.resolveUserId(zaloUserId),
+      'driver',
+      text,
+    );
     await this.processText(chatId, zaloUserId, text);
   }
 
@@ -193,7 +225,7 @@ export class ZaloBotService {
       lower.startsWith('/start') ||
       lower.startsWith('/huong dan')
     ) {
-      await this.sendHelp(chatId);
+      await this.sendHelp(chatId, zaloUserId);
       return;
     }
 
@@ -255,8 +287,9 @@ export class ZaloBotService {
         await this.upsertContainer(chatId, zaloUserId, byCode, session);
         return;
       }
-      await this.zaloApi.sendMessage(
+      await this.reply(
         chatId,
+        zaloUserId,
         this.formatCandidates(
           session.pendingCandidates,
           session.pendingDigits || '',
@@ -265,15 +298,20 @@ export class ZaloBotService {
       return;
     }
 
-    await this.zaloApi.sendMessage(
+    await this.reply(
       chatId,
+      zaloUserId,
       'Anh/chị gửi 7 số cuối mã container (hoặc đọc to số container) để ghi nhận nhé.',
     );
   }
 
-  private async sendHelp(chatId: string): Promise<void> {
-    await this.zaloApi.sendMessage(
+  private async sendHelp(
+    chatId: string,
+    zaloUserId: string,
+  ): Promise<void> {
+    await this.reply(
       chatId,
+      zaloUserId,
       [
         '📋 Hướng dẫn sử dụng Bot New Way',
         '',
@@ -300,8 +338,9 @@ export class ZaloBotService {
     zaloUserId: string,
   ): Promise<void> {
     await this.sessionService.clear(zaloUserId);
-    await this.zaloApi.sendMessage(
+    await this.reply(
       chatId,
+      zaloUserId,
       '✅ Đã làm mới phiên. Anh/chị gửi 7 số cuối mã container để ghi nhận nhé.',
     );
   }
@@ -333,8 +372,9 @@ export class ZaloBotService {
     const idx = parseInt(text, 10) - 1;
     const candidate = session.pendingCandidates[idx];
     if (!candidate) {
-      await this.zaloApi.sendMessage(
+      await this.reply(
         chatId,
+        zaloUserId,
         'Số không hợp lệ, gửi lại số thứ tự trong danh sách nhé.',
       );
       return;
@@ -382,8 +422,9 @@ export class ZaloBotService {
     session: any,
   ): Promise<void> {
     if (!session.userId) {
-      await this.zaloApi.sendMessage(
+      await this.reply(
         chatId,
+        zaloUserId,
         'Zalo này chưa xác nhận. Anh/chị gửi SĐT đã đăng ký trong tài khoản để kích hoạt nhé (vd: 0931234567).',
       );
       return;
@@ -404,13 +445,15 @@ export class ZaloBotService {
         digits,
       );
       if (alreadyClaimed.some((c) => c.submissionId)) {
-        await this.zaloApi.sendMessage(
+        await this.reply(
           chatId,
+          zaloUserId,
           `Container có 7 số cuối ${digits} đã được ghi nhận trước đó rồi ✅`,
         );
       } else {
-        await this.zaloApi.sendMessage(
+        await this.reply(
           chatId,
+          zaloUserId,
           `Không tìm thấy container có 7 số cuối ${digits} trong kế hoạch đang chạy.\nKiểm tra lại số hoặc nhờ admin thêm vào kế hoạch nhé.`,
         );
       }
@@ -425,8 +468,9 @@ export class ZaloBotService {
     session.pendingCandidates = candidates;
     session.pendingDigits = digits;
     await this.sessionService.save(zaloUserId, session);
-    await this.zaloApi.sendMessage(
+    await this.reply(
       chatId,
+      zaloUserId,
       this.formatCandidates(candidates, digits),
     );
   }
@@ -445,15 +489,17 @@ export class ZaloBotService {
         where: { id: session.userId },
       });
       if (!user) {
-        await this.zaloApi.sendMessage(
+        await this.reply(
           chatId,
+          zaloUserId,
           'Tài khoản không còn tồn tại. Liên hệ admin nhé.',
         );
         return;
       }
       if (!container.shippingLineId) {
-        await this.zaloApi.sendMessage(
+        await this.reply(
           chatId,
+          zaloUserId,
           'Container chưa gắn kế hoạch. Nhờ admin kiểm tra nhé.',
         );
         return;
@@ -462,12 +508,13 @@ export class ZaloBotService {
         where: { id: container.shippingLineId },
       });
       if (!plan) {
-        await this.zaloApi.sendMessage(chatId, 'Kế hoạch không còn tồn tại.');
+        await this.reply(chatId, zaloUserId, 'Kế hoạch không còn tồn tại.');
         return;
       }
       if (plan.completed) {
-        await this.zaloApi.sendMessage(
+        await this.reply(
           chatId,
+          zaloUserId,
           'Kế hoạch đã hoàn thành, không thể ghi nhận thêm.',
         );
         return;
@@ -476,16 +523,18 @@ export class ZaloBotService {
       const field = TYPE_FIELD_MAP[container.type];
       const label = TYPE_LABEL[container.type] || container.type;
       if (!field) {
-        await this.zaloApi.sendMessage(
+        await this.reply(
           chatId,
+          zaloUserId,
           `Loại container ${container.type} không hợp lệ.`,
         );
         return;
       }
 
       if (container.submissionId) {
-        await this.zaloApi.sendMessage(
+        await this.reply(
           chatId,
+          zaloUserId,
           `Container ${container.containerCode} đã được ghi nhận trước đó rồi ✅`,
         );
         return;
@@ -530,14 +579,16 @@ export class ZaloBotService {
       session.pendingDigits = undefined;
       await this.sessionService.save(zaloUserId, session);
 
-      await this.zaloApi.sendMessage(
+      await this.reply(
         chatId,
+        zaloUserId,
         `✅ ${container.containerCode} (${label}) — đã ghi nhận.\n${this.planDisplayName(plan)} — ${label}: ${newTotal}`,
       );
     } catch (err: any) {
       this.logger.error(`upsertContainer failed: ${err.message}`, err.stack);
-      await this.zaloApi.sendMessage(
+      await this.reply(
         chatId,
+        zaloUserId,
         'Đã có lỗi xảy ra khi ghi nhận. Vui lòng thử lại sau.',
       );
     }
