@@ -179,8 +179,8 @@ export default function EntryForm() {
           {/* Red box */}
           <View style={[styles.fieldGroup, styles.redBorder]}>
             <View style={styles.fieldGrid}>
-              <NumericInput label="Hàng 20' FR" value={vo20fr} onChange={setVo20fr} labelColor="#dc2626" borderColor="#fca5a5" />
-              <NumericInput label="Hàng 40' FR" value={vo40fr} onChange={setVo40fr} labelColor="#dc2626" borderColor="#fca5a5" />
+              <NumericInput label="Vỏ 20' FR" value={vo20fr} onChange={setVo20fr} labelColor="#dc2626" borderColor="#fca5a5" />
+              <NumericInput label="Vỏ 40' FR" value={vo40fr} onChange={setVo40fr} labelColor="#dc2626" borderColor="#fca5a5" />
             </View>
           </View>
 
