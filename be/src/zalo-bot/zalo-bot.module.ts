@@ -6,6 +6,7 @@ import { ZaloApiService } from './zalo-api.service';
 import { ZaloSttService } from './zalo-stt.service';
 import { ZaloSessionService } from './zalo-session.service';
 import { ContainerImportModule } from '../container-import/container-import.module';
+import { ZaloMessagesModule } from '../zalo-messages/zalo-messages.module';
 import { User } from '../database/entities/user.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Submission } from '../database/entities/submission.entity';
@@ -15,6 +16,7 @@ import { EditHistory } from '../database/entities/edit-history.entity';
   imports: [
     TypeOrmModule.forFeature([User, ShippingLine, Submission, EditHistory]),
     ContainerImportModule,
+    ZaloMessagesModule,
   ],
   controllers: [ZaloBotController],
   providers: [
