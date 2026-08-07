@@ -234,8 +234,8 @@ export default function MyDataPage() {
     { key: 'hang40', label: 'H40' },
     { key: 'vo20', label: 'V20' },
     { key: 'vo40', label: 'V40' },
-    { key: 'vo20fr', label: '20FR' },
-    { key: 'vo40fr', label: '40FR' },
+    { key: 'vo20fr', label: 'V20FR' },
+    { key: 'vo40fr', label: 'V40FR' },
   ];
 
   const MISC_CFG: { key: keyof Submission; label: string }[] = [
@@ -596,9 +596,9 @@ export default function MyDataPage() {
             padding: '14px 12px', background: '#fff',
             display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
           }}>
-            <InputCell label="20FR (1 bó = 4 cái)" value={editForm.vo20fr} onChange={(v) => updateField('vo20fr', v)}
+            <InputCell label="Vỏ 20FR (1 bó = 4 cái)" value={editForm.vo20fr} onChange={(v) => updateField('vo20fr', v)}
               labelColor="#dc2626" borderColor="#fca5a5" />
-            <InputCell label="40FR (1 bó = 4 cái)" value={editForm.vo40fr} onChange={(v) => updateField('vo40fr', v)}
+            <InputCell label="Vỏ 40FR (1 bó = 4 cái)" value={editForm.vo40fr} onChange={(v) => updateField('vo40fr', v)}
               labelColor="#dc2626" borderColor="#fca5a5" />
           </div>
 

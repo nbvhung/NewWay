@@ -295,9 +295,9 @@ export default function FormPage() {
               display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
               marginBottom: 10,
             }}>
-              <NumCell id="vo20fr" label="20FR (1 bó = 4 cái)" value={vo20fr} onChange={setVo20fr}
+              <NumCell id="vo20fr" label="Vỏ 20FR (1 bó = 4 cái)" value={vo20fr} onChange={setVo20fr}
                 labelColor="#dc2626" borderColor="#fca5a5" />
-              <NumCell id="vo40fr" label="40FR (1 bó = 4 cái)" value={vo40fr} onChange={setVo40fr}
+              <NumCell id="vo40fr" label="Vỏ 40FR (1 bó = 4 cái)" value={vo40fr} onChange={setVo40fr}
                 labelColor="#dc2626" borderColor="#fca5a5" />
             </div>
 
