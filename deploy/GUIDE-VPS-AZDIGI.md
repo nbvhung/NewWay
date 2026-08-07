@@ -156,6 +156,8 @@ nano /opt/newway/.env
 | `NEXT_PUBLIC_API_URL` | `https://<domain>/api` |
 | `DEFAULT_ADMIN_PASSWORD` | Tự đặt mật khẩu admin mạnh |
 | `DEFAULT_SUPPER_PASSWORD` | Tự đặt mật khẩu supper_admin mạnh |
+| `ZALO_BOT_TOKEN` | Vào [bot.zaloplatforms.com](https://bot.zaloplatforms.com) → chọn bot → copy token |
+| `ZALO_WEBHOOK_SECRET` | Chuỗi bí mật tự đặt (VD: `newway_zalo_2026_xyz`) |
 
 > ⚠️ Cần **tên miền** cho các dòng `https://<domain>`. Nếu chưa có domain, chặn lại báo tôi — không thể chạy HTTPS nếu thiếu domain.
 
@@ -245,6 +247,37 @@ systemctl status wg-quick@wg0         # tunnel active
 ping 10.8.0.2                          # vào được DB
 curl https://<domain>/api/auth/me     # API phản hồi
 ```
+
+---
+
+## BƯỚC 11 — Cấu hình Zalo Bot Webhook
+
+> Thực hiện **sau khi Bước 9 và 10 xong** (web đã chạy với domain HTTPS).
+
+**11.1. Verify bot đang chạy:**
+```bash
+bash /opt/newway/deploy/verify-zalo.sh <domain>
+# VD: bash /opt/newway/deploy/verify-zalo.sh newway.congty.vn
+```
+Kết quả kỳ vọng:
+- `botConfigured: true` → ZALO_BOT_TOKEN đã load
+- Webhook GET trả `{"status":"ok"}`
+
+**11.2. Đăng ký webhook trên Zalo Platform:**
+1. Vào **[bot.zaloplatforms.com](https://bot.zaloplatforms.com)** → chọn Bot
+2. Vào **Cài đặt → Webhook**
+3. Điền:
+   - **Webhook URL**: `https://<domain>/api/zalo/webhook`
+   - **Secret Token**: giá trị `ZALO_WEBHOOK_SECRET` trong `.env`
+4. Bấm **Verify/Lưu** → Zalo sẽ gọi `GET /api/zalo/webhook` → trả `{"status":"ok"}` → ✅ xác minh thành công
+
+**11.3. Test cuối:**
+- Tài xế mở Zalo → nhắn tin vào bot
+- Gửi SĐT đã đăng ký → bot phản hồi liên kết
+- Gửi 7 số cuối container → bot ghi nhận
+- Web admin → tab **Lịch sử chat** → thấy cuộc hội thoại ✅
+
+**✅ Xong khi:** Bot phản hồi được tin nhắn từ tài xế.
 
 ---
 
