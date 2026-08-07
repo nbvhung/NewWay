@@ -5,6 +5,7 @@ import { ZaloBotService } from './zalo-bot.service';
 import { ZaloApiService } from './zalo-api.service';
 import { ZaloSttService } from './zalo-stt.service';
 import { ZaloSessionService } from './zalo-session.service';
+import { ZaloPollingService } from './zalo-polling.service';
 import { ContainerImportModule } from '../container-import/container-import.module';
 import { ZaloMessagesModule } from '../zalo-messages/zalo-messages.module';
 import { User } from '../database/entities/user.entity';
@@ -24,6 +25,7 @@ import { EditHistory } from '../database/entities/edit-history.entity';
     ZaloApiService,
     ZaloSttService,
     ZaloSessionService,
+    ZaloPollingService,
   ],
   exports: [ZaloBotService],
 })

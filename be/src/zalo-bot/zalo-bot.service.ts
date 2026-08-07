@@ -36,6 +36,7 @@ const TYPE_FIELD_MAP: Record<string, string> = {
   V20FR: 'vo20fr',
   V40FR: 'vo40fr',
   VSL: 'veSinhLai',
+  KV: 'keoVe',
   TIP: 'tip',
 };
 
@@ -47,6 +48,7 @@ const TYPE_LABEL: Record<string, string> = {
   V20FR: 'Vỏ 20FR',
   V40FR: 'Vỏ 40FR',
   VSL: 'Vệ sinh lại',
+  KV: 'Kéo Về',
   TIP: 'TIP',
 };
 
@@ -107,7 +109,7 @@ export class ZaloBotService {
       await this.reply(
         chatId,
         zaloUserId,
-        `SĐT ${rawText.trim()} chưa được đăng ký trong hệ thống.\nAnh/chị liên hệ admin để thêm SĐT vào tài khoản nhé.`,
+        `SĐT ${rawText.trim()} chưa được đăng ký trong hệ thống.\nSếp liên hệ admin để thêm SĐT vào tài khoản nhé.`,
       );
       return;
     }
@@ -141,7 +143,7 @@ export class ZaloBotService {
     await this.reply(
       chatId,
       zaloUserId,
-      `✅ Xác nhận thành công! Anh/chị là ${user.fullName} (SĐT ${phone}).\nGiờ gửi 7 số cuối mã container (hoặc đọc to) để ghi nhận nhé.`,
+      `✅ Xác nhận thành công! Sếp là ${user.fullName} (SĐT ${phone}).\nGiờ gửi 7 số cuối mã container (hoặc đọc to) để ghi nhận nhé.`,
     );
   }
 
@@ -169,7 +171,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          'Tôi chưa nghe được file ghi âm, anh/chị nhắn lại số container giúp nhé.',
+          'em chưa nghe được file ghi âm, Sếp nhắn lại số container giúp em nhé.',
         );
         return;
       }
@@ -179,7 +181,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          'Không tải được file ghi âm, anh/chị nhắn 7 số cuối mã container giúp nhé.',
+          'Không tải được file ghi âm, Sếp nhắn 7 số cuối mã container giúp em nhé.',
         );
         return;
       }
@@ -191,7 +193,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          'Chưa nhận diện được giọng nói (chưa cấu hình STT hoặc file hỏng). Anh/chị nhắn 7 số cuối mã container giúp nhé.',
+          'Chưa nhận diện được giọng nói (chưa cấu hình STT hoặc file hỏng). Sếp nhắn 7 số cuối mã container giúp nhé.',
         );
         return;
       }
@@ -275,6 +277,39 @@ export class ZaloBotService {
       return;
     }
 
+    if (session.reEntry) {
+      if (/^\d{1,2}$/.test(text)) {
+        const choice = parseInt(text, 10);
+        if (choice === 3) {
+          session.reEntry = undefined;
+          await this.sessionService.save(zaloUserId, session);
+          await this.reply(
+            chatId,
+            zaloUserId,
+            'Em hiểu rồi, em bỏ qua mã vừa rồi nhé. Sếp gửi 7 số cuối mã container mới giúp em.',
+          );
+          return;
+        }
+        if (choice === 1 || choice === 2) {
+          const type = choice === 1 ? 'VSL' : 'KV';
+          await this.reEntryRecord(chatId, zaloUserId, type, session);
+          return;
+        }
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Chưa hợp lệ. Sếp chọn giúp em: 1 = Vệ sinh lại, 2 = Kéo Về, 3 = bỏ qua.',
+        );
+        return;
+      }
+      await this.reply(
+        chatId,
+        zaloUserId,
+        'Sếp chọn giúp em: 1 = Vệ sinh lại, 2 = Kéo Về, 3 = bỏ qua.',
+      );
+      return;
+    }
+
     if (session.pendingCandidates?.length) {
       if (/^\d{1,2}$/.test(text)) {
         await this.handleCandidatePick(chatId, zaloUserId, text, session);
@@ -301,7 +336,7 @@ export class ZaloBotService {
     await this.reply(
       chatId,
       zaloUserId,
-      'Anh/chị gửi 7 số cuối mã container (hoặc đọc to số container) để ghi nhận nhé.',
+      'Sếp gửi 7 số cuối mã container (hoặc đọc to số container) để ghi nhận nhé.',
     );
   }
 
@@ -341,7 +376,7 @@ export class ZaloBotService {
     await this.reply(
       chatId,
       zaloUserId,
-      '✅ Đã làm mới phiên. Anh/chị gửi 7 số cuối mã container để ghi nhận nhé.',
+      '✅ Đã làm mới phiên. Sếp gửi 7 số cuối mã container để ghi nhận nhé.',
     );
   }
 
@@ -359,7 +394,7 @@ export class ZaloBotService {
     await this.sessionService.clear(zaloUserId);
     await this.zaloApi.sendMessage(
       chatId,
-      '🔄 Đã hủy liên kết tài khoản cũ.\nAnh/chị gửi SĐT mới đã đăng ký trong hệ thống (vd: 0931234567) để xác nhận lại nhé.',
+      '🔄 Đã hủy liên kết tài khoản cũ.\nSếp gửi SĐT mới đã đăng ký trong hệ thống (vd: 0931234567) để xác nhận lại nhé.',
     );
   }
 
@@ -375,7 +410,7 @@ export class ZaloBotService {
       await this.reply(
         chatId,
         zaloUserId,
-        'Số không hợp lệ, gửi lại số thứ tự trong danh sách nhé.',
+        'Số Sếp gửi chưa hợp lệ. Sếp hãy gửi đúng số thứ tự (1, 2, ... ) trong danh sách container vừa hiển thị để chọn giúp em nhé.',
       );
       return;
     }
@@ -410,7 +445,7 @@ export class ZaloBotService {
       '',
       ...lines,
       '',
-      'Anh/chị gửi số thứ tự (vd: 1) hoặc mã đầy đủ để chọn.',
+      'Sếp gửi số thứ tự (vd: 1) hoặc mã đầy đủ để chọn.',
     ].join('\n');
   }
 
@@ -425,7 +460,7 @@ export class ZaloBotService {
       await this.reply(
         chatId,
         zaloUserId,
-        'Zalo này chưa xác nhận. Anh/chị gửi SĐT đã đăng ký trong tài khoản để kích hoạt nhé (vd: 0931234567).',
+        'Zalo này chưa xác nhận. Sếp gửi SĐT đã đăng ký trong tài khoản để kích hoạt nhé (vd: 0931234567).',
       );
       return;
     }
@@ -433,46 +468,205 @@ export class ZaloBotService {
     // Nhắn mã container mới → bỏ lựa chọn cũ (nếu có)
     session.pendingCandidates = undefined;
     session.pendingDigits = undefined;
+    session.reEntry = undefined;
     await this.sessionService.save(zaloUserId, session);
 
     // Tìm 7 số cuối ở TẤT CẢ kế hoạch CHƯA hoàn thành
     const candidates = await this.containerImportService.searchActiveByDigits(
       digits,
     );
+    const pending = candidates.filter((c) => !c.submissionId);
+    const claimed = candidates.filter((c) => c.submissionId);
 
-    if (candidates.length === 0) {
-      const alreadyClaimed = await this.containerImportService.searchAllByDigits(
-        digits,
-      );
-      if (alreadyClaimed.some((c) => c.submissionId)) {
+    if (pending.length === 0) {
+      if (claimed.length > 0) {
+        const reEntryTarget = claimed[0];
+        session.reEntry = {
+          containerCode: reEntryTarget.containerCode,
+          shippingLineId: reEntryTarget.shippingLineId,
+          digits,
+        };
+        await this.sessionService.save(zaloUserId, session);
         await this.reply(
           chatId,
           zaloUserId,
-          `Container có 7 số cuối ${digits} đã được ghi nhận trước đó rồi ✅`,
+          [
+            `Container có 7 số cuối ${digits} đã được ghi nhận rồi.`,
+            'Sếp đang muốn ghi thêm theo kiểu nào ạ?',
+            '',
+            '1) Vệ sinh lại',
+            '2) Kéo Về',
+            '3) Sếp đọc nhầm (bỏ qua)',
+            '',
+            'Sếp gửi 1, 2 hoặc 3 giúp em nhé.',
+          ].join('\n'),
         );
       } else {
-        await this.reply(
-          chatId,
-          zaloUserId,
-          `Không tìm thấy container có 7 số cuối ${digits} trong kế hoạch đang chạy.\nKiểm tra lại số hoặc nhờ admin thêm vào kế hoạch nhé.`,
-        );
+        const alreadyClaimed =
+          await this.containerImportService.searchAllByDigits(digits);
+        if (alreadyClaimed.some((c) => c.submissionId)) {
+          await this.reply(
+            chatId,
+            zaloUserId,
+            `Container có 7 số cuối ${digits} đã được ghi nhận trước đó rồi ✅`,
+          );
+        } else {
+          await this.reply(
+            chatId,
+            zaloUserId,
+            `Không tìm thấy container có 7 số cuối ${digits} trong kế hoạch đang chạy.\nKiểm tra lại số hoặc nhờ admin thêm vào kế hoạch nhé.`,
+          );
+        }
       }
       return;
     }
 
-    if (candidates.length === 1) {
-      await this.upsertContainer(chatId, zaloUserId, candidates[0], session);
+    if (pending.length === 1) {
+      await this.upsertContainer(chatId, zaloUserId, pending[0], session);
       return;
     }
 
-    session.pendingCandidates = candidates;
+    session.pendingCandidates = pending;
     session.pendingDigits = digits;
     await this.sessionService.save(zaloUserId, session);
     await this.reply(
       chatId,
       zaloUserId,
-      this.formatCandidates(candidates, digits),
+      this.formatCandidates(pending, digits),
     );
+  }
+
+  private async reEntryRecord(
+    chatId: string,
+    zaloUserId: string,
+    type: 'VSL' | 'KV',
+    session: any,
+  ): Promise<void> {
+    const re = session.reEntry;
+    if (!re) {
+      await this.reply(
+        chatId,
+        zaloUserId,
+        'Chưa có mã container đang chờ. Sếp gửi 7 số cuối mã container giúp em nhé.',
+      );
+      return;
+    }
+    const field = TYPE_FIELD_MAP[type];
+    const label = TYPE_LABEL[type];
+    try {
+      const user = await this.usersRepository.findOne({
+        where: { id: session.userId },
+      });
+      if (!user) {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Tài khoản không còn tồn tại. Liên hệ admin nhé.',
+        );
+        return;
+      }
+      if (!re.shippingLineId) {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Container chưa gắn kế hoạch. Nhờ admin kiểm tra nhé.',
+        );
+        return;
+      }
+      const plan = await this.shippingLinesRepository.findOne({
+        where: { id: re.shippingLineId },
+      });
+      if (!plan) {
+        await this.reply(chatId, zaloUserId, 'Kế hoạch không còn tồn tại.');
+        return;
+      }
+      if (plan.completed) {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Kế hoạch đã hoàn thành, không thể ghi nhận thêm.',
+        );
+        return;
+      }
+
+      // Mỗi mã chỉ ghi được 1 trong 2 loại VSL/KV — chặn ghi đúp
+      const existingContainer =
+        await this.containerImportService.findByCode(
+          re.containerCode,
+          re.shippingLineId,
+        );
+      if (existingContainer && (existingContainer.veSinhLai || existingContainer.keoVe)) {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          `Mã ${re.containerCode} đã ghi nhận (Vệ sinh lại / Kéo Về) trước đó rồi. Mỗi mã chỉ ghi được 1 lần cho nhóm này.`,
+        );
+        return;
+      }
+
+      let submission = await this.submissionsRepository.findOne({
+        where: { userId: user.id, shippingLineId: plan.id },
+      });
+
+      let newTotal: string;
+      if (!submission) {
+        submission = this.submissionsRepository.create({
+          userId: user.id,
+          shippingLine: plan.name,
+          shippingLineId: plan.id,
+          route: plan.routeName || '',
+          driverName: user.fullName,
+          [field]: '1',
+        });
+        newTotal = '1';
+        await this.submissionsRepository.save(submission);
+      } else {
+        const oldVal = String((submission as any)[field] || '');
+        newTotal = String((parseInt(oldVal, 10) || 0) + 1);
+        (submission as any)[field] = newTotal;
+        submission.editCount += 1;
+        submission.lastEditedAt = new Date();
+        await this.submissionsRepository.save(submission);
+
+        const history = this.editHistoryRepository.create({
+          submissionId: submission.id,
+          editedById: user.id,
+          editedByName: user.fullName,
+          changes: JSON.stringify({ [field]: { old: oldVal, new: newTotal } }),
+        });
+        await this.editHistoryRepository.save(history);
+      }
+
+      session.reEntry = undefined;
+      session.pendingCandidates = undefined;
+      session.pendingDigits = undefined;
+      await this.sessionService.save(zaloUserId, session);
+
+      if (type === 'KV' && re.shippingLineId) {
+        await this.containerImportService.markKeoVeByCode(
+          re.containerCode,
+          re.shippingLineId,
+        );
+      } else if (type === 'VSL' && re.shippingLineId) {
+        await this.containerImportService.markVslByCode(
+          re.containerCode,
+          re.shippingLineId,
+        );
+      }
+
+      await this.reply(
+        chatId,
+        zaloUserId,
+        `✅ ${re.containerCode} - ${this.planDisplayName(plan)} — ${label}: ${newTotal}`,
+      );
+    } catch (err: any) {
+      this.logger.error(`reEntryRecord failed: ${err.message}`, err.stack);
+      await this.reply(
+        chatId,
+        zaloUserId,
+        'Đã có lỗi xảy ra khi ghi nhận. Vui lòng thử lại sau.',
+      );
+    }
   }
 
   private async upsertContainer(
@@ -582,7 +776,7 @@ export class ZaloBotService {
       await this.reply(
         chatId,
         zaloUserId,
-        `✅ ${container.containerCode} (${label}) — đã ghi nhận.\n${this.planDisplayName(plan)} — ${label}: ${newTotal}`,
+        `✅ ${container.containerCode} - ${this.planDisplayName(plan)} — ${label}: ${newTotal}`,
       );
     } catch (err: any) {
       this.logger.error(`upsertContainer failed: ${err.message}`, err.stack);

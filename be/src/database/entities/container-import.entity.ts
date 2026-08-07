@@ -30,6 +30,12 @@ export class ContainerImport {
   @Column({ name: 'submission_id', type: 'int', nullable: true })
   submissionId: number | null;
 
+  @Column({ name: 'keo_ve', type: 'boolean', default: false })
+  keoVe: boolean;
+
+  @Column({ name: 've_sinh_lai', type: 'boolean', default: false })
+  veSinhLai: boolean;
+
   @ManyToOne(() => Submission, { nullable: true })
   @JoinColumn({ name: 'submission_id' })
   submissionRef: Submission;

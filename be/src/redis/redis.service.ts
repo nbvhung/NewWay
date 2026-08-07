@@ -90,5 +90,50 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async removeRefreshToken(userId: number): Promise<void> {
     await this.safe(() => this.client.del(`refresh_token:${userId}`), undefined);
   }
+
+  /**
+   * Leader election lock: SET NX PX. Chỉ 1 instance giành được lock mới chạy poller.
+   * Trả true nếu giành được lock.
+   */
+  async acquireLock(key: string, token: string, ttlMs: number): Promise<boolean> {
+    const ok = await this.safe(
+      () => this.client.set(key, token, 'PX', ttlMs, 'NX'),
+      null,
+    );
+    return ok === 'OK';
+  }
+
+  /** Gia hạn lock chỉ khi còn thuộc về token này (atomic Lua). Trả false nếu mất lock. */
+  async renewLock(key: string, token: string, ttlMs: number): Promise<boolean> {
+    const script = `if redis.call('get', KEYS[1]) == ARGV[1] then
+                      return redis.call('pexpire', KEYS[1], ARGV[2])
+                    else
+                      return 0
+                    end`;
+    const ok = await this.safe(
+      () => this.client.eval(script, 1, key, token, ttlMs),
+      0,
+    );
+    return ok === 1;
+  }
+
+  /** Nhả lock chỉ khi còn thuộc token này (tránh xoá nhầm lock của leader khác). */
+  async releaseLock(key: string, token: string): Promise<void> {
+    const script = `if redis.call('get', KEYS[1]) == ARGV[1] then
+                      return redis.call('del', KEYS[1])
+                    return
+                      0
+                    end`;
+    await this.safe(() => this.client.eval(script, 1, key, token), 0);
+  }
+
+  /** Idempotency: SET NX có TTL. Trả true nếu chưa tồn tại (lần đầu). */
+  async markOnce(key: string, ttlMs: number): Promise<boolean> {
+    const ok = await this.safe(
+      () => this.client.set(key, '1', 'PX', ttlMs, 'NX'),
+      null,
+    );
+    return ok === 'OK';
+  }
 }
 

@@ -24,6 +24,44 @@ export class ZaloApiService {
     return !!process.env.ZALO_BOT_TOKEN;
   }
 
+  /**
+   * Lấy tin nhắn mới dựa trên cơ chế long-polling (getUpdates).
+   * Trả về object sự kiện cùng dạng webhook hoặc null khi timeout/không có tin.
+   */
+  async getUpdates(timeoutSec = 25): Promise<any | null> {
+    if (!this.configured) return null;
+    try {
+      const { data } = await axios.post(
+        this.baseUrl('getUpdates'),
+        { timeout: timeoutSec },
+        { timeout: (timeoutSec + 10) * 1000 },
+      );
+      if (data && data.ok === true && data.result) {
+        return data;
+      }
+      return null;
+    } catch (err: any) {
+      this.logger.error(`getUpdates failed: ${err.message}`);
+      // Ném lại để poller áp dụng backoff (đặc biệt khi 429 rate limit).
+      throw err;
+    }
+  }
+
+  /**
+   * Xóa cấu hình webhook (cần thiết khi chuyển sang polling,
+   * vì webhook và getUpdates loại trừ lẫn nhau).
+   */
+  async deleteWebhook(): Promise<boolean> {
+    if (!this.configured) return false;
+    try {
+      const { data } = await axios.post(this.baseUrl('deleteWebhook'), {}, { timeout: 15000 });
+      return !!(data && data.ok === true);
+    } catch (err: any) {
+      this.logger.error(`deleteWebhook failed: ${err.message}`);
+      return false;
+    }
+  }
+
   async sendMessage(chatId: string, text: string): Promise<boolean> {
     if (!this.configured) {
       this.logger.warn(`ZaloBot chưa cấu hình token, bỏ qua gửi tin: ${text}`);

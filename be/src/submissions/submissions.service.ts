@@ -707,6 +707,7 @@ export class SubmissionsService {
         { header: 'Kế hoạch', key: 'plan', width: 28 },
         { header: 'Người chạy', key: 'driver', width: 22 },
         { header: 'Thời gian ghi nhận', key: 'claimedAt', width: 20 },
+        { header: 'Kéo Về', key: 'keoVe', width: 8 },
       ];
       const contHeader = wsCont.getRow(1);
       contHeader.eachCell((cell) => {
@@ -728,10 +729,11 @@ export class SubmissionsService {
           plan: sl ? planDisplayName(sl) : c.shippingLineId ? `Plan #${c.shippingLineId}` : '',
           driver: sub ? sub.user?.fullName || sub.driverName || '' : '',
           claimedAt: claimedAt ? new Date(claimedAt).toLocaleString('vi-VN') : '',
+          keoVe: c.keoVe ? 'x' : '',
         });
         row.eachCell((cell) => {
           cell.border = allBorder;
-          cell.alignment = { vertical: 'middle' };
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
         });
       });
     }
