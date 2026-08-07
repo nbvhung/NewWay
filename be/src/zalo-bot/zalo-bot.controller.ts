@@ -29,6 +29,11 @@ export class ZaloBotController {
     }
   }
 
+  @Get('webhook')
+  webhookVerify() {
+    return { status: 'ok' };
+  }
+
   @Post('webhook')
   async webhook(
     @Body() event: ZaloEvent,
