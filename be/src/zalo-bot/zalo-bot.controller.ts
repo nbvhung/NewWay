@@ -3,6 +3,8 @@ import {
   Controller,
   Get,
   Headers,
+  HttpCode,
+  HttpStatus,
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -35,6 +37,7 @@ export class ZaloBotController {
   }
 
   @Post('webhook')
+  @HttpCode(HttpStatus.OK)
   async webhook(
     @Body() event: ZaloEvent,
     @Headers('x-bot-api-secret-token') secret?: string,
