@@ -18,7 +18,7 @@ export class ZaloApiService {
   }
 
   private baseUrl(action: string): string {
-    return `https://bot-api.zaloplatforms.com/bot/${this.token}/${action}`;
+    return `https://bot-api.zaloplatforms.com/bot${this.token}/${action}`;
   }
 
   get configured(): boolean {
