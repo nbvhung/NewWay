@@ -7,6 +7,7 @@ export interface ContainerImport {
   shippingLineId: number | null;
   importedById: number | null;
   submissionId: number | null;
+  bundleId: string | null;
   createdAt: string;
 }
 
@@ -16,6 +17,7 @@ export interface ContainerSearchResult {
   type: string;
   createdAt: string;
   submissionId: number | null;
+  bundleId: string | null;
   recorded: boolean;
   recordedBy: string | null;
   plan: {

@@ -12,6 +12,7 @@ import { ShippingLine } from '../database/entities/shipping-line.entity';
 export interface ParsedContainer {
   code: string;
   type: string;
+  bundleId?: string;
 }
 
 export interface ImportResult {
@@ -63,10 +64,10 @@ export class ContainerImportService {
     const name = (file.originalname || '').toLowerCase();
     const rows: ParsedContainer[] = [];
 
-    const push = (c1: any, c2: any) => {
+    const push = (c1: any, c2: any, bundleId?: string) => {
       const code = this.normalizeCode(String(c1 ?? ''));
       const type = this.normalizeType(String(c2 ?? ''));
-      if (code && type) rows.push({ code, type });
+      if (code && type) rows.push({ code, type, bundleId });
     };
 
     if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
@@ -74,8 +75,31 @@ export class ContainerImportService {
       await workbook.xlsx.load(file.buffer);
       const ws = workbook.worksheets[0];
       if (!ws) return rows;
+
+      // Đọc các ô merge ở cột C (giá trị "Bó") để nhóm container thành bó
+      const bundleByRow = new Map<number, string>();
+      const merges: string[] = ws.model.merges || [];
+      let bundleIndex = 0;
+      for (const ref of merges) {
+        const m = /^C(\d+):C(\d+)$/i.exec(ref);
+        if (!m) continue;
+        const start = parseInt(m[1], 10);
+        const end = parseInt(m[2], 10);
+        const masterValue = String(ws.getCell(`C${start}`).value ?? '').trim();
+        if (!masterValue) continue;
+        bundleIndex += 1;
+        const bundleId = `Bó ${bundleIndex}`;
+        for (let r = start; r <= end; r++) {
+          bundleByRow.set(r, bundleId);
+        }
+      }
+
       ws.eachRow({ includeEmpty: false }, (row) => {
-        push(row.getCell(1).value, row.getCell(2).value);
+        push(
+          row.getCell(1).value,
+          row.getCell(2).value,
+          bundleByRow.get(row.number),
+        );
       });
     } else {
       const text = file.buffer.toString('utf-8');
@@ -129,6 +153,7 @@ export class ContainerImportService {
         importedById: userId,
         keoVe: row.type === 'KV',
         veSinhLai: row.type === 'VSL',
+        bundleId: row.bundleId || null,
       });
       await this.containerImportsRepository.save(entity);
       imported++;
@@ -181,9 +206,7 @@ export class ContainerImportService {
   /**
    * Tìm container theo 7 số cuối ở TẤT CẢ kế hoạch CHƯA hoàn thành (cho Zalo bot).
    */
-  async searchActiveByDigits(
-    digits: string,
-  ): Promise<ContainerImport[]> {
+  async searchActiveByDigits(digits: string): Promise<ContainerImport[]> {
     const qb = this.containerImportsRepository.createQueryBuilder('c');
     qb.leftJoinAndSelect('c.shippingLineRef', 'sl')
       .where('RIGHT(c.container_code, 7) = :digits', { digits })
@@ -195,10 +218,9 @@ export class ContainerImportService {
   /**
    * Tìm container theo 7 số cuối ở TẤT CẢ kế hoạch (kể cả hoàn thành) — dùng để báo "đã ghi trước đó".
    */
-  async searchAllByDigits(
-    digits: string,
-  ): Promise<ContainerImport[]> {
-    return this.containerImportsRepository.createQueryBuilder('c')
+  async searchAllByDigits(digits: string): Promise<ContainerImport[]> {
+    return this.containerImportsRepository
+      .createQueryBuilder('c')
       .where('RIGHT(c.container_code, 7) = :digits', { digits })
       .orderBy('c.container_code', 'ASC')
       .getMany();
@@ -223,15 +245,14 @@ export class ContainerImportService {
     return rows.map((r) => {
       const sub: any = (r as any).submissionRef;
       const plan: any = (r as any).shippingLineRef;
-      const recordedBy = sub
-        ? sub.user?.fullName || sub.driverName || ''
-        : '';
+      const recordedBy = sub ? sub.user?.fullName || sub.driverName || '' : '';
       return {
         id: r.id,
         containerCode: r.containerCode,
         type: r.type,
         createdAt: r.createdAt,
         submissionId: r.submissionId,
+        bundleId: r.bundleId,
         recorded: !!r.submissionId,
         recordedBy,
         plan: plan
@@ -259,20 +280,41 @@ export class ContainerImportService {
     return this.containerImportsRepository.findOne({ where });
   }
 
-  async markKeoVeByCode(
-    code: string,
+  /**
+   * Lấy tất cả container thuộc cùng 1 bó trong 1 kế hoạch.
+   */
+  async findBundleMembers(
+    bundleId: string,
     planId: number,
+  ): Promise<ContainerImport[]> {
+    return this.containerImportsRepository.find({
+      where: { bundleId, shippingLineId: planId },
+      order: { id: 'ASC' },
+    });
+  }
+
+  /**
+   * Ghi nhận (claim) toàn bộ container trong bó cho cùng 1 submission.
+   */
+  async claimBundle(
+    bundleId: string,
+    planId: number,
+    submissionId: number,
   ): Promise<void> {
+    await this.containerImportsRepository.update(
+      { bundleId, shippingLineId: planId },
+      { submissionId },
+    );
+  }
+
+  async markKeoVeByCode(code: string, planId: number): Promise<void> {
     await this.containerImportsRepository.update(
       { containerCode: code, shippingLineId: planId },
       { keoVe: true },
     );
   }
 
-  async markVslByCode(
-    code: string,
-    planId: number,
-  ): Promise<void> {
+  async markVslByCode(code: string, planId: number): Promise<void> {
     await this.containerImportsRepository.update(
       { containerCode: code, shippingLineId: planId },
       { veSinhLai: true },

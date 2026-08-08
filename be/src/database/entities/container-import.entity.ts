@@ -1,8 +1,25 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  Index,
+} from 'typeorm';
 import { ShippingLine } from './shipping-line.entity';
 import { Submission } from './submission.entity';
 
-export const CONTAINER_TYPES = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'VSL', 'TIP'] as const;
+export const CONTAINER_TYPES = [
+  'H20',
+  'H40',
+  'V20',
+  'V40',
+  'V20FR',
+  'V40FR',
+  'VSL',
+  'TIP',
+] as const;
 export type ContainerType = (typeof CONTAINER_TYPES)[number];
 
 @Entity('container_imports')
@@ -35,6 +52,9 @@ export class ContainerImport {
 
   @Column({ name: 've_sinh_lai', type: 'boolean', default: false })
   veSinhLai: boolean;
+
+  @Column({ name: 'bundle_id', length: 50, nullable: true })
+  bundleId: string | null;
 
   @ManyToOne(() => Submission, { nullable: true })
   @JoinColumn({ name: 'submission_id' })
