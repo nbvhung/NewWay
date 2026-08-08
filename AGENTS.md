@@ -91,6 +91,7 @@ Role enum: `laixe` | `tonghop` | `hr` | `admin` | `supper_admin`
 | shippingLineId | INTEGER | FK → shipping_lines.id (plan) |
 | importedById | INTEGER | FK → users.id (người import) |
 | submissionId | INTEGER | FK → submissions.id, NULLABLE (đã ghi nhận chưa) |
+| bundleId | VARCHAR(50) | NULLABLE, INDEX `idx_container_imports_bundle` (bundle_id, shipping_line_id) |
 | createdAt | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
 
 ### `shipping_lines`
@@ -397,3 +398,4 @@ EXPO_PUBLIC_API_URL=http://192.168.1.x:4000/api  # IP máy local, mobile cùng W
 12. **Mobile auth** — mobile app không dùng httpOnly cookies. Dùng `POST /api/auth/mobile-login` nhận token JSON, lưu expo-secure-store, gửi Bearer token qua interceptor.
 13. **Zalo Bot** — không thêm lệnh `/xong`; ghi nhận real-time. Kế hoạch `completed` chặn import + ghi. Container trùng 7 số cuối → luôn cho chọn 1/2, không ghi nhận mặc định. STT phải qua bước lọc số (text-parser) vì voice-to-text hay sai/nhiễu.
 14. **Container import** — file định dạng `mã[TAB]loại` (xlsx hoặc txt), loại map qua `normalizeType`, chỉ admin/supper_admin.
+15. **Bó container** — file xlsx có thể nhóm nhiều container thành "Bó" bằng ô merge ở **cột C** (giá trị `Bó`, ví dụ merge `C5:C8`). Khi import, container trong vùng merge cùng cột C sẽ được gán chung `bundle_id` (`Bó 1`, `Bó 2`, ...). Lái xe đọc **1 mã bất kỳ** trong bó → bot ghi nhận **cả bó** cho lái xe đó: cộng số lượng = số container trong bó vào field loại (VD bó 4 V20FR → `vo20fr` +4), claim toàn bộ container trong bó về 1 submission. Bó đã có container được ghi (submissionId) → báo "đã được ghi nhận trước đó" (giống cơ chế trùng lặp). Không có trường hợp bó hỗn hợp nhiều loại.

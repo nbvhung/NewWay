@@ -161,6 +161,9 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-[#0f172a]">{r.containerCode}</span>
                     <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${TYPE_COLORS[r.type] || 'bg-[rgba(0,0,0,0.05)] text-[#64748b]'}`}>{r.type}</span>
+                    {r.bundleId && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(14,165,233,0.15)] text-sky-700">🎁 {r.bundleId}</span>
+                    )}
                     {r.recorded ? (
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(16,185,129,0.15)] text-emerald-700">✅ Đã ghi</span>
                     ) : (
@@ -241,6 +244,9 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-xs font-mono text-[#0f172a] truncate">{item.containerCode}</span>
                       <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${TYPE_COLORS[item.type] || 'bg-[rgba(0,0,0,0.05)] text-[#64748b]'}`}>{item.type}</span>
+                      {item.bundleId && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(14,165,233,0.15)] text-sky-700">🎁 {item.bundleId}</span>
+                      )}
                       {item.submissionId ? (
                         <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(16,185,129,0.15)] text-emerald-700">✅ Đã ghi</span>
                       ) : (
