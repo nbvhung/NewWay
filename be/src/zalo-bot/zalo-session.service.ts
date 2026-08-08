@@ -20,6 +20,11 @@ export interface ZaloSession {
   userFullName?: string;
   pendingCandidates?: PendingCandidate[];
   pendingDigits?: string;
+  reEntry?: {
+    containerCode: string;
+    shippingLineId: number | null;
+    digits: string;
+  };
 }
 
 const SESSION_TTL = 3600;

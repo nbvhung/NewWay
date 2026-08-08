@@ -50,6 +50,10 @@ export class ContainerImportService {
       'VE SINH LAI': 'VSL',
       VESINHLAI: 'VSL',
       'VỆ SINH LẠI': 'VSL',
+      KV: 'KV',
+      'KEO VE': 'KV',
+      KEOVE: 'KV',
+      'KÉO VỀ': 'KV',
       TIP: 'TIP',
     };
     return map[t] || null;
@@ -123,6 +127,8 @@ export class ContainerImportService {
         type: row.type,
         shippingLineId: planId,
         importedById: userId,
+        keoVe: row.type === 'KV',
+        veSinhLai: row.type === 'VSL',
       });
       await this.containerImportsRepository.save(entity);
       imported++;
@@ -251,6 +257,26 @@ export class ContainerImportService {
     };
     if (planId) where.shippingLineId = planId;
     return this.containerImportsRepository.findOne({ where });
+  }
+
+  async markKeoVeByCode(
+    code: string,
+    planId: number,
+  ): Promise<void> {
+    await this.containerImportsRepository.update(
+      { containerCode: code, shippingLineId: planId },
+      { keoVe: true },
+    );
+  }
+
+  async markVslByCode(
+    code: string,
+    planId: number,
+  ): Promise<void> {
+    await this.containerImportsRepository.update(
+      { containerCode: code, shippingLineId: planId },
+      { veSinhLai: true },
+    );
   }
 
   async claim(id: number, submissionId: number): Promise<void> {
