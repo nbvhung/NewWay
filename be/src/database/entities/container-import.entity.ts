@@ -53,7 +53,7 @@ export class ContainerImport {
   @Column({ name: 've_sinh_lai', type: 'boolean', default: false })
   veSinhLai: boolean;
 
-  @Column({ name: 'bundle_id', length: 50, nullable: true })
+  @Column({ name: 'bundle_id', type: 'varchar', length: 50, nullable: true })
   bundleId: string | null;
 
   @ManyToOne(() => Submission, { nullable: true })
