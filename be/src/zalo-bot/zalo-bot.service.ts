@@ -340,10 +340,7 @@ export class ZaloBotService {
     );
   }
 
-  private async sendHelp(
-    chatId: string,
-    zaloUserId: string,
-  ): Promise<void> {
+  private async sendHelp(chatId: string, zaloUserId: string): Promise<void> {
     await this.reply(
       chatId,
       zaloUserId,
@@ -422,7 +419,13 @@ export class ZaloBotService {
       containerCode?: string;
       code?: string;
       type: string;
-      shippingLineRef?: { name?: string; soChuyen?: string; routeName?: string; ngay?: string | null };
+      bundleId?: string | null;
+      shippingLineRef?: {
+        name?: string;
+        soChuyen?: string;
+        routeName?: string;
+        ngay?: string | null;
+      };
       planName?: string;
     }>,
     digits: string,
@@ -432,13 +435,19 @@ export class ZaloBotService {
       const planName =
         c.planName ||
         (sl
-          ? [sl.name, sl.soChuyen, sl.routeName, sl.ngay ? sl.ngay.split('-').reverse().join('-') : '']
+          ? [
+              sl.name,
+              sl.soChuyen,
+              sl.routeName,
+              sl.ngay ? sl.ngay.split('-').reverse().join('-') : '',
+            ]
               .filter(Boolean)
               .join(' / ')
           : '');
+      const bundleNote = c.bundleId ? ` 🎁 (${c.bundleId})` : '';
       return `${i + 1}. ${c.containerCode || c.code} — ${
         TYPE_LABEL[c.type] || c.type
-      }${planName ? ` — ${planName}` : ''}`;
+      }${bundleNote}${planName ? ` — ${planName}` : ''}`;
     });
     return [
       `Có ${candidates.length} container cùng 7 số cuối "${digits}":`,
@@ -472,9 +481,8 @@ export class ZaloBotService {
     await this.sessionService.save(zaloUserId, session);
 
     // Tìm 7 số cuối ở TẤT CẢ kế hoạch CHƯA hoàn thành
-    const candidates = await this.containerImportService.searchActiveByDigits(
-      digits,
-    );
+    const candidates =
+      await this.containerImportService.searchActiveByDigits(digits);
     const pending = candidates.filter((c) => !c.submissionId);
     const claimed = candidates.filter((c) => c.submissionId);
 
@@ -590,12 +598,14 @@ export class ZaloBotService {
       }
 
       // Mỗi mã chỉ ghi được 1 trong 2 loại VSL/KV — chặn ghi đúp
-      const existingContainer =
-        await this.containerImportService.findByCode(
-          re.containerCode,
-          re.shippingLineId,
-        );
-      if (existingContainer && (existingContainer.veSinhLai || existingContainer.keoVe)) {
+      const existingContainer = await this.containerImportService.findByCode(
+        re.containerCode,
+        re.shippingLineId,
+      );
+      if (
+        existingContainer &&
+        (existingContainer.veSinhLai || existingContainer.keoVe)
+      ) {
         await this.reply(
           chatId,
           zaloUserId,
@@ -674,7 +684,12 @@ export class ZaloBotService {
     zaloUserId: string,
     container: Pick<
       ContainerImport,
-      'id' | 'containerCode' | 'type' | 'submissionId' | 'shippingLineId'
+      | 'id'
+      | 'containerCode'
+      | 'type'
+      | 'submissionId'
+      | 'shippingLineId'
+      | 'bundleId'
     >,
     session: any,
   ): Promise<void> {
@@ -725,7 +740,26 @@ export class ZaloBotService {
         return;
       }
 
-      if (container.submissionId) {
+      // Nếu container thuộc bó → lấy cả nhóm, kiểm tra bó đã ghi chưa
+      let members: ContainerImport[] = [container as ContainerImport];
+      if (container.bundleId) {
+        members = await this.containerImportService.findBundleMembers(
+          container.bundleId,
+          container.shippingLineId,
+        );
+        if (members.length === 0) {
+          members = [container as ContainerImport];
+        }
+        const bundleClaimed = members.some((m) => m.submissionId);
+        if (bundleClaimed) {
+          await this.reply(
+            chatId,
+            zaloUserId,
+            `Bó container này đã được ghi nhận trước đó rồi ✅`,
+          );
+          return;
+        }
+      } else if (container.submissionId) {
         await this.reply(
           chatId,
           zaloUserId,
@@ -733,6 +767,8 @@ export class ZaloBotService {
         );
         return;
       }
+
+      const increment = members.length;
 
       let submission = await this.submissionsRepository.findOne({
         where: { userId: user.id, shippingLineId: plan.id },
@@ -746,13 +782,13 @@ export class ZaloBotService {
           shippingLineId: plan.id,
           route: plan.routeName || '',
           driverName: user.fullName,
-          [field]: '1',
+          [field]: String(increment),
         });
-        newTotal = '1';
+        newTotal = String(increment);
         await this.submissionsRepository.save(submission);
       } else {
         const oldVal = String((submission as any)[field] || '');
-        newTotal = String((parseInt(oldVal, 10) || 0) + 1);
+        newTotal = String((parseInt(oldVal, 10) || 0) + increment);
         (submission as any)[field] = newTotal;
         submission.editCount += 1;
         submission.lastEditedAt = new Date();
@@ -767,17 +803,34 @@ export class ZaloBotService {
         await this.editHistoryRepository.save(history);
       }
 
-      await this.containerImportService.claim(container.id, submission.id);
+      if (container.bundleId) {
+        await this.containerImportService.claimBundle(
+          container.bundleId,
+          container.shippingLineId,
+          submission.id,
+        );
+      } else {
+        await this.containerImportService.claim(container.id, submission.id);
+      }
 
       session.pendingCandidates = undefined;
       session.pendingDigits = undefined;
       await this.sessionService.save(zaloUserId, session);
 
-      await this.reply(
-        chatId,
-        zaloUserId,
-        `✅ ${container.containerCode} - ${this.planDisplayName(plan)} — ${label}: ${newTotal}`,
-      );
+      if (members.length > 1) {
+        const codes = members.map((m) => m.containerCode).join(', ');
+        await this.reply(
+          chatId,
+          zaloUserId,
+          `✅ ${container.bundleId} (${members.length} container: ${codes})\n${this.planDisplayName(plan)} — ${label}: ${newTotal}`,
+        );
+      } else {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          `✅ ${container.containerCode} - ${this.planDisplayName(plan)} — ${label}: ${newTotal}`,
+        );
+      }
     } catch (err: any) {
       this.logger.error(`upsertContainer failed: ${err.message}`, err.stack);
       await this.reply(

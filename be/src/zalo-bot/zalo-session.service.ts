@@ -7,6 +7,7 @@ export interface PendingCandidate {
   type: string;
   submissionId: number | null;
   shippingLineId: number | null;
+  bundleId: string | null;
   planName?: string;
 }
 
