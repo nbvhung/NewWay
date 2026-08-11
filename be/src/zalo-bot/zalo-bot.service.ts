@@ -538,7 +538,7 @@ export class ZaloBotService {
         const th3 = !!reEntryTarget.keoVe;
         const lines = th3
           ? [
-              `Container có 7 số cuối ${digits} đã được ghi nhận và đã kéo về rồi.`,
+              `${reEntryTarget.containerCode} đã được ghi nhận và đã kéo về rồi.`,
               'Sếp đang muốn ghi theo kiểu nào ạ?',
               '',
               '1) Vệ sinh lại',
@@ -549,7 +549,7 @@ export class ZaloBotService {
               'Sếp gửi 1, 2, 3 hoặc 4 giúp em nhé.',
             ]
           : [
-              `Container có 7 số cuối ${digits} đã được ghi nhận rồi.`,
+              `${reEntryTarget.containerCode} đã được ghi nhận rồi.`,
               'Sếp đang muốn ghi thêm theo kiểu nào ạ?',
               '',
               '1) Vệ sinh lại',
@@ -562,11 +562,12 @@ export class ZaloBotService {
       } else {
         const alreadyClaimed =
           await this.containerImportService.searchAllByDigits(digits);
-        if (alreadyClaimed.some((c) => c.submissionId)) {
+        const claimedOne = alreadyClaimed.find((c) => c.submissionId);
+        if (claimedOne) {
           await this.reply(
             chatId,
             zaloUserId,
-            `Container có 7 số cuối ${digits} đã được ghi nhận trước đó rồi ✅`,
+            `${claimedOne.containerCode} đã được ghi nhận trước đó rồi ✅`,
           );
         } else {
           // TH2: mã không có trong bất kỳ kế hoạch nào → menu "Vẫn đi / Đọc nhầm"
@@ -896,16 +897,19 @@ export class ZaloBotService {
       await this.reply(
         chatId,
         zaloUserId,
-        `Không tìm thấy container có 7 số cuối ${digits} trong kế hoạch hiện tại.\nSếp gửi lại mã container kẹp giúp em (hoặc gõ "k" nếu không kẹp).`,
+        `Không tìm thấy ${digits} trong kế hoạch hiện tại.\nSếp gửi lại mã container kẹp giúp em (hoặc gõ "k" nếu không kẹp).`,
       );
       return;
     }
     const target = samePlan[0];
     if (!CLAMP_TYPES.has(target.type)) {
+      session.awaitingClamp = undefined;
+      session.clampClaimed = undefined;
+      await this.sessionService.save(zaloUserId, session);
       await this.reply(
         chatId,
         zaloUserId,
-        `Container ${target.containerCode} (${TYPE_LABEL[target.type] || target.type}) không dùng để kẹp được.\nKẹp chỉ được Vỏ 20, Hàng 20 hoặc Vỏ 20FR. Sếp đọc lại giúp em (hoặc gõ "k").`,
+        'OK, Sếp chạy lẻ không kẹp nhé.',
       );
       return;
     }
