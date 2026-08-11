@@ -4,8 +4,7 @@ import axios from 'axios';
 interface SendMessageResponse {
   ok?: boolean;
   result?: { message_id?: string };
-  error_code?: number;
-  description?: string;
+  error?: { code?: number; description?: string };
   message?: string;
 }
 
@@ -76,7 +75,7 @@ export class ZaloApiService {
       );
       if (data && data.ok === false) {
         this.logger.error(
-          `sendMessage error: ${data.error_code} ${data.description || data.message}`,
+          `sendMessage error: ${data.error?.code} ${data.error?.description || data.message}`,
         );
         return false;
       }
