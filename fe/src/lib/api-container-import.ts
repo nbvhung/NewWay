@@ -8,6 +8,7 @@ export interface ContainerImport {
   importedById: number | null;
   submissionId: number | null;
   bundleId: string | null;
+  phatSinh?: boolean;
   createdAt: string;
 }
 
@@ -18,6 +19,8 @@ export interface ContainerSearchResult {
   createdAt: string;
   submissionId: number | null;
   bundleId: string | null;
+  phatSinh?: boolean;
+  importedByName?: string;
   recorded: boolean;
   recordedBy: string | null;
   plan: {
@@ -59,4 +62,10 @@ export const containerImportApi = {
 
   removeByPlan: (planId: number) =>
     api.delete<{ message: string }>(`/admin/container-import/plan/${planId}`),
+
+  classify: (id: number, type: string) =>
+    api.patch<{ id: number; containerCode: string; type: string; submissionId: number }>(
+      `/admin/container-import/${id}/classify`,
+      { type },
+    ),
 };

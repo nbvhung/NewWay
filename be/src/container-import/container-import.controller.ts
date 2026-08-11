@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Delete,
+  Patch,
   Body,
   Param,
   Query,
@@ -14,6 +15,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ContainerImportService } from './container-import.service';
 import { ImportContainerDto } from './dto/import-container.dto';
+import { ClassifyContainerDto } from './dto/classify-container.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -51,6 +53,20 @@ export class ContainerImportController {
   @Get()
   findAll(@Query('planId') planId?: string) {
     return this.containerImportService.findAll(planId ? +planId : undefined);
+  }
+
+  @Patch(':id/classify')
+  classify(
+    @Param('id') id: string,
+    @Body() body: ClassifyContainerDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.containerImportService.classifyPhatSinh(
+      +id,
+      body.type,
+      user.id,
+      user.fullName,
+    );
   }
 
   @Delete('plan/:planId')

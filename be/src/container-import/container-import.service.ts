@@ -8,6 +8,10 @@ import { Repository } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
+import { Submission } from '../database/entities/submission.entity';
+import { EditHistory } from '../database/entities/edit-history.entity';
+import { User } from '../database/entities/user.entity';
+import { TYPE_FIELD_MAP } from '../zalo-bot/type-map';
 
 export interface ParsedContainer {
   code: string;
@@ -28,6 +32,12 @@ export class ContainerImportService {
     private containerImportsRepository: Repository<ContainerImport>,
     @InjectRepository(ShippingLine)
     private shippingLinesRepository: Repository<ShippingLine>,
+    @InjectRepository(Submission)
+    private submissionsRepository: Repository<Submission>,
+    @InjectRepository(EditHistory)
+    private editHistoryRepository: Repository<EditHistory>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
   ) {}
 
   normalizeCode(raw: string): string | null {
@@ -238,6 +248,8 @@ export class ContainerImportService {
       .leftJoinAndSelect('c.submissionRef', 'sub')
       .leftJoin('sub.user', 'u')
       .addSelect(['u.id', 'u.fullName', 'u.username'])
+      .leftJoin('c.importedByRef', 'imp')
+      .addSelect(['imp.id', 'imp.fullName'])
       .where('c.containerCode = :q OR RIGHT(c.containerCode, 7) = :q', { q })
       .orderBy('c.containerCode', 'ASC')
       .take(200);
@@ -245,6 +257,7 @@ export class ContainerImportService {
     return rows.map((r) => {
       const sub: any = (r as any).submissionRef;
       const plan: any = (r as any).shippingLineRef;
+      const importer: any = (r as any).importedByRef;
       const recordedBy = sub ? sub.user?.fullName || sub.driverName || '' : '';
       return {
         id: r.id,
@@ -253,6 +266,8 @@ export class ContainerImportService {
         createdAt: r.createdAt,
         submissionId: r.submissionId,
         bundleId: r.bundleId,
+        phatSinh: !!r.phatSinh,
+        importedByName: importer?.fullName || '',
         recorded: !!r.submissionId,
         recordedBy,
         plan: plan
@@ -323,5 +338,141 @@ export class ContainerImportService {
 
   async claim(id: number, submissionId: number): Promise<void> {
     await this.containerImportsRepository.update(id, { submissionId });
+  }
+
+  /**
+   * Tạo container phát sinh (mã không có trong kế hoạch) qua Zalo bot.
+   * OPS sẽ phân loại type sau bằng classifyPhatSinh.
+   */
+  async createPhatSinh(
+    code: string,
+    planId: number,
+    userId: number,
+  ): Promise<ContainerImport> {
+    const plan = await this.shippingLinesRepository.findOne({
+      where: { id: planId },
+    });
+    if (!plan) {
+      throw new BadRequestException('Không tìm thấy kế hoạch');
+    }
+    if (plan.completed) {
+      throw new BadRequestException(
+        'Kế hoạch đã hoàn thành, không thể thêm container phát sinh',
+      );
+    }
+    const entity = this.containerImportsRepository.create({
+      containerCode: code,
+      type: 'PHATSINH',
+      shippingLineId: planId,
+      importedById: userId,
+      phatSinh: true,
+    });
+    await this.containerImportsRepository.save(entity);
+    return entity;
+  }
+
+  /**
+   * OPS phân loại container phát sinh: đổi type thật + ghi sản lượng
+   * cho tài xế (importedByRef.id) trong kế hoạch của container.
+   */
+  async classifyPhatSinh(
+    id: number,
+    type: string,
+    editedById: number,
+    editedByName: string,
+  ): Promise<any> {
+    const normalized = this.normalizeType(type);
+    if (!normalized) {
+      throw new BadRequestException(`Loại container ${type} không hợp lệ.`);
+    }
+
+    const container = await this.containerImportsRepository.findOne({
+      where: { id },
+    });
+    if (!container) {
+      throw new NotFoundException('Không tìm thấy container');
+    }
+    if (!container.phatSinh) {
+      throw new BadRequestException(
+        'Container này không phải là container phát sinh.',
+      );
+    }
+    if (!container.importedById || !container.shippingLineId) {
+      throw new BadRequestException(
+        'Container phát sinh thiếu tài xế hoặc kế hoạch, không thể phân loại.',
+      );
+    }
+
+    const plan = await this.shippingLinesRepository.findOne({
+      where: { id: container.shippingLineId },
+    });
+    if (!plan) {
+      throw new NotFoundException('Kế hoạch không còn tồn tại');
+    }
+    if (plan.completed) {
+      throw new BadRequestException(
+        'Kế hoạch đã hoàn thành, không thể ghi nhận thêm.',
+      );
+    }
+
+    const field = TYPE_FIELD_MAP[normalized];
+    if (!field) {
+      throw new BadRequestException(
+        `Loại container ${normalized} không có field ghi nhận.`,
+      );
+    }
+
+    const submission = await this.findOrCreateSubmission(
+      container.importedById,
+      plan,
+    );
+    const oldVal = String((submission as any)[field] || '');
+    const newTotal = String((parseInt(oldVal, 10) || 0) + 1);
+    (submission as any)[field] = newTotal;
+    submission.editCount += 1;
+    submission.lastEditedAt = new Date();
+    await this.submissionsRepository.save(submission);
+
+    const history = this.editHistoryRepository.create({
+      submissionId: submission.id,
+      editedById,
+      editedByName,
+      changes: JSON.stringify({ [field]: { old: oldVal, new: newTotal } }),
+    });
+    await this.editHistoryRepository.save(history);
+
+    container.type = normalized;
+    container.phatSinh = false;
+    container.submissionId = submission.id;
+    await this.containerImportsRepository.save(container);
+
+    return {
+      id: container.id,
+      containerCode: container.containerCode,
+      type: normalized,
+      submissionId: submission.id,
+    };
+  }
+
+  private async findOrCreateSubmission(
+    userId: number,
+    plan: ShippingLine,
+  ): Promise<Submission> {
+    const planId = plan.id;
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    let submission = await this.submissionsRepository.findOne({
+      where: { userId, shippingLineId: planId },
+    });
+    if (!submission) {
+      submission = this.submissionsRepository.create({
+        userId,
+        shippingLine: plan.name,
+        shippingLineId: planId,
+        route: plan.routeName || '',
+        driverName: user?.fullName || '',
+      });
+      await this.submissionsRepository.save(submission);
+    }
+    return submission;
   }
 }

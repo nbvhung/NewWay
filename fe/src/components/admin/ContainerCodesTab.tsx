@@ -24,10 +24,14 @@ const TYPE_COLORS: Record<string, string> = {
 const planDisplayName = (p: ShippingLine) =>
   [p.name, p.soChuyen, p.routeName, fmtNgay(p.ngay)].filter(Boolean).join(' / ');
 
+const VALID_TYPES = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'VSL', 'TIP'];
+
 export function ContainerCodesTab({ allShippingLines, toast }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ContainerSearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [classifyingId, setClassifyingId] = useState<number | null>(null);
+  const [classifyType, setClassifyType] = useState<string>('H20');
 
   const [planId, setPlanId] = useState<number | ''>('');
   const [items, setItems] = useState<ContainerImport[]>([]);
@@ -67,6 +71,20 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
       setSearching(false);
     }
   }, [searchQuery, toast]);
+
+  const classify = async (r: ContainerSearchResult) => {
+    if (!confirm(`Phân loại container phát sinh ${r.containerCode} thành ${classifyType}?\nHệ thống sẽ ghi nhận sản lượng cho tài xế ${r.importedByName || '—'} tương ứng.`)) return;
+    setClassifyingId(r.id);
+    try {
+      const res = await containerImportApi.classify(r.id, classifyType);
+      toast(`Đã phân loại ${res.data.containerCode} thành ${res.data.type} và ghi nhận sản lượng ✅`, 'success');
+      if (searchQuery.trim()) await doSearch();
+    } catch (err: any) {
+      toast(err.message, 'error');
+    } finally {
+      setClassifyingId(null);
+    }
+  };
 
   const upload = async () => {
     if (!selectedPlan) return;
@@ -164,17 +182,37 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
                     {r.bundleId && (
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(14,165,233,0.15)] text-sky-700">🎁 {r.bundleId}</span>
                     )}
+                    {r.phatSinh && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.15)] text-red-600">🚩 Phát sinh</span>
+                    )}
                     {r.recorded ? (
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(16,185,129,0.15)] text-emerald-700">✅ Đã ghi</span>
+                    ) : r.phatSinh ? (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.15)] text-red-600">⏳ Chờ phân loại</span>
                     ) : (
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.15)] text-amber-700">⏳ Chưa ghi</span>
                     )}
                   </div>
-                  <button onClick={() => removeOne({ ...r, shippingLineId: r.plan?.id ?? null, importedById: null } as ContainerImport)}
-                    className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">✕</button>
+                  <div className="flex items-center gap-1.5">
+                    {r.phatSinh && !r.recorded && (
+                      <>
+                        <select value={classifyType} onChange={e => setClassifyType(e.target.value)}
+                          className="px-1.5 py-0.5 rounded text-[9px] border border-[rgba(0,0,0,0.1)] text-[#0f172a] outline-none cursor-pointer">
+                          {VALID_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        <button onClick={() => classify(r)} disabled={classifyingId === r.id}
+                          className="px-2 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white disabled:opacity-50 cursor-pointer">
+                          {classifyingId === r.id ? 'Đang...' : 'Phân loại'}
+                        </button>
+                      </>
+                    )}
+                    <button onClick={() => removeOne({ ...r, shippingLineId: r.plan?.id ?? null, importedById: null } as ContainerImport)}
+                      className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">✕</button>
+                  </div>
                 </div>
                 <div className="text-[10px] text-[#64748b] mt-1">
                   Kế hoạch: {r.plan ? `${r.plan.name}${r.plan.completed ? ' (đã hoàn thành)' : ''}` : '—'}
+                  {r.phatSinh && r.importedByName && <span> · Tài xế: {r.importedByName}</span>}
                   {r.recorded && <span> · Người ghi: {r.recordedBy || '—'}</span>}
                 </div>
               </div>
@@ -246,6 +284,9 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
                       <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${TYPE_COLORS[item.type] || 'bg-[rgba(0,0,0,0.05)] text-[#64748b]'}`}>{item.type}</span>
                       {item.bundleId && (
                         <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(14,165,233,0.15)] text-sky-700">🎁 {item.bundleId}</span>
+                      )}
+                      {item.phatSinh && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.15)] text-red-600">🚩 Phát sinh</span>
                       )}
                       {item.submissionId ? (
                         <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(16,185,129,0.15)] text-emerald-700">✅ Đã ghi</span>

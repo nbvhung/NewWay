@@ -16,6 +16,12 @@ export interface PendingPlanOption {
   name: string;
 }
 
+export interface ClampClaimed {
+  containerCode: string;
+  shippingLineId: number | null;
+  digits: string;
+}
+
 export interface ZaloSession {
   userId?: number;
   userFullName?: string;
@@ -25,6 +31,17 @@ export interface ZaloSession {
     containerCode: string;
     shippingLineId: number | null;
     digits: string;
+    keoVe: boolean;
+    containerType: string;
+  };
+  awaitingClamp?: {
+    mainPlanId: number | null;
+  };
+  clampClaimed?: ClampClaimed;
+  phatSinh?: {
+    digits: string;
+    pendingPlanOptions: PendingPlanOption[];
+    selectedPlanId?: number;
   };
 }
 

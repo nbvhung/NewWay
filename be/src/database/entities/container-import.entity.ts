@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { ShippingLine } from './shipping-line.entity';
 import { Submission } from './submission.entity';
+import { User } from './user.entity';
 
 export const CONTAINER_TYPES = [
   'H20',
@@ -44,6 +45,10 @@ export class ContainerImport {
   @Column({ name: 'imported_by_id', type: 'int', nullable: true })
   importedById: number | null;
 
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'imported_by_id' })
+  importedByRef: User;
+
   @Column({ name: 'submission_id', type: 'int', nullable: true })
   submissionId: number | null;
 
@@ -55,6 +60,9 @@ export class ContainerImport {
 
   @Column({ name: 'bundle_id', type: 'varchar', length: 50, nullable: true })
   bundleId: string | null;
+
+  @Column({ name: 'phat_sinh', type: 'boolean', default: false })
+  phatSinh: boolean;
 
   @ManyToOne(() => Submission, { nullable: true })
   @JoinColumn({ name: 'submission_id' })

@@ -183,9 +183,45 @@ function toCandidateCodes(digitStr: string): string[] {
   } else if (clean.length % 7 === 0) {
     for (let i = 0; i < clean.length; i += 7) out.push(clean.slice(i, i + 7));
   } else {
-    for (let i = 0; i + 7 <= clean.length; i++) out.push(clean.slice(i, i + 7));
+    // Không dùng cửa sổ trượt cho chuỗi không chia hết cho 7 —
+    // tránh false positive với SĐT 10 số, mã ngẫu nhiên dài hơn 7 số.
+    return [];
   }
   return [...new Set(out)];
+}
+
+const FULL_CODE_RE = /[A-Za-z]{4}\s*\d{7}/g;
+
+/**
+ * Trích xuất mã container đầy đủ dạng "BMOU6823203" (4 chữ cái + 7 chữ số,
+ * có thể có khoảng trắng giữa chữ cái và số) từ văn bản,
+ * trả về 7 số cuối. Dùng để xác nhận mã hoàn chỉnh trong luồng "phát sinh".
+ */
+export function extractFullContainerCode(text: string): string[] {
+  const out: string[] = [];
+  const t = text || '';
+  FULL_CODE_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = FULL_CODE_RE.exec(t)) !== null) {
+    const digits = m[0].replace(/[^0-9]/g, '');
+    const last7 = digits.slice(-7);
+    if (last7.length === 7) out.push(last7);
+  }
+  return [...new Set(out)];
+}
+
+/**
+ * Trích chuỗi mã container đầy đủ giữ nguyên định dạng (vd "BMOU6823203").
+ * Trả về null nếu không có mã nào. Dùng để ghi container phát sinh.
+ */
+export function extractFullCodeString(text: string): string | null {
+  const t = text || '';
+  FULL_CODE_RE.lastIndex = 0;
+  const m = FULL_CODE_RE.exec(t);
+  if (!m) return null;
+  const raw = m[0].replace(/\s+/g, '').toUpperCase();
+  if (!/^[A-Z]{4}\d{7}$/.test(raw)) return null;
+  return raw;
 }
 
 /**
@@ -238,5 +274,7 @@ export function extractContainerCodes(text: string): string[] {
   for (const s of numberStrings) {
     candidates.push(...toCandidateCodes(s));
   }
+  // Mã container đầy đủ dạng BMOU6823203 (chữ + số liền nhau)
+  candidates.push(...extractFullContainerCode(text));
   return [...new Set(candidates)];
 }
