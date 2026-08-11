@@ -559,7 +559,7 @@ export class SubmissionsService {
 
         // Row 7: Sub-header
         const shRow = ws2.getRow(7);
-        const shCells = ['', '', '', '', '20\'', '40\'', '20\'', '40\'', '20FR', '40FR', '(Chuyến)', '(Chuyến)', '(x 1.000đ)', ''];
+        const shCells = ['', '', '', '', '20\'', '40\'', '20\'', '40\'', 'V20FR', 'V40FR', '(Chuyến)', '(Chuyến)', '(x 1.000đ)', ''];
         shCells.forEach((v, i) => { shRow.getCell(i + 1).value = v; });
         shRow.eachCell((cell) => {
           cell.font = { bold: true, size: 9 };
