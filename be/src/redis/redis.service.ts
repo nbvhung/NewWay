@@ -64,6 +64,16 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     await this.safe(() => this.client.del(key), undefined);
   }
 
+  /** Push vào cuối Redis LIST (FIFO). Trả số phần tử sau push (0 nếu lỗi). */
+  async rpush(key: string, value: string): Promise<number> {
+    return this.safe(() => this.client.rpush(key, value), 0);
+  }
+
+  /** Số phần tử hiện có trong LIST. */
+  async llen(key: string): Promise<number> {
+    return this.safe(() => this.client.llen(key), 0);
+  }
+
   async exists(key: string): Promise<boolean> {
     return this.safe(() => this.client.exists(key).then((r) => r === 1), false);
   }

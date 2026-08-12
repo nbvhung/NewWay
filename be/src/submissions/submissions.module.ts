@@ -8,9 +8,10 @@ import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Route } from '../database/entities/route.entity';
 import { User } from '../database/entities/user.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
+import { ContainerClaim } from '../database/entities/container-claim.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Submission, EditHistory, ShippingLine, Route, User, ContainerImport])],
+  imports: [TypeOrmModule.forFeature([Submission, EditHistory, ShippingLine, Route, User, ContainerImport, ContainerClaim])],
   controllers: [SubmissionsController],
   providers: [SubmissionsService],
 })

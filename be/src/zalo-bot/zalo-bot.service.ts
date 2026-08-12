@@ -8,6 +8,7 @@ import { extractContainerCodes, extractFullCodeString } from './text-parser';
 import { TYPE_FIELD_MAP, TYPE_LABEL, CLAMP_TYPES } from './type-map';
 import { ContainerImportService } from '../container-import/container-import.service';
 import { ZaloMessagesService } from '../zalo-messages/zalo-messages.service';
+import { ZaloOpsNotifierService } from './zalo-ops-notifier.service';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { User } from '../database/entities/user.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
@@ -29,6 +30,9 @@ export interface ZaloEvent {
   [key: string]: any;
 }
 
+const PENDING_TTL_MS = 5 * 60 * 1000;
+const CANCEL_PATTERN = /^(hủy|huy|thoi|bo qua|bỏ qua|cancel|\/huy)$/i;
+
 @Injectable()
 export class ZaloBotService {
   private readonly logger = new Logger(ZaloBotService.name);
@@ -39,6 +43,7 @@ export class ZaloBotService {
     private sessionService: ZaloSessionService,
     private containerImportService: ContainerImportService,
     private zaloMessagesService: ZaloMessagesService,
+    private opsNotifier: ZaloOpsNotifierService,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     @InjectRepository(ShippingLine)
@@ -129,6 +134,27 @@ export class ZaloBotService {
     return [sl.name, sl.soChuyen, sl.routeName, ngay]
       .filter(Boolean)
       .join(' / ');
+  }
+
+  private isDriverAssigned(plan: ShippingLine, userId?: number): boolean {
+    if (!userId) return false;
+    if (plan.allDrivers) return true;
+    try {
+      const ids = JSON.parse(plan.driverIds || '[]');
+      return Array.isArray(ids) && ids.includes(userId);
+    } catch {
+      return false;
+    }
+  }
+
+  private resetPending(session: any): void {
+    session.reEntry = undefined;
+    session.pendingCandidates = undefined;
+    session.pendingDigits = undefined;
+    session.awaitingClamp = undefined;
+    session.clampClaimed = undefined;
+    session.phatSinh = undefined;
+    session.pendingAt = undefined;
   }
 
   async handleEvent(event: ZaloEvent): Promise<void> {
@@ -242,6 +268,39 @@ export class ZaloBotService {
       }
     }
 
+    const hasPending =
+      session.reEntry ||
+      session.clampClaimed ||
+      session.awaitingClamp ||
+      session.phatSinh ||
+      (session.pendingCandidates?.length ?? 0) > 0;
+
+    if (hasPending) {
+      if (CANCEL_PATTERN.test(text)) {
+        this.resetPending(session);
+        await this.sessionService.save(zaloUserId, session);
+        await this.reply(
+          chatId,
+          zaloUserId,
+          '✅ Đã hủy thao tác đang chờ. Sếp gửi 7 số cuối mã container giúp em nhé.',
+        );
+        return;
+      }
+      if (
+        session.pendingAt &&
+        Date.now() - session.pendingAt > PENDING_TTL_MS
+      ) {
+        this.resetPending(session);
+        await this.sessionService.save(zaloUserId, session);
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Thao tác trước đã quá lâu rồi ạ. Sếp gửi lại 7 số cuối mã container giúp em nhé.',
+        );
+        return;
+      }
+    }
+
     if (session.clampClaimed) {
       if (/^\d{1,2}$/.test(text)) {
         await this.handleClampClaimedPick(chatId, zaloUserId, text, session);
@@ -249,7 +308,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          'Sếp chọn giúp em: 1 = Vẫn kéo, 2 = Nhầm, đọc lại.',
+          'Sếp chọn giúp em: 1 = Vẫn kéo, 2 = Nhầm, đọc lại (hoặc gõ "hủy" để thoát).',
         );
       }
       return;
@@ -309,6 +368,8 @@ export class ZaloBotService {
         const th3 = !!session.reEntry.keoVe;
         if ((th3 && choice === 4) || (!th3 && choice === 3)) {
           session.reEntry = undefined;
+          session.pendingCandidates = undefined;
+          session.pendingDigits = undefined;
           await this.sessionService.save(zaloUserId, session);
           await this.reply(
             chatId,
@@ -330,8 +391,8 @@ export class ZaloBotService {
           chatId,
           zaloUserId,
           th3
-            ? 'Chưa hợp lệ. Sếp chọn giúp em: 1 = Vệ sinh lại, 2 = Kéo Về, 3 = Vẫn đi, 4 = bỏ qua.'
-            : 'Chưa hợp lệ. Sếp chọn giúp em: 1 = Vệ sinh lại, 2 = Kéo Về, 3 = bỏ qua.',
+            ? 'Chưa hợp lệ. Sếp chọn giúp em: 1 = Vệ sinh lại, 2 = Kéo Về, 3 = Vẫn đi, 4 = bỏ qua (hoặc gõ "hủy" để thoát).'
+            : 'Chưa hợp lệ. Sếp chọn giúp em: 1 = Vệ sinh lại, 2 = Kéo Về, 3 = bỏ qua (hoặc gõ "hủy" để thoát).',
         );
         return;
       }
@@ -339,8 +400,8 @@ export class ZaloBotService {
         chatId,
         zaloUserId,
         session.reEntry.keoVe
-          ? 'Sếp chọn giúp em: 1 = Vệ sinh lại, 2 = Kéo Về, 3 = Vẫn đi, 4 = bỏ qua.'
-          : 'Sếp chọn giúp em: 1 = Vệ sinh lại, 2 = Kéo Về, 3 = bỏ qua.',
+          ? 'Sếp chọn giúp em: 1 = Vệ sinh lại, 2 = Kéo Về, 3 = Vẫn đi, 4 = bỏ qua (hoặc gõ "hủy" để thoát).'
+          : 'Sếp chọn giúp em: 1 = Vệ sinh lại, 2 = Kéo Về, 3 = bỏ qua (hoặc gõ "hủy" để thoát).',
       );
       return;
     }
@@ -354,7 +415,17 @@ export class ZaloBotService {
         (c: any) => c.containerCode.toLowerCase() === text.toLowerCase(),
       );
       if (byCode) {
-        await this.upsertContainer(chatId, zaloUserId, byCode, session);
+        if (byCode.submissionId) {
+          await this.setupReEntry(
+            chatId,
+            zaloUserId,
+            byCode,
+            session.pendingDigits || '',
+            session,
+          );
+        } else {
+          await this.upsertContainer(chatId, zaloUserId, byCode, session);
+        }
         return;
       }
       await this.reply(
@@ -442,7 +513,17 @@ export class ZaloBotService {
       await this.reply(
         chatId,
         zaloUserId,
-        'Số Sếp gửi chưa hợp lệ. Sếp hãy gửi đúng số thứ tự (1, 2, ... ) trong danh sách container vừa hiển thị để chọn giúp em nhé.',
+        'Số Sếp gửi chưa hợp lệ. Sếp hãy gửi đúng số thứ tự (1, 2, ... ) trong danh sách container vừa hiển thị để chọn giúp em nhé (hoặc gõ "hủy" để thoát).',
+      );
+      return;
+    }
+    if (candidate.submissionId) {
+      await this.setupReEntry(
+        chatId,
+        zaloUserId,
+        candidate,
+        session.pendingDigits || '',
+        session,
       );
       return;
     }
@@ -454,6 +535,7 @@ export class ZaloBotService {
       containerCode?: string;
       code?: string;
       type: string;
+      submissionId?: number | null;
       bundleId?: string | null;
       shippingLineRef?: {
         name?: string;
@@ -480,9 +562,10 @@ export class ZaloBotService {
               .join(' / ')
           : '');
       const bundleNote = c.bundleId ? ` 🎁 (${c.bundleId})` : '';
+      const claimedNote = c.submissionId ? ' — đã ghi nhận trước đó' : '';
       return `${i + 1}. ${c.containerCode || c.code} — ${
         TYPE_LABEL[c.type] || c.type
-      }${bundleNote}${planName ? ` — ${planName}` : ''}`;
+      }${claimedNote}${bundleNote}${planName ? ` — ${planName}` : ''}`;
     });
     return [
       `Có ${candidates.length} container cùng 7 số cuối "${digits}":`,
@@ -518,47 +601,39 @@ export class ZaloBotService {
     session.awaitingClamp = undefined;
     await this.sessionService.save(zaloUserId, session);
 
-    // Tìm 7 số cuối ở TẤT CẢ kế hoạch CHƯA hoàn thành
-    const candidates =
-      await this.containerImportService.searchActiveByDigits(digits);
+    // Tìm 7 số cuối ở TẤT CẢ kế hoạch CHƯA hoàn thành được phân công cho lái xe
+    const candidates = await this.containerImportService.searchActiveByDigits(
+      digits,
+      session.userId,
+    );
     const pending = candidates.filter((c) => !c.submissionId);
     const claimed = candidates.filter((c) => c.submissionId);
 
+    // Có ≥ 2 container trùng 7 số cuối → LUÔN hiện danh sách để tài xế chọn,
+    // kể cả khi các cont khác đã được ghi nhận trước đó (kể cả pending lẫn claimed).
+    if (pending.length + claimed.length > 1) {
+      session.pendingCandidates = [...pending, ...claimed];
+      session.pendingDigits = digits;
+      session.reEntry = undefined;
+      session.pendingAt = Date.now();
+      await this.sessionService.save(zaloUserId, session);
+      await this.reply(
+        chatId,
+        zaloUserId,
+        this.formatCandidates([...pending, ...claimed], digits),
+      );
+      return;
+    }
+
     if (pending.length === 0) {
-      if (claimed.length > 0) {
-        const reEntryTarget = claimed[0];
-        session.reEntry = {
-          containerCode: reEntryTarget.containerCode,
-          shippingLineId: reEntryTarget.shippingLineId,
+      if (claimed.length === 1) {
+        await this.setupReEntry(
+          chatId,
+          zaloUserId,
+          claimed[0],
           digits,
-          keoVe: !!reEntryTarget.keoVe,
-          containerType: reEntryTarget.type,
-        };
-        await this.sessionService.save(zaloUserId, session);
-        const th3 = !!reEntryTarget.keoVe;
-        const lines = th3
-          ? [
-              `${reEntryTarget.containerCode} đã được ghi nhận và đã kéo về rồi.`,
-              'Sếp đang muốn ghi theo kiểu nào ạ?',
-              '',
-              '1) Vệ sinh lại',
-              '2) Kéo Về',
-              '3) Vẫn đi',
-              '4) Sếp đọc nhầm (bỏ qua)',
-              '',
-              'Sếp gửi 1, 2, 3 hoặc 4 giúp em nhé.',
-            ]
-          : [
-              `${reEntryTarget.containerCode} đã được ghi nhận rồi.`,
-              'Sếp đang muốn ghi thêm theo kiểu nào ạ?',
-              '',
-              '1) Vệ sinh lại',
-              '2) Kéo Về',
-              '3) Sếp đọc nhầm (bỏ qua)',
-              '',
-              'Sếp gửi 1, 2 hoặc 3 giúp em nhé.',
-            ];
-        await this.reply(chatId, zaloUserId, lines.join('\n'));
+          session,
+        );
       } else {
         const alreadyClaimed =
           await this.containerImportService.searchAllByDigits(digits);
@@ -570,19 +645,20 @@ export class ZaloBotService {
             `${claimedOne.containerCode} đã được ghi nhận trước đó rồi ✅`,
           );
         } else {
-          // TH2: mã không có trong bất kỳ kế hoạch nào → menu "Vẫn đi / Đọc nhầm"
+          // TH2: mã không có trong kế hoạch nào được phân công → menu "Vẫn đi / Đọc nhầm"
           session.phatSinh = {
             digits,
             pendingPlanOptions: [],
           };
           session.pendingCandidates = undefined;
           session.pendingDigits = undefined;
+          session.pendingAt = Date.now();
           await this.sessionService.save(zaloUserId, session);
           await this.reply(
             chatId,
             zaloUserId,
             [
-              `Không tìm thấy container có 7 số cuối ${digits} trong kế hoạch nào.`,
+              `Không tìm thấy container có 7 số cuối ${digits} trong kế hoạch nào được phân công cho Sếp.`,
               '',
               '1) Vẫn đi (container phát sinh)',
               '2) Sếp đọc nhầm (bỏ qua)',
@@ -595,19 +671,60 @@ export class ZaloBotService {
       return;
     }
 
+    // Duy nhất 1 container chưa ghi nhận trong kế hoạch được phân công → ghi luôn
     if (pending.length === 1) {
       await this.upsertContainer(chatId, zaloUserId, pending[0], session);
       return;
     }
+  }
 
-    session.pendingCandidates = pending;
-    session.pendingDigits = digits;
+  private async setupReEntry(
+    chatId: string,
+    zaloUserId: string,
+    target: {
+      containerCode: string;
+      shippingLineId: number | null;
+      type: string;
+      keoVe?: boolean;
+    },
+    digits: string,
+    session: any,
+  ): Promise<void> {
+    session.reEntry = {
+      containerCode: target.containerCode,
+      shippingLineId: target.shippingLineId,
+      digits,
+      keoVe: !!target.keoVe,
+      containerType: target.type,
+    };
+    session.pendingCandidates = undefined;
+    session.pendingDigits = undefined;
+    session.pendingAt = Date.now();
     await this.sessionService.save(zaloUserId, session);
-    await this.reply(
-      chatId,
-      zaloUserId,
-      this.formatCandidates(pending, digits),
-    );
+    const th3 = !!target.keoVe;
+    const lines = th3
+      ? [
+          `${target.containerCode} đã được ghi nhận và đã kéo về rồi.`,
+          'Sếp đang muốn ghi theo kiểu nào ạ?',
+          '',
+          '1) Vệ sinh lại',
+          '2) Kéo Về',
+          '3) Vẫn đi',
+          '4) Sếp đọc nhầm (bỏ qua)',
+          '',
+          'Sếp gửi 1, 2, 3 hoặc 4 giúp em nhé.',
+        ]
+      : [
+          `${target.containerCode} đã được ghi nhận rồi.`,
+          'Sếp đang muốn ghi thêm theo kiểu nào ạ?',
+          '',
+          '1) Vệ sinh lại',
+          '2) Kéo Về',
+          '3) Sếp đọc nhầm (bỏ qua)',
+          '',
+          'Sếp gửi 1, 2 hoặc 3 giúp em nhé.',
+        ];
+    await this.reply(chatId, zaloUserId, lines.join('\n'));
   }
 
   private async reEntryRecord(
@@ -706,12 +823,28 @@ export class ZaloBotService {
           re.containerCode,
           re.shippingLineId,
         );
+        await this.containerImportService.recordClaimForCode(
+          re.containerCode,
+          re.shippingLineId,
+          submission.id,
+          'KV',
+        );
       } else if (type === 'VSL' && re.shippingLineId) {
         await this.containerImportService.markVslByCode(
           re.containerCode,
           re.shippingLineId,
         );
+        await this.containerImportService.recordClaimForCode(
+          re.containerCode,
+          re.shippingLineId,
+          submission.id,
+          'VSL',
+        );
       }
+
+      void this.opsNotifier.notifyOps(
+        `🚚 ${user.fullName} - ${re.containerCode} — "${plan.name}"`,
+      );
 
       await this.reply(
         chatId,
@@ -753,25 +886,28 @@ export class ZaloBotService {
         const plans = await this.shippingLinesRepository.find({
           where: { completed: false },
           order: { id: 'DESC' },
-          take: 20,
+          take: 100,
         });
-        if (plans.length === 0) {
+        const assigned = plans.filter(
+          (p) => p.allDrivers || this.isDriverAssigned(p, session.userId),
+        );
+        if (assigned.length === 0) {
           session.phatSinh = undefined;
           await this.sessionService.save(zaloUserId, session);
           await this.reply(
             chatId,
             zaloUserId,
-            'Hiện không có kế hoạch nào đang chạy để ghi nhận. Sếp liên hệ OPS nhé.',
+            'Hiện không có kế hoạch nào được phân công đang chạy để ghi nhận. Sếp liên hệ OPS nhé.',
           );
           return;
         }
-        ps.pendingPlanOptions = plans.map((p) => ({
+        ps.pendingPlanOptions = assigned.map((p) => ({
           id: p.id,
           name: this.planDisplayName(p),
         }));
         session.phatSinh = ps;
         await this.sessionService.save(zaloUserId, session);
-        const lines = plans.map(
+        const lines = assigned.map(
           (p, i) => `${i + 1}. ${this.planDisplayName(p)}`,
         );
         await this.reply(
@@ -789,7 +925,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          'Sếp gửi 1 hoặc 2 giúp em nhé (1 = Vẫn đi, 2 = bỏ qua).',
+          'Sếp gửi 1 hoặc 2 giúp em nhé (1 = Vẫn đi, 2 = bỏ qua, hoặc gõ "hủy" để thoát).',
         );
       }
       return;
@@ -864,6 +1000,9 @@ export class ZaloBotService {
       session.pendingCandidates = undefined;
       session.pendingDigits = undefined;
       await this.sessionService.save(zaloUserId, session);
+      void this.opsNotifier.notifyOps(
+        `🚚 ${user.fullName} - ${fullCode} — "${plan ? plan.name : ''}"`,
+      );
       await this.reply(
         chatId,
         zaloUserId,
@@ -889,8 +1028,10 @@ export class ZaloBotService {
     session: any,
   ): Promise<void> {
     const mainPlanId = session.awaitingClamp?.mainPlanId ?? null;
-    const candidates =
-      await this.containerImportService.searchActiveByDigits(digits);
+    const candidates = await this.containerImportService.searchActiveByDigits(
+      digits,
+      session.userId,
+    );
     // Kẹp phải thuộc cùng kế hoạch với container chính
     const samePlan = candidates.filter((c) => c.shippingLineId === mainPlanId);
     if (samePlan.length === 0) {
@@ -906,11 +1047,7 @@ export class ZaloBotService {
       session.awaitingClamp = undefined;
       session.clampClaimed = undefined;
       await this.sessionService.save(zaloUserId, session);
-      await this.reply(
-        chatId,
-        zaloUserId,
-        'OK, Sếp chạy lẻ không kẹp nhé.',
-      );
+      await this.reply(chatId, zaloUserId, 'OK, Sếp chạy lẻ không kẹp nhé.');
       return;
     }
     if (target.submissionId) {
@@ -923,6 +1060,7 @@ export class ZaloBotService {
       session.awaitingClamp = undefined;
       session.pendingCandidates = undefined;
       session.pendingDigits = undefined;
+      session.pendingAt = Date.now();
       await this.sessionService.save(zaloUserId, session);
       await this.reply(
         chatId,
@@ -957,6 +1095,7 @@ export class ZaloBotService {
       session.awaitingClamp = {
         mainPlanId: cc.shippingLineId,
       };
+      session.pendingAt = Date.now();
       await this.sessionService.save(zaloUserId, session);
       await this.reply(
         chatId,
@@ -1089,6 +1228,19 @@ export class ZaloBotService {
       session.pendingDigits = undefined;
       await this.sessionService.save(zaloUserId, session);
 
+      if (re.shippingLineId) {
+        await this.containerImportService.recordClaimForCode(
+          re.containerCode,
+          re.shippingLineId,
+          submission.id,
+          'REGO',
+        );
+      }
+
+      void this.opsNotifier.notifyOps(
+        `🚚 ${user.fullName} - ${re.containerCode} — "${plan.name}"`,
+      );
+
       await this.reply(
         chatId,
         zaloUserId,
@@ -1098,6 +1250,7 @@ export class ZaloBotService {
       // Nếu container thật là V20/V20FR → hỏi kẹp (theo quyết định A)
       if (re.containerType === 'V20' || re.containerType === 'V20FR') {
         session.awaitingClamp = { mainPlanId: plan.id };
+        session.pendingAt = Date.now();
         await this.sessionService.save(zaloUserId, session);
         await this.reply(
           chatId,
@@ -1261,8 +1414,18 @@ export class ZaloBotService {
           container.shippingLineId,
           submission.id,
         );
+        await this.containerImportService.recordClaims(
+          members.map((m) => m.id),
+          submission.id,
+          fromClamp ? 'CLAMP' : 'CLAIM',
+        );
       } else {
         await this.containerImportService.claim(container.id, submission.id);
+        await this.containerImportService.recordClaims(
+          [container.id],
+          submission.id,
+          fromClamp ? 'CLAMP' : 'CLAIM',
+        );
       }
 
       session.pendingCandidates = undefined;
@@ -1271,6 +1434,10 @@ export class ZaloBotService {
       session.clampClaimed = undefined;
       session.awaitingClamp = undefined;
       await this.sessionService.save(zaloUserId, session);
+
+      void this.opsNotifier.notifyOps(
+        `🚚 ${user.fullName} - ${container.containerCode} — "${plan.name}"`,
+      );
 
       const planName = this.planDisplayName(plan);
       if (members.length > 1) {
@@ -1294,6 +1461,7 @@ export class ZaloBotService {
         (container.type === 'V20' || container.type === 'V20FR')
       ) {
         session.awaitingClamp = { mainPlanId: plan.id };
+        session.pendingAt = Date.now();
         await this.sessionService.save(zaloUserId, session);
         await this.reply(
           chatId,

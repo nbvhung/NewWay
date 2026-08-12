@@ -9,6 +9,7 @@ import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Route } from '../database/entities/route.entity';
 import { User } from '../database/entities/user.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
+import { ContainerClaim } from '../database/entities/container-claim.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateSubmissionDto } from './dto/update-submission.dto';
 
@@ -27,6 +28,8 @@ export class SubmissionsService {
     private usersRepository: Repository<User>,
     @InjectRepository(ContainerImport)
     private containerImportsRepository: Repository<ContainerImport>,
+    @InjectRepository(ContainerClaim)
+    private containerClaimsRepository: Repository<ContainerClaim>,
   ) {}
 
   async create(dto: CreateSubmissionDto, userId: number, fullName: string, userRole?: string) {
@@ -685,17 +688,34 @@ export class SubmissionsService {
     }
 
     // Sheet "Container - Người chạy" (OPS): ghi lại số container + ai chạy/ghi nhận
+    // Mỗi container có thể xuất NHIỀU dòng (1 dòng cho mỗi lần xác nhận/lái xe),
+    // container nào có >1 xác nhận → bôi vàng toàn bộ các dòng của nó.
     if (role === 'ops') {
       const qb = this.containerImportsRepository
         .createQueryBuilder('c')
-        .leftJoinAndSelect('c.submissionRef', 'sub')
-        .leftJoinAndSelect('sub.user', 'u')
         .leftJoinAndSelect('c.shippingLineRef', 'sl');
       if (filter.shippingLineId) {
         qb.where('c.shippingLineId = :planId', { planId: filter.shippingLineId });
       }
       qb.orderBy('c.containerCode', 'ASC');
       const containers = await qb.getMany();
+
+      const claims = await this.containerClaimsRepository
+        .createQueryBuilder('cl')
+        .leftJoinAndSelect('cl.submissionRef', 'sub')
+        .leftJoinAndSelect('sub.user', 'u')
+        .where('cl.containerImportId IN (:...ids)', {
+          ids: containers.map((c) => c.id),
+        })
+        .orderBy('cl.createdAt', 'ASC')
+        .getMany();
+      const claimsByContainer = new Map<number, any[]>();
+      for (const cl of claims as any[]) {
+        if (!claimsByContainer.has(cl.containerImportId)) {
+          claimsByContainer.set(cl.containerImportId, []);
+        }
+        claimsByContainer.get(cl.containerImportId)!.push(cl);
+      }
 
       const wsCont = workbook.addWorksheet(
         this.sanitizeSheetName('Container - Người chạy', usedSheetNames),
@@ -718,24 +738,62 @@ export class SubmissionsService {
       });
       contHeader.height = 28;
 
-      containers.forEach((c: any, idx: number) => {
-        const sub = c.submissionRef;
+      const yellowFill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFFF00' },
+      } as ExcelJS.Fill;
+
+      let stt = 0;
+      for (const c of containers as any[]) {
         const sl = c.shippingLineRef;
-        const claimedAt = sub ? sub.lastEditedAt || sub.updatedAt : null;
-        const row = wsCont.addRow({
-          stt: idx + 1,
-          containerCode: c.containerCode,
-          type: c.type,
-          plan: sl ? planDisplayName(sl) : c.shippingLineId ? `Plan #${c.shippingLineId}` : '',
-          driver: sub ? sub.user?.fullName || sub.driverName || '' : '',
-          claimedAt: claimedAt ? new Date(claimedAt).toLocaleString('vi-VN') : '',
-          keoVe: c.keoVe ? 'x' : '',
-        });
-        row.eachCell((cell) => {
-          cell.border = allBorder;
-          cell.alignment = { vertical: 'middle', horizontal: 'center' };
-        });
-      });
+        const planName = sl
+          ? planDisplayName(sl)
+          : c.shippingLineId
+            ? `Plan #${c.shippingLineId}`
+            : '';
+        const cClaims = claimsByContainer.get(c.id) || [];
+        const multi = cClaims.length > 1;
+
+        if (cClaims.length === 0) {
+          stt++;
+          const row = wsCont.addRow({
+            stt,
+            containerCode: c.containerCode,
+            type: c.type,
+            plan: planName,
+            driver: '',
+            claimedAt: '',
+            keoVe: c.keoVe ? 'x' : '',
+          });
+          row.eachCell((cell) => {
+            cell.border = allBorder;
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          });
+          continue;
+        }
+
+        for (const cl of cClaims) {
+          stt++;
+          const sub = cl.submissionRef;
+          const row = wsCont.addRow({
+            stt,
+            containerCode: c.containerCode,
+            type: c.type,
+            plan: planName,
+            driver: sub ? sub.user?.fullName || sub.driverName || '' : '',
+            claimedAt: new Date(cl.createdAt).toLocaleString('vi-VN'),
+            keoVe: cl.claimType === 'KV' ? 'x' : '',
+          });
+          row.eachCell((cell) => {
+            cell.border = allBorder;
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            if (multi) {
+              cell.fill = yellowFill;
+            }
+          });
+        }
+      }
     }
 
     // For Monthly: per-driver sheets without Đơn giá & Lương, no totals

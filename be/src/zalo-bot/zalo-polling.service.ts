@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 import { ZaloApiService } from './zalo-api.service';
-import { ZaloBotService } from './zalo-bot.service';
+import { ZaloQueueService } from './zalo-queue.service';
 
 /**
  * Cơ chế nhận tin Zalo bot bằng long-polling (getUpdates), dùng khi
@@ -36,7 +36,7 @@ export class ZaloPollingService
   constructor(
     private redis: RedisService,
     private zaloApi: ZaloApiService,
-    private zaloBot: ZaloBotService,
+    private zaloQueue: ZaloQueueService,
   ) {}
 
   onApplicationBootstrap() {
@@ -114,10 +114,10 @@ export class ZaloPollingService
                 `Bỏ qua tin trùng message_id=${messageId}`,
               );
             } else {
-              await this.zaloBot.handleEvent(updates);
+              await this.zaloQueue.enqueue(updates);
             }
           } else {
-            await this.zaloBot.handleEvent(updates);
+            await this.zaloQueue.enqueue(updates);
           }
         }
         consecutiveErrors = 0;

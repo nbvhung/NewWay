@@ -4,9 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull, In } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { ContainerImport } from '../database/entities/container-import.entity';
+import { ContainerClaim } from '../database/entities/container-claim.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Submission } from '../database/entities/submission.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
@@ -30,6 +31,8 @@ export class ContainerImportService {
   constructor(
     @InjectRepository(ContainerImport)
     private containerImportsRepository: Repository<ContainerImport>,
+    @InjectRepository(ContainerClaim)
+    private containerClaimsRepository: Repository<ContainerClaim>,
     @InjectRepository(ShippingLine)
     private shippingLinesRepository: Repository<ShippingLine>,
     @InjectRepository(Submission)
@@ -215,13 +218,24 @@ export class ContainerImportService {
 
   /**
    * Tìm container theo 7 số cuối ở TẤT CẢ kế hoạch CHƯA hoàn thành (cho Zalo bot).
+   * Nếu truyền userId, chỉ tìm ở kế hoạch mà lái xe được phân công
+   * (all_drivers = true HOẶC driver_ids chứa userId).
    */
-  async searchActiveByDigits(digits: string): Promise<ContainerImport[]> {
+  async searchActiveByDigits(
+    digits: string,
+    userId?: number,
+  ): Promise<ContainerImport[]> {
     const qb = this.containerImportsRepository.createQueryBuilder('c');
     qb.leftJoinAndSelect('c.shippingLineRef', 'sl')
       .where('RIGHT(c.container_code, 7) = :digits', { digits })
-      .andWhere('sl.completed = :completed', { completed: false })
-      .orderBy('c.container_code', 'ASC');
+      .andWhere('sl.completed = :completed', { completed: false });
+    if (userId) {
+      qb.andWhere(
+        '(sl.all_drivers = true OR CAST(sl.driver_ids AS JSONB) @> CAST(:userIds AS JSONB))',
+        { userIds: JSON.stringify([userId]) },
+      );
+    }
+    qb.orderBy('c.container_code', 'ASC');
     return qb.getMany();
   }
 
@@ -309,7 +323,8 @@ export class ContainerImportService {
   }
 
   /**
-   * Ghi nhận (claim) toàn bộ container trong bó cho cùng 1 submission.
+   * Ghi nhận (claim) toàn bộ container chưa được claim trong bó cho cùng 1 submission.
+   * Không ghi đè các container đã có submissionId (tránh mất liên kết lái xe cũ).
    */
   async claimBundle(
     bundleId: string,
@@ -317,7 +332,7 @@ export class ContainerImportService {
     submissionId: number,
   ): Promise<void> {
     await this.containerImportsRepository.update(
-      { bundleId, shippingLineId: planId },
+      { bundleId, shippingLineId: planId, submissionId: IsNull() },
       { submissionId },
     );
   }
@@ -336,8 +351,73 @@ export class ContainerImportService {
     );
   }
 
+  /**
+   * Claim 1 container chỉ khi chưa được claim (WHERE submission_id IS NULL).
+   * Tránh ghi đè lái xe đã xác nhận trước đó.
+   */
   async claim(id: number, submissionId: number): Promise<void> {
-    await this.containerImportsRepository.update(id, { submissionId });
+    await this.containerImportsRepository.update(
+      { id, submissionId: IsNull() },
+      { submissionId },
+    );
+  }
+
+  /**
+   * Ghi 1 dòng vào bảng container_claims cho từng container —
+   * mỗi xác nhận (lái xe) tương ứng 1 dòng, phục vụ Excel "Container - Người chạy".
+   */
+  async recordClaims(
+    containerIds: number[],
+    submissionId: number,
+    claimType: string,
+  ): Promise<void> {
+    if (!containerIds.length) return;
+    const unique = [...new Set(containerIds)];
+    for (const containerImportId of unique) {
+      const claim = this.containerClaimsRepository.create({
+        containerImportId,
+        submissionId,
+        claimType,
+      });
+      await this.containerClaimsRepository.save(claim);
+    }
+  }
+
+  /**
+   * Ghi container_claims theo mã container + kế hoạch (dùng cho VSL/KV/Vẫn đi).
+   */
+  async recordClaimForCode(
+    code: string,
+    planId: number,
+    submissionId: number,
+    claimType: string,
+  ): Promise<void> {
+    const container = await this.containerImportsRepository.findOne({
+      where: { containerCode: code, shippingLineId: planId },
+    });
+    if (!container) return;
+    const claim = this.containerClaimsRepository.create({
+      containerImportId: container.id,
+      submissionId,
+      claimType,
+    });
+    await this.containerClaimsRepository.save(claim);
+  }
+
+  /**
+   * Lấy danh sách xác nhận (container_claims) cho danh sách container.
+   */
+  async findClaimsByContainerIds(
+    containerIds: number[],
+  ): Promise<ContainerClaim[]> {
+    if (!containerIds.length) return [];
+    return this.containerClaimsRepository
+      .createQueryBuilder('cl')
+      .leftJoinAndSelect('cl.submissionRef', 'sub')
+      .leftJoinAndSelect('sub.user', 'u')
+      .where('cl.containerImportId IN (:...ids)', { ids: containerIds })
+      .orderBy('cl.createdAt', 'ASC')
+      .getMany();
   }
 
   /**
@@ -445,6 +525,8 @@ export class ContainerImportService {
     container.phatSinh = false;
     container.submissionId = submission.id;
     await this.containerImportsRepository.save(container);
+
+    await this.recordClaims([container.id], submission.id, 'CLASSIFY');
 
     return {
       id: container.id,

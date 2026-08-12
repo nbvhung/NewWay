@@ -25,6 +25,7 @@ export interface ClampClaimed {
 export interface ZaloSession {
   userId?: number;
   userFullName?: string;
+  pendingAt?: number;
   pendingCandidates?: PendingCandidate[];
   pendingDigits?: string;
   reEntry?: {

@@ -8,12 +8,12 @@ import {
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ZaloBotService } from './zalo-bot.service';
+import { ZaloQueueService } from './zalo-queue.service';
 import type { ZaloEvent } from './zalo-bot.service';
 
 @Controller('zalo')
 export class ZaloBotController {
-  constructor(private zaloBotService: ZaloBotService) {}
+  constructor(private zaloQueueService: ZaloQueueService) {}
 
   private verify(secret: string | undefined): void {
     const expected = process.env.ZALO_WEBHOOK_SECRET;
@@ -43,7 +43,7 @@ export class ZaloBotController {
     @Headers('x-bot-api-secret-token') secret?: string,
   ) {
     this.verify(secret);
-    await this.zaloBotService.handleEvent(event);
+    await this.zaloQueueService.enqueue(event);
     return { status: 'ok' };
   }
 
