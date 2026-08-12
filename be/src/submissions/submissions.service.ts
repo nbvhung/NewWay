@@ -700,15 +700,17 @@ export class SubmissionsService {
       qb.orderBy('c.containerCode', 'ASC');
       const containers = await qb.getMany();
 
-      const claims = await this.containerClaimsRepository
-        .createQueryBuilder('cl')
-        .leftJoinAndSelect('cl.submissionRef', 'sub')
-        .leftJoinAndSelect('sub.user', 'u')
-        .where('cl.containerImportId IN (:...ids)', {
-          ids: containers.map((c) => c.id),
-        })
-        .orderBy('cl.createdAt', 'ASC')
-        .getMany();
+      const claims = containers.length > 0
+        ? await this.containerClaimsRepository
+            .createQueryBuilder('cl')
+            .leftJoinAndSelect('cl.submissionRef', 'sub')
+            .leftJoinAndSelect('sub.user', 'u')
+            .where('cl.containerImportId IN (:...ids)', {
+              ids: containers.map((c) => c.id),
+            })
+            .orderBy('cl.createdAt', 'ASC')
+            .getMany()
+        : [];
       const claimsByContainer = new Map<number, any[]>();
       for (const cl of claims as any[]) {
         if (!claimsByContainer.has(cl.containerImportId)) {
