@@ -6,8 +6,11 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Res,
   UnauthorizedException,
 } from '@nestjs/common';
+import { join } from 'node:path';
+import type { Response } from 'express';
 import { ZaloQueueService } from './zalo-queue.service';
 import type { ZaloEvent } from './zalo-bot.service';
 
@@ -45,6 +48,11 @@ export class ZaloBotController {
     this.verify(secret);
     await this.zaloQueueService.enqueue(event);
     return { status: 'ok' };
+  }
+
+  @Get('audio/buon-ngu.aac')
+  async audioBuonNgu(@Res() res: Response) {
+    res.sendFile(join(process.cwd(), 'public', 'audio', 'buon-ngu.aac'));
   }
 
   @Get()
