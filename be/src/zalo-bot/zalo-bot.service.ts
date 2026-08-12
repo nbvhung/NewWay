@@ -227,8 +227,19 @@ export class ZaloBotService {
     const lower = text.toLowerCase();
     if (lower === 'buồn ngủ' || lower === 'buon ngu') {
       const voiceUrl = process.env.ZALO_BUON_NGU_AUDIO_URL || '';
+      this.logger.log(
+        `trigger buon ngu tu ${zaloUserId} (voiceUrl=${voiceUrl ? 'set' : 'unset'})`,
+      );
       if (voiceUrl) {
-        await this.zaloApi.sendVoice(chatId, voiceUrl);
+        const sent = await this.zaloApi.sendVoice(chatId, voiceUrl);
+        this.logger.log(`sendVoice result=${sent}`);
+        if (!sent) {
+          await this.reply(
+            chatId,
+            zaloUserId,
+            'Em gửi đoạn nhạc không được, Sếp thử lại sau nhé 😅',
+          );
+        }
       } else {
         await this.reply(
           chatId,
