@@ -27,7 +27,6 @@ export class ZaloOpsSummaryService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit() {
     this.timer = setInterval(() => void this.run(), SUMMARY_INTERVAL_MS);
-    setTimeout(() => void this.run(), 30_000);
   }
 
   onModuleDestroy() {
