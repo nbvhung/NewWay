@@ -225,6 +225,20 @@ export class ZaloBotService {
     if (!text) return;
 
     const lower = text.toLowerCase();
+    if (lower === 'buồn ngủ' || lower === 'buon ngu') {
+      const voiceUrl = process.env.ZALO_BUON_NGU_AUDIO_URL || '';
+      if (voiceUrl) {
+        await this.zaloApi.sendVoice(chatId, voiceUrl);
+      } else {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Sếp buồn ngủ à? Em chưa có đoạn nhạc nào để gửi đâu ạ 😄',
+        );
+      }
+      return;
+    }
+
     if (
       lower.startsWith('/help') ||
       lower.startsWith('/start') ||
