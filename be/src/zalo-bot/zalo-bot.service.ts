@@ -4,7 +4,10 @@ import { Repository } from 'typeorm';
 import { ZaloApiService } from './zalo-api.service';
 import { ZaloSttService } from './zalo-stt.service';
 import { ZaloSessionService } from './zalo-session.service';
-import { extractContainerCodes, extractFullCodeString } from './text-parser';
+import {
+  extractContainerCodes,
+  extractContainerPrefix,
+} from './text-parser';
 import {
   TYPE_FIELD_MAP,
   TYPE_LABEL,
@@ -996,22 +999,21 @@ export class ZaloBotService {
       return;
     }
 
-    // Bước 3: chờ đọc mã đầy đủ
-    const fullCode = extractFullCodeString(text);
-    const digitsMatch =
-      fullCode &&
-      fullCode.slice(-7) === (ps.digits || '').replace(/\D/g, '').slice(-7);
-    if (!fullCode || !digitsMatch) {
+    // Bước 3: chờ đọc đầu ngữ của container (4 chữ cái), ghép với 7 số cuối đã nhập
+    const prefix = extractContainerPrefix(text);
+    const digits = (ps.digits || '').replace(/\D/g, '').slice(-7);
+    if (!prefix || !digits) {
       await this.reply(
         chatId,
         zaloUserId,
-        'Em cần mã container đầy đủ gồm cả chữ và số (vd: BMOU6823203), khớp với 7 số cuối đã đọc trước đó. Sếp đọc lại giúp em nhé.',
+        `Em cần Sếp đọc 4 chữ cái đầu của container (vd: BEAU) giúp em nhé.`,
       );
       return;
     }
+    const fullCode = `${prefix}${digits}`;
 
     if (!ps.pendingCode) {
-      // Bước 3a: mã đã đọc xong → hỏi loại container
+      // Bước 3a: đầu ngữ đã đọc xong → hỏi loại container
       ps.pendingCode = fullCode;
       session.phatSinh = ps;
       await this.sessionService.save(zaloUserId, session);
@@ -1085,11 +1087,9 @@ export class ZaloBotService {
       await this.reply(
         chatId,
         zaloUserId,
-        `✅ Đã ghi nhận container phát sinh ${ps.pendingCode} (loại ${
-          TYPE_LABEL[type]
-        }) cho kế hoạch ${
+        `✅ Phát sinh ${ps.pendingCode} - kế hoạch ${
           plan ? this.planDisplayName(plan) : ''
-        }.\nOPS sẽ xác nhận và cập nhật sản lượng cho Sếp sau nhé.`,
+        }.`,
       );
     } catch (err: any) {
       this.logger.error(`createPhatSinh failed: ${err.message}`, err.stack);

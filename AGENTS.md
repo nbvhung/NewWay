@@ -208,7 +208,7 @@ UNIQUE(shippingLineId, name)
 - **Upsert submission**: tìm `submissions` theo `userId + shippingLineId`. Chưa có → tạo mới với field loại = `1`. Có → cộng `+1`, `editCount + 1`, `lastEditedAt`, ghi `edit_history` (`editedById` = lái xe, `editedByName` = fullName).
 - **Map loại → field**: H20→`hang20`, H40→`hang40`, V20→`vo20`, V40→`vo40`, V20FR→`vo20fr`, V40FR→`vo40fr`, VSL→`veSinhLai`, TIP→`tip`.
 - **Chặn ghi**: kế hoạch `completed` chặn import file lẫn ghi nhận qua bot; container đã có `submissionId` → báo "đã ghi nhận trước đó".
-- **Container phát sinh**: lái xe đọc mã không có trong kế hoạch → bot hỏi "1) Vẫn đi / 2) Đọc nhầm" → chọn kế hoạch → đọc mã đầy đủ → **hỏi loại container (H20/H40/V20/V40/V20FR/V40FR)** → ghi nhận loại vào `container_imports.type` (không phải `PHATSINH`) nhưng vẫn `phatSinh=true`, chưa cộng sản lượng. OPS confirm trên web (`classifyPhatSinh`) mới cộng sản lượng + gán `submissionId`.
+- **Container phát sinh**: lái xe đọc mã không có trong kế hoạch → bot hỏi "1) Vẫn đi / 2) Đọc nhầm" → chọn kế hoạch → lái xe chỉ cần đọc **4 chữ cái đầu (prefix)** của container (vd `BEAU`, số 7 cuối đã nhập trước đó) — bot ghép thành mã đầy đủ → **hỏi loại container (H20/H40/V20/V40/V20FR/V40FR)** → ghi nhận loại vào `container_imports.type` (không phải `PHATSINH`) nhưng vẫn `phatSinh=true`, chưa cộng sản lượng. OPS confirm trên web (`classifyPhatSinh`) mới cộng sản lượng + gán `submissionId`.
 - **Text parser** (`zalo-bot/text-parser.ts`): đọc số Việt (không/một/hai...chín), số nguyên theo cấp (nghìn/triệu), bỏ từ nhiễu (ờ, à, ơ...), trích chuỗi 7 số.
 - **Liên kết Zalo**: cả `/link` trên bot VÀ admin nhập `zalo_id` trong tab Users (CreateUserDto/UpdateUserDto có `zaloId` optional).
 

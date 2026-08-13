@@ -225,6 +225,16 @@ export function extractFullCodeString(text: string): string | null {
 }
 
 /**
+ * Trích đầu ngữ (4 chữ cái đầu) của container từ văn bản, vd "BEAU".
+ * Trả về null nếu không có chuỗi 4 chữ cái liên tiếp nào.
+ */
+export function extractContainerPrefix(text: string): string | null {
+  const m = /[A-Za-z]{4}/.exec(text || '');
+  if (!m) return null;
+  return m[0].toUpperCase();
+}
+
+/**
  * Trích xuất các mã container (7 số cuối) từ văn bản tiếng Việt (bao gồm cả
  * kết quả voice-to-text có lẫn từ nhiễu như "ờ", "à", "ơ").
  *
