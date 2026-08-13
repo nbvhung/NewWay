@@ -1057,6 +1057,18 @@ export class ZaloBotService {
             plan ? this.planDisplayName(plan) : ''
           }.`,
         );
+
+        // Sau khi ghi nhận phát sinh V20/V20FR → hỏi kẹp như bình thường
+        if (type === 'V20' || type === 'V20FR') {
+          session.awaitingClamp = { mainPlanId: ps.selectedPlanId };
+          session.pendingAt = Date.now();
+          await this.sessionService.save(zaloUserId, session);
+          await this.reply(
+            chatId,
+            zaloUserId,
+            'Kẹp với Cont nào? (gõ "k" nếu không kẹp)',
+          );
+        }
       } catch (err: any) {
         this.logger.error(`createPhatSinh failed: ${err.message}`, err.stack);
         await this.reply(
