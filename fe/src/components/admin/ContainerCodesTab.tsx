@@ -31,7 +31,7 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
   const [searchResults, setSearchResults] = useState<ContainerSearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [classifyingId, setClassifyingId] = useState<number | null>(null);
-  const [classifyType, setClassifyType] = useState<string>('H20');
+  const [classifyTypes, setClassifyTypes] = useState<Record<number, string>>({});
 
   const [planId, setPlanId] = useState<number | ''>('');
   const [items, setItems] = useState<ContainerImport[]>([]);
@@ -72,11 +72,11 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
     }
   }, [searchQuery, toast]);
 
-  const classify = async (r: ContainerSearchResult) => {
-    if (!confirm(`Phân loại container phát sinh ${r.containerCode} thành ${classifyType}?\nHệ thống sẽ ghi nhận sản lượng cho tài xế ${r.importedByName || '—'} tương ứng.`)) return;
+  const classify = async (r: ContainerSearchResult, type: string) => {
+    if (!confirm(`Phân loại container phát sinh ${r.containerCode} thành ${type}?\nHệ thống sẽ ghi nhận sản lượng cho tài xế ${r.importedByName || '—'} tương ứng.`)) return;
     setClassifyingId(r.id);
     try {
-      const res = await containerImportApi.classify(r.id, classifyType);
+      const res = await containerImportApi.classify(r.id, type);
       toast(`Đã phân loại ${res.data.containerCode} thành ${res.data.type} và ghi nhận sản lượng ✅`, 'success');
       if (searchQuery.trim()) await doSearch();
     } catch (err: any) {
@@ -196,11 +196,11 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
                   <div className="flex items-center gap-1.5">
                     {r.phatSinh && !r.recorded && (
                       <>
-                        <select value={classifyType} onChange={e => setClassifyType(e.target.value)}
+                        <select value={classifyTypes[r.id] ?? (r.type && VALID_TYPES.includes(r.type) ? r.type : 'H20')} onChange={e => setClassifyTypes(prev => ({ ...prev, [r.id]: e.target.value }))}
                           className="px-1.5 py-0.5 rounded text-[9px] border border-[rgba(0,0,0,0.1)] text-[#0f172a] outline-none cursor-pointer">
                           {VALID_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
-                        <button onClick={() => classify(r)} disabled={classifyingId === r.id}
+                        <button onClick={() => classify(r, classifyTypes[r.id] ?? (r.type && VALID_TYPES.includes(r.type) ? r.type : 'H20'))} disabled={classifyingId === r.id}
                           className="px-2 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white disabled:opacity-50 cursor-pointer">
                           {classifyingId === r.id ? 'Đang...' : 'Phân loại'}
                         </button>

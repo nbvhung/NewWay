@@ -428,6 +428,7 @@ export class ContainerImportService {
     code: string,
     planId: number,
     userId: number,
+    type?: string,
   ): Promise<ContainerImport> {
     const plan = await this.shippingLinesRepository.findOne({
       where: { id: planId },
@@ -440,9 +441,13 @@ export class ContainerImportService {
         'Kế hoạch đã hoàn thành, không thể thêm container phát sinh',
       );
     }
+    const normalized = type ? this.normalizeType(type) : null;
+    if (type && !normalized) {
+      throw new BadRequestException(`Loại container ${type} không hợp lệ.`);
+    }
     const entity = this.containerImportsRepository.create({
       containerCode: code,
-      type: 'PHATSINH',
+      type: normalized || 'PHATSINH',
       shippingLineId: planId,
       importedById: userId,
       phatSinh: true,

@@ -5,7 +5,12 @@ import { ZaloApiService } from './zalo-api.service';
 import { ZaloSttService } from './zalo-stt.service';
 import { ZaloSessionService } from './zalo-session.service';
 import { extractContainerCodes, extractFullCodeString } from './text-parser';
-import { TYPE_FIELD_MAP, TYPE_LABEL, CLAMP_TYPES } from './type-map';
+import {
+  TYPE_FIELD_MAP,
+  TYPE_LABEL,
+  CLAMP_TYPES,
+  PHATSINH_TYPE_OPTIONS,
+} from './type-map';
 import { ContainerImportService } from '../container-import/container-import.service';
 import { ZaloMessagesService } from '../zalo-messages/zalo-messages.service';
 import { ZaloOpsNotifierService } from './zalo-ops-notifier.service';
@@ -991,7 +996,7 @@ export class ZaloBotService {
       return;
     }
 
-    // Bước 3: chờ đọc mã đầy đủ → tạo container phát sinh
+    // Bước 3: chờ đọc mã đầy đủ
     const fullCode = extractFullCodeString(text);
     const digitsMatch =
       fullCode &&
@@ -1001,6 +1006,48 @@ export class ZaloBotService {
         chatId,
         zaloUserId,
         'Em cần mã container đầy đủ gồm cả chữ và số (vd: BMOU6823203), khớp với 7 số cuối đã đọc trước đó. Sếp đọc lại giúp em nhé.',
+      );
+      return;
+    }
+
+    if (!ps.pendingCode) {
+      // Bước 3a: mã đã đọc xong → hỏi loại container
+      ps.pendingCode = fullCode;
+      session.phatSinh = ps;
+      await this.sessionService.save(zaloUserId, session);
+      const lines = PHATSINH_TYPE_OPTIONS.map(
+        (t, i) => `${i + 1}. ${TYPE_LABEL[t]} (${t})`,
+      );
+      await this.reply(
+        chatId,
+        zaloUserId,
+        [
+          `Container ${fullCode} thuộc loại nào ạ?`,
+          '',
+          ...lines,
+          '',
+          'Sếp gửi số thứ tự (vd: 1) hoặc mã loại (vd: H20) giúp em nhé.',
+        ].join('\n'),
+      );
+      return;
+    }
+
+    // Bước 4: chờ chọn loại → tạo container phát sinh
+    let type: string | null = null;
+    const trimmed = text.trim();
+    if (/^[1-6]$/.test(trimmed)) {
+      type = PHATSINH_TYPE_OPTIONS[parseInt(trimmed, 10) - 1];
+    } else {
+      type = this.containerImportService.normalizeType(trimmed);
+      if (type && !PHATSINH_TYPE_OPTIONS.includes(type)) type = null;
+    }
+    if (!type) {
+      await this.reply(
+        chatId,
+        zaloUserId,
+        `Sếp gửi số thứ tự hoặc mã loại hợp lệ giúp em nhé (${PHATSINH_TYPE_OPTIONS.join(
+          ', ',
+        )}).`,
       );
       return;
     }
@@ -1018,9 +1065,10 @@ export class ZaloBotService {
         return;
       }
       await this.containerImportService.createPhatSinh(
-        fullCode,
+        ps.pendingCode,
         ps.selectedPlanId,
         user.id,
+        type,
       );
       const plan = await this.shippingLinesRepository.findOne({
         where: { id: ps.selectedPlanId },
@@ -1030,14 +1078,18 @@ export class ZaloBotService {
       session.pendingDigits = undefined;
       await this.sessionService.save(zaloUserId, session);
       void this.opsNotifier.notifyOps(
-        `🚚 ${user.fullName} - ${fullCode} — "${plan ? plan.name : ''}"`,
+        `🚚 ${user.fullName} - ${ps.pendingCode} (${type}) — "${
+          plan ? plan.name : ''
+        }"`,
       );
       await this.reply(
         chatId,
         zaloUserId,
-        `✅ Đã ghi nhận container phát sinh ${fullCode} cho kế hoạch ${
+        `✅ Đã ghi nhận container phát sinh ${ps.pendingCode} (loại ${
+          TYPE_LABEL[type]
+        }) cho kế hoạch ${
           plan ? this.planDisplayName(plan) : ''
-        }.\nOPS sẽ phân loại và cập nhật sản lượng cho Sếp sau nhé.`,
+        }.\nOPS sẽ xác nhận và cập nhật sản lượng cho Sếp sau nhé.`,
       );
     } catch (err: any) {
       this.logger.error(`createPhatSinh failed: ${err.message}`, err.stack);
