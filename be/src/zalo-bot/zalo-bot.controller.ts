@@ -50,9 +50,9 @@ export class ZaloBotController {
     return { status: 'ok' };
   }
 
-  @Get('audio/buon-ngu.aac')
+  @Get('audio/buon-ngu-v2.aac')
   async audioBuonNgu(@Res() res: Response) {
-    res.sendFile(join(process.cwd(), 'public', 'audio', 'buon-ngu.aac'));
+    res.sendFile(join(process.cwd(), 'public', 'audio', 'buon-ngu-v2.aac'));
   }
 
   @Get()
