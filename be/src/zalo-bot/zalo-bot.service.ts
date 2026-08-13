@@ -999,6 +999,75 @@ export class ZaloBotService {
       return;
     }
 
+    if (ps.pendingCode) {
+      // Bước 4: chờ chọn loại → tạo container phát sinh
+      let type: string | null = null;
+      const trimmed = text.trim();
+      if (/^[1-6]$/.test(trimmed)) {
+        type = PHATSINH_TYPE_OPTIONS[parseInt(trimmed, 10) - 1];
+      } else {
+        type = this.containerImportService.normalizeType(trimmed);
+        if (type && !PHATSINH_TYPE_OPTIONS.includes(type)) type = null;
+      }
+      if (!type) {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          `Container ${ps.pendingCode} thuộc loại nào ạ?\nSếp gửi số thứ tự (1-6) hoặc mã loại (${PHATSINH_TYPE_OPTIONS.join(
+            ', ',
+          )}) giúp em nhé.`,
+        );
+        return;
+      }
+
+      try {
+        const user = await this.usersRepository.findOne({
+          where: { id: session.userId },
+        });
+        if (!user) {
+          await this.reply(
+            chatId,
+            zaloUserId,
+            'Tài khoản không còn tồn tại. Liên hệ admin nhé.',
+          );
+          return;
+        }
+        await this.containerImportService.createPhatSinh(
+          ps.pendingCode,
+          ps.selectedPlanId,
+          user.id,
+          type,
+        );
+        const plan = await this.shippingLinesRepository.findOne({
+          where: { id: ps.selectedPlanId },
+        });
+        session.phatSinh = undefined;
+        session.pendingCandidates = undefined;
+        session.pendingDigits = undefined;
+        await this.sessionService.save(zaloUserId, session);
+        void this.opsNotifier.notifyOps(
+          `🚚 ${user.fullName} - ${ps.pendingCode} (${type}) — "${
+            plan ? plan.name : ''
+          }"`,
+        );
+        await this.reply(
+          chatId,
+          zaloUserId,
+          `✅ Phát sinh ${ps.pendingCode} - kế hoạch ${
+            plan ? this.planDisplayName(plan) : ''
+          }.`,
+        );
+      } catch (err: any) {
+        this.logger.error(`createPhatSinh failed: ${err.message}`, err.stack);
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Đã có lỗi xảy ra khi ghi nhận. Vui lòng thử lại sau.',
+        );
+      }
+      return;
+    }
+
     // Bước 3: chờ đọc đầu ngữ của container (4 chữ cái), ghép với 7 số cuối đã nhập
     const prefix = extractContainerPrefix(text);
     const digits = (ps.digits || '').replace(/\D/g, '').slice(-7);
@@ -1012,93 +1081,24 @@ export class ZaloBotService {
     }
     const fullCode = `${prefix}${digits}`;
 
-    if (!ps.pendingCode) {
-      // Bước 3a: đầu ngữ đã đọc xong → hỏi loại container
-      ps.pendingCode = fullCode;
-      session.phatSinh = ps;
-      await this.sessionService.save(zaloUserId, session);
-      const lines = PHATSINH_TYPE_OPTIONS.map(
-        (t, i) => `${i + 1}. ${TYPE_LABEL[t]} (${t})`,
-      );
-      await this.reply(
-        chatId,
-        zaloUserId,
-        [
-          `Container ${fullCode} thuộc loại nào ạ?`,
-          '',
-          ...lines,
-          '',
-          'Sếp gửi số thứ tự (vd: 1) hoặc mã loại (vd: H20) giúp em nhé.',
-        ].join('\n'),
-      );
-      return;
-    }
-
-    // Bước 4: chờ chọn loại → tạo container phát sinh
-    let type: string | null = null;
-    const trimmed = text.trim();
-    if (/^[1-6]$/.test(trimmed)) {
-      type = PHATSINH_TYPE_OPTIONS[parseInt(trimmed, 10) - 1];
-    } else {
-      type = this.containerImportService.normalizeType(trimmed);
-      if (type && !PHATSINH_TYPE_OPTIONS.includes(type)) type = null;
-    }
-    if (!type) {
-      await this.reply(
-        chatId,
-        zaloUserId,
-        `Sếp gửi số thứ tự hoặc mã loại hợp lệ giúp em nhé (${PHATSINH_TYPE_OPTIONS.join(
-          ', ',
-        )}).`,
-      );
-      return;
-    }
-
-    try {
-      const user = await this.usersRepository.findOne({
-        where: { id: session.userId },
-      });
-      if (!user) {
-        await this.reply(
-          chatId,
-          zaloUserId,
-          'Tài khoản không còn tồn tại. Liên hệ admin nhé.',
-        );
-        return;
-      }
-      await this.containerImportService.createPhatSinh(
-        ps.pendingCode,
-        ps.selectedPlanId,
-        user.id,
-        type,
-      );
-      const plan = await this.shippingLinesRepository.findOne({
-        where: { id: ps.selectedPlanId },
-      });
-      session.phatSinh = undefined;
-      session.pendingCandidates = undefined;
-      session.pendingDigits = undefined;
-      await this.sessionService.save(zaloUserId, session);
-      void this.opsNotifier.notifyOps(
-        `🚚 ${user.fullName} - ${ps.pendingCode} (${type}) — "${
-          plan ? plan.name : ''
-        }"`,
-      );
-      await this.reply(
-        chatId,
-        zaloUserId,
-        `✅ Phát sinh ${ps.pendingCode} - kế hoạch ${
-          plan ? this.planDisplayName(plan) : ''
-        }.`,
-      );
-    } catch (err: any) {
-      this.logger.error(`createPhatSinh failed: ${err.message}`, err.stack);
-      await this.reply(
-        chatId,
-        zaloUserId,
-        'Đã có lỗi xảy ra khi ghi nhận. Vui lòng thử lại sau.',
-      );
-    }
+    // Bước 3a: đầu ngữ đã đọc xong → hỏi loại container
+    ps.pendingCode = fullCode;
+    session.phatSinh = ps;
+    await this.sessionService.save(zaloUserId, session);
+    const lines = PHATSINH_TYPE_OPTIONS.map(
+      (t, i) => `${i + 1}. ${TYPE_LABEL[t]} (${t})`,
+    );
+    await this.reply(
+      chatId,
+      zaloUserId,
+      [
+        `Container ${fullCode} thuộc loại nào ạ?`,
+        '',
+        ...lines,
+        '',
+        'Sếp gửi số thứ tự (vd: 1) hoặc mã loại (vd: H20) giúp em nhé.',
+      ].join('\n'),
+    );
   }
 
   private async handleClampDigits(
