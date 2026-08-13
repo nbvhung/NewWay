@@ -225,7 +225,11 @@ export class ZaloBotService {
     if (!text) return;
 
     const lower = text.toLowerCase();
-    if (lower === 'buồn ngủ' || lower === 'buon ngu') {
+    const normalized = lower
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd');
+    if (/\b(buon|ngu)\b/.test(normalized)) {
       const voiceUrl = process.env.ZALO_BUON_NGU_AUDIO_URL || '';
       this.logger.log(
         `trigger buon ngu tu ${zaloUserId} (voiceUrl=${voiceUrl ? 'set' : 'unset'})`,
