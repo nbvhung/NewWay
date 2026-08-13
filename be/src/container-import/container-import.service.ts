@@ -175,6 +175,49 @@ export class ContainerImportService {
     return { total: rows.length, imported, skipped: rows.length - imported };
   }
 
+  async addSingle(
+    code: string,
+    planId: number,
+    type: string,
+    userId: number,
+  ): Promise<ContainerImport> {
+    const containerCode = this.normalizeCode(code);
+    if (!containerCode) {
+      throw new BadRequestException(
+        'Mã container không hợp lệ. Định dạng: 4 chữ cái + 7 số (vd: BMOU6823203) hoặc 7 số',
+      );
+    }
+    const typeNorm = this.normalizeType(type);
+    if (!typeNorm) {
+      throw new BadRequestException(`Loại container ${type} không hợp lệ.`);
+    }
+    const plan = await this.shippingLinesRepository.findOne({
+      where: { id: planId },
+    });
+    if (!plan) throw new BadRequestException('Không tìm thấy kế hoạch');
+    if (plan.completed) {
+      throw new BadRequestException(
+        'Kế hoạch đã hoàn thành, không thể thêm container',
+      );
+    }
+    const existing = await this.containerImportsRepository.findOne({
+      where: { containerCode, shippingLineId: planId },
+    });
+    if (existing) {
+      throw new BadRequestException('Container đã có trong kế hoạch này');
+    }
+    const entity = this.containerImportsRepository.create({
+      containerCode,
+      type: typeNorm,
+      shippingLineId: planId,
+      importedById: userId,
+      keoVe: typeNorm === 'KV',
+      veSinhLai: typeNorm === 'VSL',
+    });
+    await this.containerImportsRepository.save(entity);
+    return entity;
+  }
+
   async findAll(planId?: number): Promise<ContainerImport[]> {
     const where: { shippingLineId?: number } = {};
     if (planId) where.shippingLineId = planId;

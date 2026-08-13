@@ -16,6 +16,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ContainerImportService } from './container-import.service';
 import { ImportContainerDto } from './dto/import-container.dto';
 import { ClassifyContainerDto } from './dto/classify-container.dto';
+import { SingleContainerDto } from './dto/single-container.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -43,6 +44,16 @@ export class ContainerImportController {
       throw new BadRequestException('Vui lòng chọn kế hoạch');
     }
     return this.containerImportService.importFile(file, body.planId, user.id);
+  }
+
+  @Post('single')
+  addSingle(@Body() body: SingleContainerDto, @CurrentUser() user: any) {
+    return this.containerImportService.addSingle(
+      body.code,
+      body.planId,
+      body.type,
+      user.id,
+    );
   }
 
   @Get('search')

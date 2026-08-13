@@ -37,6 +37,9 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
   const [items, setItems] = useState<ContainerImport[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [singleCode, setSingleCode] = useState('');
+  const [singleType, setSingleType] = useState('H20');
+  const [adding, setAdding] = useState(false);
   const [typeFilter, setTypeFilter] = useState('Tất cả');
   const [listSearch, setListSearch] = useState('');
 
@@ -99,6 +102,37 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
       toast(err.message, 'error');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const addSingle = async () => {
+    if (!selectedPlan) return;
+    const code = singleCode.trim().toUpperCase();
+    if (!code) { toast('Vui lòng nhập mã container', 'error'); return; }
+    setAdding(true);
+    try {
+      const res = await containerImportApi.addSingle(selectedPlan.id, code, singleType);
+      toast(`Đã thêm container ${res.data.containerCode} (${res.data.type}) ✅`, 'success');
+      setSingleCode('');
+      await load(selectedPlan.id);
+    } catch (err: any) {
+      toast(err.message, 'error');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const approveItem = async (item: ContainerImport) => {
+    if (!confirm(`Phê duyệt container phát sinh ${item.containerCode} loại ${item.type}?\nHệ thống sẽ ghi nhận sản lượng cho tài xế tương ứng.`)) return;
+    setClassifyingId(item.id);
+    try {
+      const res = await containerImportApi.classify(item.id, item.type);
+      toast(`Đã phê duyệt ${res.data.containerCode} thành ${res.data.type} và ghi nhận sản lượng ✅`, 'success');
+      await load(item.shippingLineId!);
+    } catch (err: any) {
+      toast(err.message, 'error');
+    } finally {
+      setClassifyingId(null);
     }
   };
 
@@ -242,14 +276,32 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
                 Kế hoạch đã hoàn thành — chỉ xem, không thêm/sửa/xóa được.
               </div>
             )}
-            <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3 mb-4">
-              <label className="block text-[10px] font-medium text-[#64748b] mb-1.5">📥 Import file (xlsx/txt — mỗi dòng: mã + loại)</label>
-              <input type="file" accept=".xlsx,.xls,.txt,.csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                onChange={e => setFile(e.target.files?.[0] || null)} disabled={isLocked}
-                className="w-full text-xs file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-[rgba(26,86,219,0.1)] file:text-[#1a56db] file:cursor-pointer disabled:opacity-40" />
-              <button onClick={upload} disabled={uploading || !file || isLocked} className={`${btnPrimary} w-full mt-2`}>
-                {uploading ? 'Đang import...' : '⬆️ Import'}
-              </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+              <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
+                <label className="block text-[10px] font-medium text-[#64748b] mb-1.5">📥 Import file (xlsx/txt — mỗi dòng: mã + loại)</label>
+                <input type="file" accept=".xlsx,.xls,.txt,.csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  onChange={e => setFile(e.target.files?.[0] || null)} disabled={isLocked}
+                  className="w-full text-xs file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-[rgba(26,86,219,0.1)] file:text-[#1a56db] file:cursor-pointer disabled:opacity-40" />
+                <button onClick={upload} disabled={uploading || !file || isLocked} className={`${btnPrimary} w-full mt-2`}>
+                  {uploading ? 'Đang import...' : '⬆️ Import'}
+                </button>
+              </div>
+              <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
+                <label className="block text-[10px] font-medium text-[#64748b] mb-1.5">➕ Thêm mã container lẻ</label>
+                <input type="text" value={singleCode} onChange={e => setSingleCode(e.target.value)}
+                  placeholder="Mã container (vd: BMOU6823203)" disabled={isLocked}
+                  onKeyDown={e => { if (e.key === 'Enter' && !isLocked) addSingle(); }}
+                  className={`${inputCls} mb-1.5`} />
+                <div className="flex gap-1.5">
+                  <select value={singleType} onChange={e => setSingleType(e.target.value)} disabled={isLocked}
+                    className="px-2 py-2 rounded-lg text-xs border border-[rgba(0,0,0,0.1)] text-[#0f172a] outline-none cursor-pointer flex-1">
+                    {VALID_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <button onClick={addSingle} disabled={adding || isLocked} className={`${btnPrimary} disabled:opacity-50`}>
+                    {adding ? 'Đang thêm...' : '➕ Thêm'}
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="border-t border-[rgba(0,0,0,0.08)] pt-4">
@@ -294,8 +346,16 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
                         <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.15)] text-amber-700">⏳ Chờ ghi</span>
                       )}
                     </div>
-                    <button onClick={() => removeOne(item)} disabled={isLocked}
-                      className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer disabled:opacity-40">✕</button>
+                    <div className="flex items-center gap-1.5">
+                      {item.phatSinh && !item.submissionId && (
+                        <button onClick={() => approveItem(item)} disabled={classifyingId === item.id || isLocked}
+                          className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#059669] to-[#10b981] text-white disabled:opacity-40 cursor-pointer">
+                          {classifyingId === item.id ? 'Đang...' : '✅ Phê duyệt'}
+                        </button>
+                      )}
+                      <button onClick={() => removeOne(item)} disabled={isLocked}
+                        className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer disabled:opacity-40">✕</button>
+                    </div>
                   </div>
                 ))}
               </div>
