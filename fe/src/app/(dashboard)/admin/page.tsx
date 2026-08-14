@@ -154,6 +154,7 @@ export default function AdminPage() {
         <ChatHistoryTab
           allUsers={allUsers}
           currentUser={user}
+          toast={toast}
         />
       )}
     </div>

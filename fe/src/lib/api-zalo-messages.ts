@@ -6,6 +6,7 @@ export interface ZaloMessage {
   userId: number | null;
   sender: 'driver' | 'bot';
   content: string;
+  sentByAdmin?: boolean;
   createdAt: string;
 }
 
@@ -15,4 +16,7 @@ export const zaloMessagesApi = {
 
   getByUserId: (userId: number) =>
     api.get<{ data: ZaloMessage[] }>('/admin/zalo-messages', { params: { userId } }),
+
+  send: (userId: number, text: string) =>
+    api.post<{ data: { ok: boolean; error?: string } }>('/admin/zalo-messages/send', { userId, text }),
 };

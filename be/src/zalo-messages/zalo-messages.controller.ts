@@ -1,8 +1,9 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
 import { ZaloMessagesService } from './zalo-messages.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { SendZaloMessageDto } from './dto/send-zalo-message.dto';
 
 @Controller('admin/zalo-messages')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -25,5 +26,12 @@ export class ZaloMessagesController {
     }
     const data = await this.zaloMessagesService.getByUserId(id);
     return { data };
+  }
+
+  @Post('send')
+  @Roles('admin', 'supper_admin', 'ops')
+  async send(@Body() dto: SendZaloMessageDto) {
+    const result = await this.zaloMessagesService.sendToUser(dto.userId, dto.text);
+    return { data: result };
   }
 }

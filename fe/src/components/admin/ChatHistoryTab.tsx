@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { zaloMessagesApi, ZaloMessage } from '@/lib/api-zalo-messages';
 import { fmtDateTime } from '@/lib/utils';
@@ -9,14 +9,18 @@ import { User } from '@/types';
 interface Props {
   allUsers: User[];
   currentUser: any;
+  toast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-export function ChatHistoryTab({ allUsers, currentUser }: Props) {
+export function ChatHistoryTab({ allUsers, currentUser, toast }: Props) {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [conversations, setConversations] = useState<Array<{ userId: number; lastAt: string }>>([]);
   const [messages, setMessages] = useState<ZaloMessage[]>([]);
   const [loadingConv, setLoadingConv] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
+  const msgBoxRef = useRef<HTMLDivElement>(null);
 
   const loadConversations = useCallback(async () => {
     setLoadingConv(true);
@@ -46,6 +50,43 @@ export function ChatHistoryTab({ allUsers, currentUser }: Props) {
       loadMessages(conversations[0].userId);
     }
   }, [conversations, selectedUserId, loadMessages]);
+
+  useEffect(() => {
+    if (msgBoxRef.current) {
+      msgBoxRef.current.scrollTop = msgBoxRef.current.scrollHeight;
+    }
+  }, [messages, selectedUserId]);
+
+  const sendMessage = useCallback(async () => {
+    const text = draft.trim();
+    if (!text || !selectedUserId || sending) return;
+    setSending(true);
+    try {
+      const res = await zaloMessagesApi.send(selectedUserId, text);
+      const result = res.data?.data;
+      if (result?.ok) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            zaloUserId: null,
+            userId: selectedUserId,
+            sender: 'bot',
+            content: text,
+            sentByAdmin: true,
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+        setDraft('');
+        toast('Đã gửi tin nhắn cho lái xe');
+      } else {
+        toast(result?.error || 'Gửi tin nhắn thất bại', 'error');
+      }
+    } catch {
+      toast('Gửi tin nhắn thất bại', 'error');
+    }
+    setSending(false);
+  }, [draft, selectedUserId, sending, toast]);
 
   const userMap = (id: number) => allUsers.find(u => u.id === id);
 
@@ -87,16 +128,17 @@ export function ChatHistoryTab({ allUsers, currentUser }: Props) {
         )}
       </div>
 
-      <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
+      <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5 flex flex-col">
         <h3 className="text-base font-bold mb-4">
           💬 Lịch sử chat {selectedUserId ? `— ${userMap(selectedUserId)?.fullName || `User #${selectedUserId}`}` : ''}
         </h3>
         {loadingMsgs ? (
           <LoadingSpinner className="py-16" />
         ) : (
-          <div className="flex flex-col gap-2.5 max-h-[70vh] overflow-y-auto pr-1">
+          <div className="flex flex-col gap-2.5 flex-1 max-h-[55vh] overflow-y-auto pr-1" ref={msgBoxRef}>
             {messages.map(m => {
               const isBot = m.sender === 'bot';
+              const isAdminSent = isBot && m.sentByAdmin;
               return (
                 <div key={m.id} className={`flex ${isBot ? 'justify-start' : 'justify-end'}`}>
                   <div className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap ${
@@ -104,7 +146,9 @@ export function ChatHistoryTab({ allUsers, currentUser }: Props) {
                       ? 'bg-[#f1f5f9] text-[#0f172a] rounded-tl-sm'
                       : 'bg-gradient-to-br from-[#1a56db] to-[#2563eb] text-white rounded-tr-sm'
                   }`}>
-                    <div className="text-[9px] font-semibold opacity-60 mb-1">{isBot ? '🤖 Bot' : (currentUser.role === 'supper_admin' || currentUser.role === 'admin' ? '🚚 Lái xe' : '🚚 Lái xe')}</div>
+                    <div className={`text-[9px] font-semibold opacity-60 mb-1 ${isAdminSent ? 'text-[#d97706]' : ''}`}>
+                      {isBot ? (isAdminSent ? '🤖 Admin gửi' : '🤖 Bot') : '🚚 Lái xe'}
+                    </div>
                     <div>{m.content}</div>
                     <div className="text-[9px] opacity-50 mt-1">{fmtDateTime(m.createdAt)}</div>
                   </div>
@@ -116,6 +160,29 @@ export function ChatHistoryTab({ allUsers, currentUser }: Props) {
             )}
           </div>
         )}
+        <div className="flex gap-2 mt-4 border-t border-[rgba(0,0,0,0.08)] pt-3">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
+            disabled={!selectedUserId || sending}
+            placeholder={selectedUserId ? 'Nhập tin nhắn gửi cho lái xe...' : 'Chọn một lái xe ở danh sách để gửi tin'}
+            rows={2}
+            className="flex-1 resize-none px-3 py-2 rounded-lg border border-[rgba(0,0,0,0.12)] text-sm focus:outline-none focus:border-[#1a56db] disabled:opacity-50"
+          />
+          <button
+            onClick={sendMessage}
+            disabled={!selectedUserId || !draft.trim() || sending}
+            className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-[#1a56db] to-[#2563eb] shrink-0 disabled:opacity-40 transition-all cursor-pointer"
+          >
+            {sending ? 'Đang gửi...' : 'Gửi'}
+          </button>
+        </div>
       </div>
     </div>
   );
