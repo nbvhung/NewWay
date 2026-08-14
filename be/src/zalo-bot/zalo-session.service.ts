@@ -21,6 +21,8 @@ export interface ClampClaimed {
   containerCode: string;
   shippingLineId: number | null;
   digits: string;
+  mainCode?: string;
+  mainType?: string;
 }
 
 export interface ZaloSession {
@@ -38,6 +40,8 @@ export interface ZaloSession {
   };
   awaitingClamp?: {
     mainPlanId: number | null;
+    mainCode?: string;
+    mainType?: string;
   };
   clampClaimed?: ClampClaimed;
   phatSinh?: {

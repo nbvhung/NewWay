@@ -1102,7 +1102,11 @@ export class ZaloBotService {
 
         // Sau khi ghi nhận phát sinh V20/V20FR → hỏi kẹp như bình thường
         if (type === 'V20' || type === 'V20FR') {
-          session.awaitingClamp = { mainPlanId: ps.selectedPlanId };
+          session.awaitingClamp = {
+            mainPlanId: ps.selectedPlanId,
+            mainCode: ps.pendingCode,
+            mainType: type,
+          };
           session.pendingAt = Date.now();
           await this.sessionService.save(zaloUserId, session);
           await this.reply(
@@ -1407,6 +1411,8 @@ export class ZaloBotService {
         containerCode: target.containerCode,
         shippingLineId: target.shippingLineId,
         digits,
+        mainCode: session.awaitingClamp?.mainCode,
+        mainType: session.awaitingClamp?.mainType,
       };
       session.awaitingClamp = undefined;
       session.pendingCandidates = undefined;
@@ -1443,6 +1449,8 @@ export class ZaloBotService {
       session.clampClaimed = undefined;
       session.awaitingClamp = {
         mainPlanId: cc.shippingLineId,
+        mainCode: cc.mainCode,
+        mainType: cc.mainType,
       };
       session.pendingAt = Date.now();
       await this.sessionService.save(zaloUserId, session);
@@ -1598,7 +1606,11 @@ export class ZaloBotService {
 
       // Nếu container thật là V20/V20FR → hỏi kẹp (theo quyết định A)
       if (re.containerType === 'V20' || re.containerType === 'V20FR') {
-        session.awaitingClamp = { mainPlanId: plan.id };
+        session.awaitingClamp = {
+          mainPlanId: plan.id,
+          mainCode: re.containerCode,
+          mainType: re.containerType,
+        };
         session.pendingAt = Date.now();
         await this.sessionService.save(zaloUserId, session);
         await this.reply(
@@ -1777,6 +1789,11 @@ export class ZaloBotService {
         );
       }
 
+      const clampMainCode =
+        session.awaitingClamp?.mainCode || session.clampClaimed?.mainCode;
+      const clampMainType =
+        session.awaitingClamp?.mainType || session.clampClaimed?.mainType;
+
       session.pendingCandidates = undefined;
       session.pendingDigits = undefined;
       session.reEntry = undefined;
@@ -1789,7 +1806,16 @@ export class ZaloBotService {
       );
 
       const planName = this.planDisplayName(plan);
-      if (members.length > 1) {
+      if (fromClamp && clampMainCode) {
+        // Thông báo kẹp: ✅ cont1, cont2 - kế hoạch — loại1, loại2
+        const mainLabel =
+          TYPE_LABEL[clampMainType] || clampMainType || 'Vỏ';
+        await this.reply(
+          chatId,
+          zaloUserId,
+          `✅ ${clampMainCode}, ${container.containerCode} - ${planName} — ${mainLabel}, ${label}: ${newTotal}`,
+        );
+      } else if (members.length > 1) {
         const codes = members.map((m) => m.containerCode).join(', ');
         await this.reply(
           chatId,
@@ -1809,7 +1835,11 @@ export class ZaloBotService {
         !fromClamp &&
         (container.type === 'V20' || container.type === 'V20FR')
       ) {
-        session.awaitingClamp = { mainPlanId: plan.id };
+        session.awaitingClamp = {
+          mainPlanId: plan.id,
+          mainCode: container.containerCode,
+          mainType: container.type,
+        };
         session.pendingAt = Date.now();
         await this.sessionService.save(zaloUserId, session);
         await this.reply(
