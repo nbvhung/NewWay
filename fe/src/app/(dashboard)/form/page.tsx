@@ -412,6 +412,10 @@ export default function FormPage() {
                 {planDisplayName(duplicatePlan)}
               </p>
               <button onClick={() => {
+                if (entryLocked) {
+                  toast('Nhập liệu đã khóa. Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.', 'error');
+                  return;
+                }
                 const sub = mySubmissions.get(duplicatePlan.id);
                 router.push(sub ? `/my-data?editId=${sub.id}` : '/my-data');
               }}

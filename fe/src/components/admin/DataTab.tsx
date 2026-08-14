@@ -346,7 +346,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         </div>
         {entryLocked && (
           <div className="px-4 py-2.5 bg-[rgba(239,68,68,0.06)] border-b border-[rgba(239,68,68,0.15)] text-[11px] text-red-600 font-medium">
-            Lái xe hiện không thể nhập liệu hoặc sửa dữ liệu (chỉ xem bảng sản lượng và lương).
+            Lái xe hiện bị khóa nhập liệu trên app/web — chỉ nhập được qua ZALO, và liên hệ Hưng để sửa dữ liệu.
           </div>
         )}
         {submissions.length === 0 ? (

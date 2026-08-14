@@ -89,7 +89,7 @@ export default function EntryForm() {
 
   const handleSubmit = async () => {
     if (entryLocked) {
-      Alert.alert('Đã khóa', 'Hệ thống đang tạm khóa nhập liệu. Vui lòng quay lại sau.');
+      Alert.alert('Nhập liệu đã khóa', 'Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.');
       return;
     }
     if (!selectedId || !selectedLine) {
@@ -250,6 +250,11 @@ export default function EntryForm() {
             <TouchableOpacity
               style={styles.editDupeBtn}
               onPress={() => {
+                if (entryLocked) {
+                  setDuplicatePlan(null);
+                  Alert.alert('Nhập liệu đã khóa', 'Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.');
+                  return;
+                }
                 const sub = duplicatePlan ? mySubmissions.get(duplicatePlan.id) : null;
                 setDuplicatePlan(null);
                 if (sub) router.push(`/(tabs)/my-data?editId=${sub.id}`);

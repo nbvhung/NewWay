@@ -11,7 +11,6 @@ import { ZaloOpsNotifierService } from './zalo-ops-notifier.service';
 import { ZaloOpsSummaryService } from './zalo-ops-summary.service';
 import { ContainerImportModule } from '../container-import/container-import.module';
 import { ZaloMessagesModule } from '../zalo-messages/zalo-messages.module';
-import { SettingsModule } from '../settings/settings.module';
 import { User } from '../database/entities/user.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Submission } from '../database/entities/submission.entity';
@@ -29,7 +28,6 @@ import { ContainerImport } from '../database/entities/container-import.entity';
     ]),
     ContainerImportModule,
     ZaloMessagesModule,
-    SettingsModule,
   ],
   controllers: [ZaloBotController],
   providers: [

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert,
 } from 'react-native';
@@ -53,6 +53,7 @@ export default function MyDataScreen() {
   });
   const [saving, setSaving] = useState(false);
   const [entryLocked, setEntryLocked] = useState(false);
+  const entryLockedRef = useRef(false);
 
   const now = new Date();
   const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
@@ -66,7 +67,9 @@ export default function MyDataScreen() {
   const loadEntryLock = async () => {
     try {
       const res = await settingsApi.getEntryLock();
-      setEntryLocked(!!(res.data as any)?.data?.locked);
+      const locked = !!(res.data as any)?.data?.locked;
+      entryLockedRef.current = locked;
+      setEntryLocked(locked);
     } catch {}
   };
 
@@ -74,7 +77,15 @@ export default function MyDataScreen() {
   useEffect(() => {
     if (!loading && params.editId && data.length > 0) {
       const target = data.find(s => String(s.id) === params.editId);
-      if (target) openEdit(target);
+      if (target) {
+        (async () => {
+          try {
+            const res = await settingsApi.getEntryLock();
+            entryLockedRef.current = !!(res.data as any)?.data?.locked;
+          } catch {}
+          if (!entryLockedRef.current) openEdit(target);
+        })();
+      }
     }
   }, [loading, params.editId, data]);
 
@@ -118,8 +129,8 @@ export default function MyDataScreen() {
   };
 
   const openEdit = (sub: Submission) => {
-    if (entryLocked) {
-      Alert.alert('Đã khóa', 'Hệ thống đang tạm khóa nhập liệu, không thể sửa dữ liệu.');
+    if (entryLocked || entryLockedRef.current) {
+      Alert.alert('Nhập liệu đã khóa', 'Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.');
       return;
     }
     setEditSub(sub);
@@ -138,7 +149,7 @@ export default function MyDataScreen() {
   const saveEdit = async () => {
     if (!editSub) return;
     if (entryLocked) {
-      Alert.alert('Đã khóa', 'Hệ thống đang tạm khóa nhập liệu, không thể lưu dữ liệu.');
+      Alert.alert('Nhập liệu đã khóa', 'Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.');
       return;
     }
     if (!editForm.shippingLineId && !editForm.shippingLine) {

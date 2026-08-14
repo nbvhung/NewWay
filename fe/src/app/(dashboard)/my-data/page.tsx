@@ -68,6 +68,7 @@ export default function MyDataPage() {
   });
   const [saving, setSaving] = useState(false);
   const [entryLocked, setEntryLocked] = useState(false);
+  const entryLockedRef = useRef(false);
 
   const prevLiveRef = useRef<any[] | null>(null);
   const suppressUntilRef = useRef(0);
@@ -93,7 +94,9 @@ export default function MyDataPage() {
   const loadEntryLock = async () => {
     try {
       const res = await settingsApi.getEntryLock();
-      setEntryLocked(!!(res.data as any)?.data?.locked);
+      const locked = !!(res.data as any)?.data?.locked;
+      entryLockedRef.current = locked;
+      setEntryLocked(locked);
     } catch {}
   };
 
@@ -112,7 +115,13 @@ export default function MyDataPage() {
         const id = Number(editId);
         if (!isNaN(id)) {
           const sub = submissions.find((s: Submission) => s.id === id);
-          if (sub) setTimeout(() => openEdit(sub), 100);
+          if (sub) {
+            try {
+              const lockRes = await settingsApi.getEntryLock();
+              entryLockedRef.current = !!(lockRes.data as any)?.data?.locked;
+            } catch {}
+            if (!entryLockedRef.current) setTimeout(() => openEdit(sub), 100);
+          }
         }
       }      return submissions;
     } catch (err: any) {
@@ -148,8 +157,8 @@ export default function MyDataPage() {
   };
 
   const openEdit = (sub: Submission) => {
-    if (entryLocked) {
-      toast('Hệ thống đang tạm khóa nhập liệu, không thể sửa dữ liệu', 'error');
+    if (entryLocked || entryLockedRef.current) {
+      toast('Nhập liệu đã khóa. Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.', 'error');
       return;
     }
     setEditSub(sub);
@@ -173,6 +182,10 @@ export default function MyDataPage() {
 
   const saveEdit = async () => {
     if (!editSub) return;
+    if (entryLocked || entryLockedRef.current) {
+      toast('Nhập liệu đã khóa. Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.', 'error');
+      return;
+    }
     if (!editForm.shippingLineId && !editForm.shippingLine) {
       toast('Vui lòng chọn kế hoạch', 'error');
       return;
