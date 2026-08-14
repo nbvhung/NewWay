@@ -1003,6 +1003,18 @@ export class ZaloBotService {
           ].join('\n'),
         );
       } else {
+        // Tài xế nhắn mã khác thay vì 1/2 → coi như bỏ phát sinh và tìm mã mới
+        const newDigits = extractContainerCodes(text);
+        if (newDigits.length > 0) {
+          await this.handleContainerDigits(
+            chatId,
+            zaloUserId,
+            text,
+            newDigits[0],
+            session,
+          );
+          return;
+        }
         await this.reply(
           chatId,
           zaloUserId,
