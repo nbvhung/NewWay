@@ -70,7 +70,7 @@ export class ContainerImportService {
       ['BMOU6823203', 'H20'],
       ['BMOU1234567', 'V40'],
       ['BMOU9876543', 'V20FR'],
-      ['BMOU1112223', 'VSL'],
+      ['BMOU1112223', 'V40FR'],
     ];
     samples.forEach(([code, type], i) => {
       ws.getCell(`A${i + 2}`).value = code;
