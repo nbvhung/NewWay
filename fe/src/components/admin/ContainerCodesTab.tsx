@@ -287,8 +287,8 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
           <select value={planId} onChange={e => { setPlanId(e.target.value === '' ? '' : Number(e.target.value)); setListSearch(''); setTypeFilter('Tất cả'); setDriverFilter('Tất cả'); }}
             className={inputCls}>
             <option value="">-- Chọn kế hoạch --</option>
-            {allShippingLines.map(p => (
-              <option key={p.id} value={p.id}>{planDisplayName(p)}{p.completed ? ' (✅ hoàn thành)' : ''}</option>
+            {allShippingLines.filter(p => !p.completed).map(p => (
+              <option key={p.id} value={p.id}>{planDisplayName(p)}</option>
             ))}
           </select>
         </div>
