@@ -148,6 +148,25 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
     }
   };
 
+  const downloadTemplate = () => {
+    const content = [
+      'Mã container\tLoại',
+      'BMOU6823203\tH20',
+      'BMOU1234567\tV40',
+      'BMOU9876543\tV20FR',
+      'BMOU1112223\tVSL',
+    ].join('\n');
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'mau-nhap-container.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const removeAll = async () => {
     if (!selectedPlan) return;
     if (!confirm(`Xóa toàn bộ ${items.length} container của kế hoạch?`)) return;
@@ -308,6 +327,9 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
                   className="w-full text-xs file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-[rgba(26,86,219,0.1)] file:text-[#1a56db] file:cursor-pointer disabled:opacity-40" />
                 <button onClick={upload} disabled={uploading || !file || isLocked} className={`${btnPrimary} w-full mt-2`}>
                   {uploading ? 'Đang import...' : '⬆️ Import'}
+                </button>
+                <button onClick={downloadTemplate} className="w-full mt-1.5 px-4 py-2 rounded-lg text-xs font-medium bg-[#f8fafc] border border-[rgba(0,0,0,0.1)] text-[#64748b] hover:text-[#1a56db] hover:border-[#1a56db] cursor-pointer">
+                  📄 Xuất file mẫu
                 </button>
               </div>
               <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
