@@ -420,7 +420,8 @@ export default function MyDataPage() {
             <span className="text-xl">🔒</span>
             <div>
               <p className="text-xs font-bold text-red-600">Hệ thống đang tạm khóa nhập liệu</p>
-              <p className="text-[11px] text-red-500 mt-0.5">Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.</p>
+              <p className="text-[11px] text-red-500 mt-0.5">Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ HƯNG để sửa.</p>
+              <p className="text-[11px] font-bold text-red-600 mt-0.5">SĐT: 082 558 7779</p>
             </div>
           </div>
         )}

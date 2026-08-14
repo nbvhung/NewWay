@@ -341,9 +341,9 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
                         <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.15)] text-red-600">🚩 Phát sinh</span>
                       )}
                       {item.submissionId ? (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(16,185,129,0.15)] text-emerald-700">✅ Đã ghi</span>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(16,185,129,0.15)] text-emerald-700">✅ Đã ghi{item.recordedBy ? ` · ${item.recordedBy}` : ''}</span>
                       ) : (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.15)] text-amber-700">⏳ Chờ ghi</span>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.15)] text-amber-700">⏳ Chờ ghi{item.phatSinh && item.importedByName ? ` · Tài xế: ${item.importedByName}` : ''}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5">

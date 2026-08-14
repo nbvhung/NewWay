@@ -9,6 +9,8 @@ export interface ContainerImport {
   submissionId: number | null;
   bundleId: string | null;
   phatSinh?: boolean;
+  recordedBy?: string;
+  importedByName?: string;
   createdAt: string;
 }
 

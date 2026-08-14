@@ -8,6 +8,7 @@ import {
   extractContainerCodes,
   extractContainerPrefix,
 } from './text-parser';
+import { dailyLuckyNumber } from './lucky-number';
 import {
   TYPE_FIELD_MAP,
   TYPE_LABEL,
@@ -263,6 +264,11 @@ export class ZaloBotService {
       return;
     }
 
+    if (normalized.includes('so may man')) {
+      await this.handleLuckyNumber(chatId, zaloUserId);
+      return;
+    }
+
     if (
       lower.startsWith('/help') ||
       lower.startsWith('/start') ||
@@ -512,8 +518,27 @@ export class ZaloBotService {
         'Hủy kế hoạch hiện tại / thao tác lại: /logout',
         'Đổi sang SĐT tài khoản khác: /doi-sdt',
         'Ghi TIP: nhắn "TIP" kèm số lượng (vd: TIP 3)',
+        'Số may mắn: nhắn "số may mắn" để xem số may mắn hôm nay 🍀',
         'Số liệu sẽ được cập nhật vào phần mềm ngay lập tức ✅',
       ].join('\n'),
+    );
+  }
+
+  private async handleLuckyNumber(
+    chatId: string,
+    zaloUserId: string,
+  ): Promise<void> {
+    const linked = await this.usersRepository.findOne({
+      where: { zaloId: zaloUserId },
+    });
+    const name = linked?.fullName || '';
+    const num = dailyLuckyNumber();
+    await this.reply(
+      chatId,
+      zaloUserId,
+      name
+        ? `🍀 Số may mắn hôm nay của Sếp ${name} là ${num}`
+        : `🍀 Số may mắn hôm nay là ${num}`,
     );
   }
 

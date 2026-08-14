@@ -218,13 +218,26 @@ export class ContainerImportService {
     return entity;
   }
 
-  async findAll(planId?: number): Promise<ContainerImport[]> {
-    const where: { shippingLineId?: number } = {};
-    if (planId) where.shippingLineId = planId;
-    return this.containerImportsRepository.find({
-      where,
-      order: { createdAt: 'DESC' },
-      take: 5000,
+  async findAll(
+    planId?: number,
+  ): Promise<Array<ContainerImport & { recordedBy?: string; importedByName?: string }>> {
+    const qb = this.containerImportsRepository.createQueryBuilder('c');
+    if (planId) qb.where('c.shippingLineId = :planId', { planId });
+    qb.leftJoinAndSelect('c.submissionRef', 'sub')
+      .leftJoin('sub.user', 'u')
+      .addSelect(['u.id', 'u.fullName', 'u.username'])
+      .leftJoin('c.importedByRef', 'imp')
+      .addSelect(['imp.id', 'imp.fullName'])
+      .orderBy('c.createdAt', 'DESC')
+      .take(5000);
+    const rows = await qb.getMany();
+    return rows.map((r) => {
+      const sub: any = (r as any).submissionRef;
+      const importer: any = (r as any).importedByRef;
+      const recordedBy = r.submissionId
+        ? sub?.user?.fullName || sub?.driverName || ''
+        : '';
+      return { ...r, recordedBy, importedByName: importer?.fullName || '' };
     });
   }
 

@@ -130,7 +130,7 @@ export default function MyDataScreen() {
 
   const openEdit = (sub: Submission) => {
     if (entryLocked || entryLockedRef.current) {
-      Alert.alert('Nhập liệu đã khóa', 'Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.');
+      Alert.alert('Nhập liệu đã khóa', 'Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ HƯNG để sửa.\nSĐT: 082 558 7779');
       return;
     }
     setEditSub(sub);
@@ -149,7 +149,7 @@ export default function MyDataScreen() {
   const saveEdit = async () => {
     if (!editSub) return;
     if (entryLocked) {
-      Alert.alert('Nhập liệu đã khóa', 'Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.');
+      Alert.alert('Nhập liệu đã khóa', 'Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ HƯNG để sửa.\nSĐT: 082 558 7779');
       return;
     }
     if (!editForm.shippingLineId && !editForm.shippingLine) {
@@ -304,7 +304,10 @@ export default function MyDataScreen() {
         <View style={styles.lockBanner}>
           <Text style={styles.lockBannerTitle}>🔒 Hệ thống đang tạm khóa nhập liệu</Text>
           <Text style={styles.lockBannerText}>
-            Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.
+            Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ HƯNG để sửa.
+          </Text>
+          <Text style={styles.lockBannerText}>
+            SĐT: 082 558 7779
           </Text>
         </View>
       )}

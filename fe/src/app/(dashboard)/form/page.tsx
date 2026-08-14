@@ -219,7 +219,10 @@ export default function FormPage() {
               🔒 Hệ thống đang tạm khóa nhập liệu
             </span>
             <p style={{ fontSize: 12, color: '#dc2626', margin: '6px 0 0' }}>
-              Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.
+              Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ HƯNG để sửa.
+            </p>
+            <p style={{ fontSize: 12, fontWeight: 800, color: '#dc2626', margin: '4px 0 0' }}>
+              SĐT: 082 558 7779
             </p>
           </div>
         )}
