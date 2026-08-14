@@ -133,7 +133,7 @@ export class ZaloBotService {
     await this.reply(
       chatId,
       zaloUserId,
-      `✅ Xác nhận thành công! Sếp là ${user.fullName} (SĐT ${phone}).\nGiờ gửi 7 số cuối mã container (hoặc đọc to) để ghi nhận nhé.`,
+      `✅ Xác nhận thành công! Sếp là ${user.fullName} (SĐT ${phone}).\nGiờ gửi số cuối mã container (hoặc đọc to) để ghi nhận nhé.`,
     );
   }
 
@@ -162,6 +162,7 @@ export class ZaloBotService {
     session.awaitingClamp = undefined;
     session.clampClaimed = undefined;
     session.phatSinh = undefined;
+    session.tipFlow = undefined;
     session.pendingAt = undefined;
   }
 
@@ -192,7 +193,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          'Không tải được file ghi âm, Sếp nhắn 7 số cuối mã container giúp em nhé.',
+          'Không tải được file ghi âm, Sếp nhắn số cuối mã container giúp em nhé.',
         );
         return;
       }
@@ -204,7 +205,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          'Chưa nhận diện được giọng nói (chưa cấu hình STT hoặc file hỏng). Sếp nhắn 7 số cuối mã container giúp nhé.',
+          'Chưa nhận diện được giọng nói (chưa cấu hình STT hoặc file hỏng). Sếp nhắn số cuối mã container giúp nhé.',
         );
         return;
       }
@@ -310,6 +311,7 @@ export class ZaloBotService {
       session.clampClaimed ||
       session.awaitingClamp ||
       session.phatSinh ||
+      session.tipFlow ||
       (session.pendingCandidates?.length ?? 0) > 0;
 
     if (hasPending) {
@@ -319,7 +321,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          '✅ Đã hủy thao tác đang chờ. Sếp gửi 7 số cuối mã container giúp em nhé.',
+          '✅ Đã hủy thao tác đang chờ. Sếp gửi số cuối mã container giúp em nhé.',
         );
         return;
       }
@@ -332,7 +334,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          'Thao tác trước đã quá lâu rồi ạ. Sếp gửi lại 7 số cuối mã container giúp em nhé.',
+          'Thao tác trước đã quá lâu rồi ạ. Sếp gửi lại số cuối mã container giúp em nhé.',
         );
         return;
       }
@@ -345,7 +347,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          'Sếp chọn giúp em: 1 = Vẫn kéo, 2 = Nhầm, đọc lại (hoặc gõ "hủy" để thoát).',
+          'Chưa hợp lệ. Sếp gửi lại giúp em nhé (hoặc gõ "hủy" để thoát).',
         );
       }
       return;
@@ -359,7 +361,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          'OK, không kẹp. Sếp gửi 7 số cuối mã container mới giúp em nhé.',
+          'OK, không kẹp. Sếp gửi số cuối mã container mới giúp em nhé.',
         );
         return;
       }
@@ -377,13 +379,23 @@ export class ZaloBotService {
       await this.reply(
         chatId,
         zaloUserId,
-        'Sếp gửi 7 số cuối của container kẹp giúp em nhé.',
+        'Sếp gửi số cuối của container kẹp giúp em nhé.',
       );
       return;
     }
 
     if (session.phatSinh) {
       await this.handlePhatSinh(chatId, zaloUserId, text, session);
+      return;
+    }
+
+    if (session.tipFlow) {
+      await this.handleTip(chatId, zaloUserId, text, session);
+      return;
+    }
+
+    if (/^tip(\s+\d+)?$/i.test(text)) {
+      await this.startTipFlow(chatId, zaloUserId, text, session);
       return;
     }
 
@@ -411,7 +423,7 @@ export class ZaloBotService {
           await this.reply(
             chatId,
             zaloUserId,
-            'Em hiểu rồi, em bỏ qua mã vừa rồi nhé. Sếp gửi 7 số cuối mã container mới giúp em.',
+            'Em hiểu rồi, em bỏ qua mã vừa rồi nhé. Sếp gửi số cuối mã container mới giúp em.',
           );
           return;
         }
@@ -427,18 +439,14 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          th3
-            ? 'Chưa hợp lệ. Sếp chọn giúp em: 1 = Vệ sinh lại, 2 = Kéo Về, 3 = Vẫn đi, 4 = bỏ qua (hoặc gõ "hủy" để thoát).'
-            : 'Chưa hợp lệ. Sếp chọn giúp em: 1 = Vệ sinh lại, 2 = Kéo Về, 3 = bỏ qua (hoặc gõ "hủy" để thoát).',
+          'Chưa hợp lệ. Sếp gửi lại giúp em nhé (hoặc gõ "hủy" để thoát).',
         );
         return;
       }
       await this.reply(
         chatId,
         zaloUserId,
-        session.reEntry.keoVe
-          ? 'Sếp chọn giúp em: 1 = Vệ sinh lại, 2 = Kéo Về, 3 = Vẫn đi, 4 = bỏ qua (hoặc gõ "hủy" để thoát).'
-          : 'Sếp chọn giúp em: 1 = Vệ sinh lại, 2 = Kéo Về, 3 = bỏ qua (hoặc gõ "hủy" để thoát).',
+        'Sếp gửi số thứ tự trong menu vừa hiển thị giúp em nhé.',
       );
       return;
     }
@@ -479,7 +487,7 @@ export class ZaloBotService {
     await this.reply(
       chatId,
       zaloUserId,
-      'Sếp gửi 7 số cuối mã container (hoặc đọc to số container) để ghi nhận nhé.',
+      'Sếp gửi số cuối mã container (hoặc đọc to số container) để ghi nhận nhé.',
     );
   }
 
@@ -495,7 +503,7 @@ export class ZaloBotService {
         '   để xác nhận, chỉ cần làm 1 lần duy nhất.',
         '',
         '2️⃣ Báo container:',
-        '   • Nhắn 7 số cuối mã container (vd: 6823203)',
+        '   • Nhắn số cuối mã container (vd: 6823203)',
         '   • Hoặc gửi tin nhắn thoại đọc số',
         '   Bot sẽ tự tìm mã trong các kế hoạch đang chạy.',
         '',
@@ -503,6 +511,7 @@ export class ZaloBotService {
         '',
         'Hủy kế hoạch hiện tại / thao tác lại: /logout',
         'Đổi sang SĐT tài khoản khác: /doi-sdt',
+        'Ghi TIP: nhắn "TIP" kèm số lượng (vd: TIP 3)',
         'Số liệu sẽ được cập nhật vào phần mềm ngay lập tức ✅',
       ].join('\n'),
     );
@@ -516,7 +525,7 @@ export class ZaloBotService {
     await this.reply(
       chatId,
       zaloUserId,
-      '✅ Đã làm mới phiên. Sếp gửi 7 số cuối mã container để ghi nhận nhé.',
+      '✅ Đã làm mới phiên. Sếp gửi số cuối mã container để ghi nhận nhé.',
     );
   }
 
@@ -550,7 +559,7 @@ export class ZaloBotService {
       await this.reply(
         chatId,
         zaloUserId,
-        'Số Sếp gửi chưa hợp lệ. Sếp hãy gửi đúng số thứ tự (1, 2, ... ) trong danh sách container vừa hiển thị để chọn giúp em nhé (hoặc gõ "hủy" để thoát).',
+        'Số Sếp gửi chưa hợp lệ. Sếp gửi đúng số thứ tự trong danh sách container vừa hiển thị nhé (hoặc gõ "hủy" để thoát).',
       );
       return;
     }
@@ -561,6 +570,7 @@ export class ZaloBotService {
         candidate,
         session.pendingDigits || '',
         session,
+        candidate.recordedBy,
       );
       return;
     }
@@ -581,6 +591,7 @@ export class ZaloBotService {
         ngay?: string | null;
       };
       planName?: string;
+      recordedBy?: string;
     }>,
     digits: string,
   ): string {
@@ -599,17 +610,21 @@ export class ZaloBotService {
               .join(' / ')
           : '');
       const bundleNote = c.bundleId ? ` 🎁 (${c.bundleId})` : '';
-      const claimedNote = c.submissionId ? ' — đã ghi nhận trước đó' : '';
+      const claimedNote = c.submissionId
+        ? c.recordedBy
+          ? ` — đã được chạy bởi ${c.recordedBy}`
+          : ' — đã được chạy trước đó'
+        : '';
       return `${i + 1}. ${c.containerCode || c.code} — ${
         TYPE_LABEL[c.type] || c.type
       }${claimedNote}${bundleNote}${planName ? ` — ${planName}` : ''}`;
     });
     return [
-      `Có ${candidates.length} container cùng 7 số cuối "${digits}":`,
+      `Có ${candidates.length} container cùng số cuối "${digits}":`,
       '',
       ...lines,
       '',
-      'Sếp gửi số thứ tự (vd: 1) hoặc mã đầy đủ để chọn.',
+      'Sếp gửi số thứ tự hoặc mã đầy đủ để chọn.',
     ].join('\n');
   }
 
@@ -638,7 +653,7 @@ export class ZaloBotService {
     session.awaitingClamp = undefined;
     await this.sessionService.save(zaloUserId, session);
 
-    // Tìm 7 số cuối ở TẤT CẢ kế hoạch CHƯA hoàn thành được phân công cho lái xe
+    // Tìm N số cuối (1-7) ở TẤT CẢ kế hoạch CHƯA hoàn thành được phân công cho lái xe
     const candidates = await this.containerImportService.searchActiveByDigits(
       digits,
       session.userId,
@@ -646,7 +661,7 @@ export class ZaloBotService {
     const pending = candidates.filter((c) => !c.submissionId);
     const claimed = candidates.filter((c) => c.submissionId);
 
-    // Có ≥ 2 container trùng 7 số cuối → LUÔN hiện danh sách để tài xế chọn,
+    // Có ≥ 2 container trùng số cuối → LUÔN hiện danh sách để tài xế chọn,
     // kể cả khi các cont khác đã được ghi nhận trước đó (kể cả pending lẫn claimed).
     if (pending.length + claimed.length > 1) {
       session.pendingCandidates = [...pending, ...claimed];
@@ -670,16 +685,20 @@ export class ZaloBotService {
           claimed[0],
           digits,
           session,
+          (claimed[0] as any).recordedBy,
         );
       } else {
         const alreadyClaimed =
           await this.containerImportService.searchAllByDigits(digits);
         const claimedOne = alreadyClaimed.find((c) => c.submissionId);
         if (claimedOne) {
+          const who = (claimedOne as any).recordedBy;
           await this.reply(
             chatId,
             zaloUserId,
-            `${claimedOne.containerCode} đã được ghi nhận trước đó rồi ✅`,
+            who
+              ? `${claimedOne.containerCode} đã được chạy bởi ${who} trước đó rồi ✅`
+              : `${claimedOne.containerCode} đã được ghi nhận trước đó rồi ✅`,
           );
         } else {
           // TH2: mã không có trong kế hoạch nào được phân công → menu "Vẫn đi / Đọc nhầm"
@@ -695,7 +714,7 @@ export class ZaloBotService {
             chatId,
             zaloUserId,
             [
-              `Không tìm thấy container có 7 số cuối ${digits} trong kế hoạch nào được phân công cho Sếp.`,
+              `Không tìm thấy container có số cuối ${digits} trong kế hoạch nào được phân công cho Sếp.`,
               '',
               '1) Vẫn đi (container phát sinh)',
               '2) Sếp đọc nhầm (bỏ qua)',
@@ -723,10 +742,13 @@ export class ZaloBotService {
       shippingLineId: number | null;
       type: string;
       keoVe?: boolean;
+      recordedBy?: string;
     },
     digits: string,
     session: any,
+    recordedBy?: string,
   ): Promise<void> {
+    const isSelf = recordedBy && recordedBy === session.userFullName;
     session.reEntry = {
       containerCode: target.containerCode,
       shippingLineId: target.shippingLineId,
@@ -739,27 +761,26 @@ export class ZaloBotService {
     session.pendingAt = Date.now();
     await this.sessionService.save(zaloUserId, session);
     const th3 = !!target.keoVe;
+    const prefix = isSelf
+      ? `${target.containerCode} Sếp vừa chạy rồi mà, Sếp kiểm tra rồi bảo em`
+      : recordedBy
+        ? `${target.containerCode} Sếp ${recordedBy} vừa chạy rồi mà, Sếp kiểm tra rồi bảo em`
+        : `${target.containerCode} đã được ghi nhận rồi.`;
     const lines = th3
       ? [
-          `${target.containerCode} đã được ghi nhận và đã kéo về rồi.`,
-          'Sếp đang muốn ghi theo kiểu nào ạ?',
+          prefix,
           '',
           '1) Vệ sinh lại',
           '2) Kéo Về',
           '3) Vẫn đi',
           '4) Sếp đọc nhầm (bỏ qua)',
-          '',
-          'Sếp gửi 1, 2, 3 hoặc 4 giúp em nhé.',
         ]
       : [
-          `${target.containerCode} đã được ghi nhận rồi.`,
-          'Sếp đang muốn ghi thêm theo kiểu nào ạ?',
+          prefix,
           '',
           '1) Vệ sinh lại',
           '2) Kéo Về',
           '3) Sếp đọc nhầm (bỏ qua)',
-          '',
-          'Sếp gửi 1, 2 hoặc 3 giúp em nhé.',
         ];
     await this.reply(chatId, zaloUserId, lines.join('\n'));
   }
@@ -775,7 +796,7 @@ export class ZaloBotService {
       await this.reply(
         chatId,
         zaloUserId,
-        'Chưa có mã container đang chờ. Sếp gửi 7 số cuối mã container giúp em nhé.',
+        'Chưa có mã container đang chờ. Sếp gửi số cuối mã container giúp em nhé.',
       );
       return;
     }
@@ -916,7 +937,7 @@ export class ZaloBotService {
           await this.reply(
             chatId,
             zaloUserId,
-            'Em hiểu rồi, em bỏ qua nhé. Sếp gửi 7 số cuối mã container mới giúp em.',
+            'Em hiểu rồi, em bỏ qua nhé. Sếp gửi số cuối mã container mới giúp em.',
           );
           return;
         }
@@ -954,15 +975,13 @@ export class ZaloBotService {
             'Sếp đang chạy kế hoạch nào ạ?',
             '',
             ...lines,
-            '',
-            'Sếp gửi số thứ tự (vd: 1) giúp em nhé.',
           ].join('\n'),
         );
       } else {
         await this.reply(
           chatId,
           zaloUserId,
-          'Sếp gửi 1 hoặc 2 giúp em nhé (1 = Vẫn đi, 2 = bỏ qua, hoặc gõ "hủy" để thoát).',
+          'Chưa hợp lệ. Sếp gửi lại giúp em nhé (hoặc gõ "hủy" để thoát).',
         );
       }
       return;
@@ -993,7 +1012,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          'Sếp gửi số thứ tự kế hoạch giúp em nhé.',
+          'Chưa hợp lệ. Sếp gửi số thứ tự kế hoạch giúp em nhé.',
         );
       }
       return;
@@ -1013,9 +1032,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          `Container ${ps.pendingCode} thuộc loại nào ạ?\nSếp gửi số thứ tự (1-6) hoặc mã loại (${PHATSINH_TYPE_OPTIONS.join(
-            ', ',
-          )}) giúp em nhé.`,
+          `Container ${ps.pendingCode} thuộc loại nào ạ?\n1) Hàng 20 (H20)\n2) Hàng 40 (H40)\n3) Vỏ 20 (V20)\n4) Vỏ 40 (V40)\n5) Vỏ 20FR (V20FR)\n6) Vỏ 40FR (V40FR)`,
         );
         return;
       }
@@ -1107,10 +1124,226 @@ export class ZaloBotService {
         `Container ${fullCode} thuộc loại nào ạ?`,
         '',
         ...lines,
-        '',
-        'Sếp gửi số thứ tự (vd: 1) hoặc mã loại (vd: H20) giúp em nhé.',
       ].join('\n'),
     );
+  }
+
+  private async startTipFlow(
+    chatId: string,
+    zaloUserId: string,
+    text: string,
+    session: any,
+  ): Promise<void> {
+    if (!session.userId) {
+      await this.reply(
+        chatId,
+        zaloUserId,
+        'Zalo này chưa xác nhận. Sếp gửi SĐT đã đăng ký trong tài khoản để kích hoạt nhé (vd: 0931234567).',
+      );
+      return;
+    }
+    const m = /^tip\s+(\d+)$/i.exec(text);
+    const count = m ? parseInt(m[1], 10) : 0;
+    session.tipFlow = {
+      count,
+      pendingPlanOptions: [],
+    };
+    session.pendingCandidates = undefined;
+    session.pendingDigits = undefined;
+    session.reEntry = undefined;
+    session.phatSinh = undefined;
+    session.pendingAt = Date.now();
+    await this.sessionService.save(zaloUserId, session);
+    if (count > 0) {
+      await this.handleTip(chatId, zaloUserId, '', session);
+    } else {
+      await this.reply(
+        chatId,
+        zaloUserId,
+        'Sếp gửi số TIP (vd: nhắn "TIP 3") giúp em nhé.',
+      );
+    }
+  }
+
+  private async handleTip(
+    chatId: string,
+    zaloUserId: string,
+    text: string,
+    session: any,
+  ): Promise<void> {
+    const tip = session.tipFlow;
+    if (!tip) return;
+
+    if (!tip.count) {
+      const m = /^(\d{1,3})$/.exec(text.trim());
+      if (m) {
+        tip.count = parseInt(m[1], 10);
+        session.tipFlow = tip;
+        await this.sessionService.save(zaloUserId, session);
+        await this.handleTip(chatId, zaloUserId, '', session);
+      } else {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Sếp gửi số TIP (vd: nhắn "3") giúp em nhé.',
+        );
+      }
+      return;
+    }
+
+    if (!tip.selectedPlanId) {
+      if (tip.pendingPlanOptions.length === 0) {
+        const plans = await this.shippingLinesRepository.find({
+          where: { completed: false },
+          order: { id: 'DESC' },
+          take: 100,
+        });
+        const assigned = plans.filter(
+          (p) => p.allDrivers || this.isDriverAssigned(p, session.userId),
+        );
+        if (assigned.length === 0) {
+          session.tipFlow = undefined;
+          await this.sessionService.save(zaloUserId, session);
+          await this.reply(
+            chatId,
+            zaloUserId,
+            'Hiện không có kế hoạch nào được phân công đang chạy để ghi nhận TIP. Sếp liên hệ OPS nhé.',
+          );
+          return;
+        }
+        tip.pendingPlanOptions = assigned.map((p) => ({
+          id: p.id,
+          name: this.planDisplayName(p),
+        }));
+        session.tipFlow = tip;
+        await this.sessionService.save(zaloUserId, session);
+        const lines = assigned.map(
+          (p, i) => `${i + 1}. ${this.planDisplayName(p)}`,
+        );
+        await this.reply(
+          chatId,
+          zaloUserId,
+          ['Sếp đang chạy kế hoạch nào ạ?', '', ...lines].join('\n'),
+        );
+        return;
+      }
+      const m = /^(\d{1,2})$/.exec(text.trim());
+      if (m) {
+        const idx = parseInt(m[1], 10) - 1;
+        const option = tip.pendingPlanOptions[idx];
+        if (!option) {
+          await this.reply(
+            chatId,
+            zaloUserId,
+            'Số Sếp gửi chưa hợp lệ. Sếp gửi đúng số thứ tự trong danh sách kế hoạch vừa hiển thị nhé.',
+          );
+          return;
+        }
+        tip.selectedPlanId = option.id;
+        session.tipFlow = tip;
+        await this.sessionService.save(zaloUserId, session);
+        await this.recordTip(chatId, zaloUserId, session);
+      } else {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Sếp gửi số thứ tự kế hoạch giúp em nhé.',
+        );
+      }
+      return;
+    }
+  }
+
+  private async recordTip(
+    chatId: string,
+    zaloUserId: string,
+    session: any,
+  ): Promise<void> {
+    const tip = session.tipFlow;
+    if (!tip || !tip.selectedPlanId || tip.count <= 0) return;
+    const field = TYPE_FIELD_MAP.TIP;
+    const label = TYPE_LABEL.TIP;
+    try {
+      const user = await this.usersRepository.findOne({
+        where: { id: session.userId },
+      });
+      if (!user) {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Tài khoản không còn tồn tại. Liên hệ admin nhé.',
+        );
+        return;
+      }
+      const plan = await this.shippingLinesRepository.findOne({
+        where: { id: tip.selectedPlanId },
+      });
+      if (!plan) {
+        await this.reply(chatId, zaloUserId, 'Kế hoạch không còn tồn tại.');
+        return;
+      }
+      if (plan.completed) {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Kế hoạch đã hoàn thành, không thể ghi nhận thêm.',
+        );
+        return;
+      }
+
+      let submission = await this.submissionsRepository.findOne({
+        where: { userId: user.id, shippingLineId: plan.id },
+      });
+      let newTotal: string;
+      if (!submission) {
+        submission = this.submissionsRepository.create({
+          userId: user.id,
+          shippingLine: plan.name,
+          shippingLineId: plan.id,
+          route: plan.routeName || '',
+          driverName: user.fullName,
+          [field]: String(tip.count),
+        });
+        newTotal = String(tip.count);
+        await this.submissionsRepository.save(submission);
+      } else {
+        const oldVal = String((submission as any)[field] || '');
+        newTotal = String((parseInt(oldVal, 10) || 0) + tip.count);
+        (submission as any)[field] = newTotal;
+        submission.editCount += 1;
+        submission.lastEditedAt = new Date();
+        await this.submissionsRepository.save(submission);
+        const history = this.editHistoryRepository.create({
+          submissionId: submission.id,
+          editedById: user.id,
+          editedByName: user.fullName,
+          changes: JSON.stringify({ [field]: { old: oldVal, new: newTotal } }),
+        });
+        await this.editHistoryRepository.save(history);
+      }
+
+      session.tipFlow = undefined;
+      session.pendingCandidates = undefined;
+      session.pendingDigits = undefined;
+      await this.sessionService.save(zaloUserId, session);
+
+      void this.opsNotifier.notifyOps(
+        `🚚 ${user.fullName} - TIP ${tip.count} — "${plan.name}"`,
+      );
+
+      await this.reply(
+        chatId,
+        zaloUserId,
+        `✅ ${label}: ${newTotal} - ${this.planDisplayName(plan)}`,
+      );
+    } catch (err: any) {
+      this.logger.error(`recordTip failed: ${err.message}`, err.stack);
+      await this.reply(
+        chatId,
+        zaloUserId,
+        'Đã có lỗi xảy ra khi ghi nhận. Vui lòng thử lại sau.',
+      );
+    }
   }
 
   private async handleClampDigits(
@@ -1164,8 +1397,6 @@ export class ZaloBotService {
           '',
           '1) Vẫn kéo',
           '2) Nhầm, đọc lại',
-          '',
-          'Sếp gửi 1 hoặc 2 giúp em nhé.',
         ].join('\n'),
       );
       return;
@@ -1221,7 +1452,7 @@ export class ZaloBotService {
     await this.reply(
       chatId,
       zaloUserId,
-      'Sếp chọn giúp em: 1 = Vẫn kéo, 2 = Nhầm, đọc lại.',
+      'Chưa hợp lệ. Sếp gửi 1 hoặc 2 giúp em nhé.',
     );
   }
 
@@ -1235,7 +1466,7 @@ export class ZaloBotService {
       await this.reply(
         chatId,
         zaloUserId,
-        'Chưa có mã container đang chờ. Sếp gửi 7 số cuối mã container giúp em nhé.',
+        'Chưa có mã container đang chờ. Sếp gửi số cuối mã container giúp em nhé.',
       );
       return;
     }

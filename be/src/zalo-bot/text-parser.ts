@@ -176,9 +176,10 @@ function parseFullNumber(words: string[]): number | null {
 
 function toCandidateCodes(digitStr: string): string[] {
   const clean = digitStr.replace(/\D/g, '');
-  if (!clean || clean.length < 7) return [];
+  if (!clean) return [];
   const out: string[] = [];
-  if (clean.length === 7) {
+  if (clean.length <= 7) {
+    // Lái xe có thể nhập 1-7 số cuối; bot lọc theo đúng số lượng đã nhập.
     out.push(clean);
   } else if (clean.length % 7 === 0) {
     for (let i = 0; i < clean.length; i += 7) out.push(clean.slice(i, i + 7));
@@ -190,7 +191,7 @@ function toCandidateCodes(digitStr: string): string[] {
   return [...new Set(out)];
 }
 
-const FULL_CODE_RE = /[A-Za-z]{4}\s*\d{7}/g;
+const FULL_CODE_RE = /(?<![A-Za-z])[A-Za-z]{4}\s*\d{7}/g;
 
 /**
  * Trích xuất mã container đầy đủ dạng "BMOU6823203" (4 chữ cái + 7 chữ số,

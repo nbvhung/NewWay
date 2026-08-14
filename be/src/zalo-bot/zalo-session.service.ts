@@ -9,6 +9,7 @@ export interface PendingCandidate {
   shippingLineId: number | null;
   bundleId: string | null;
   planName?: string;
+  recordedBy?: string;
 }
 
 export interface PendingPlanOption {
@@ -41,6 +42,11 @@ export interface ZaloSession {
   clampClaimed?: ClampClaimed;
   phatSinh?: {
     digits: string;
+    pendingPlanOptions: PendingPlanOption[];
+    selectedPlanId?: number;
+  };
+  tipFlow?: {
+    count: number;
     pendingPlanOptions: PendingPlanOption[];
     selectedPlanId?: number;
   };

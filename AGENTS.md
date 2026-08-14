@@ -200,16 +200,17 @@ UNIQUE(shippingLineId, name)
 - **Gửi tin**: `POST https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/sendMessage` body `{ chat_id, text }`.
 - **Voice**: webhook chỉ gửi `voice_url` → backend tải file (Authorization Bearer, fallback `access_token` query) → STT (OpenAI Whisper qua `OPENAI_API_KEY`, bắt buộc key) → lọc số.
 - **Session**: Redis key `zalo_session:{zaloUserId}`, TTL 3600. Lưu `userId`, `planId`, `planName`, `pendingCandidates`, `pendingDigits`, `pendingPlanOptions`.
-- **Lệnh bot**: `/help`, `/link <username> <password>` (liên kết qua bcrypt.compare + set `users.zalo_id`), `/doi-plan`, `/logout` (xóa session + set `users.zalo_id` = null). **Không có lệnh `/xong`** — ghi nhận real-time từng container.
-- **Hội thoại**: liên kết → chọn kế hoạch (match tên, hỗ trợ chọn số khi trùng) → gửi 7 số cuối / đọc số → tìm `RIGHT(container_code, 7)` trong plan:
+- **Lệnh bot**: `/help`, `/link <username> <password>` (liên kết qua bcrypt.compare + set `users.zalo_id`), `/doi-plan`, `/logout` (xóa session + set `users.zalo_id` = null), nhắn `TIP <số>` để ghi TIP (vd `TIP 3` → chọn kế hoạch → cộng vào field `tip`). **Không có lệnh `/xong`** — ghi nhận real-time từng container.
+- **Hội thoại**: liên kết → chọn kế hoạch (match tên, hỗ trợ chọn số khi trùng) → gửi 1–7 số cuối / đọc số → tìm `RIGHT(container_code, N)` (N = số chữ số đã nhập) trong plan:
   - 0 kết quả → "không nằm trong kế hoạch"
   - 1 kết quả → upsert submission + `claim` (set `container_imports.submission_id`)
-  - >1 kết quả → liệt kê 1️⃣/2️⃣, tài xế nhắn số thứ tự hoặc mã đầy đủ
+  - >1 kết quả → liệt kê 1️⃣/2️⃣, tài xế nhắn số thứ tự hoặc mã đầy đủ (KHÔNG tự điền khi trùng)
+- **Trùng đã ghi trước đó**: container đã có `submissionId` hiển thị tên lái xe đã chạy (`đã được chạy bởi {Lái xe}`) rồi mới show menu chọn (Vệ sinh lại / Kéo Về / Vẫn đi / Đọc nhầm).
 - **Upsert submission**: tìm `submissions` theo `userId + shippingLineId`. Chưa có → tạo mới với field loại = `1`. Có → cộng `+1`, `editCount + 1`, `lastEditedAt`, ghi `edit_history` (`editedById` = lái xe, `editedByName` = fullName).
 - **Map loại → field**: H20→`hang20`, H40→`hang40`, V20→`vo20`, V40→`vo40`, V20FR→`vo20fr`, V40FR→`vo40fr`, VSL→`veSinhLai`, TIP→`tip`.
 - **Chặn ghi**: kế hoạch `completed` chặn import file lẫn ghi nhận qua bot; container đã có `submissionId` → báo "đã ghi nhận trước đó".
 - **Container phát sinh**: lái xe đọc mã không có trong kế hoạch → bot hỏi "1) Vẫn đi / 2) Đọc nhầm" → chọn kế hoạch → lái xe chỉ cần đọc **4 chữ cái đầu (prefix)** của container (vd `BEAU`, số 7 cuối đã nhập trước đó) — bot ghép thành mã đầy đủ → **hỏi loại container (H20/H40/V20/V40/V20FR/V40FR)** → ghi nhận loại vào `container_imports.type` (không phải `PHATSINH`) nhưng vẫn `phatSinh=true`, chưa cộng sản lượng. OPS confirm trên web (`classifyPhatSinh`) mới cộng sản lượng + gán `submissionId`.
-- **Text parser** (`zalo-bot/text-parser.ts`): đọc số Việt (không/một/hai...chín), số nguyên theo cấp (nghìn/triệu), bỏ từ nhiễu (ờ, à, ơ...), trích chuỗi 7 số.
+- **Text parser** (`zalo-bot/text-parser.ts`): đọc số Việt (không/một/hai...chín), số nguyên theo cấp (nghìn/triệu), bỏ từ nhiễu (ờ, à, ơ...), trích **1–7 số cuối** (nhập bao nhiêu lọc bấy nhiêu). SĐT 10 số bị loại.
 - **Liên kết Zalo**: cả `/link` trên bot VÀ admin nhập `zalo_id` trong tab Users (CreateUserDto/UpdateUserDto có `zaloId` optional).
 
 ### Excel Export

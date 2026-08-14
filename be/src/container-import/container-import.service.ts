@@ -253,24 +253,33 @@ export class ContainerImportService {
     planId?: number,
   ): Promise<ContainerImport[]> {
     const qb = this.containerImportsRepository.createQueryBuilder('c');
-    qb.where('RIGHT(c.container_code, 7) = :digits', { digits });
+    qb.where('RIGHT(c.container_code, :len) = :digits', {
+      digits,
+      len: digits.length,
+    });
     if (planId) qb.andWhere('c.shippingLineId = :planId', { planId });
     qb.orderBy('c.container_code', 'ASC');
     return qb.getMany();
   }
 
   /**
-   * Tìm container theo 7 số cuối ở TẤT CẢ kế hoạch CHƯA hoàn thành (cho Zalo bot).
-   * Nếu truyền userId, chỉ tìm ở kế hoạch mà lái xe được phân công
+   * Tìm container theo N số cuối (1-7) ở TẤT CẢ kế hoạch CHƯA hoàn thành
+   * (cho Zalo bot). Nếu truyền userId, chỉ tìm ở kế hoạch mà lái xe được phân công
    * (all_drivers = true HOẶC driver_ids chứa userId).
    */
   async searchActiveByDigits(
     digits: string,
     userId?: number,
-  ): Promise<ContainerImport[]> {
+  ): Promise<Array<ContainerImport & { recordedBy?: string }>> {
     const qb = this.containerImportsRepository.createQueryBuilder('c');
     qb.leftJoinAndSelect('c.shippingLineRef', 'sl')
-      .where('RIGHT(c.container_code, 7) = :digits', { digits })
+      .leftJoinAndSelect('c.submissionRef', 'sub')
+      .leftJoin('sub.user', 'u')
+      .addSelect(['u.id', 'u.fullName', 'u.username'])
+      .where('RIGHT(c.container_code, :len) = :digits', {
+        digits,
+        len: digits.length,
+      })
       .andWhere('sl.completed = :completed', { completed: false });
     if (userId) {
       qb.andWhere(
@@ -279,18 +288,38 @@ export class ContainerImportService {
       );
     }
     qb.orderBy('c.container_code', 'ASC');
-    return qb.getMany();
+    const rows = await qb.getMany();
+    return rows.map((r) => {
+      const sub: any = (r as any).submissionRef;
+      const recordedBy =
+        r.submissionId && sub?.user?.fullName ? sub.user.fullName : '';
+      return { ...r, recordedBy };
+    });
   }
 
   /**
-   * Tìm container theo 7 số cuối ở TẤT CẢ kế hoạch (kể cả hoàn thành) — dùng để báo "đã ghi trước đó".
+   * Tìm container theo N số cuối (1-7) ở TẤT CẢ kế hoạch (kể cả hoàn thành) — dùng để báo "đã ghi trước đó".
    */
-  async searchAllByDigits(digits: string): Promise<ContainerImport[]> {
-    return this.containerImportsRepository
+  async searchAllByDigits(
+    digits: string,
+  ): Promise<Array<ContainerImport & { recordedBy?: string }>> {
+    const rows = await this.containerImportsRepository
       .createQueryBuilder('c')
-      .where('RIGHT(c.container_code, 7) = :digits', { digits })
+      .leftJoinAndSelect('c.submissionRef', 'sub')
+      .leftJoin('sub.user', 'u')
+      .addSelect(['u.id', 'u.fullName', 'u.username'])
+      .where('RIGHT(c.container_code, :len) = :digits', {
+        digits,
+        len: digits.length,
+      })
       .orderBy('c.container_code', 'ASC')
       .getMany();
+    return rows.map((r) => {
+      const sub: any = (r as any).submissionRef;
+      const recordedBy =
+        r.submissionId && sub?.user?.fullName ? sub.user.fullName : '';
+      return { ...r, recordedBy };
+    });
   }
 
   /**
