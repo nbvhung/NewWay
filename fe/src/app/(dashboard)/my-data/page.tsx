@@ -11,6 +11,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { submissionsApi } from '@/lib/api-submissions';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { settingsApi } from '@/lib/api-settings';
+import { LockNoticePopup } from '@/components/ui/lock-notice-popup';
 import { ShippingLine, Submission } from '@/types';
 import { fmtDate, FIELD_LABELS, formatMoney, fmtNgay } from '@/lib/utils';
 
@@ -69,6 +70,7 @@ export default function MyDataPage() {
   const [saving, setSaving] = useState(false);
   const [entryLocked, setEntryLocked] = useState(false);
   const entryLockedRef = useRef(false);
+  const [lockPopupOpen, setLockPopupOpen] = useState(false);
 
   const prevLiveRef = useRef<any[] | null>(null);
   const suppressUntilRef = useRef(0);
@@ -158,7 +160,7 @@ export default function MyDataPage() {
 
   const openEdit = (sub: Submission) => {
     if (entryLocked || entryLockedRef.current) {
-      toast('Nhập liệu đã khóa. Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.', 'error');
+      setLockPopupOpen(true);
       return;
     }
     setEditSub(sub);
@@ -183,7 +185,7 @@ export default function MyDataPage() {
   const saveEdit = async () => {
     if (!editSub) return;
     if (entryLocked || entryLockedRef.current) {
-      toast('Nhập liệu đã khóa. Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.', 'error');
+      setLockPopupOpen(true);
       return;
     }
     if (!editForm.shippingLineId && !editForm.shippingLine) {
@@ -739,6 +741,7 @@ export default function MyDataPage() {
           </>
         )}
       </Modal>
+      <LockNoticePopup open={lockPopupOpen} onClose={() => setLockPopupOpen(false)} />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/toast';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { submissionsApi } from '@/lib/api-submissions';
 import { settingsApi } from '@/lib/api-settings';
+import { LockNoticePopup } from '@/components/ui/lock-notice-popup';
 import { ShippingLine } from '@/types';
 import { fmtNgay } from '@/lib/utils';
 
@@ -20,6 +21,7 @@ export default function FormPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [entryLocked, setEntryLocked] = useState(false);
+  const [lockPopupOpen, setLockPopupOpen] = useState(false);
 
   const [hang20, setHang20] = useState('');
   const [hang40, setHang40] = useState('');
@@ -85,7 +87,7 @@ export default function FormPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (entryLocked) {
-      toast('Hệ thống đang tạm khóa nhập liệu', 'error');
+      setLockPopupOpen(true);
       return;
     }
     if (!selectedShippingLineId) {
@@ -413,7 +415,7 @@ export default function FormPage() {
               </p>
               <button onClick={() => {
                 if (entryLocked) {
-                  toast('Nhập liệu đã khóa. Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.', 'error');
+                  setLockPopupOpen(true);
                   return;
                 }
                 const sub = mySubmissions.get(duplicatePlan.id);
@@ -439,6 +441,7 @@ export default function FormPage() {
           </div>
         </div>
       )}
+      <LockNoticePopup open={lockPopupOpen} onClose={() => setLockPopupOpen(false)} />
     </>
   );
 }
