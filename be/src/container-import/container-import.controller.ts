@@ -11,6 +11,7 @@ import {
   UseInterceptors,
   UseGuards,
   BadRequestException,
+  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ContainerImportService } from './container-import.service';
@@ -59,6 +60,17 @@ export class ContainerImportController {
   @Get('search')
   search(@Query('code') code?: string) {
     return this.containerImportService.searchAllByCode(code || '');
+  }
+
+  @Get('template')
+  async downloadTemplate(@Res() res: any) {
+    const buffer = await this.containerImportService.buildTemplateBuffer();
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': 'attachment; filename="mau-nhap-container.xlsx"',
+    });
+    res.send(buffer);
   }
 
   @Get()

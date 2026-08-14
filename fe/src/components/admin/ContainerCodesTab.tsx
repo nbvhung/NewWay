@@ -148,23 +148,23 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
     }
   };
 
-  const downloadTemplate = () => {
-    const content = [
-      'Mã container\tLoại',
-      'BMOU6823203\tH20',
-      'BMOU1234567\tV40',
-      'BMOU9876543\tV20FR',
-      'BMOU1112223\tVSL',
-    ].join('\n');
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'mau-nhap-container.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const downloadTemplate = async () => {
+    try {
+      const res = await containerImportApi.downloadTemplate();
+      const blob = new Blob([res.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'mau-nhap-container.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast(err.message, 'error');
+    }
   };
 
   const removeAll = async () => {

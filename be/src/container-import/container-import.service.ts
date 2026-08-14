@@ -51,6 +51,38 @@ export class ContainerImportService {
     return null;
   }
 
+  /** Sinh file Excel mẫu để OPS điền mã container (2 cột: Mã container + Loại). */
+  async buildTemplateBuffer(): Promise<Buffer> {
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet('Container');
+    ws.columns = [
+      { header: 'Mã container', key: 'code', width: 22 },
+      { header: 'Loại', key: 'type', width: 12 },
+    ];
+    ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    ws.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1E3A5F' },
+    };
+    ws.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+    const samples: Array<[string, string]> = [
+      ['BMOU6823203', 'H20'],
+      ['BMOU1234567', 'V40'],
+      ['BMOU9876543', 'V20FR'],
+      ['BMOU1112223', 'VSL'],
+    ];
+    samples.forEach(([code, type], i) => {
+      ws.getCell(`A${i + 2}`).value = code;
+      ws.getCell(`B${i + 2}`).value = type;
+    });
+    ws.addRow([]);
+    ws.getCell('A7').value =
+      'Ghi chú: Mã container đủ 4 chữ cái + 7 số (vd BMOU6823203). Loại hợp lệ: H20, H40, V20, V40, V20FR, V40FR, VSL, KV, TIP. Cột C nếu muốn gộp thành Bó thì merge ô và gõ "Bó".';
+    ws.getCell('A7').font = { italic: true, color: { argb: 'FF64748B' } };
+    return Buffer.from(await workbook.xlsx.writeBuffer());
+  }
+
   normalizeType(raw: string): string | null {
     const t = (raw || '').trim().toUpperCase().replace(/\s+/g, ' ');
     const map: Record<string, string> = {

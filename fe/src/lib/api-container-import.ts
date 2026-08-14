@@ -66,6 +66,11 @@ export const containerImportApi = {
       params: planId ? { planId } : undefined,
     }),
 
+  downloadTemplate: () =>
+    api.get<Blob>('/admin/container-import/template', {
+      responseType: 'blob',
+    }),
+
   remove: (id: number) =>
     api.delete<{ message: string }>(`/admin/container-import/${id}`),
 
