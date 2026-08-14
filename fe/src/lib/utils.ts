@@ -1,7 +1,35 @@
+const VN_TIMEZONE = 'Asia/Ho_Chi_Minh';
+
 export function fmtDate(dt: string | null | undefined): string {
   if (!dt) return '—';
   const d = new Date(dt);
-  return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+  if (isNaN(d.getTime())) return '—';
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: VN_TIMEZONE,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value || '';
+  return `${get('day')}-${get('month')}-${get('year')}`;
+}
+
+export function fmtDateTime(dt: string | null | undefined): string {
+  if (!dt) return '—';
+  const d = new Date(dt);
+  if (isNaN(d.getTime())) return '—';
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: VN_TIMEZONE,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value || '';
+  return `${get('day')}-${get('month')}-${get('year')} ${get('hour')}:${get('minute')}:${get('second')}`;
 }
 
 export function fmtNgay(ngay: string | null | undefined): string {

@@ -380,6 +380,31 @@ export class SubmissionsService {
     return unique;
   }
 
+  private fmtVN(dt: string | Date | null | undefined, withTime = true): string {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return '—';
+    const tz = 'Asia/Ho_Chi_Minh';
+    if (!withTime) {
+      return new Intl.DateTimeFormat('en-GB', {
+        timeZone: tz,
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }).format(d);
+    }
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: tz,
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).format(d);
+  }
+
   async exportExcel(res: Response, user: any, filter: {
     userId?: number;
     shippingLine?: string;
@@ -794,7 +819,7 @@ export class SubmissionsService {
             type: c.type,
             plan: planName,
             driver: sub ? sub.user?.fullName || sub.driverName || '' : '',
-            claimedAt: new Date(cl.createdAt).toLocaleString('vi-VN'),
+            claimedAt: this.fmtVN(cl.createdAt),
             keoVe: cl.claimType === 'KV' ? 'x' : '',
           });
           row.eachCell((cell) => {
@@ -1574,7 +1599,7 @@ export class SubmissionsService {
 
         const sub = h.submission as any;
         const creatorName = sub?.creator?.fullName || sub?.driverName || '—';
-        const createdDate = sub?.createdAt ? new Date(sub.createdAt).toLocaleDateString('vi-VN') : '—';
+        const createdDate = sub?.createdAt ? this.fmtVN(sub.createdAt, false) : '—';
 
         const row = wsHistory.addRow({
           stt: idx + 1,
@@ -1583,7 +1608,7 @@ export class SubmissionsService {
           editedByName: h.editedByName,
           changes: changesText,
           createdAt: createdDate,
-          editedAt: new Date(h.editedAt).toLocaleString('vi-VN'),
+          editedAt: this.fmtVN(h.editedAt),
         });
         row.eachCell((cell) => {
           cell.border = allBorder;

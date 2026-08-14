@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { zaloMessagesApi, ZaloMessage } from '@/lib/api-zalo-messages';
+import { fmtDateTime } from '@/lib/utils';
 import { User } from '@/types';
 
 interface Props {
@@ -74,7 +75,7 @@ export function ChatHistoryTab({ allUsers, currentUser }: Props) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold truncate">{u?.fullName || `User #${c.userId}`}</div>
-                    <div className="text-[10px] text-[#64748b]">{new Date(c.lastAt).toLocaleString('vi-VN')}</div>
+                    <div className="text-[10px] text-[#64748b]">{fmtDateTime(c.lastAt)}</div>
                   </div>
                 </button>
               );
@@ -105,7 +106,7 @@ export function ChatHistoryTab({ allUsers, currentUser }: Props) {
                   }`}>
                     <div className="text-[9px] font-semibold opacity-60 mb-1">{isBot ? '🤖 Bot' : (currentUser.role === 'supper_admin' || currentUser.role === 'admin' ? '🚚 Lái xe' : '🚚 Lái xe')}</div>
                     <div>{m.content}</div>
-                    <div className="text-[9px] opacity-50 mt-1">{new Date(m.createdAt).toLocaleString('vi-VN')}</div>
+                    <div className="text-[9px] opacity-50 mt-1">{fmtDateTime(m.createdAt)}</div>
                   </div>
                 </div>
               );
