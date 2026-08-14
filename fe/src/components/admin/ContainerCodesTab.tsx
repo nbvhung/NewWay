@@ -327,37 +327,64 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
               </div>
               <input type="text" value={listSearch} onChange={e => setListSearch(e.target.value)}
                 placeholder="🔍 Tìm trong danh sách..." className={`${inputCls} mb-2`} />
-              <div className="flex flex-col gap-1 max-h-[320px] overflow-y-auto">
-                {filtered.length === 0 && <div className="text-center py-6 text-[#64748b] text-xs">Chưa có container</div>}
-                {filtered.map(item => (
-                  <div key={item.id} className="flex items-center justify-between gap-2 px-3 py-2 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-xs font-mono text-[#0f172a] truncate">{item.containerCode}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${TYPE_COLORS[item.type] || 'bg-[rgba(0,0,0,0.05)] text-[#64748b]'}`}>{item.type}</span>
-                      {item.bundleId && (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(14,165,233,0.15)] text-sky-700">🎁 {item.bundleId}</span>
-                      )}
-                      {item.phatSinh && (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.15)] text-red-600">🚩 Phát sinh</span>
-                      )}
-                      {item.submissionId ? (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(16,185,129,0.15)] text-emerald-700">✅ Đã ghi{item.recordedBy ? ` · ${item.recordedBy}` : ''}</span>
-                      ) : (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.15)] text-amber-700">⏳ Chờ ghi{item.phatSinh && item.importedByName ? ` · Tài xế: ${item.importedByName}` : ''}</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {item.phatSinh && !item.submissionId && (
-                        <button onClick={() => approveItem(item)} disabled={classifyingId === item.id || isLocked}
-                          className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#059669] to-[#10b981] text-white disabled:opacity-40 cursor-pointer">
-                          {classifyingId === item.id ? 'Đang...' : '✅ Phê duyệt'}
-                        </button>
-                      )}
-                      <button onClick={() => removeOne(item)} disabled={isLocked}
-                        className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer disabled:opacity-40">✕</button>
-                    </div>
-                  </div>
-                ))}
+              <div className="border border-[rgba(0,0,0,0.08)] rounded-lg overflow-hidden">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-[#f8fafc]">
+                      <th className="px-3 py-2 text-left font-semibold text-[10px] uppercase text-[#334155]">Container</th>
+                      <th className="px-3 py-2 text-left font-semibold text-[10px] uppercase text-[#334155]">Trạng thái</th>
+                      <th className="px-3 py-2 text-left font-semibold text-[10px] uppercase text-[#334155]">Người chạy</th>
+                      <th className="px-3 py-2 text-right font-semibold text-[10px] uppercase text-[#334155]">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 && (
+                      <tr><td colSpan={4} className="text-center py-6 text-[#64748b] text-xs">Chưa có container</td></tr>
+                    )}
+                    {filtered.map(item => (
+                      <tr key={item.id} className="border-t border-[rgba(0,0,0,0.05)] bg-[#f8fafc] hover:bg-[#f1f5f9]">
+                        <td className="px-3 py-2 align-middle">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs font-mono text-[#0f172a] truncate">{item.containerCode}</span>
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${TYPE_COLORS[item.type] || 'bg-[rgba(0,0,0,0.05)] text-[#64748b]'}`}>{item.type}</span>
+                            {item.bundleId && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(14,165,233,0.15)] text-sky-700">🎁 {item.bundleId}</span>
+                            )}
+                            {item.phatSinh && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.15)] text-red-600">🚩 Phát sinh</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 align-middle">
+                          {item.submissionId ? (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(16,185,129,0.15)] text-emerald-700">✅ Đã ghi</span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.15)] text-amber-700">⏳ Chờ ghi</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 align-middle text-[#0f172a]">
+                          {item.submissionId
+                            ? (item.recordedBy || '—')
+                            : item.phatSinh && item.importedByName
+                              ? item.importedByName
+                              : ''}
+                        </td>
+                        <td className="px-3 py-2 align-middle">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {item.phatSinh && !item.submissionId && (
+                              <button onClick={() => approveItem(item)} disabled={classifyingId === item.id || isLocked}
+                                className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#059669] to-[#10b981] text-white disabled:opacity-40 cursor-pointer">
+                                {classifyingId === item.id ? 'Đang...' : '✅ Phê duyệt'}
+                              </button>
+                            )}
+                            <button onClick={() => removeOne(item)} disabled={isLocked}
+                              className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer disabled:opacity-40">✕</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </>
