@@ -41,6 +41,7 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
   const [singleType, setSingleType] = useState('H20');
   const [adding, setAdding] = useState(false);
   const [typeFilter, setTypeFilter] = useState('Tất cả');
+  const [driverFilter, setDriverFilter] = useState('Tất cả');
   const [listSearch, setListSearch] = useState('');
 
   const selectedPlan = useMemo(
@@ -164,15 +165,38 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
     return ['Tất cả', ...Array.from(set).sort()];
   }, [items]);
 
+  const drivers = useMemo(() => {
+    const set = new Set<string>();
+    items.forEach(i => {
+      const name = i.submissionId
+        ? i.recordedBy || ''
+        : i.phatSinh && i.importedByName
+          ? i.importedByName
+          : '';
+      if (name) set.add(name);
+    });
+    return ['Tất cả', ...Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'))];
+  }, [items]);
+
   const filtered = useMemo(() => {
     let list = items;
     if (typeFilter !== 'Tất cả') list = list.filter(i => i.type === typeFilter);
+    if (driverFilter !== 'Tất cả') {
+      list = list.filter(i => {
+        const name = i.submissionId
+          ? i.recordedBy || ''
+          : i.phatSinh && i.importedByName
+            ? i.importedByName
+            : '';
+        return name === driverFilter;
+      });
+    }
     if (listSearch.trim()) {
       const q = listSearch.trim().toUpperCase();
       list = list.filter(i => i.containerCode.toUpperCase().includes(q));
     }
     return list;
-  }, [items, typeFilter, listSearch]);
+  }, [items, typeFilter, driverFilter, listSearch]);
 
   const claimedCount = items.filter(i => i.submissionId).length;
   const isLocked = !!selectedPlan?.completed;
@@ -260,7 +284,7 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
         <h3 className="text-base font-bold mb-3">🗃️ Danh sách container theo kế hoạch</h3>
         <div className="mb-4">
           <label className="block text-[10px] font-medium text-[#64748b] mb-1.5">Chọn kế hoạch</label>
-          <select value={planId} onChange={e => { setPlanId(e.target.value === '' ? '' : Number(e.target.value)); setListSearch(''); setTypeFilter('Tất cả'); }}
+          <select value={planId} onChange={e => { setPlanId(e.target.value === '' ? '' : Number(e.target.value)); setListSearch(''); setTypeFilter('Tất cả'); setDriverFilter('Tất cả'); }}
             className={inputCls}>
             <option value="">-- Chọn kế hoạch --</option>
             {allShippingLines.map(p => (
@@ -325,8 +349,14 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
                     }`}>{t}</button>
                 ))}
               </div>
-              <input type="text" value={listSearch} onChange={e => setListSearch(e.target.value)}
-                placeholder="🔍 Tìm trong danh sách..." className={`${inputCls} mb-2`} />
+              <div className="flex gap-2 mb-2 flex-wrap">
+                <select value={driverFilter} onChange={e => setDriverFilter(e.target.value)}
+                  className="px-2 py-2 rounded-lg text-xs border border-[rgba(0,0,0,0.1)] text-[#0f172a] outline-none cursor-pointer">
+                  {drivers.map(d => <option key={d} value={d}>{d === 'Tất cả' ? '🚚 Tất cả lái xe' : d}</option>)}
+                </select>
+                <input type="text" value={listSearch} onChange={e => setListSearch(e.target.value)}
+                  placeholder="🔍 Tìm trong danh sách..." className={`${inputCls} flex-1`} />
+              </div>
               <div className="border border-[rgba(0,0,0,0.08)] rounded-lg overflow-hidden">
                 <table className="w-full text-xs border-collapse">
                   <thead>
