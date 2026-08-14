@@ -177,7 +177,22 @@ export class ZaloMessagesService {
       )`)
       .returning('*')
       .execute();
-    return (res.raw || []) as ZaloScheduledMessage[];
+    const raw = (res.raw || []) as Array<Record<string, any>>;
+    return raw.map((r) =>
+      this.zaloScheduledRepository.create({
+        id: r.id,
+        batchId: r.batch_id,
+        userId: r.user_id,
+        content: r.content,
+        sendAt: r.send_at,
+        status: r.status,
+        error: r.error,
+        createdBy: r.created_by,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+        sentAt: r.sent_at,
+      }),
+    );
   }
 
   /** Reclaim tin processing kẹt quá lâu (backend crash giữa chừng) về pending. */

@@ -82,31 +82,40 @@ export class ZaloSchedulerService
         { zaloId: string | null; fullName: string }
       >();
       for (const item of due) {
-        if (!users.has(item.userId)) {
-          const u = await this.zaloMessages.resolveUser(item.userId);
-          users.set(item.userId, u);
-        }
-        const u = users.get(item.userId)!;
-        if (!u.zaloId) {
+        try {
+          if (!users.has(item.userId)) {
+            const u = await this.zaloMessages.resolveUser(item.userId);
+            users.set(item.userId, u);
+          }
+          const u = users.get(item.userId)!;
+          if (!u.zaloId) {
+            await this.zaloMessages.markResult(
+              item.id,
+              false,
+              'Lái xe chưa liên kết Zalo',
+            );
+            continue;
+          }
+          const sent = await this.zaloApi.sendMessage(u.zaloId, item.content);
+          if (sent) {
+            await this.zaloMessages.log(
+              u.zaloId,
+              item.userId,
+              'bot',
+              item.content,
+              true,
+            );
+            await this.zaloMessages.markResult(item.id, true);
+          } else {
+            await this.zaloMessages.markResult(item.id, false);
+          }
+        } catch (err: any) {
+          this.logger.error(`Gửi tin hẹn giờ #${item.id} lỗi: ${err?.message || err}`);
           await this.zaloMessages.markResult(
             item.id,
             false,
-            'Lái xe chưa liên kết Zalo',
+            String(err?.message || err).slice(0, 500),
           );
-          continue;
-        }
-        const sent = await this.zaloApi.sendMessage(u.zaloId, item.content);
-        if (sent) {
-          await this.zaloMessages.log(
-            u.zaloId,
-            item.userId,
-            'bot',
-            item.content,
-            true,
-          );
-          await this.zaloMessages.markResult(item.id, true);
-        } else {
-          await this.zaloMessages.markResult(item.id, false);
         }
       }
     } finally {
