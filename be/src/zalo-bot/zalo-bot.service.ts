@@ -377,7 +377,7 @@ export class ZaloBotService {
       await this.reply(
         chatId,
         zaloUserId,
-        'Sếp gửi 7 số cuối của container kẹp giúp em (hoặc gõ "k" nếu không kẹp).',
+        'Sếp gửi 7 số cuối của container kẹp giúp em nhé.',
       );
       return;
     }
@@ -1066,7 +1066,7 @@ export class ZaloBotService {
           await this.reply(
             chatId,
             zaloUserId,
-            'Kẹp với Cont nào? (gõ "k" nếu không kẹp)',
+            'Kẹp với Cont nào?',
           );
         }
       } catch (err: any) {
@@ -1131,7 +1131,7 @@ export class ZaloBotService {
       await this.reply(
         chatId,
         zaloUserId,
-        `Không tìm thấy ${digits} trong kế hoạch hiện tại.\nSếp gửi lại mã container kẹp giúp em (hoặc gõ "k" nếu không kẹp).`,
+        `Không tìm thấy ${digits} trong kế hoạch hiện tại.\nSếp gửi lại mã container kẹp giúp em nhé.`,
       );
       return;
     }
@@ -1193,7 +1193,7 @@ export class ZaloBotService {
       await this.reply(
         chatId,
         zaloUserId,
-        'Sếp đọc lại mã container kẹp giúp em (hoặc gõ "k" nếu không kẹp).',
+        'Sếp đọc lại mã container kẹp giúp em nhé.',
       );
       return;
     }
@@ -1348,7 +1348,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          'Kẹp với Cont nào? (gõ "k" nếu không kẹp)',
+          'Kẹp với Cont nào?',
         );
       }
     } catch (err: any) {
@@ -1559,7 +1559,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          'Kẹp với Cont nào? (gõ "k" nếu không kẹp)',
+          'Kẹp với Cont nào?',
         );
       }
     } catch (err: any) {
