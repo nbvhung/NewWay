@@ -131,7 +131,7 @@ export default function EntryForm() {
         <View style={styles.lockBanner}>
           <Text style={styles.lockBannerTitle}>🔒 Hệ thống đang tạm khóa nhập liệu</Text>
           <Text style={styles.lockBannerText}>
-            Bạn chỉ có thể xem bảng sản lượng và lương. Không thể nhập liệu hoặc sửa dữ liệu lúc này.
+            Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.
           </Text>
         </View>
       )}

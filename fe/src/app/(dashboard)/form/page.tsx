@@ -217,7 +217,7 @@ export default function FormPage() {
               🔒 Hệ thống đang tạm khóa nhập liệu
             </span>
             <p style={{ fontSize: 12, color: '#dc2626', margin: '6px 0 0' }}>
-              Bạn chỉ có thể xem bảng sản lượng và lương. Không thể nhập liệu hoặc sửa dữ liệu lúc này.
+              Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.
             </p>
           </div>
         )}

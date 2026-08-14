@@ -405,7 +405,7 @@ export default function MyDataPage() {
             <span className="text-xl">🔒</span>
             <div>
               <p className="text-xs font-bold text-red-600">Hệ thống đang tạm khóa nhập liệu</p>
-              <p className="text-[11px] text-red-500 mt-0.5">Bạn chỉ có thể xem dữ liệu và lương, không thể sửa dữ liệu lúc này.</p>
+              <p className="text-[11px] text-red-500 mt-0.5">Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ Hưng để sửa.</p>
             </div>
           </div>
         )}
