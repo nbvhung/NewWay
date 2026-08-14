@@ -47,6 +47,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [totalShipOpen, setTotalShipOpen] = useState(false);
+  const [showTable, setShowTable] = useState(true);
   const [totalShipSlId, setTotalShipSlId] = useState<number | null>(null);
   const [totalShipForm, setTotalShipForm] = useState({
     hang20: '', hang40: '', vo20: '', vo40: '', vo20fr: '', vo40fr: '',
@@ -302,7 +303,17 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
 
       {user?.role !== 'hr' && (
       <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl overflow-x-auto">
-        {submissions.length === 0 ? (
+        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-[rgba(0,0,0,0.06)]">
+          <span className="text-sm font-bold text-[#0f172a]">📋 Bảng sản lượng lái xe</span>
+          <button onClick={() => setShowTable(!showTable)}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] text-[#334155] hover:text-[#0f172a] hover:bg-[rgba(0,0,0,0.04)] transition-all cursor-pointer">
+            {showTable ? '🙈 Ẩn bảng' : '👁️ Hiện bảng'}
+          </button>
+        </div>
+        {!showTable && (
+          <div className="text-center py-8 text-[#64748b] text-sm">Bảng đang được ẩn</div>
+        )}
+        {showTable && (submissions.length === 0 ? (
           <div className="text-center py-16 text-[#64748b] text-sm">📭 Không có bản ghi nào</div>
         ) : (
           <>
@@ -378,7 +389,8 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
               pageSizeOptions={[10, 20, 50, 100]}
             />
           </>
-        )}
+        )
+      )}
       </div>
       )}
 
