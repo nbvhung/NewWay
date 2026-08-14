@@ -6,6 +6,7 @@ import { useAuth } from '@/providers/auth-provider';
 import { useToast } from '@/components/ui/toast';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { submissionsApi } from '@/lib/api-submissions';
+import { settingsApi } from '@/lib/api-settings';
 import { ShippingLine } from '@/types';
 import { fmtNgay } from '@/lib/utils';
 
@@ -18,6 +19,7 @@ export default function FormPage() {
   const [selectedShippingLineId, setSelectedShippingLineId] = useState<number | ''>('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [entryLocked, setEntryLocked] = useState(false);
 
   const [hang20, setHang20] = useState('');
   const [hang40, setHang40] = useState('');
@@ -35,7 +37,15 @@ export default function FormPage() {
   useEffect(() => {
     loadShippingLines();
     loadMySubmissions();
+    loadEntryLock();
   }, []);
+
+  const loadEntryLock = async () => {
+    try {
+      const res = await settingsApi.getEntryLock();
+      setEntryLocked(!!(res.data as any)?.data?.locked);
+    } catch {}
+  };
 
   const loadMySubmissions = async () => {
     try {
@@ -74,6 +84,10 @@ export default function FormPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (entryLocked) {
+      toast('Hệ thống đang tạm khóa nhập liệu', 'error');
+      return;
+    }
     if (!selectedShippingLineId) {
       toast('Vui lòng chọn kế hoạch', 'error');
       return;
@@ -193,6 +207,20 @@ export default function FormPage() {
             </h1>
           </div>
         </div>
+
+        {entryLocked && (
+          <div style={{
+            background: 'rgba(239,68,68,0.1)', border: '2px solid #ef4444',
+            borderRadius: 10, padding: '14px 16px', marginBottom: 16, textAlign: 'center',
+          }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: '#dc2626' }}>
+              🔒 Hệ thống đang tạm khóa nhập liệu
+            </span>
+            <p style={{ fontSize: 12, color: '#dc2626', margin: '6px 0 0' }}>
+              Bạn chỉ có thể xem bảng sản lượng và lương. Không thể nhập liệu hoặc sửa dữ liệu lúc này.
+            </p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -329,19 +357,19 @@ export default function FormPage() {
           {/* ── Submit ── */}
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || entryLocked}
             style={{
               width: '100%', padding: '16px',
-              background: submitting
+              background: submitting || entryLocked
                 ? '#93c5fd'
                 : 'linear-gradient(135deg,#1155cc,#1976d2)',
               color: '#fff', border: 'none', borderRadius: 12,
               fontSize: 16, fontWeight: 900, letterSpacing: 0.5,
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              boxShadow: submitting ? 'none' : '0 4px 16px rgba(21,101,192,0.4)',
+              cursor: submitting || entryLocked ? 'not-allowed' : 'pointer',
+              boxShadow: submitting || entryLocked ? 'none' : '0 4px 16px rgba(21,101,192,0.4)',
             }}
           >
-            {submitting ? '⏳ Đang xử lý...' : '✅ GỬI XÁC NHẬN'}
+            {entryLocked ? '🔒 Đang khóa nhập liệu' : submitting ? '⏳ Đang xử lý...' : '✅ GỬI XÁC NHẬN'}
           </button>
 
           <button

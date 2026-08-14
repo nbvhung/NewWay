@@ -12,6 +12,7 @@ import { ContainerImport } from '../database/entities/container-import.entity';
 import { ContainerClaim } from '../database/entities/container-claim.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateSubmissionDto } from './dto/update-submission.dto';
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class SubmissionsService {
@@ -30,9 +31,14 @@ export class SubmissionsService {
     private containerImportsRepository: Repository<ContainerImport>,
     @InjectRepository(ContainerClaim)
     private containerClaimsRepository: Repository<ContainerClaim>,
+    private settingsService: SettingsService,
   ) {}
 
   async create(dto: CreateSubmissionDto, userId: number, fullName: string, userRole?: string) {
+    if (userRole === 'laixe' && (await this.settingsService.isEntryLocked())) {
+      throw new ForbiddenException('Hệ thống đang tạm khóa nhập liệu. Vui lòng quay lại sau.');
+    }
+
     let targetUserId = userId;
     let targetFullName = fullName;
 
@@ -161,6 +167,10 @@ export class SubmissionsService {
   }
 
   async updateMy(id: number, dto: UpdateSubmissionDto, userId: number, role: string, fullName: string): Promise<any> {
+    if (role === 'laixe' && (await this.settingsService.isEntryLocked())) {
+      throw new ForbiddenException('Hệ thống đang tạm khóa nhập liệu. Vui lòng quay lại sau.');
+    }
+
     const submission = await this.submissionsRepository.findOne({ where: { id } });
     if (!submission) {
       throw new NotFoundException('Không tìm thấy bản ghi');

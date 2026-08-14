@@ -17,6 +17,7 @@ import {
 import { ContainerImportService } from '../container-import/container-import.service';
 import { ZaloMessagesService } from '../zalo-messages/zalo-messages.service';
 import { ZaloOpsNotifierService } from './zalo-ops-notifier.service';
+import { SettingsService } from '../settings/settings.service';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { User } from '../database/entities/user.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
@@ -52,6 +53,7 @@ export class ZaloBotService {
     private containerImportService: ContainerImportService,
     private zaloMessagesService: ZaloMessagesService,
     private opsNotifier: ZaloOpsNotifierService,
+    private settingsService: SettingsService,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     @InjectRepository(ShippingLine)
@@ -816,6 +818,14 @@ export class ZaloBotService {
         );
         return;
       }
+      if (await this.settingsService.isEntryLocked()) {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Hệ thống đang tạm khóa nhập liệu. Vui lòng quay lại sau.',
+        );
+        return;
+      }
 
       let submission = await this.submissionsRepository.findOne({
         where: { userId: user.id, shippingLineId: plan.id },
@@ -1284,6 +1294,14 @@ export class ZaloBotService {
         );
         return;
       }
+      if (await this.settingsService.isEntryLocked()) {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Hệ thống đang tạm khóa nhập liệu. Vui lòng quay lại sau.',
+        );
+        return;
+      }
 
       let submission = await this.submissionsRepository.findOne({
         where: { userId: user.id, shippingLineId: plan.id },
@@ -1410,6 +1428,14 @@ export class ZaloBotService {
           chatId,
           zaloUserId,
           'Kế hoạch đã hoàn thành, không thể ghi nhận thêm.',
+        );
+        return;
+      }
+      if (await this.settingsService.isEntryLocked()) {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Hệ thống đang tạm khóa nhập liệu. Vui lòng quay lại sau.',
         );
         return;
       }
