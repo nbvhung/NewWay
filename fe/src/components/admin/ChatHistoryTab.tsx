@@ -5,6 +5,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { zaloMessagesApi, ZaloMessage } from '@/lib/api-zalo-messages';
 import { fmtDateTime } from '@/lib/utils';
 import { User } from '@/types';
+import { ScheduleMessageModal } from './ScheduleMessageModal';
 
 interface Props {
   allUsers: User[];
@@ -20,6 +21,7 @@ export function ChatHistoryTab({ allUsers, currentUser, toast }: Props) {
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const msgBoxRef = useRef<HTMLDivElement>(null);
 
   const loadConversations = useCallback(async () => {
@@ -129,9 +131,17 @@ export function ChatHistoryTab({ allUsers, currentUser, toast }: Props) {
       </div>
 
       <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5 flex flex-col">
-        <h3 className="text-base font-bold mb-4">
-          💬 Lịch sử chat {selectedUserId ? `— ${userMap(selectedUserId)?.fullName || `User #${selectedUserId}`}` : ''}
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-bold">
+            💬 Lịch sử chat {selectedUserId ? `— ${userMap(selectedUserId)?.fullName || `User #${selectedUserId}`}` : ''}
+          </h3>
+          <button
+            onClick={() => setScheduleOpen(true)}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-[#d97706] to-[#b45309] hover:opacity-90 transition-all cursor-pointer"
+          >
+            📨 Soạn tin & hẹn giờ
+          </button>
+        </div>
         {loadingMsgs ? (
           <LoadingSpinner className="py-16" />
         ) : (
@@ -184,6 +194,13 @@ export function ChatHistoryTab({ allUsers, currentUser, toast }: Props) {
           </button>
         </div>
       </div>
+
+      <ScheduleMessageModal
+        open={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        allUsers={allUsers}
+        toast={toast}
+      />
     </div>
   );
 }
