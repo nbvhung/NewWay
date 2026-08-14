@@ -105,7 +105,10 @@ export class ContainerImportService {
     return map[t] || null;
   }
 
-  async parseFile(file: any): Promise<ParsedContainer[]> {
+  async parseFile(
+    file: any,
+    bundleStartIndex = 0,
+  ): Promise<ParsedContainer[]> {
     const name = (file.originalname || '').toLowerCase();
     const rows: ParsedContainer[] = [];
 
@@ -121,7 +124,8 @@ export class ContainerImportService {
       const ws = workbook.worksheets[0];
       if (!ws) return rows;
 
-      // Đọc các ô merge ở cột C (giá trị "Bó") để nhóm container thành bó
+      // Đọc các ô merge ở cột C (giá trị "Bó") để nhóm container thành bó.
+      // Đánh số bó tiếp nối từ bundleStartIndex để không trùng bó đã có trong kế hoạch.
       const bundleByRow = new Map<number, string>();
       const merges: string[] = ws.model.merges || [];
       let bundleIndex = 0;
@@ -133,7 +137,7 @@ export class ContainerImportService {
         const masterValue = String(ws.getCell(`C${start}`).value ?? '').trim();
         if (!masterValue) continue;
         bundleIndex += 1;
-        const bundleId = `Bó ${bundleIndex}`;
+        const bundleId = `Bó ${bundleStartIndex + bundleIndex}`;
         for (let r = start; r <= end; r++) {
           bundleByRow.set(r, bundleId);
         }
@@ -174,17 +178,25 @@ export class ContainerImportService {
       );
     }
 
-    const rows = await this.parseFile(file);
+    const existing = await this.containerImportsRepository.find({
+      where: { shippingLineId: planId },
+    });
+    const existingCodes = new Set(existing.map((c) => c.containerCode));
+
+    // Đánh số bó mới tiếp nối sau số bó lớn nhất đã có trong kế hoạch
+    // để tránh trùng bundle_id (vd đã có "Bó 1","Bó 2" thì file mới bắt đầu từ "Bó 3").
+    const maxBundle = existing.reduce((max, c) => {
+      const m = /^Bó\s+(\d+)$/i.exec(c.bundleId || '');
+      if (m) return Math.max(max, parseInt(m[1], 10));
+      return max;
+    }, 0);
+
+    const rows = await this.parseFile(file, maxBundle);
     if (rows.length === 0) {
       throw new BadRequestException(
         'File không có dữ liệu hợp lệ. Định dạng: mỗi dòng gồm mã container và loại (vd: BMOU6823203<TAB>H20)',
       );
     }
-
-    const existing = await this.containerImportsRepository.find({
-      where: { shippingLineId: planId },
-    });
-    const existingCodes = new Set(existing.map((c) => c.containerCode));
 
     let imported = 0;
     const seen = new Set<string>();
