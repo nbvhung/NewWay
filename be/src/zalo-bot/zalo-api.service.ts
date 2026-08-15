@@ -4,8 +4,7 @@ import axios from 'axios';
 interface SendMessageResponse {
   ok?: boolean;
   result?: { message_id?: string };
-  error_code?: number;
-  description?: string;
+  error?: { code?: number; description?: string };
   message?: string;
 }
 
@@ -55,7 +54,11 @@ export class ZaloApiService {
   async deleteWebhook(): Promise<boolean> {
     if (!this.configured) return false;
     try {
-      const { data } = await axios.post(this.baseUrl('deleteWebhook'), {}, { timeout: 15000 });
+      const { data } = await axios.post(
+        this.baseUrl('deleteWebhook'),
+        {},
+        { timeout: 15000 },
+      );
       return !!(data && data.ok === true);
     } catch (err: any) {
       this.logger.error(`deleteWebhook failed: ${err.message}`);
@@ -76,13 +79,41 @@ export class ZaloApiService {
       );
       if (data && data.ok === false) {
         this.logger.error(
-          `sendMessage error: ${data.error_code} ${data.description || data.message}`,
+          `sendMessage error: ${data.error?.code} ${data.error?.description || data.message}`,
         );
         return false;
       }
       return true;
     } catch (err: any) {
       this.logger.error(`sendMessage failed: ${err.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Gửi tin nhắn thoại (chỉ chat 1-1). Bot Platform chỉ chấp nhận file
+   * .aac tại URL công khai (phải có đuôi .aac).
+   */
+  async sendVoice(chatId: string, voiceUrl: string): Promise<boolean> {
+    if (!this.configured) {
+      this.logger.warn('ZaloBot chưa cấu hình token, bỏ qua gửi voice');
+      return false;
+    }
+    try {
+      const { data } = await axios.post<SendMessageResponse>(
+        this.baseUrl('sendVoice'),
+        { chat_id: chatId, voice_url: voiceUrl },
+        { timeout: 15000 },
+      );
+      if (data && data.ok === false) {
+        this.logger.error(
+          `sendVoice error: ${data.error?.code} ${data.error?.description || data.message}`,
+        );
+        return false;
+      }
+      return true;
+    } catch (err: any) {
+      this.logger.error(`sendVoice failed: ${err.message}`);
       return false;
     }
   }

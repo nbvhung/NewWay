@@ -23,6 +23,9 @@ export class ZaloMessage {
   @Column({ name: 'content', type: 'text', nullable: false })
   content: string;
 
+  @Column({ name: 'sent_by_admin', type: 'boolean', default: false, nullable: false })
+  sentByAdmin: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

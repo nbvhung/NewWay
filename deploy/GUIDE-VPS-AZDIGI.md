@@ -157,7 +157,9 @@ nano /opt/newway/.env
 | `DEFAULT_ADMIN_PASSWORD` | Tự đặt mật khẩu admin mạnh |
 | `DEFAULT_SUPPER_PASSWORD` | Tự đặt mật khẩu supper_admin mạnh |
 | `ZALO_BOT_TOKEN` | Vào [bot.zaloplatforms.com](https://bot.zaloplatforms.com) → chọn bot → copy token |
-| `ZALO_WEBHOOK_SECRET` | Chuỗi bí mật tự đặt (VD: `newway_zalo_2026_xyz`) |
+| `ZALO_POLLING` | **`true`** — production dùng long-polling (getUpdates), KHÔNG dùng webhook |
+| `ZALO_BUON_NGU_AUDIO_URL` | `https://<domain>/api/zalo/audio/buon-ngu-v2.aac` |
+| `ZALO_WEBHOOK_SECRET` | Chuỗi bí mật tự đặt (VD: `newway_zalo_2026_xyz`) — chỉ dùng khi fallback webhook |
 
 > ⚠️ Cần **tên miền** cho các dòng `https://<domain>`. Nếu chưa có domain, chặn lại báo tôi — không thể chạy HTTPS nếu thiếu domain.
 
@@ -250,32 +252,40 @@ curl https://<domain>/api/auth/me     # API phản hồi
 
 ---
 
-## BƯỚC 11 — Cấu hình Zalo Bot Webhook
+## BƯỚC 11 — Cấu hình Zalo Bot (long-polling)
 
 > Thực hiện **sau khi Bước 9 và 10 xong** (web đã chạy với domain HTTPS).
+>
+> ⚠️ **QUAN TRỌNG: Production DÙNG long-polling (`getUpdates`), KHÔNG dùng webhook.**
+> Zalo Bot Platform **không gửi webhook ổn định** tới domain duckdns/ip công cộng
+> (verification báo lỗi `webhook.err.proxy` → bot không nhận được tin). Vì vậy hệ
+> thống dùng `ZALO_POLLING=true` (đã mặc định trong `.env` production) — backend tự
+> giành leader qua Redis lock, xóa webhook, và gọi `getUpdates` liên tục.
 
 **11.1. Verify bot đang chạy:**
 ```bash
 bash /opt/newway/deploy/verify-zalo.sh <domain>
-# VD: bash /opt/newway/deploy/verify-zalo.sh newway.congty.vn
+# VD: bash /opt/newway/deploy/verify-zalo.sh newwayai.duckdns.org
 ```
 Kết quả kỳ vọng:
 - `botConfigured: true` → ZALO_BOT_TOKEN đã load
-- Webhook GET trả `{"status":"ok"}`
+- `ZALO_POLLING=true` trong `.env`
+- Log backend có: `Polling instance ... bắt đầu` → `Đã giành leadership, bắt đầu long-polling`
 
-**11.2. Đăng ký webhook trên Zalo Platform:**
-1. Vào **[bot.zaloplatforms.com](https://bot.zaloplatforms.com)** → chọn Bot
-2. Vào **Cài đặt → Webhook**
-3. Điền:
-   - **Webhook URL**: `https://<domain>/api/zalo/webhook`
-   - **Secret Token**: giá trị `ZALO_WEBHOOK_SECRET` trong `.env`
-4. Bấm **Verify/Lưu** → Zalo sẽ gọi `GET /api/zalo/webhook` → trả `{"status":"ok"}` → ✅ xác minh thành công
+**11.2. Xác nhận polling hoạt động:**
+```bash
+docker logs --tail=30 newway-backend-1 2>&1 | grep -i polling
+```
+Phải thấy `Đã giành leadership, bắt đầu long-polling`. Nếu chỉ thấy
+`Zalo polling chưa được bật (ZALO_POLLING != true)` → kiểm tra lại `ZALO_POLLING=true` trong `.env`.
 
 **11.3. Test cuối:**
 - Tài xế mở Zalo → nhắn tin vào bot
 - Gửi SĐT đã đăng ký → bot phản hồi liên kết
 - Gửi 7 số cuối container → bot ghi nhận
+- Gửi "buồn" hoặc "ngủ" → bot gửi file nhạc ~2 phút
 - Web admin → tab **Lịch sử chat** → thấy cuộc hội thoại ✅
+
 
 **✅ Xong khi:** Bot phản hồi được tin nhắn từ tài xế.
 

@@ -125,10 +125,10 @@ export function ContainerImportModal({ open, onClose, plan, toast }: Props) {
       }
     >
       <div className="mb-4">
-        <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Chọn file (xlsx hoặc txt — mỗi dòng: mã container + loại, cách nhau bằng Tab)</label>
+        <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Chọn file Excel (.xlsx/.xls — mỗi cột là 1 loại container, dòng 1 ghi loại)</label>
         <input
           type="file"
-          accept=".xlsx,.xls,.txt,.csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           onChange={e => setFile(e.target.files?.[0] || null)}
           className="w-full text-xs file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-[rgba(26,86,219,0.1)] file:text-[#1a56db] file:cursor-pointer"
         />
@@ -141,11 +141,11 @@ export function ContainerImportModal({ open, onClose, plan, toast }: Props) {
           {uploading ? 'Đang import...' : '⬆️ Import'}
         </button>
         <p className="mt-2 text-[10px] leading-relaxed text-[#64748b]">
-          Định dạng ví dụ:
+          Định dạng ví dụ (dòng 1 = loại, mã gõ dưới đúng cột):
           <code className="block mt-1 px-2 py-1.5 rounded bg-[#f8fafc] border border-[rgba(0,0,0,0.08)]">
-            BMOU6823203{'\t'}H20{'\n'}CKLU4114651{'\t'}H40{'\n'}CKLU5112463{'\t'}V20
+            H20{'\t'}H40{'\t'}V20{'\t'}V40{'\t'}V20FR{'\t'}V40FR{'\n'}BMOU6823203{'\t'}{'\t'}{'\t'}{'\t'}TAHK4561321
           </code>
-          Loại hợp lệ: H20, H40, V20, V40, V20FR, V40FR, VSL, TIP
+          Loại hợp lệ: H20, H40, V20, V40, V20FR, V40FR. Muốn gộp bó: thêm cột "Bó" ngay phải cột loại, gõ "Bó" và merge xuống các mã cùng bó.
         </p>
       </div>
 

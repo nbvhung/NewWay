@@ -9,6 +9,7 @@ import { usePagination } from '@/hooks/use-pagination';
 import { Submission, User, ShippingLine } from '@/types';
 import { submissionsApi } from '@/lib/api-submissions';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
+import { settingsApi } from '@/lib/api-settings';
 import { ROLE_LABELS, fmtNgay } from '@/lib/utils';
 
 interface Props {
@@ -47,6 +48,8 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [totalShipOpen, setTotalShipOpen] = useState(false);
+  const [entryLocked, setEntryLocked] = useState(false);
+  const [locking, setLocking] = useState(false);
   const [totalShipSlId, setTotalShipSlId] = useState<number | null>(null);
   const [totalShipForm, setTotalShipForm] = useState({
     hang20: '', hang40: '', vo20: '', vo40: '', vo20fr: '', vo40fr: '',
@@ -73,6 +76,29 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
   useEffect(() => {
     loadSubmissions();
   }, [filterSl]);
+
+  const loadEntryLock = async () => {
+    try {
+      const res = await settingsApi.getEntryLock();
+      setEntryLocked(!!(res.data as any)?.data?.locked);
+    } catch {}
+  };
+
+  useEffect(() => {
+    loadEntryLock();
+  }, []);
+
+  const toggleEntryLock = async () => {
+    setLocking(true);
+    try {
+      const res = await settingsApi.setEntryLock(!entryLocked);
+      setEntryLocked(!!(res.data as any)?.data?.locked);
+    } catch (err: any) {
+      alert('Không thể thay đổi trạng thái khóa nhập liệu.');
+    } finally {
+      setLocking(false);
+    }
+  };
 
   const openEditSub = (sub: Submission) => {
     setEditSub(sub);
@@ -302,6 +328,28 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
 
       {user?.role !== 'hr' && (
       <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl overflow-x-auto">
+        <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-[rgba(0,0,0,0.06)]">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm font-bold text-[#0f172a]">📋 Bảng sản lượng lái xe</span>
+            {entryLocked && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[rgba(239,68,68,0.15)] text-red-600">🔒 Đang khóa nhập liệu</span>
+            )}
+          </div>
+          <button onClick={toggleEntryLock} disabled={locking}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer disabled:opacity-50 ${
+              entryLocked
+                ? 'bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)]'
+                : 'bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white shadow-[0_4px_12px_rgba(239,68,68,0.3)]'
+            }`}>
+            {locking ? '⏳ Đang xử lý...' : entryLocked ? '🔓 Mở khóa nhập liệu' : '🔒 Khóa nhập liệu'}
+          </button>
+        </div>
+        {entryLocked && (
+          <div className="px-4 py-2.5 bg-[rgba(239,68,68,0.06)] border-b border-[rgba(239,68,68,0.15)] text-[11px] text-red-600 font-medium">
+            <div>Lái xe hiện bị khóa nhập liệu trên app/web — chỉ nhập được qua ZALO, và liên hệ HƯNG để sửa dữ liệu.</div>
+            <div>SĐT: 082 558 7779</div>
+          </div>
+        )}
         {submissions.length === 0 ? (
           <div className="text-center py-16 text-[#64748b] text-sm">📭 Không có bản ghi nào</div>
         ) : (

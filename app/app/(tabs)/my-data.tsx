@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert,
 } from 'react-native';
@@ -6,6 +6,7 @@ import { Redirect, useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../src/store/auth-store';
 import { submissionsApi } from '../../src/api/submissions';
 import { shippingLinesApi } from '../../src/api/shipping-lines';
+import { settingsApi } from '../../src/api/settings';
 import Modal from '../../src/components/Modal';
 import StatsCard from '../../src/components/StatsCard';
 import LoadingSpinner from '../../src/components/LoadingSpinner';
@@ -51,6 +52,8 @@ export default function MyDataScreen() {
     vo20fr: '', vo40fr: '', veSinhLai: '', keoVe: '', tip: '',
   });
   const [saving, setSaving] = useState(false);
+  const [entryLocked, setEntryLocked] = useState(false);
+  const entryLockedRef = useRef(false);
 
   const now = new Date();
   const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
@@ -59,13 +62,30 @@ export default function MyDataScreen() {
   const [salaryMonth, setSalaryMonth] = useState(now.getMonth() + 1);
   const [salaryYear, setSalaryYear] = useState(now.getFullYear());
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); loadEntryLock(); }, []);
+
+  const loadEntryLock = async () => {
+    try {
+      const res = await settingsApi.getEntryLock();
+      const locked = !!(res.data as any)?.data?.locked;
+      entryLockedRef.current = locked;
+      setEntryLocked(locked);
+    } catch {}
+  };
 
   // Auto-open edit modal if editId param is present
   useEffect(() => {
     if (!loading && params.editId && data.length > 0) {
       const target = data.find(s => String(s.id) === params.editId);
-      if (target) openEdit(target);
+      if (target) {
+        (async () => {
+          try {
+            const res = await settingsApi.getEntryLock();
+            entryLockedRef.current = !!(res.data as any)?.data?.locked;
+          } catch {}
+          if (!entryLockedRef.current) openEdit(target);
+        })();
+      }
     }
   }, [loading, params.editId, data]);
 
@@ -109,6 +129,10 @@ export default function MyDataScreen() {
   };
 
   const openEdit = (sub: Submission) => {
+    if (entryLocked || entryLockedRef.current) {
+      Alert.alert('Nhập liệu đã khóa', 'Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ HƯNG để sửa.\nSĐT: 082 558 7779');
+      return;
+    }
     setEditSub(sub);
     const matchedPlanId = sub.shippingLineId || shippingLines.find(sl => sl.name === sub.shippingLine)?.id;
     setEditForm({
@@ -124,6 +148,10 @@ export default function MyDataScreen() {
 
   const saveEdit = async () => {
     if (!editSub) return;
+    if (entryLocked) {
+      Alert.alert('Nhập liệu đã khóa', 'Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ HƯNG để sửa.\nSĐT: 082 558 7779');
+      return;
+    }
     if (!editForm.shippingLineId && !editForm.shippingLine) {
       Alert.alert('Lỗi', 'Vui lòng chọn kế hoạch');
       return;
@@ -265,10 +293,24 @@ export default function MyDataScreen() {
           <Text style={styles.headerTitle}>Sản lượng của tôi</Text>
           <Text style={styles.headerSub}>Xem và chỉnh sửa các bản ghi đã nhập</Text>
         </View>
-        <TouchableOpacity style={styles.newEntryBtn} onPress={() => router.push('/(tabs)')}>
-          <Text style={styles.newEntryBtnText}>+ Nhập mới</Text>
-        </TouchableOpacity>
+        {!entryLocked && (
+          <TouchableOpacity style={styles.newEntryBtn} onPress={() => router.push('/(tabs)')}>
+            <Text style={styles.newEntryBtnText}>+ Nhập mới</Text>
+          </TouchableOpacity>
+        )}
       </View>
+
+      {entryLocked && (
+        <View style={styles.lockBanner}>
+          <Text style={styles.lockBannerTitle}>🔒 Hệ thống đang tạm khóa nhập liệu</Text>
+          <Text style={styles.lockBannerText}>
+            Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ HƯNG để sửa.
+          </Text>
+          <Text style={styles.lockBannerText}>
+            SĐT: 082 558 7779
+          </Text>
+        </View>
+      )}
 
       {/* Stats */}
       <View style={styles.statsRow}>
@@ -298,7 +340,7 @@ export default function MyDataScreen() {
 
       {user?.role === 'laixe' ? (
         <>
-          {renderSection('Chưa hoàn thành', incompleteData, true)}
+          {renderSection('Chưa hoàn thành', incompleteData, !entryLocked)}
           {renderSection('Đã hoàn thành', completedData, false)}
         </>
       ) : filteredData.length === 0 ? (
@@ -478,6 +520,27 @@ const styles = StyleSheet.create({
     shadowColor: '#1a56db', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4,
   },
   newEntryBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  lockBanner: {
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    borderWidth: 2,
+    borderColor: '#ef4444',
+    borderRadius: 10,
+    padding: 14,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  lockBannerTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#dc2626',
+  },
+  lockBannerText: {
+    fontSize: 12,
+    color: '#dc2626',
+    textAlign: 'center',
+    marginTop: 6,
+  },
   statsRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginBottom: 16 },
   section: { paddingHorizontal: 16, marginBottom: 12 },
   sectionHeader: {

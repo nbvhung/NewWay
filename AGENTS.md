@@ -194,19 +194,23 @@ UNIQUE(shippingLineId, name)
 
 ### Zalo Bot
 
-- **Webhook**: `POST /api/zalo/webhook` — verify header `X-Bot-Api-Secret-Token` (timing-safe compare, khớp `ZALO_WEBHOOK_SECRET`). Event types xử lý: `message.text.received`, `message.voice.received`.
+- **Cơ chế nhận tin MẶC ĐỊNH: long-polling (getUpdates)** — bật bằng `ZALO_POLLING=true` trong `.env` production. Zalo Bot Platform **không gửi webhook ổn định** tới domain duckdns (verification lỗi `webhook.err.proxy`), vì vậy production DÙNG POLLING, KHÔNG dùng webhook. `zalo-polling.service.ts` giành leader qua Redis lock (`zalo:poller:lock`, TTL 120s), xóa webhook 1 lần, gọi `getUpdates(20)` lặp vô hạn, dedup bằng `message_id` (Redis SET NX, TTL 48h). Lỗi `Request timeout` (408) của getUpdates là HÀNH VI BÌNH THƯỜNG khi không có tin mới, không phải lỗi.
+- **Webhook (chỉ fallback/local)**: `POST /api/zalo/webhook` — verify header `X-Bot-Api-Secret-Token` (timing-safe compare, khớp `ZALO_WEBHOOK_SECRET`), chỉ hoạt động khi `ZALO_POLLING != true`. Event types xử lý: `message.text.received`, `message.voice.received`. Lưu ý: webhook và getUpdates **loại trừ lẫn nhau** — khi polling chạy sẽ tự xóa webhook.
+- **Audio "buồn ngủ"**: khi tin nhắn chứa từ `buồn`/`ngủ` (regex `\b(buon|ngu)\b` sau normalize bỏ dấu), bot gửi file `public/audio/buon-ngu-v2.aac` (~2 phút) qua `sendVoice` với `ZALO_BUON_NGU_AUDIO_URL`. **Lưu ý cache**: Zalo cache file theo URL — nếu đổi nội dung file audio, phải ĐỔI TÊN file (vd `buon-ngu-v2.aac` → `buon-ngu-v3.aac`) và cập nhật cả route trong `zalo-bot.controller.ts` + `ZALO_BUON_NGU_AUDIO_URL` trong `.env`, nếu không Zalo vẫn gửi bản cũ đã cache.
 - **Gửi tin**: `POST https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/sendMessage` body `{ chat_id, text }`.
 - **Voice**: webhook chỉ gửi `voice_url` → backend tải file (Authorization Bearer, fallback `access_token` query) → STT (OpenAI Whisper qua `OPENAI_API_KEY`, bắt buộc key) → lọc số.
 - **Session**: Redis key `zalo_session:{zaloUserId}`, TTL 3600. Lưu `userId`, `planId`, `planName`, `pendingCandidates`, `pendingDigits`, `pendingPlanOptions`.
-- **Lệnh bot**: `/help`, `/link <username> <password>` (liên kết qua bcrypt.compare + set `users.zalo_id`), `/doi-plan`, `/logout` (xóa session + set `users.zalo_id` = null). **Không có lệnh `/xong`** — ghi nhận real-time từng container.
-- **Hội thoại**: liên kết → chọn kế hoạch (match tên, hỗ trợ chọn số khi trùng) → gửi 7 số cuối / đọc số → tìm `RIGHT(container_code, 7)` trong plan:
+- **Lệnh bot**: `/help`, `/link <username> <password>` (liên kết qua bcrypt.compare + set `users.zalo_id`), `/doi-plan`, `/logout` (xóa session + set `users.zalo_id` = null), nhắn `TIP <số>` để ghi TIP (vd `TIP 3` → chọn kế hoạch → cộng vào field `tip`). **Không có lệnh `/xong`** — ghi nhận real-time từng container.
+- **Hội thoại**: liên kết → chọn kế hoạch (match tên, hỗ trợ chọn số khi trùng) → gửi 1–7 số cuối / đọc số → tìm `RIGHT(container_code, N)` (N = số chữ số đã nhập) trong plan:
   - 0 kết quả → "không nằm trong kế hoạch"
   - 1 kết quả → upsert submission + `claim` (set `container_imports.submission_id`)
-  - >1 kết quả → liệt kê 1️⃣/2️⃣, tài xế nhắn số thứ tự hoặc mã đầy đủ
+  - >1 kết quả → liệt kê 1️⃣/2️⃣, tài xế nhắn số thứ tự hoặc mã đầy đủ (KHÔNG tự điền khi trùng)
+- **Trùng đã ghi trước đó**: container đã có `submissionId` hiển thị tên lái xe đã chạy (`đã được chạy bởi {Lái xe}`) rồi mới show menu chọn (Vệ sinh lại / Kéo Về / Vẫn đi / Đọc nhầm).
 - **Upsert submission**: tìm `submissions` theo `userId + shippingLineId`. Chưa có → tạo mới với field loại = `1`. Có → cộng `+1`, `editCount + 1`, `lastEditedAt`, ghi `edit_history` (`editedById` = lái xe, `editedByName` = fullName).
 - **Map loại → field**: H20→`hang20`, H40→`hang40`, V20→`vo20`, V40→`vo40`, V20FR→`vo20fr`, V40FR→`vo40fr`, VSL→`veSinhLai`, TIP→`tip`.
 - **Chặn ghi**: kế hoạch `completed` chặn import file lẫn ghi nhận qua bot; container đã có `submissionId` → báo "đã ghi nhận trước đó".
-- **Text parser** (`zalo-bot/text-parser.ts`): đọc số Việt (không/một/hai...chín), số nguyên theo cấp (nghìn/triệu), bỏ từ nhiễu (ờ, à, ơ...), trích chuỗi 7 số.
+- **Container phát sinh**: lái xe đọc mã không có trong kế hoạch → bot hỏi "1) Vẫn đi / 2) Đọc nhầm" → chọn kế hoạch → lái xe chỉ cần đọc **4 chữ cái đầu (prefix)** của container (vd `BEAU`, số 7 cuối đã nhập trước đó) — bot ghép thành mã đầy đủ → **hỏi loại container (H20/H40/V20/V40/V20FR/V40FR)** → ghi nhận loại vào `container_imports.type` (không phải `PHATSINH`) nhưng vẫn `phatSinh=true`, chưa cộng sản lượng. OPS confirm trên web (`classifyPhatSinh`) mới cộng sản lượng + gán `submissionId`.
+- **Text parser** (`zalo-bot/text-parser.ts`): đọc số Việt (không/một/hai...chín), số nguyên theo cấp (nghìn/triệu), bỏ từ nhiễu (ờ, à, ơ...), trích **1–7 số cuối** (nhập bao nhiêu lọc bấy nhiêu). SĐT 10 số bị loại.
 - **Liên kết Zalo**: cả `/link` trên bot VÀ admin nhập `zalo_id` trong tab Users (CreateUserDto/UpdateUserDto có `zaloId` optional).
 
 ### Excel Export
@@ -270,8 +274,9 @@ UNIQUE(shippingLineId, name)
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| POST | `/api/zalo/webhook` | Public (verify `X-Bot-Api-Secret-Token`) | Nhận event từ Zalo Bot |
+| POST | `/api/zalo/webhook` | Public (verify `X-Bot-Api-Secret-Token`) | Nhận event từ Zalo Bot (chỉ khi KHÔNG dùng polling) |
 | GET | `/api/zalo` | Public | Health check bot (configured/STT) |
+| GET | `/api/zalo/audio/buon-ngu-v2.aac` | Public | File audio "buồn ngủ" (~2 phút) |
 
 ## Frontend Pages
 
@@ -365,7 +370,9 @@ SEED_SHIPPING_LINES=true
 
 # Zalo Bot
 ZALO_BOT_TOKEN=<bot token từ bot.zaloplatforms.com>
-ZALO_WEBHOOK_SECRET=<chuỗi bí mật tự đặt, dùng verify webhook>
+ZALO_POLLING=true               # PRODUCTION BẮT BUỘC bật polling (getUpdates), KHÔNG dùng webhook
+ZALO_WEBHOOK_SECRET=<chuỗi bí mật tự đặt, dùng verify webhook (chỉ khi fallback webhook)>
+ZALO_BUON_NGU_AUDIO_URL=https://<domain>/api/zalo/audio/buon-ngu-v2.aac
 # STT giọng nói → chữ (OpenAI Whisper), điền key sau khi thanh toán xong
 # OPENAI_API_KEY=sk-...
 ```
@@ -396,6 +403,6 @@ EXPO_PUBLIC_API_URL=http://192.168.1.x:4000/api  # IP máy local, mobile cùng W
 10. **Deployment** — xem `deploy/` cho Docker + setup script 1 lệnh
 11. **Axios pattern** — cả web (`fe`) và mobile (`app`) dùng axios với cùng pattern: mỗi module API là 1 object export các hàm gọi instance axios. Web dùng cookie auth, mobile dùng Bearer token.
 12. **Mobile auth** — mobile app không dùng httpOnly cookies. Dùng `POST /api/auth/mobile-login` nhận token JSON, lưu expo-secure-store, gửi Bearer token qua interceptor.
-13. **Zalo Bot** — không thêm lệnh `/xong`; ghi nhận real-time. Kế hoạch `completed` chặn import + ghi. Container trùng 7 số cuối → luôn cho chọn 1/2, không ghi nhận mặc định. STT phải qua bước lọc số (text-parser) vì voice-to-text hay sai/nhiễu.
-14. **Container import** — file định dạng `mã[TAB]loại` (xlsx hoặc txt), loại map qua `normalizeType`, chỉ admin/supper_admin.
-15. **Bó container** — file xlsx có thể nhóm nhiều container thành "Bó" bằng ô merge ở **cột C** (giá trị `Bó`, ví dụ merge `C5:C8`). Khi import, container trong vùng merge cùng cột C sẽ được gán chung `bundle_id` (`Bó 1`, `Bó 2`, ...). Lái xe đọc **1 mã bất kỳ** trong bó → bot ghi nhận **cả bó** cho lái xe đó: cộng số lượng = số container trong bó vào field loại (VD bó 4 V20FR → `vo20fr` +4), claim toàn bộ container trong bó về 1 submission. Bó đã có container được ghi (submissionId) → báo "đã được ghi nhận trước đó" (giống cơ chế trùng lặp). Không có trường hợp bó hỗn hợp nhiều loại.
+13. **Zalo Bot** — PRODUCTION dùng **long-polling** (`ZALO_POLLING=true`), KHÔNG dùng webhook (Zalo không gửi webhook tới domain duckdns). Khi đổi nội dung file audio "buồn ngủ" phải đổi tên file + route + `ZALO_BUON_NGU_AUDIO_URL` để tránh cache. Không thêm lệnh `/xong`; ghi nhận real-time. Kế hoạch `completed` chặn import + ghi. Container trùng 7 số cuối → luôn cho chọn 1/2, không ghi nhận mặc định. STT phải qua bước lọc số (text-parser) vì voice-to-text hay sai/nhiễu.
+14. **Container import** — chỉ hỗ trợ file Excel (.xlsx/.xls), định dạng **1 cột = 1 loại container**: dòng 1 là tiêu đề loại (H20, H40, V20, V40, V20FR, V40FR...), mã container gõ vào đúng cột loại của nó. Loại map qua `normalizeType`. File txt/csv KHÔNG được hỗ trợ nữa.
+15. **Bó container** — file xlsx nhóm nhiều container thành "Bó" bằng **cột Bó** đặt ngay phải cột loại: header chứa chữ "Bó" (vd `(Bó 20FR)`), ở ô đầu vùng gõ `Bó` rồi merge xuống đúng số dòng các container muốn gộp (vd merge `F2:F5` → 4 container V20FR ở `E2:E5` là 1 bó). Khi import, container cùng loại trong vùng merge được gán chung `bundle_id` (`Bó 1`, `Bó 2`, ...). Lái xe đọc **1 mã bất kỳ** trong bó → bot ghi nhận **cả bó** cho lái xe đó: cộng số lượng = số container trong bó vào field loại (VD bó 4 V20FR → `vo20fr` +4), claim toàn bộ container trong bó về 1 submission. Bó đã có container được ghi (submissionId) → báo "đã được ghi nhận trước đó" (giống cơ chế trùng lặp). Không có trường hợp bó hỗn hợp nhiều loại.

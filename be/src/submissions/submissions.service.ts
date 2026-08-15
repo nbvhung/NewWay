@@ -9,8 +9,10 @@ import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Route } from '../database/entities/route.entity';
 import { User } from '../database/entities/user.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
+import { ContainerClaim } from '../database/entities/container-claim.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateSubmissionDto } from './dto/update-submission.dto';
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class SubmissionsService {
@@ -27,9 +29,16 @@ export class SubmissionsService {
     private usersRepository: Repository<User>,
     @InjectRepository(ContainerImport)
     private containerImportsRepository: Repository<ContainerImport>,
+    @InjectRepository(ContainerClaim)
+    private containerClaimsRepository: Repository<ContainerClaim>,
+    private settingsService: SettingsService,
   ) {}
 
   async create(dto: CreateSubmissionDto, userId: number, fullName: string, userRole?: string) {
+    if (userRole === 'laixe' && (await this.settingsService.isEntryLocked())) {
+      throw new ForbiddenException('Hệ thống đang tạm khóa nhập liệu. Vui lòng quay lại sau.');
+    }
+
     let targetUserId = userId;
     let targetFullName = fullName;
 
@@ -158,6 +167,10 @@ export class SubmissionsService {
   }
 
   async updateMy(id: number, dto: UpdateSubmissionDto, userId: number, role: string, fullName: string): Promise<any> {
+    if (role === 'laixe' && (await this.settingsService.isEntryLocked())) {
+      throw new ForbiddenException('Hệ thống đang tạm khóa nhập liệu. Vui lòng quay lại sau.');
+    }
+
     const submission = await this.submissionsRepository.findOne({ where: { id } });
     if (!submission) {
       throw new NotFoundException('Không tìm thấy bản ghi');
@@ -365,6 +378,31 @@ export class SubmissionsService {
     }
     usedNames.add(unique.toLowerCase());
     return unique;
+  }
+
+  private fmtVN(dt: string | Date | null | undefined, withTime = true): string {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return '—';
+    const tz = 'Asia/Ho_Chi_Minh';
+    if (!withTime) {
+      return new Intl.DateTimeFormat('en-GB', {
+        timeZone: tz,
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }).format(d);
+    }
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: tz,
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).format(d);
   }
 
   async exportExcel(res: Response, user: any, filter: {
@@ -685,17 +723,36 @@ export class SubmissionsService {
     }
 
     // Sheet "Container - Người chạy" (OPS): ghi lại số container + ai chạy/ghi nhận
+    // Mỗi container có thể xuất NHIỀU dòng (1 dòng cho mỗi lần xác nhận/lái xe),
+    // container nào có >1 xác nhận → bôi vàng toàn bộ các dòng của nó.
     if (role === 'ops') {
       const qb = this.containerImportsRepository
         .createQueryBuilder('c')
-        .leftJoinAndSelect('c.submissionRef', 'sub')
-        .leftJoinAndSelect('sub.user', 'u')
         .leftJoinAndSelect('c.shippingLineRef', 'sl');
       if (filter.shippingLineId) {
         qb.where('c.shippingLineId = :planId', { planId: filter.shippingLineId });
       }
       qb.orderBy('c.containerCode', 'ASC');
       const containers = await qb.getMany();
+
+      const claims = containers.length > 0
+        ? await this.containerClaimsRepository
+            .createQueryBuilder('cl')
+            .leftJoinAndSelect('cl.submissionRef', 'sub')
+            .leftJoinAndSelect('sub.user', 'u')
+            .where('cl.containerImportId IN (:...ids)', {
+              ids: containers.map((c) => c.id),
+            })
+            .orderBy('cl.createdAt', 'ASC')
+            .getMany()
+        : [];
+      const claimsByContainer = new Map<number, any[]>();
+      for (const cl of claims as any[]) {
+        if (!claimsByContainer.has(cl.containerImportId)) {
+          claimsByContainer.set(cl.containerImportId, []);
+        }
+        claimsByContainer.get(cl.containerImportId)!.push(cl);
+      }
 
       const wsCont = workbook.addWorksheet(
         this.sanitizeSheetName('Container - Người chạy', usedSheetNames),
@@ -718,24 +775,62 @@ export class SubmissionsService {
       });
       contHeader.height = 28;
 
-      containers.forEach((c: any, idx: number) => {
-        const sub = c.submissionRef;
+      const yellowFill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFFF00' },
+      } as ExcelJS.Fill;
+
+      let stt = 0;
+      for (const c of containers as any[]) {
         const sl = c.shippingLineRef;
-        const claimedAt = sub ? sub.lastEditedAt || sub.updatedAt : null;
-        const row = wsCont.addRow({
-          stt: idx + 1,
-          containerCode: c.containerCode,
-          type: c.type,
-          plan: sl ? planDisplayName(sl) : c.shippingLineId ? `Plan #${c.shippingLineId}` : '',
-          driver: sub ? sub.user?.fullName || sub.driverName || '' : '',
-          claimedAt: claimedAt ? new Date(claimedAt).toLocaleString('vi-VN') : '',
-          keoVe: c.keoVe ? 'x' : '',
-        });
-        row.eachCell((cell) => {
-          cell.border = allBorder;
-          cell.alignment = { vertical: 'middle', horizontal: 'center' };
-        });
-      });
+        const planName = sl
+          ? planDisplayName(sl)
+          : c.shippingLineId
+            ? `Plan #${c.shippingLineId}`
+            : '';
+        const cClaims = claimsByContainer.get(c.id) || [];
+        const multi = cClaims.length > 1;
+
+        if (cClaims.length === 0) {
+          stt++;
+          const row = wsCont.addRow({
+            stt,
+            containerCode: c.containerCode,
+            type: c.type,
+            plan: planName,
+            driver: '',
+            claimedAt: '',
+            keoVe: c.keoVe ? 'x' : '',
+          });
+          row.eachCell((cell) => {
+            cell.border = allBorder;
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          });
+          continue;
+        }
+
+        for (const cl of cClaims) {
+          stt++;
+          const sub = cl.submissionRef;
+          const row = wsCont.addRow({
+            stt,
+            containerCode: c.containerCode,
+            type: c.type,
+            plan: planName,
+            driver: sub ? sub.user?.fullName || sub.driverName || '' : '',
+            claimedAt: this.fmtVN(cl.createdAt),
+            keoVe: cl.claimType === 'KV' ? 'x' : '',
+          });
+          row.eachCell((cell) => {
+            cell.border = allBorder;
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            if (multi) {
+              cell.fill = yellowFill;
+            }
+          });
+        }
+      }
     }
 
     // For Monthly: per-driver sheets without Đơn giá & Lương, no totals
@@ -1504,7 +1599,7 @@ export class SubmissionsService {
 
         const sub = h.submission as any;
         const creatorName = sub?.creator?.fullName || sub?.driverName || '—';
-        const createdDate = sub?.createdAt ? new Date(sub.createdAt).toLocaleDateString('vi-VN') : '—';
+        const createdDate = sub?.createdAt ? this.fmtVN(sub.createdAt, false) : '—';
 
         const row = wsHistory.addRow({
           stt: idx + 1,
@@ -1513,7 +1608,7 @@ export class SubmissionsService {
           editedByName: h.editedByName,
           changes: changesText,
           createdAt: createdDate,
-          editedAt: new Date(h.editedAt).toLocaleString('vi-VN'),
+          editedAt: this.fmtVN(h.editedAt),
         });
         row.eachCell((cell) => {
           cell.border = allBorder;

@@ -10,6 +10,8 @@ import { StatsCard } from '@/components/ui/stats-card';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { submissionsApi } from '@/lib/api-submissions';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
+import { settingsApi } from '@/lib/api-settings';
+import { LockNoticePopup } from '@/components/ui/lock-notice-popup';
 import { ShippingLine, Submission } from '@/types';
 import { fmtDate, FIELD_LABELS, formatMoney, fmtNgay } from '@/lib/utils';
 
@@ -66,6 +68,9 @@ export default function MyDataPage() {
     vo20fr: '', vo40fr: '', veSinhLai: '', keoVe: '', tip: '',
   });
   const [saving, setSaving] = useState(false);
+  const [entryLocked, setEntryLocked] = useState(false);
+  const entryLockedRef = useRef(false);
+  const [lockPopupOpen, setLockPopupOpen] = useState(false);
 
   const prevLiveRef = useRef<any[] | null>(null);
   const suppressUntilRef = useRef(0);
@@ -85,7 +90,17 @@ export default function MyDataPage() {
 
   useEffect(() => {
     loadData();
+    loadEntryLock();
   }, []);
+
+  const loadEntryLock = async () => {
+    try {
+      const res = await settingsApi.getEntryLock();
+      const locked = !!(res.data as any)?.data?.locked;
+      entryLockedRef.current = locked;
+      setEntryLocked(locked);
+    } catch {}
+  };
 
   const loadData = async () => {
     try {
@@ -102,10 +117,15 @@ export default function MyDataPage() {
         const id = Number(editId);
         if (!isNaN(id)) {
           const sub = submissions.find((s: Submission) => s.id === id);
-          if (sub) setTimeout(() => openEdit(sub), 100);
+          if (sub) {
+            try {
+              const lockRes = await settingsApi.getEntryLock();
+              entryLockedRef.current = !!(lockRes.data as any)?.data?.locked;
+            } catch {}
+            if (!entryLockedRef.current) setTimeout(() => openEdit(sub), 100);
+          }
         }
-      }
-      return submissions;
+      }      return submissions;
     } catch (err: any) {
       toast(err.message, 'error');
       return null;
@@ -139,6 +159,10 @@ export default function MyDataPage() {
   };
 
   const openEdit = (sub: Submission) => {
+    if (entryLocked || entryLockedRef.current) {
+      setLockPopupOpen(true);
+      return;
+    }
     setEditSub(sub);
     const matchedPlanId = sub.shippingLineId || shippingLines.find(sl => sl.name === sub.shippingLine)?.id;
     setEditForm({
@@ -160,6 +184,10 @@ export default function MyDataPage() {
 
   const saveEdit = async () => {
     if (!editSub) return;
+    if (entryLocked || entryLockedRef.current) {
+      setLockPopupOpen(true);
+      return;
+    }
     if (!editForm.shippingLineId && !editForm.shippingLine) {
       toast('Vui lòng chọn kế hoạch', 'error');
       return;
@@ -199,7 +227,7 @@ export default function MyDataPage() {
       const full = subs.find((s: Submission) => s.id === target.id);
       if (full) {
         toast('🔔 Bot Zalo vừa ghi nhận container cho kế hoạch này', 'info');
-        openEdit(full);
+        if (!entryLocked) openEdit(full);
       }
     } catch {
       // bỏ qua lỗi mạng tạm thời khi polling
@@ -387,6 +415,16 @@ export default function MyDataPage() {
       )}
 
       <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl">
+        {entryLocked && (
+          <div className="mx-5 mt-5 px-4 py-3 rounded-xl bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.25)] flex items-center gap-3">
+            <span className="text-xl">🔒</span>
+            <div>
+              <p className="text-xs font-bold text-red-600">Hệ thống đang tạm khóa nhập liệu</p>
+              <p className="text-[11px] text-red-500 mt-0.5">Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ HƯNG để sửa.</p>
+              <p className="text-[11px] font-bold text-red-600 mt-0.5">SĐT: 082 558 7779</p>
+            </div>
+          </div>
+        )}
         <div className="flex items-center justify-between flex-wrap gap-3 px-5 pt-5 pb-3">
           <div>
             <h3 className="text-base font-bold">📋 Danh sách nhập sản lượng</h3>
@@ -438,7 +476,7 @@ export default function MyDataPage() {
                 <span className="w-2 h-2 rounded-full bg-amber-500" />
                 <span className="text-xs font-bold text-[#475569] uppercase tracking-wider">Chưa hoàn thành</span>
               </div>
-              <RenderCard data={filteredData.filter(s => !s.completed)} showEdit />
+              <RenderCard data={filteredData.filter(s => !s.completed)} showEdit={!entryLocked} />
             </div>
             {/* ── Đã hoàn thành ── */}
             <div className="mt-6">
@@ -704,6 +742,7 @@ export default function MyDataPage() {
           </>
         )}
       </Modal>
+      <LockNoticePopup open={lockPopupOpen} onClose={() => setLockPopupOpen(false)} />
     </div>
   );
 }

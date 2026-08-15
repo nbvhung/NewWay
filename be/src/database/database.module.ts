@@ -7,7 +7,9 @@ import { Submission } from './entities/submission.entity';
 import { EditHistory } from './entities/edit-history.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { ContainerImport } from './entities/container-import.entity';
+import { ContainerClaim } from './entities/container-claim.entity';
 import { ZaloMessage } from './entities/zalo-message.entity';
+import { ZaloScheduledMessage } from './entities/zalo-scheduled-message.entity';
 import { SeedService } from './seed.service';
 
 @Module({
@@ -20,7 +22,7 @@ import { SeedService } from './seed.service';
           return {
             type: 'postgres',
             url: dbUrl,
-            entities: [User, ShippingLine, Route, Submission, EditHistory, RefreshToken, ContainerImport, ZaloMessage],
+            entities: [User, ShippingLine, Route, Submission, EditHistory, RefreshToken, ContainerImport, ContainerClaim, ZaloMessage, ZaloScheduledMessage],
             synchronize: !isProd,
             logging: false,
             ssl: { rejectUnauthorized: false },
@@ -33,14 +35,14 @@ import { SeedService } from './seed.service';
           username: process.env.DATABASE_USER || 'postgres',
           password: process.env.DATABASE_PASSWORD || 'postgres',
           database: process.env.DATABASE_NAME || 'newway',
-          entities: [User, ShippingLine, Route, Submission, EditHistory, RefreshToken, ContainerImport, ZaloMessage],
+          entities: [User, ShippingLine, Route, Submission, EditHistory, RefreshToken, ContainerImport, ContainerClaim, ZaloMessage, ZaloScheduledMessage],
           synchronize: !isProd,
           logging: false,
           ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
         };
       },
     }),
-    TypeOrmModule.forFeature([User, ShippingLine, Route, Submission, EditHistory, RefreshToken, ContainerImport, ZaloMessage]),
+    TypeOrmModule.forFeature([User, ShippingLine, Route, Submission, EditHistory, RefreshToken, ContainerImport, ContainerClaim, ZaloMessage, ZaloScheduledMessage]),
   ],
   providers: [SeedService],
   exports: [TypeOrmModule],

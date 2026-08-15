@@ -42,33 +42,30 @@ HEALTH=$(curl -sf "https://$DOMAIN/api/zalo" 2>&1) && {
   echo "   ❌ Không gọi được endpoint /api/zalo — backend chưa chạy?"
 }
 
-# 2. Kiểm tra webhook GET (Zalo Platform dùng để verify)
+# 2. Kiểm tra ZALO_POLLING trong .env (production dùng polling, KHÔNG webhook)
 echo ""
-echo "2️⃣  Kiểm tra webhook GET endpoint..."
-WEBHOOK=$(curl -sf "https://$DOMAIN/api/zalo/webhook" 2>&1) && {
-  echo "   ✅ Response: $WEBHOOK"
-  if echo "$WEBHOOK" | grep -q '"status":"ok"'; then
-    echo "   ✅ Webhook endpoint sẵn sàng nhận verify từ Zalo Platform"
+echo "2️⃣  Kiểm tra cơ chế nhận tin (phải là long-polling)..."
+if [ -f /opt/newway/.env ]; then
+  POLLING=$(grep '^ZALO_POLLING=' /opt/newway/.env | cut -d= -f2-)
+  if [ "$POLLING" = "true" ]; then
+    echo "   ✅ ZALO_POLLING=true — đang dùng long-polling (getUpdates) ✅"
+  else
+    echo "   ❌ ZALO_POLLING=$POLLING — phải là true! Zalo KHÔNG gửi webhook tới domain duckdns."
   fi
-} || {
-  echo "   ❌ Không gọi được endpoint /api/zalo/webhook"
-}
-
-# 3. Kiểm tra webhook POST với secret sai (phải trả 401)
-echo ""
-echo "3️⃣  Kiểm tra webhook POST bảo mật (secret sai → phải 401)..."
-STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-  -X POST "https://$DOMAIN/api/zalo/webhook" \
-  -H "Content-Type: application/json" \
-  -H "X-Bot-Api-Secret-Token: wrong_secret_test" \
-  -d '{"test":true}')
-if [ "$STATUS" = "401" ]; then
-  echo "   ✅ Trả về 401 — bảo mật OK"
-elif [ "$STATUS" = "200" ] && [ -z "$ZALO_WEBHOOK_SECRET" ]; then
-  echo "   ⚠️  Trả về 200 vì ZALO_WEBHOOK_SECRET chưa điền (bỏ qua verify)"
-  echo "      → Nên điền ZALO_WEBHOOK_SECRET vào .env để bảo mật"
 else
-  echo "   ℹ️  HTTP $STATUS (nếu ZALO_WEBHOOK_SECRET trống thì 200 là bình thường)"
+  echo "   ℹ️  Không tìm thấy /opt/newway/.env (chạy script này trên VPS)"
+fi
+
+# 3. Kiểm tra polling đã giành leadership chưa
+echo ""
+echo "3️⃣  Kiểm tra log polling (leader election)..."
+if command -v docker &> /dev/null; then
+  if docker logs --tail=40 newway-backend-1 2>&1 | grep -q "Đã giành leadership"; then
+    echo "   ✅ Poller đã giành leadership, đang long-polling ✅"
+  else
+    echo "   ⚠️  Chưa thấy 'Đã giành leadership'. Chờ 10-30s rồi chạy lại."
+    echo "      Nếu log có 'Zalo polling chưa được bật' → sửa ZALO_POLLING=true rồi docker compose up -d backend"
+  fi
 fi
 
 # 4. Kiểm tra containers docker
@@ -85,8 +82,7 @@ echo ""
 echo "============================================="
 echo "✅ Kiểm tra xong."
 echo ""
-echo "📌 Bước tiếp theo:"
-echo "   → Vào bot.zaloplatforms.com"
-echo "   → Đổi webhook URL thành: https://$DOMAIN/api/zalo/webhook"
-echo "   → Điền X-Bot-Api-Secret-Token = ZALO_WEBHOOK_SECRET trong .env"
+echo "📌 Lưu ý:"
+echo "   → Production dùng long-polling (ZALO_POLLING=true), KHÔNG cần set webhook trên bot.zaloplatforms.com"
+echo "   → Nếu đổi nội dung file audio 'buồn ngủ': đổi TÊN file (vd buon-ngu-v3.aac) + route + ZALO_BUON_NGU_AUDIO_URL để tránh cache"
 echo ""

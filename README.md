@@ -17,7 +17,7 @@ admin quản lý user và danh mục.
 | **HTTP Client** | Axios (thống nhất web & mobile) |
 | **Password** | bcryptjs |
 | **Export** | ExcelJS |
-| **Zalo Bot** | Zalo Bot API (webhook) + OpenAI Whisper STT (voice-to-text) |
+| **Zalo Bot** | Zalo Bot API (long-polling `getUpdates`) + OpenAI Whisper STT (voice-to-text) |
 
 ## Yêu cầu hệ thống (phát triển)
 
@@ -67,7 +67,9 @@ DEFAULT_SUPPER_PASSWORD=supper123
 
 # Zalo Bot
 ZALO_BOT_TOKEN=<bot token từ bot.zaloplatforms.com>
+ZALO_POLLING=true               # Production bắt buộc true (long-polling getUpdates), KHÔNG dùng webhook
 ZALO_WEBHOOK_SECRET=<chuỗi bí mật tự đặt 8-256 ký tự>
+ZALO_BUON_NGU_AUDIO_URL=https://<domain>/api/zalo/audio/buon-ngu-v2.aac
 # STT giọng nói → chữ (OpenAI Whisper), điền key sau khi thanh toán xong
 # OPENAI_API_KEY=sk-...
 ```
@@ -139,9 +141,21 @@ Loại hợp lệ: `H20, H40, V20, V40, V20FR, V40FR, VSL, TIP`.
 Container đã import hiển thị trong modal, admin có thể xóa từng cái hoặc xóa hết.
 Kế hoạch `completed` sẽ chặn import và chặn ghi nhận qua bot.
 
-### Cấu hình webhook
+### Cơ chế nhận tin: long-polling (mặc định production)
 
-- Endpoint: `POST /api/zalo/webhook`
+- **Production dùng long-polling** (`ZALO_POLLING=true` trong `.env`), KHÔNG dùng webhook.
+- Lý do: Zalo Bot Platform **không gửi webhook ổn định** tới domain duckdns/ip công cộng
+  (verification lỗi `webhook.err.proxy` → bot không nhận được tin).
+- Cách hoạt động: `zalo-polling.service.ts` giành leader qua Redis lock
+  (`zalo:poller:lock`), xóa webhook 1 lần, gọi `getUpdates(20)` lặp vô hạn,
+  dedup bằng `message_id` (Redis SET NX, TTL 48h). Lỗi `Request timeout` (408)
+  là hành vi bình thường khi không có tin mới.
+- Kiểm tra hoạt động: `docker logs --tail=30 newway-backend-1 | grep -i polling`
+  → phải thấy `Đã giành leadership, bắt đầu long-polling`.
+
+### Webhook (chỉ fallback/local dev)
+
+- Endpoint: `POST /api/zalo/webhook` — chỉ hoạt động khi `ZALO_POLLING != true`.
 - Verify header: `X-Bot-Api-Secret-Token` (khớp `ZALO_WEBHOOK_SECRET`)
 - Đăng ký webhook (cần URL public — vd dùng ngrok khi dev):
 
@@ -151,9 +165,17 @@ curl -X POST "https://bot-api.zaloplatforms.com/bot${ZALO_BOT_TOKEN}/setWebhook"
   -d '{"url":"https://<public-url>/api/zalo/webhook","secret_token":"<ZALO_WEBHOOK_SECRET>"}'
 ```
 
+### Audio "buồn ngủ"
+
+- Tin nhắn chứa từ `buồn`/`ngủ` → bot gửi `public/audio/buon-ngu-v2.aac` (~2 phút)
+  qua `sendVoice` với `ZALO_BUON_NGU_AUDIO_URL`.
+- ⚠️ **Cache theo URL**: khi đổi nội dung file audio, phải **đổi tên file**
+  (vd `buon-ngu-v2.aac` → `buon-ngu-v3.aac`) + cập nhật route trong
+  `zalo-bot.controller.ts` + `ZALO_BUON_NGU_AUDIO_URL`, nếu không Zalo vẫn gửi bản cũ.
+
 ### Voice-to-text (STT)
 
-- Webhook chỉ gửi `voice_url`, backend tải file rồi gọi STT.
+- Bot nhận tin ghi âm (`voice_url`), backend tải file rồi gọi STT.
 - Dùng **OpenAI Whisper** (cần `OPENAI_API_KEY`). Chưa có key → bot báo nhắn text thay thế.
 - Kết quả STT được lọc: đọc số Việt ("sáu tám hai ba..." → `6823203`),
   bỏ từ nhiễu ("ờ", "à", "ơ"...), hỗ trợ đọc số nguyên ("sáu triệu tám trăm...").
@@ -217,7 +239,7 @@ D:\WebLab\NewWay\
 │   │   ├── routes/               # Tuyến đường CRUD
 │   │   ├── submissions/          # Submissions CRUD + Export
 │   │   ├── container-import/     # Import container từ file (admin)
-│   │   └── zalo-bot/             # Zalo Bot webhook, STT, hội thoại
+│   │   └── zalo-bot/             # Zalo Bot long-polling (getUpdates), STT, hội thoại
 │   ├── Dockerfile
 │   └── .env
 │

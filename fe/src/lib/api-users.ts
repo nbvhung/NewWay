@@ -11,6 +11,11 @@ export const usersApi = {
   update: (id: number, data: Record<string, unknown>) =>
     api.put<User>(`/admin/users/${id}`, data),
 
-  delete: (id: number) =>
-    api.delete(`/admin/users/${id}`),
+  delete: (id: number, mode?: 'force' | 'block') =>
+    api.delete(`/admin/users/${id}`, { params: mode ? { mode } : {} }),
+
+  getUsage: (id: number) =>
+    api.get<{ data: { submissions: number; containers: number; history: number } }>(
+      `/admin/users/${id}/usage`,
+    ),
 };

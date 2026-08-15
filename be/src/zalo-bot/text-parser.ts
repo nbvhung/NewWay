@@ -177,17 +177,64 @@ function parseFullNumber(words: string[]): number | null {
 function toCandidateCodes(digitStr: string): string[] {
   const clean = digitStr.replace(/\D/g, '');
   if (!clean || clean.length < 4) return [];
-  // 4–6 số: trả về nguyên chuỗi để tìm kiếm theo suffix ngắn
-  if (clean.length < 7) return [clean];
+  // Lái xe có thể nhập 4-7 số cuối; bot lọc theo đúng số lượng đã nhập.
+
   const out: string[] = [];
-  if (clean.length === 7) {
+  if (clean.length <= 7) {
+    // Lái xe có thể nhập 1-7 số cuối; bot lọc theo đúng số lượng đã nhập.
     out.push(clean);
   } else if (clean.length % 7 === 0) {
     for (let i = 0; i < clean.length; i += 7) out.push(clean.slice(i, i + 7));
   } else {
-    for (let i = 0; i + 7 <= clean.length; i++) out.push(clean.slice(i, i + 7));
+    // Không dùng cửa sổ trượt cho chuỗi không chia hết cho 7 —
+    // tránh false positive với SĐT 10 số, mã ngẫu nhiên dài hơn 7 số.
+    return [];
   }
   return [...new Set(out)];
+}
+
+const FULL_CODE_RE = /(?<![A-Za-z])[A-Za-z]{4}\s*\d{7}/g;
+
+/**
+ * Trích xuất mã container đầy đủ dạng "BMOU6823203" (4 chữ cái + 7 chữ số,
+ * có thể có khoảng trắng giữa chữ cái và số) từ văn bản,
+ * trả về 7 số cuối. Dùng để xác nhận mã hoàn chỉnh trong luồng "phát sinh".
+ */
+export function extractFullContainerCode(text: string): string[] {
+  const out: string[] = [];
+  const t = text || '';
+  FULL_CODE_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = FULL_CODE_RE.exec(t)) !== null) {
+    const digits = m[0].replace(/[^0-9]/g, '');
+    const last7 = digits.slice(-7);
+    if (last7.length === 7) out.push(last7);
+  }
+  return [...new Set(out)];
+}
+
+/**
+ * Trích chuỗi mã container đầy đủ giữ nguyên định dạng (vd "BMOU6823203").
+ * Trả về null nếu không có mã nào. Dùng để ghi container phát sinh.
+ */
+export function extractFullCodeString(text: string): string | null {
+  const t = text || '';
+  FULL_CODE_RE.lastIndex = 0;
+  const m = FULL_CODE_RE.exec(t);
+  if (!m) return null;
+  const raw = m[0].replace(/\s+/g, '').toUpperCase();
+  if (!/^[A-Z]{4}\d{7}$/.test(raw)) return null;
+  return raw;
+}
+
+/**
+ * Trích đầu ngữ (4 chữ cái đầu) của container từ văn bản, vd "BEAU".
+ * Trả về null nếu không có chuỗi 4 chữ cái liên tiếp nào.
+ */
+export function extractContainerPrefix(text: string): string | null {
+  const m = /[A-Za-z]{4}/.exec(text || '');
+  if (!m) return null;
+  return m[0].toUpperCase();
 }
 
 /**
@@ -240,5 +287,7 @@ export function extractContainerCodes(text: string): string[] {
   for (const s of numberStrings) {
     candidates.push(...toCandidateCodes(s));
   }
+  // Mã container đầy đủ dạng BMOU6823203 (chữ + số liền nhau)
+  candidates.push(...extractFullContainerCode(text));
   return [...new Set(candidates)];
 }

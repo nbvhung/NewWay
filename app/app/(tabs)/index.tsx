@@ -6,6 +6,7 @@ import { Redirect, useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/store/auth-store';
 import { shippingLinesApi } from '../../src/api/shipping-lines';
 import { submissionsApi } from '../../src/api/submissions';
+import { settingsApi } from '../../src/api/settings';
 import NumericInput from '../../src/components/NumericInput';
 import Modal from '../../src/components/Modal';
 import { fmtNgay } from '../../src/utils';
@@ -25,6 +26,7 @@ export default function EntryForm() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [entryLocked, setEntryLocked] = useState(false);
 
   const [hang20, setHang20] = useState('');
   const [hang40, setHang40] = useState('');
@@ -43,7 +45,15 @@ export default function EntryForm() {
   useEffect(() => {
     loadShippingLines();
     loadMySubmissions();
+    loadEntryLock();
   }, []);
+
+  const loadEntryLock = async () => {
+    try {
+      const res = await settingsApi.getEntryLock();
+      setEntryLocked(!!(res.data as any)?.data?.locked);
+    } catch {}
+  };
 
   const loadMySubmissions = async () => {
     try {
@@ -78,6 +88,10 @@ export default function EntryForm() {
   const selectedLine = shippingLines.find((sl) => sl.id === selectedId);
 
   const handleSubmit = async () => {
+    if (entryLocked) {
+                  Alert.alert('Nhập liệu đã khóa', 'Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ HƯNG để sửa.\nSĐT: 082 558 7779');
+      return;
+    }
     if (!selectedId || !selectedLine) {
       Alert.alert('Lỗi', 'Vui lòng chọn kế hoạch');
       return;
@@ -112,6 +126,18 @@ export default function EntryForm() {
       <View style={styles.header}>
         <Text style={styles.headerText}>BÁO SẢN LƯỢNG</Text>
       </View>
+
+      {entryLocked && (
+        <View style={styles.lockBanner}>
+          <Text style={styles.lockBannerTitle}>🔒 Hệ thống đang tạm khóa nhập liệu</Text>
+          <Text style={styles.lockBannerText}>
+            Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ HƯNG để sửa.
+          </Text>
+          <Text style={styles.lockBannerText}>
+            SĐT: 082 558 7779
+          </Text>
+        </View>
+      )}
 
       {/* 1. Chọn kế hoạch */}
       <View style={styles.section}>
@@ -202,13 +228,13 @@ export default function EntryForm() {
 
         {/* Submit */}
         <TouchableOpacity
-          style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
+          style={[styles.submitBtn, (submitting || entryLocked) && styles.submitBtnDisabled]}
           onPress={handleSubmit}
-          disabled={submitting}
+          disabled={submitting || entryLocked}
           activeOpacity={0.8}
         >
           <Text style={styles.submitBtnText}>
-            {submitting ? '⏳ Đang xử lý...' : '✅ GỬI XÁC NHẬN'}
+            {entryLocked ? '🔒 Đang khóa nhập liệu' : submitting ? '⏳ Đang xử lý...' : '✅ GỬI XÁC NHẬN'}
           </Text>
         </TouchableOpacity>
 
@@ -227,6 +253,11 @@ export default function EntryForm() {
             <TouchableOpacity
               style={styles.editDupeBtn}
               onPress={() => {
+                if (entryLocked) {
+                  setDuplicatePlan(null);
+      Alert.alert('Nhập liệu đã khóa', 'Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ HƯNG để sửa.\nSĐT: 082 558 7779');
+                  return;
+                }
                 const sub = duplicatePlan ? mySubmissions.get(duplicatePlan.id) : null;
                 setDuplicatePlan(null);
                 if (sub) router.push(`/(tabs)/my-data?editId=${sub.id}`);
@@ -270,6 +301,27 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textAlign: 'center',
     letterSpacing: 0.8,
+  },
+  lockBanner: {
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    borderWidth: 2,
+    borderColor: '#ef4444',
+    borderRadius: 10,
+    padding: 14,
+    marginHorizontal: 16,
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  lockBannerTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#dc2626',
+  },
+  lockBannerText: {
+    fontSize: 12,
+    color: '#dc2626',
+    textAlign: 'center',
+    marginTop: 6,
   },
   section: {
     paddingHorizontal: 16,

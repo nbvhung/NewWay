@@ -9,6 +9,7 @@ export interface PendingCandidate {
   shippingLineId: number | null;
   bundleId: string | null;
   planName?: string;
+  recordedBy?: string;
 }
 
 export interface PendingPlanOption {
@@ -16,15 +17,42 @@ export interface PendingPlanOption {
   name: string;
 }
 
+export interface ClampClaimed {
+  containerCode: string;
+  shippingLineId: number | null;
+  digits: string;
+  mainCode?: string;
+  mainType?: string;
+}
+
 export interface ZaloSession {
   userId?: number;
   userFullName?: string;
+  pendingAt?: number;
   pendingCandidates?: PendingCandidate[];
   pendingDigits?: string;
   reEntry?: {
     containerCode: string;
     shippingLineId: number | null;
     digits: string;
+    keoVe: boolean;
+    containerType: string;
+  };
+  awaitingClamp?: {
+    mainPlanId: number | null;
+    mainCode?: string;
+    mainType?: string;
+  };
+  clampClaimed?: ClampClaimed;
+  phatSinh?: {
+    digits: string;
+    pendingPlanOptions: PendingPlanOption[];
+    selectedPlanId?: number;
+  };
+  tipFlow?: {
+    count: number;
+    pendingPlanOptions: PendingPlanOption[];
+    selectedPlanId?: number;
   };
 }
 
