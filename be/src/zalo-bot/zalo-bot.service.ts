@@ -490,6 +490,14 @@ export class ZaloBotService {
       return;
     }
 
+    const driverName =
+      session.userFullName ||
+      (await this.usersRepository.findOne({
+        where: { zaloId: zaloUserId },
+      }))?.fullName ||
+      zaloUserId;
+    void this.opsNotifier.notifyUnknown(driverName, text);
+
     await this.reply(
       chatId,
       zaloUserId,

@@ -32,4 +32,31 @@ export class ZaloOpsNotifierService {
       this.logger.error(`notifyOps failed: ${(err as Error).message}`);
     }
   }
+
+  /**
+   * Báo cho 1 tài khoản ops cụ thể (mặc định Hưng) khi bot không hiểu tin nhắn.
+   * Định dạng: "{tên lái xe} : {nội dung lái xe nhắn}".
+   */
+  async notifyUnknown(driverName: string, rawText: string): Promise<void> {
+    try {
+      const targetZaloId =
+        process.env.ZALO_OPS_FALLBACK_ZALO_ID || '7ec43c250371ea2fb360';
+      const target = await this.usersRepository.findOne({
+        where: { zaloId: targetZaloId },
+      });
+      if (!target || !target.zaloId) {
+        this.logger.warn(
+          `notifyUnknown: không tìm thấy user với zaloId ${targetZaloId}`,
+        );
+        return;
+      }
+      const text = `${driverName} : ${rawText}`;
+      const sent = await this.zaloApi.sendMessage(target.zaloId, text);
+      if (sent && target.id) {
+        await this.zaloMessages.log(target.zaloId, target.id, 'bot', text);
+      }
+    } catch (err) {
+      this.logger.error(`notifyUnknown failed: ${(err as Error).message}`);
+    }
+  }
 }
