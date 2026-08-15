@@ -45,6 +45,7 @@ export const ROLE_LABELS: Record<string, string> = {
   ops: 'OPS',
   hr: 'HR',
   laixe: 'Lái xe',
+  disabled: 'Đã khóa',
 };
 
 export function formatMoney(amount: number | null | undefined): string {

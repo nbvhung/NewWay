@@ -7,6 +7,7 @@ import { usePagination } from '@/hooks/use-pagination';
 import { User } from '@/types';
 import { usersApi } from '@/lib/api-users';
 import { ROLE_LABELS } from '@/lib/utils';
+import { Modal } from '@/components/ui/modal';
 
 interface Props {
   currentUser: any;
@@ -21,6 +22,7 @@ function roleBadge(role: string) {
     admin: 'bg-amber-500/20 text-amber-600',
     ops: 'bg-purple-500/20 text-purple-600',
     laixe: 'bg-blue-500/20 text-blue-600',
+    disabled: 'bg-slate-400/20 text-slate-500',
   };
   return `px-2 py-0.5 rounded-full text-[10px] font-semibold ${colors[role] || 'bg-gray-500/20 text-gray-600'}`;
 }
@@ -42,6 +44,8 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
   const [newUser, setNewUser] = useState({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', stt: '', sdt: '', zaloId: '' });
   const [editUserData, setEditUserData] = useState<any>(null);
   const [editUserModalOpen, setEditUserModalOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{ user: User; counts: { submissions: number; containers: number; history: number } } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const { page, pageSize, totalPages, totalItems, paged: pagedUsers, setPage, setPageSize } = usePagination(allUsers, 10);
 
@@ -82,12 +86,43 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
   };
 
   const deleteUser = async (id: number) => {
-    if (!confirm('Bạn chắc chắn muốn XÓA tài khoản này?')) return;
+    const u = allUsers.find((x) => x.id === id);
+    if (!u) return;
     try {
-      await usersApi.delete(id);
-      toast('Đã xóa tài khoản', 'success');
+      const res = await usersApi.getUsage(id);
+      const counts = res.data?.data || { submissions: 0, containers: 0, history: 0 };
+      if (counts.submissions > 0 || counts.containers > 0) {
+        setPendingDelete({ user: u, counts });
+        return;
+      }
+      if (!confirm(`Bạn chắc chắn muốn XÓA tài khoản "${u.fullName}"?`)) return;
+      setDeleting(true);
+      try {
+        await usersApi.delete(id);
+        toast('Đã xóa tài khoản', 'success');
+        onRefresh();
+      } catch (err: any) { toast(err.message, 'error'); }
+      setDeleting(false);
+    } catch (err: any) { toast(err.message, 'error'); }
+  };
+
+  const runDeleteWithData = async (mode: 'force' | 'block') => {
+    if (!pendingDelete) return;
+    const { user, counts } = pendingDelete;
+    const isBlock = mode === 'block';
+    if (isBlock) {
+      if (!confirm(`Khóa tài khoản "${user.fullName}"? Lái xe sẽ không đăng nhập được, lịch sử được giữ nguyên.`)) return;
+    } else {
+      if (!confirm(`XÓA TOÀN BỘ "${user.fullName}" kèm ${counts.submissions} bản ghi, ${counts.containers} container? Hành động không thể hoàn tác!`)) return;
+    }
+    setDeleting(true);
+    try {
+      await usersApi.delete(user.id, mode);
+      toast(isBlock ? 'Đã khóa tài khoản' : 'Đã xóa tài khoản và toàn bộ dữ liệu', 'success');
+      setPendingDelete(null);
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
+    setDeleting(false);
   };
 
   return (
@@ -104,7 +139,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
                 {(u.fullName || '?')[0].toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold">{u.fullName} <span className={roleBadge(u.role)}>{ROLE_LABELS[u.role]}</span></div>
+                <div className="text-sm font-semibold">{u.fullName} <span className={roleBadge(u.role)}>{ROLE_LABELS[u.role] || u.role}</span></div>
                 <div className="text-[10px] text-[#64748b] mt-0.5">@{u.username}</div>
                 {u.zaloId ? <div className="text-[9px] text-[#1a56db] mt-0.5">💬 Zalo đã liên kết</div> : null}
               </div>
@@ -185,8 +220,37 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         editUserData={editUserData}
         setEditUserData={setEditUserData}
         onSave={saveUser}
-        roleOptions={roleOptionsFor(currentUser.role)}
+        roleOptions={editUserData?.role && !roleOptionsFor(currentUser.role).includes(editUserData.role)
+          ? [...roleOptionsFor(currentUser.role), editUserData.role]
+          : roleOptionsFor(currentUser.role)}
       />
+
+      <Modal
+        open={!!pendingDelete}
+        onClose={() => setPendingDelete(null)}
+        title="⚠️ Tài khoản có dữ liệu"
+        footer={
+          <>
+            <button onClick={() => setPendingDelete(null)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">Hủy</button>
+            <button onClick={() => runDeleteWithData('block')} disabled={deleting} className="px-4 py-2 rounded-lg text-xs font-medium text-[#d97706] border border-amber-300 hover:bg-amber-50 disabled:opacity-40 cursor-pointer">🔒 Chỉ khóa tài khoản</button>
+            <button onClick={() => runDeleteWithData('force')} disabled={deleting} className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white disabled:opacity-40 cursor-pointer">🗑️ Xóa toàn bộ kèm dữ liệu</button>
+          </>
+        }
+      >
+        <div className="text-sm text-[#475569] leading-relaxed">
+          <p className="mb-3">
+            Tài khoản <b>{pendingDelete?.user.fullName}</b> có:
+          </p>
+          <ul className="list-disc ml-5 space-y-1 text-[13px] mb-3">
+            <li>{pendingDelete?.counts.submissions ?? 0} bản ghi sản lượng</li>
+            <li>{pendingDelete?.counts.containers ?? 0} container</li>
+          </ul>
+          <p className="text-xs text-[#94a3b8]">
+            • <b>Xóa toàn bộ kèm dữ liệu</b>: mất luôn bản ghi + container của lái xe, không thể khôi phục.<br />
+            • <b>Chỉ khóa tài khoản</b>: lái xe không đăng nhập được, giữ nguyên lịch sử.
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 }

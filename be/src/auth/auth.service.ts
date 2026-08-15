@@ -29,6 +29,9 @@ export class AuthService {
     if (!valid) {
       throw new UnauthorizedException('Tên đăng nhập hoặc mật khẩu không đúng');
     }
+    if (user.role === 'disabled') {
+      throw new UnauthorizedException('Tài khoản đã bị khóa');
+    }
 
     return this.generateTokens(user);
   }
@@ -37,6 +40,9 @@ export class AuthService {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new UnauthorizedException('Người dùng không tồn tại');
+    }
+    if (user.role === 'disabled') {
+      throw new UnauthorizedException('Tài khoản đã bị khóa');
     }
 
     await this.clearRefreshTokens(userId);

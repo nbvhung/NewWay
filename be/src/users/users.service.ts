@@ -5,12 +5,14 @@ import * as bcrypt from 'bcryptjs';
 import { User } from '../database/entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { RedisService } from '../redis/redis.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    private redisService: RedisService,
   ) {}
 
   async findAll(currentRole: string) {
@@ -109,7 +111,46 @@ export class UsersService {
     return result;
   }
 
-  async remove(id: number, currentRole: string, currentUserId: number) {
+  /**
+   * Đếm dữ liệu liên quan đến tài khoản (submissions, container_imports,
+   * edit_history) để admin quyết định xóa toàn bộ hay chỉ khóa tài khoản.
+   */
+  async getDataCounts(id: number) {
+    const [[subs], [cons], [hist]] = await Promise.all([
+      this.usersRepository.manager.query(
+        'SELECT COUNT(*)::int AS c FROM submissions WHERE user_id = $1',
+        [id],
+      ),
+      this.usersRepository.manager.query(
+        `SELECT COUNT(*)::int AS c FROM container_imports
+         WHERE submission_id IN (SELECT id FROM submissions WHERE user_id = $1)`,
+        [id],
+      ),
+      this.usersRepository.manager.query(
+        `SELECT COUNT(*)::int AS c FROM edit_history
+         WHERE edited_by_id = $1 OR submission_id IN (SELECT id FROM submissions WHERE user_id = $1)`,
+        [id],
+      ),
+    ]);
+    return {
+      submissions: Number(subs?.c || 0),
+      containers: Number(cons?.c || 0),
+      history: Number(hist?.c || 0),
+    };
+  }
+
+  /**
+   * mode='force': xóa luôn dữ liệu liên quan (submissions, container_imports,
+   *   edit_history) rồi xóa tài khoản.
+   * mode='block': đổi role sang 'disabled' để chặn đăng nhập, giữ nguyên lịch sử.
+   * Không có mode: xóa bình thường; nếu có dữ liệu sẽ từ chối để tránh mất dữ liệu.
+   */
+  async remove(
+    id: number,
+    currentRole: string,
+    currentUserId: number,
+    mode?: string,
+  ) {
     if (id === currentUserId) {
       throw new BadRequestException('Không thể xóa tài khoản đang đăng nhập');
     }
@@ -124,6 +165,44 @@ export class UsersService {
     }
     if (currentRole === 'admin' && target.role === 'supper_admin') {
       throw new ForbiddenException('Bạn không có quyền xóa tài khoản này');
+    }
+
+    if (mode === 'block') {
+      target.role = 'disabled';
+      await this.usersRepository.save(target);
+      await this.redisService.removeRefreshToken(id);
+      return { message: 'Đã khóa tài khoản' };
+    }
+
+    const counts = await this.getDataCounts(id);
+    const hasData = counts.submissions > 0 || counts.containers > 0;
+
+    if (mode === 'force' && hasData) {
+      const conn = this.usersRepository.manager.connection;
+      await conn.transaction(async (manager) => {
+        // Xóa container_imports gắn với submissions của tài khoản
+        await manager.query(
+          `DELETE FROM container_imports
+           WHERE submission_id IN (SELECT id FROM submissions WHERE user_id = $1)`,
+          [id],
+        );
+        // Xóa edit_history của tài khoản (edited_by_id) và của submissions đó
+        await manager.query(
+          `DELETE FROM edit_history
+           WHERE edited_by_id = $1 OR submission_id IN (SELECT id FROM submissions WHERE user_id = $1)`,
+          [id],
+        );
+        await manager.query('DELETE FROM submissions WHERE user_id = $1', [id]);
+        await manager.query('DELETE FROM users WHERE id = $1', [id]);
+      });
+      await this.redisService.removeRefreshToken(id);
+      return { message: 'Đã xóa tài khoản và toàn bộ dữ liệu liên quan' };
+    }
+
+    if (hasData) {
+      throw new BadRequestException(
+        `Tài khoản có ${counts.submissions} bản ghi, ${counts.containers} container. Bạn phải chọn "xóa toàn bộ kèm dữ liệu" hoặc "khóa tài khoản".`,
+      );
     }
 
     await this.usersRepository.remove(target);

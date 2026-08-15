@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -30,9 +30,16 @@ export class UsersController {
     return this.usersService.update(+id, dto, user.role, user.id);
   }
 
+  @Get(':id/usage')
+  @Roles('admin', 'supper_admin')
+  async usage(@Param('id') id: string) {
+    const data = await this.usersService.getDataCounts(+id);
+    return { data };
+  }
+
   @Delete(':id')
   @Roles('admin', 'supper_admin')
-  remove(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.usersService.remove(+id, user.role, user.id);
+  remove(@Param('id') id: string, @Query('mode') mode: string, @CurrentUser() user: any) {
+    return this.usersService.remove(+id, user.role, user.id, mode);
   }
 }
