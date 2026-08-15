@@ -204,24 +204,26 @@ export class ContainerImportService {
   }
 
   /**
-   * Tìm container theo 7 số cuối ở TẤT CẢ kế hoạch CHƯA hoàn thành (cho Zalo bot).
+   * Tìm container theo N số cuối (N >= 4) ở TẤT CẢ kế hoạch CHƯA hoàn thành (cho Zalo bot).
    */
   async searchActiveByDigits(digits: string): Promise<ContainerImport[]> {
+    const len = digits.length;
     const qb = this.containerImportsRepository.createQueryBuilder('c');
     qb.leftJoinAndSelect('c.shippingLineRef', 'sl')
-      .where('RIGHT(c.container_code, 7) = :digits', { digits })
+      .where('RIGHT(c.container_code, :len) = :digits', { len, digits })
       .andWhere('sl.completed = :completed', { completed: false })
       .orderBy('c.container_code', 'ASC');
     return qb.getMany();
   }
 
   /**
-   * Tìm container theo 7 số cuối ở TẤT CẢ kế hoạch (kể cả hoàn thành) — dùng để báo "đã ghi trước đó".
+   * Tìm container theo N số cuối (N >= 4) ở TẤT CẢ kế hoạch (kể cả hoàn thành) — dùng để báo "đã ghi trước đó".
    */
   async searchAllByDigits(digits: string): Promise<ContainerImport[]> {
+    const len = digits.length;
     return this.containerImportsRepository
       .createQueryBuilder('c')
-      .where('RIGHT(c.container_code, 7) = :digits', { digits })
+      .where('RIGHT(c.container_code, :len) = :digits', { len, digits })
       .orderBy('c.container_code', 'ASC')
       .getMany();
   }

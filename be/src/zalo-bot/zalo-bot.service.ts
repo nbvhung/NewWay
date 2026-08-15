@@ -143,7 +143,7 @@ export class ZaloBotService {
     await this.reply(
       chatId,
       zaloUserId,
-      `✅ Xác nhận thành công! Sếp là ${user.fullName} (SĐT ${phone}).\nGiờ gửi 7 số cuối mã container (hoặc đọc to) để ghi nhận nhé.`,
+      `✅ Xác nhận thành công! Sếp là ${user.fullName} (SĐT ${phone}).\nGiờ gửi ít nhất 4 số cuối mã container (đọ to hoặc nhắn) để ghi nhận nhé.`,
     );
   }
 
@@ -181,7 +181,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          'Không tải được file ghi âm, Sếp nhắn 7 số cuối mã container giúp em nhé.',
+          'Không tải được file ghi âm, Sếp nhắn ít nhất 4 số cuối mã container giúp em nhé.',
         );
         return;
       }
@@ -193,7 +193,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          'Chưa nhận diện được giọng nói (chưa cấu hình STT hoặc file hỏng). Sếp nhắn 7 số cuối mã container giúp nhé.',
+          'Chưa nhận diện được giọng nói (chưa cấu hình STT hoặc file hỏng). Sếp nhắn ít nhất 4 số cuối mã container giúp nhé.',
         );
         return;
       }
@@ -336,7 +336,7 @@ export class ZaloBotService {
     await this.reply(
       chatId,
       zaloUserId,
-      'Sếp gửi 7 số cuối mã container (hoặc đọc to số container) để ghi nhận nhé.',
+      'Sếp gửi ít nhất 4 số cuối mã container (hoặc đọc to số container) để ghi nhận nhé.',
     );
   }
 
@@ -352,7 +352,7 @@ export class ZaloBotService {
         '   để xác nhận, chỉ cần làm 1 lần duy nhất.',
         '',
         '2️⃣ Báo container:',
-        '   • Nhắn 7 số cuối mã container (vd: 6823203)',
+        '   • Nhắn ít nhất 4 số cuối mã container (vd: 3203 hoặc 6823203)',
         '   • Hoặc gửi tin nhắn thoại đọc số',
         '   Bot sẽ tự tìm mã trong các kế hoạch đang chạy.',
         '',
@@ -373,7 +373,7 @@ export class ZaloBotService {
     await this.reply(
       chatId,
       zaloUserId,
-      '✅ Đã làm mới phiên. Sếp gửi 7 số cuối mã container để ghi nhận nhé.',
+      '✅ Đã làm mới phiên. Sếp gửi ít nhất 4 số cuối mã container để ghi nhận nhé.',
     );
   }
 
@@ -450,7 +450,7 @@ export class ZaloBotService {
       }${bundleNote}${planName ? ` — ${planName}` : ''}`;
     });
     return [
-      `Có ${candidates.length} container cùng 7 số cuối "${digits}":`,
+      `Có ${candidates.length} container cùng ${digits.length} số cuối "${digits}":`,
       '',
       ...lines,
       '',
@@ -499,7 +499,7 @@ export class ZaloBotService {
           chatId,
           zaloUserId,
           [
-            `Container có 7 số cuối ${digits} đã được ghi nhận rồi.`,
+            `Container có ${digits.length} số cuối "${digits}" đã được ghi nhận rồi.`,
             'Sếp đang muốn ghi thêm theo kiểu nào ạ?',
             '',
             '1) Vệ sinh lại',
@@ -516,13 +516,13 @@ export class ZaloBotService {
           await this.reply(
             chatId,
             zaloUserId,
-            `Container có 7 số cuối ${digits} đã được ghi nhận trước đó rồi ✅`,
+            `Container có ${digits.length} số cuối "${digits}" đã được ghi nhận trước đó rồi ✅`,
           );
         } else {
           await this.reply(
             chatId,
             zaloUserId,
-            `Không tìm thấy container có 7 số cuối ${digits} trong kế hoạch đang chạy.\nKiểm tra lại số hoặc nhờ admin thêm vào kế hoạch nhé.`,
+            `Không tìm thấy container có ${digits.length} số cuối "${digits}" trong kế hoạch đang chạy.\nKiểm tra lại số hoặc nhờ admin thêm vào kế hoạch nhé.`,
           );
         }
       }

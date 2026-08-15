@@ -25,10 +25,10 @@ describe('extractContainerCodes', () => {
     ]);
   });
 
-  it('không trích từ văn bản không có 7 chữ số liên tiếp', () => {
-    expect(extractContainerCodes('HUN TRUNG / HUNTRUNG-DINHVU / 30-07-2026')).toEqual([]);
+  it('không trích từ văn bản không có cụm số ít nhất 4 chữ số', () => {
     expect(extractContainerCodes('bay muoi hai')).toEqual([]);
     expect(extractContainerCodes('mot tram hai muoi ba')).toEqual([]);
+    expect(extractContainerCodes('abc xyz')).toEqual([]);
   });
 
   it('trích 7 chữ số từ mã container đầy đủ', () => {
@@ -39,7 +39,19 @@ describe('extractContainerCodes', () => {
     expect(extractContainerCodes('68232034114651')).toEqual(['6823203', '4114651']);
   });
 
-  it('không đọc số có ít hơn 7 chữ số', () => {
-    expect(extractContainerCodes('muoi hai ba khong hai ba')).toEqual([]);
+  it('không đọc số có ít hơn 4 chữ số', () => {
+    expect(extractContainerCodes('mot hai ba')).toEqual([]);
+    expect(extractContainerCodes('bay muoi hai')).toEqual([]);
+    expect(extractContainerCodes('123')).toEqual([]);
+  });
+
+  it('trích được số có 4 chữ số (suffix ngắn)', () => {
+    expect(extractContainerCodes('3203')).toEqual(['3203']);
+    expect(extractContainerCodes('1234')).toEqual(['1234']);
+  });
+
+  it('trích được số có 5-6 chữ số (suffix trung)', () => {
+    expect(extractContainerCodes('23203')).toEqual(['23203']);
+    expect(extractContainerCodes('823203')).toEqual(['823203']);
   });
 });

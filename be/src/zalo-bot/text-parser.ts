@@ -176,7 +176,9 @@ function parseFullNumber(words: string[]): number | null {
 
 function toCandidateCodes(digitStr: string): string[] {
   const clean = digitStr.replace(/\D/g, '');
-  if (!clean || clean.length < 7) return [];
+  if (!clean || clean.length < 4) return [];
+  // 4–6 số: trả về nguyên chuỗi để tìm kiếm theo suffix ngắn
+  if (clean.length < 7) return [clean];
   const out: string[] = [];
   if (clean.length === 7) {
     out.push(clean);
