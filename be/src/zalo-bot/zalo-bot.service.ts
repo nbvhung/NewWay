@@ -934,7 +934,7 @@ export class ZaloBotService {
       }
 
       void this.opsNotifier.notifyOps(
-        `🚚 ${user.fullName} - ${re.containerCode} — "${plan.name}"`,
+        `🚚 ${user.fullName} - ${re.containerCode} (${[re.containerType, type].filter(Boolean).join(', ')}) — "${this.planDisplayName(plan)}"`,
       );
 
       await this.reply(
@@ -1109,7 +1109,7 @@ export class ZaloBotService {
         await this.sessionService.save(zaloUserId, session);
         void this.opsNotifier.notifyOps(
           `🚚 ${user.fullName} - ${ps.pendingCode} (${type}) — "${
-            plan ? plan.name : ''
+            plan ? this.planDisplayName(plan) : ''
           }"`,
         );
         await this.reply(
@@ -1414,7 +1414,7 @@ export class ZaloBotService {
       await this.sessionService.save(zaloUserId, session);
 
       void this.opsNotifier.notifyOps(
-        `🚚 ${user.fullName} - TIP ${tip.count} — "${plan.name}"`,
+        `🚚 ${user.fullName} - TIP ${tip.count} — "${this.planDisplayName(plan)}"`,
       );
 
       await this.reply(
@@ -1652,7 +1652,7 @@ export class ZaloBotService {
       }
 
       void this.opsNotifier.notifyOps(
-        `🚚 ${user.fullName} - ${re.containerCode} — "${plan.name}"`,
+        `🚚 ${user.fullName} - ${re.containerCode} (${re.containerType || ''}) — "${this.planDisplayName(plan)}"`,
       );
 
       await this.reply(
@@ -1859,7 +1859,7 @@ export class ZaloBotService {
       await this.sessionService.save(zaloUserId, session);
 
       void this.opsNotifier.notifyOps(
-        `🚚 ${user.fullName} - ${container.containerCode} — "${plan.name}"`,
+        `🚚 ${user.fullName} - ${container.containerCode} (${container.type}) — "${this.planDisplayName(plan)}"`,
       );
 
       const planName = this.planDisplayName(plan);
