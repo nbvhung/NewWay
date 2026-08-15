@@ -400,7 +400,7 @@ export class ZaloBotService {
       return;
     }
 
-    if (/^tip(\s+\d+)?$/i.test(text)) {
+    if (this.parseTipCommand(text)) {
       await this.startTipFlow(chatId, zaloUserId, text, session);
       return;
     }
@@ -517,7 +517,7 @@ export class ZaloBotService {
         '',
         'Hủy kế hoạch hiện tại / thao tác lại: /logout',
         'Đổi sang SĐT tài khoản khác: /doi-sdt',
-        'Ghi TIP: nhắn "TIP" kèm số lượng (vd: TIP 3)',
+        'Ghi TIP: nhắn "TIP" kèm số lượng (vd: TIP 3, típ. 3, típ ba)',
         'Số may mắn: nhắn "số may mắn" để xem số may mắn hôm nay 🍀',
         'Số liệu sẽ được cập nhật vào phần mềm ngay lập tức ✅',
       ].join('\n'),
@@ -1169,6 +1169,43 @@ export class ZaloBotService {
     );
   }
 
+  /**
+   * Parse lệnh TIP linh hoạt: chấp nhận "tip", "típ", "tip 3", "tip3",
+   * "tip. 3", "tip - 3", "tip số 3", "tip số lượng 3", "tip 3 cái/con/xe",
+   * "tip ba" (số bằng chữ). Trả về { count } hoặc null nếu không phải lệnh TIP.
+   */
+  private parseTipCommand(text: string): { count: number } | null {
+    const normalized = String(text || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .trim();
+    if (!normalized.startsWith('tip')) return null;
+
+    let rest = normalized.slice(3).replace(/^[.\s_\-:,(/–—]+/, '').trim();
+    rest = rest.replace(/^(?:so luong|so|luong)\s*/, '').trim();
+    rest = rest.replace(/\s*(?:cai|con|xe|chiec)\s*$/, '').trim();
+    rest = rest.replace(/[.\s_\-:,(/–—]+$/, '').trim();
+
+    if (!rest) return { count: 0 };
+    const count = this.parseNumericValue(rest);
+    if (count === null) return null;
+    return { count };
+  }
+
+  /** Parse 1-999 từ số hoặc số bằng chữ ("3", "ba", "mười hai"). */
+  private parseNumericValue(text: string): number | null {
+    const t = String(text || '').trim();
+    const digit = /^(\d{1,3})$/.exec(t);
+    if (digit) return parseInt(digit[1], 10);
+    const codes = extractContainerCodes(t);
+    if (codes.length === 0) return null;
+    const n = parseInt(codes[0], 10);
+    if (!Number.isNaN(n) && n >= 1 && n <= 999) return n;
+    return null;
+  }
+
   private async startTipFlow(
     chatId: string,
     zaloUserId: string,
@@ -1183,8 +1220,8 @@ export class ZaloBotService {
       );
       return;
     }
-    const m = /^tip\s+(\d+)$/i.exec(text);
-    const count = m ? parseInt(m[1], 10) : 0;
+    const parsed = this.parseTipCommand(text);
+    const count = parsed ? parsed.count : 0;
     session.tipFlow = {
       count,
       pendingPlanOptions: [],
@@ -1201,7 +1238,7 @@ export class ZaloBotService {
       await this.reply(
         chatId,
         zaloUserId,
-        'Sếp gửi số TIP (vd: nhắn "TIP 3") giúp em nhé.',
+        'Sếp gửi số TIP (vd: nhắn "TIP 3" hoặc "típ 5") giúp em nhé.',
       );
     }
   }
@@ -1216,9 +1253,9 @@ export class ZaloBotService {
     if (!tip) return;
 
     if (!tip.count) {
-      const m = /^(\d{1,3})$/.exec(text.trim());
-      if (m) {
-        tip.count = parseInt(m[1], 10);
+      const n = this.parseNumericValue(text);
+      if (n !== null) {
+        tip.count = n;
         session.tipFlow = tip;
         await this.sessionService.save(zaloUserId, session);
         await this.handleTip(chatId, zaloUserId, '', session);
@@ -1226,7 +1263,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          'Sếp gửi số TIP (vd: nhắn "3") giúp em nhé.',
+          'Sếp gửi số TIP (vd: nhắn "3" hoặc "ba") giúp em nhé.',
         );
       }
       return;
@@ -1349,7 +1386,7 @@ export class ZaloBotService {
         await this.submissionsRepository.save(submission);
       } else {
         const oldVal = String((submission as any)[field] || '');
-        newTotal = String((parseInt(oldVal, 10) || 0) + tip.count);
+        newTotal = String(tip.count);
         (submission as any)[field] = newTotal;
         submission.editCount += 1;
         submission.lastEditedAt = new Date();
