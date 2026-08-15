@@ -51,13 +51,19 @@ export class ContainerImportService {
     return null;
   }
 
-  /** Sinh file Excel mẫu để OPS điền mã container (2 cột: Mã container + Loại). */
+  /** Sinh file Excel mẫu để OPS điền mã container (1 cột = 1 loại, cột Bó để gộp). */
   async buildTemplateBuffer(): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
     const ws = workbook.addWorksheet('Container');
     ws.columns = [
-      { header: 'Mã container', key: 'code', width: 22 },
-      { header: 'Loại', key: 'type', width: 12 },
+      { header: 'H20', key: 'h20', width: 16 },
+      { header: 'H40', key: 'h40', width: 16 },
+      { header: 'V20', key: 'v20', width: 16 },
+      { header: 'V40', key: 'v40', width: 16 },
+      { header: 'V20FR', key: 'v20fr', width: 16 },
+      { header: '(Bó 20FR)', key: 'bo20fr', width: 12 },
+      { header: 'V40FR', key: 'v40fr', width: 16 },
+      { header: '(Bó 40FR)', key: 'bo40fr', width: 12 },
     ];
     ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
     ws.getRow(1).fill = {
@@ -66,20 +72,40 @@ export class ContainerImportService {
       fgColor: { argb: 'FF1E3A5F' },
     };
     ws.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
-    const samples: Array<[string, string]> = [
-      ['BMOU6823203', 'H20'],
-      ['BMOU1234567', 'V40'],
-      ['BMOU9876543', 'V20FR'],
-      ['BMOU1112223', 'V40FR'],
-    ];
-    samples.forEach(([code, type], i) => {
-      ws.getCell(`A${i + 2}`).value = code;
-      ws.getCell(`B${i + 2}`).value = type;
-    });
-    ws.addRow([]);
-    ws.getCell('A7').value =
-      'Ghi chú: Mã container đủ 4 chữ cái + 7 số (vd BMOU6823203). Loại hợp lệ: H20, H40, V20, V40, V20FR, V40FR, VSL, KV, TIP. Cột C nếu muốn gộp thành Bó thì merge ô và gõ "Bó".';
-    ws.getCell('A7').font = { italic: true, color: { argb: 'FF64748B' } };
+
+    // Mẫu dữ liệu theo từng cột loại (giống file mẫu thực tế).
+    const samples: Record<string, string[]> = {
+      A: ['BMOU6823203','BMOU6823204','BMOU6823205','BMOU6823206','BMOU6823207','BMOU6823208','BMOU6823209','BMOU6823210'],
+      B: ['BMOU1234567','BMOU1234568','BMOU1234569','BMOU1234570','BMOU1234571','BMOU1234572','BMOU1234573','BMOU1234574'],
+      C: ['BMOU9876543','BMOU9876544','BMOU9876545','BMOU9876546','BMOU9876547','BMOU9876548','BMOU9876549'],
+      D: ['BMOU1112223','BMOU1112224','BMOU1112225','BMOU1112226','BMOU1112227','BMOU1112228','BMOU1112229','BMOU1112230','BMOU1112231','BMOU1112232'],
+      E: ['TAHK4561321','TAHK4561322','TAHK4561323','TAHK4561324','TAHK4561325','TAHK4561326','TAHK4561327','TAHK4561328','TAHK4561329'],
+      G: ['HCDB8667643','HCDB8667644','HCDB8667645','HCDB8667646','HCDB8667647','HCDB8667648','HCDB8667649','HCDB8667650'],
+    };
+    for (const [col, codes] of Object.entries(samples)) {
+      codes.forEach((code, i) => {
+        ws.getCell(`${col}${i + 2}`).value = code;
+      });
+    }
+    // Gộp bó: cột (Bó 20FR) đánh dấu 4 container V20FR (E2:E5) và (E6:E9); tương tự (Bó 40FR).
+    for (const [col, range] of [
+      ['F', 'F2:F5'],
+      ['F', 'F6:F9'],
+      ['H', 'H2:H5'],
+      ['H', 'H6:H9'],
+    ] as Array<[string, string]>) {
+      ws.getCell(`${col}${range.split(':')[0].slice(1)}`).value = 'Bó';
+      ws.mergeCells(range);
+      ws.getCell(range.split(':')[0]).alignment = {
+        vertical: 'middle',
+        horizontal: 'center',
+      };
+    }
+    const noteRow = 13;
+    ws.mergeCells(`A${noteRow}:M${noteRow}`);
+    ws.getCell(`A${noteRow}`).value =
+      'Ghi chú: Mỗi cột tương ứng 1 loại container. Gõ mã container (4 chữ cái + 7 số, vd BMOU6823203) vào đúng cột loại của nó. Để gộp nhiều container thành 1 Bó: ở cột (Bó 20FR)/(Bó 40FR) ngay bên phải cột loại, gõ "Bó" rồi merge xuống đúng số dòng các container muốn gộp (vd merge F2:F5 → 4 container V20FR ở E2:E5 là 1 bó). Loại hợp lệ: H20, H40, V20, V40, V20FR, V40FR, VSL, KV, TIP.';
+    ws.getCell(`A${noteRow}`).font = { italic: true, color: { argb: 'FF64748B' } };
     return Buffer.from(await workbook.xlsx.writeBuffer());
   }
 
@@ -110,52 +136,84 @@ export class ContainerImportService {
     bundleStartIndex = 0,
   ): Promise<ParsedContainer[]> {
     const name = (file.originalname || '').toLowerCase();
-    const rows: ParsedContainer[] = [];
+    if (!name.endsWith('.xlsx') && !name.endsWith('.xls')) {
+      throw new BadRequestException(
+        'Chỉ hỗ trợ file Excel (.xlsx hoặc .xls). Vui lòng tải file mẫu và điền theo cột loại.',
+      );
+    }
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(file.buffer);
+    const ws = workbook.worksheets[0];
+    if (!ws) return [];
 
-    const push = (c1: any, c2: any, bundleId?: string) => {
-      const code = this.normalizeCode(String(c1 ?? ''));
-      const type = this.normalizeType(String(c2 ?? ''));
-      if (code && type) rows.push({ code, type, bundleId });
-    };
+    // Dòng 1 là tiêu đề: xác định cột loại (header khớp normalizeType) và cột Bó (header chứa "Bó").
+    const typeCols = new Map<number, string>(); // colIndex -> type
+    const bundleCols: Array<{ col: number; typeCol: number }> = [];
+    const headerRow = ws.getRow(1);
+    headerRow.eachCell((cell, colNumber) => {
+      const raw = String(cell.value ?? '').trim();
+      if (!raw) return;
+      const type = this.normalizeType(raw);
+      if (type) {
+        typeCols.set(colNumber, type);
+      } else if (raw.toUpperCase().includes('BÓ')) {
+        bundleCols.push({ col: colNumber, typeCol: -1 });
+      }
+    });
 
-    if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(file.buffer);
-      const ws = workbook.worksheets[0];
-      if (!ws) return rows;
-
-      // Đọc các ô merge ở cột C (giá trị "Bó") để nhóm container thành bó.
-      // Đánh số bó tiếp nối từ bundleStartIndex để không trùng bó đã có trong kế hoạch.
-      const bundleByRow = new Map<number, string>();
-      const merges: string[] = ws.model.merges || [];
-      let bundleIndex = 0;
-      for (const ref of merges) {
-        const m = /^C(\d+):C(\d+)$/i.exec(ref);
-        if (!m) continue;
-        const start = parseInt(m[1], 10);
-        const end = parseInt(m[2], 10);
-        const masterValue = String(ws.getCell(`C${start}`).value ?? '').trim();
-        if (!masterValue) continue;
-        bundleIndex += 1;
-        const bundleId = `Bó ${bundleStartIndex + bundleIndex}`;
-        for (let r = start; r <= end; r++) {
-          bundleByRow.set(r, bundleId);
+    // Cột Bó ghép với cột loại nằm liền kề bên trái nó.
+    for (const bc of bundleCols) {
+      for (let c = bc.col - 1; c >= 1; c--) {
+        if (typeCols.has(c)) {
+          bc.typeCol = c;
+          break;
         }
       }
+    }
+    const usableBundleCols = bundleCols.filter((bc) => bc.typeCol !== -1);
+    if (typeCols.size === 0) {
+      throw new BadRequestException(
+        'File không có dòng tiêu đề loại hợp lệ (H20, H40, V20, V40, V20FR, V40FR). Vui lòng tải file mẫu.',
+      );
+    }
 
-      ws.eachRow({ includeEmpty: false }, (row) => {
-        push(
-          row.getCell(1).value,
-          row.getCell(2).value,
-          bundleByRow.get(row.number),
-        );
-      });
-    } else {
-      const text = file.buffer.toString('utf-8');
-      for (const line of text.split(/\r?\n/)) {
-        if (!line.trim()) continue;
-        const parts = line.split(/[\t,;]+/);
-        push(parts[0], parts[1]);
+    // Đọc các vùng merge ở cột Bó (giá trị "Bó") để nhóm container thành bó.
+    // Đánh số bó tiếp nối từ bundleStartIndex để không trùng bó đã có trong kế hoạch.
+    const bundleByTypeRow = new Map<string, Map<number, string>>(); // type -> (row -> bundleId)
+    let bundleIndex = 0;
+    const merges: string[] = ws.model.merges || [];
+    const colName = (n: number) => ws.getColumn(n).letter.toUpperCase();
+    for (const ref of merges) {
+      const m = /^([A-Z]+)(\d+):([A-Z]+)(\d+)$/i.exec(ref);
+      if (!m) continue;
+      const startCol = m[1].toUpperCase();
+      const start = parseInt(m[2], 10);
+      const end = parseInt(m[4], 10);
+      const bc = usableBundleCols.find((x) => colName(x.col) === startCol);
+      if (!bc) continue;
+      const masterValue = String(
+        ws.getCell(`${startCol}${start}`).value ?? '',
+      ).trim();
+      if (!masterValue) continue;
+      const type = typeCols.get(bc.typeCol)!;
+      bundleIndex += 1;
+      const bundleId = `Bó ${bundleStartIndex + bundleIndex}`;
+      if (!bundleByTypeRow.has(type)) bundleByTypeRow.set(type, new Map());
+      const byRow = bundleByTypeRow.get(type)!;
+      for (let r = start; r <= end; r++) {
+        byRow.set(r, bundleId);
+      }
+    }
+
+    // Đọc dữ liệu theo cột loại.
+    const rows: ParsedContainer[] = [];
+    const maxRow = ws.rowCount;
+    for (let r = 2; r <= maxRow; r++) {
+      for (const [colIndex, type] of typeCols) {
+        const code = this.normalizeCode(String(ws.getCell(r, colIndex).value ?? ''));
+        if (!code) continue;
+        const bundleId = bundleByTypeRow.get(type)?.get(r);
+        rows.push({ code, type, bundleId });
       }
     }
     return rows;
@@ -194,7 +252,7 @@ export class ContainerImportService {
     const rows = await this.parseFile(file, maxBundle);
     if (rows.length === 0) {
       throw new BadRequestException(
-        'File không có dữ liệu hợp lệ. Định dạng: mỗi dòng gồm mã container và loại (vd: BMOU6823203<TAB>H20)',
+        'File không có dữ liệu hợp lệ. Định dạng: mỗi cột là 1 loại container, gõ mã vào đúng cột loại của nó (tải file mẫu để xem).',
       );
     }
 
