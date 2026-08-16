@@ -337,12 +337,7 @@ export class ZaloBotService {
       ) {
         this.resetPending(session);
         await this.sessionService.save(zaloUserId, session);
-        await this.reply(
-          chatId,
-          zaloUserId,
-          'Thao tác trước đã quá lâu rồi ạ. Sếp gửi lại số cuối mã container giúp em nhé.',
-        );
-        return;
+        // Thao tác cũ hết hạn: xử lý tin hiện tại như tin mới, không bắt tài xế nhập lại.
       }
     }
 
