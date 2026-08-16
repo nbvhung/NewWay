@@ -1858,8 +1858,13 @@ export class ZaloBotService {
       session.awaitingClamp = undefined;
       await this.sessionService.save(zaloUserId, session);
 
+      const bundleCodes = members.map((m) => m.containerCode).join(', ');
+      const opsContainerDetail =
+        members.length > 1
+          ? `${container.bundleId} (${members.length} container: ${bundleCodes})`
+          : `${container.containerCode} (${container.type})`;
       void this.opsNotifier.notifyOps(
-        `🚚 ${user.fullName} - ${container.containerCode} (${container.type}) — "${this.planDisplayName(plan)}"`,
+        `🚚 ${user.fullName} - ${opsContainerDetail} — "${this.planDisplayName(plan)}"`,
       );
 
       const planName = this.planDisplayName(plan);

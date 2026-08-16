@@ -87,25 +87,23 @@ export class ContainerImportService {
         ws.getCell(`${col}${i + 2}`).value = code;
       });
     }
-    // Gộp bó: cột (Bó 20FR) đánh dấu 4 container V20FR (E2:E5) và (E6:E9); tương tự (Bó 40FR).
-    for (const [col, range] of [
-      ['F', 'F2:F5'],
-      ['F', 'F6:F9'],
-      ['H', 'H2:H5'],
-      ['H', 'H6:H9'],
-    ] as Array<[string, string]>) {
-      ws.getCell(`${col}${range.split(':')[0].slice(1)}`).value = 'Bó';
-      ws.mergeCells(range);
-      ws.getCell(range.split(':')[0]).alignment = {
-        vertical: 'middle',
-        horizontal: 'center',
-      };
+    // Gộp bó: cột (Bó 20FR)/(Bó 40FR), lặp mẫu 4 dòng từ hàng 2 tới hàng 37.
+    const bundleRanges: string[] = [];
+    for (let start = 2; start <= 37; start += 4) {
+      bundleRanges.push(`${start}:${start + 3}`);
     }
-    const noteRow = 13;
-    ws.mergeCells(`A${noteRow}:M${noteRow}`);
-    ws.getCell(`A${noteRow}`).value =
-      'Ghi chú: Mỗi cột tương ứng 1 loại container. Gõ mã container (4 chữ cái + 7 số, vd BMOU6823203) vào đúng cột loại của nó. Để gộp nhiều container thành 1 Bó: ở cột (Bó 20FR)/(Bó 40FR) ngay bên phải cột loại, gõ "Bó" rồi merge xuống đúng số dòng các container muốn gộp (vd merge F2:F5 → 4 container V20FR ở E2:E5 là 1 bó). Loại hợp lệ: H20, H40, V20, V40, V20FR, V40FR, VSL, KV, TIP.';
-    ws.getCell(`A${noteRow}`).font = { italic: true, color: { argb: 'FF64748B' } };
+    for (const col of ['F', 'H']) {
+      for (const range of bundleRanges) {
+        const [from, to] = range.split(':');
+        const first = `${col}${from}`;
+        ws.getCell(first).value = 'Bó';
+        ws.mergeCells(`${col}${from}:${col}${to}`);
+        ws.getCell(first).alignment = {
+          vertical: 'middle',
+          horizontal: 'center',
+        };
+      }
+    }
     return Buffer.from(await workbook.xlsx.writeBuffer());
   }
 
