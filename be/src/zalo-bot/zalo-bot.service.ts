@@ -39,7 +39,7 @@ export interface ZaloEvent {
   [key: string]: any;
 }
 
-const PENDING_TTL_MS = 5 * 60 * 1000;
+const PENDING_TTL_MS = 7.9 * 60 * 1000;
 const CANCEL_PATTERN = /^(hủy|huy|thoi|bo qua|bỏ qua|cancel|\/huy)$/i;
 
 @Injectable()
