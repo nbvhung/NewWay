@@ -1853,24 +1853,29 @@ export class ZaloBotService {
       session.awaitingClamp = undefined;
       await this.sessionService.save(zaloUserId, session);
 
-      const bundleCodes = members.map((m) => m.containerCode).join(', ');
-      const opsContainerDetail =
-        members.length > 1
-          ? `${container.bundleId} (${members.length} container: ${bundleCodes})`
-          : `${container.containerCode} (${container.type})`;
-      void this.opsNotifier.notifyOps(
-        `🚚 ${user.fullName} - ${opsContainerDetail} — "${this.planDisplayName(plan)}"`,
-      );
+      const planDisplay = this.planDisplayName(plan);
+      let opsText: string;
+      if (fromClamp && clampMainCode) {
+        const mainLabel =
+          TYPE_LABEL[clampMainType] || clampMainType || 'Vỏ';
+        opsText = `✅ ${user.fullName} - ${clampMainCode} (${mainLabel}) \n✅ ${user.fullName} - ${container.containerCode} (${label})\n"${planDisplay}"`;
+      } else if (members.length > 1) {
+        const bundleCodes = members.map((m) => m.containerCode).join(', ');
+        opsText = `🚚 ${user.fullName} - ${container.bundleId} (${members.length} container: ${bundleCodes}) — "${planDisplay}"`;
+      } else {
+        opsText = `🚚 ${user.fullName} - ${container.containerCode} (${container.type}) — "${planDisplay}"`;
+      }
+      void this.opsNotifier.notifyOps(opsText);
 
       const planName = this.planDisplayName(plan);
       if (fromClamp && clampMainCode) {
-        // Thông báo kẹp: ✅ cont1, cont2 - kế hoạch — loại1, loại2
+        // Thông báo kẹp cho lái xe: ✅ contKẹp kẹp với Cont trên + kế hoạch
         const mainLabel =
           TYPE_LABEL[clampMainType] || clampMainType || 'Vỏ';
         await this.reply(
           chatId,
           zaloUserId,
-          `✅ ${clampMainCode}, ${container.containerCode} - ${planName} — ${mainLabel}, ${label}: ${newTotal}`,
+          `✅ ${container.containerCode} kẹp với Cont trên\n- ${planName} — ${mainLabel}, ${label}: ${newTotal}`,
         );
       } else if (members.length > 1) {
         const codes = members.map((m) => m.containerCode).join(', ');
