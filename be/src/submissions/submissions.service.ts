@@ -754,13 +754,76 @@ export class SubmissionsService {
         claimsByContainer.get(cl.containerImportId)!.push(cl);
       }
 
+      // ── Đơn vị (unit): bó FR (V20FR/V40FR) = 1 unit, container lẻ = 1 unit ──
+      const FR_BUNDLE_TYPES = new Set(['V20FR', 'V40FR']);
+      const unitKey = (c: any) =>
+        c.bundleId && FR_BUNDLE_TYPES.has(c.type)
+          ? `bundle:${c.shippingLineId}:${c.bundleId}`
+          : `single:${c.id}`;
+      const unitByContainer = new Map<number, string>();
+      const bundleMembers = new Map<string, any[]>();
+      for (const c of containers as any[]) {
+        const key = unitKey(c);
+        unitByContainer.set(c.id, key);
+        if (key.startsWith('bundle:')) {
+          if (!bundleMembers.has(key)) bundleMembers.set(key, []);
+          bundleMembers.get(key)!.push(c);
+        }
+      }
+      for (const members of bundleMembers.values()) {
+        members.sort((a, b) =>
+          String(a.containerCode).localeCompare(String(b.containerCode)),
+        );
+      }
+
+      // ── Phát hiện kẹp theo unit ──
+      // Claim CLAMP → unit của cont kẹp là kẹp; claim ngay trước (cùng submission) → unit của cont chính là kẹp.
+      // Chỉ merge cặp 2 dòng khi cả 2 đều là container lẻ (bó render riêng theo bundle).
+      const clampContainerIds = new Set<number>();
+      const kepUnits = new Set<string>();
+      const pairs: { mainId: number; clampId: number }[] = [];
+      const pairByContainer = new Map<number, { mainId: number; clampId: number }>();
+      {
+        const sortedClaims = [...(claims as any[])].sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
+            (a.id || 0) - (b.id || 0),
+        );
+        const lastBySubmission = new Map<number, any>();
+        for (const cl of sortedClaims) {
+          if (cl.claimType === 'CLAMP') {
+            clampContainerIds.add(cl.containerImportId);
+            const clampUnit = unitByContainer.get(cl.containerImportId);
+            if (clampUnit) kepUnits.add(clampUnit);
+            const main = lastBySubmission.get(cl.submissionId);
+            if (main) {
+              clampContainerIds.add(main.containerImportId);
+              const mainUnit = unitByContainer.get(main.containerImportId);
+              if (mainUnit) kepUnits.add(mainUnit);
+              if (
+                mainUnit &&
+                clampUnit &&
+                mainUnit.startsWith('single:') &&
+                clampUnit.startsWith('single:')
+              ) {
+                const p = { mainId: main.containerImportId, clampId: cl.containerImportId };
+                pairs.push(p);
+                pairByContainer.set(p.mainId, p);
+                pairByContainer.set(p.clampId, p);
+              }
+            }
+          }
+          lastBySubmission.set(cl.submissionId, cl);
+        }
+      }
+
       const wsCont = workbook.addWorksheet(
         this.sanitizeSheetName('Container - Người chạy', usedSheetNames),
       );
       wsCont.columns = [
         { header: 'STT', key: 'stt', width: 6 },
         { header: 'Số container', key: 'containerCode', width: 20 },
-        { header: 'Loại', key: 'type', width: 12 },
+        { header: 'Loại', key: 'type', width: 16 },
         { header: 'Kế hoạch', key: 'plan', width: 28 },
         { header: 'Người chạy', key: 'driver', width: 22 },
         { header: 'Thời gian ghi nhận', key: 'claimedAt', width: 20 },
@@ -781,16 +844,150 @@ export class SubmissionsService {
         fgColor: { argb: 'FFFFFF00' },
       } as ExcelJS.Fill;
 
-      let stt = 0;
-      for (const c of containers as any[]) {
+      const planNameFor = (c: any) => {
         const sl = c.shippingLineRef;
-        const planName = sl
+        return sl
           ? planDisplayName(sl)
           : c.shippingLineId
             ? `Plan #${c.shippingLineId}`
             : '';
+      };
+      const driverOf = (cl: any) => {
+        const sub = cl?.submissionRef;
+        return sub ? sub.user?.fullName || sub.driverName || '' : '';
+      };
+      const styleRow = (row: ExcelJS.Row, fill: boolean) => {
+        row.eachCell((cell) => {
+          cell.border = allBorder;
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          if (fill) cell.fill = yellowFill;
+        });
+      };
+
+      let stt = 0;
+      const rendered = new Set<number>();
+      for (const c of containers as any[]) {
+        if (rendered.has(c.id)) continue;
+        const key = unitByContainer.get(c.id)!;
+        const isBundle = key.startsWith('bundle:');
+
+        // 1) Bó FR: cả bó 1 block liền, merge Loại/Kế hoạch/Người chạy, vàng nếu kẹp
+        if (isBundle) {
+          const members = bundleMembers.get(key)!;
+          members.forEach((m) => rendered.add(m.id));
+          const planName = planNameFor(c);
+          const yellow = kepUnits.has(key);
+          const canMerge = members.every(
+            (m) => (claimsByContainer.get(m.id) || []).length <= 1,
+          );
+          if (canMerge) {
+            let firstRowNum: number | null = null;
+            for (const m of members) {
+              if (firstRowNum === null) stt++;
+              const cl = (claimsByContainer.get(m.id) || [])[0];
+              const row = wsCont.addRow({
+                stt: firstRowNum === null ? stt : '',
+                containerCode: m.containerCode,
+                type: firstRowNum === null ? m.type : '',
+                plan: firstRowNum === null ? planName : '',
+                driver: firstRowNum === null ? (cl ? driverOf(cl) : '') : '',
+                claimedAt: cl ? this.fmtVN(cl.createdAt) : '',
+                keoVe: cl && cl.claimType === 'KV' ? 'x' : '',
+              });
+              styleRow(row, yellow);
+              if (firstRowNum === null) firstRowNum = row.number;
+            }
+            if (members.length > 1 && firstRowNum !== null) {
+              const lastRowNum = firstRowNum + members.length - 1;
+              wsCont.mergeCells(firstRowNum, 3, lastRowNum, 3); // Loại
+              wsCont.mergeCells(firstRowNum, 4, lastRowNum, 4); // Kế hoạch
+              wsCont.mergeCells(firstRowNum, 5, lastRowNum, 5); // Người chạy
+            }
+            continue;
+          }
+          // fallback: member nào ghi nhiều lần → render từng dòng, vẫn vàng
+          for (const m of members) {
+            const mClaims = claimsByContainer.get(m.id) || [];
+            for (const cl of mClaims) {
+              stt++;
+              const row = wsCont.addRow({
+                stt,
+                containerCode: m.containerCode,
+                type: m.type,
+                plan: planName,
+                driver: driverOf(cl),
+                claimedAt: this.fmtVN(cl.createdAt),
+                keoVe: cl.claimType === 'KV' ? 'x' : '',
+              });
+              styleRow(row, true);
+            }
+          }
+          continue;
+        }
+
+        // 2) Cặp kẹp container lẻ ↔ container lẻ → 2 dòng liền + merge 3 cột
+        const pair = pairByContainer.get(c.id);
+        if (pair) {
+          const main = containers.find((x: any) => x.id === pair.mainId);
+          const clamp = containers.find((x: any) => x.id === pair.clampId);
+          if (main && clamp) {
+            rendered.add(pair.mainId);
+            rendered.add(pair.clampId);
+            const mainClaims = claimsByContainer.get(main.id) || [];
+            const clampClaims = claimsByContainer.get(clamp.id) || [];
+            if (mainClaims.length === 1 && clampClaims.length === 1) {
+              stt++;
+              const mSub = mainClaims[0].submissionRef;
+              const rowMain = wsCont.addRow({
+                stt,
+                containerCode: main.containerCode,
+                type: `${main.type} / ${clamp.type}`,
+                plan: planNameFor(main),
+                driver: mSub ? mSub.user?.fullName || mSub.driverName || '' : '',
+                claimedAt: this.fmtVN(mainClaims[0].createdAt),
+                keoVe: mainClaims[0].claimType === 'KV' ? 'x' : '',
+              });
+              const rowClamp = wsCont.addRow({
+                stt: '',
+                containerCode: clamp.containerCode,
+                type: '',
+                plan: '',
+                driver: '',
+                claimedAt: this.fmtVN(clampClaims[0].createdAt),
+                keoVe: clampClaims[0].claimType === 'KV' ? 'x' : '',
+              });
+              styleRow(rowMain, true);
+              styleRow(rowClamp, true);
+              wsCont.mergeCells(rowMain.number, 3, rowClamp.number, 3); // Loại
+              wsCont.mergeCells(rowMain.number, 4, rowClamp.number, 4); // Kế hoạch
+              wsCont.mergeCells(rowMain.number, 5, rowClamp.number, 5); // Người chạy
+              continue;
+            }
+            // fallback: bên nào ghi nhiều lần → render từng dòng vàng
+            for (const member of [main, clamp]) {
+              const memberClaims = claimsByContainer.get(member.id) || [];
+              for (const cl of memberClaims) {
+                stt++;
+                const row = wsCont.addRow({
+                  stt,
+                  containerCode: member.containerCode,
+                  type: member.type,
+                  plan: planNameFor(member),
+                  driver: driverOf(cl),
+                  claimedAt: this.fmtVN(cl.createdAt),
+                  keoVe: cl.claimType === 'KV' ? 'x' : '',
+                });
+                styleRow(row, true);
+              }
+            }
+            continue;
+          }
+        }
+
+        // 3) Container lẻ bình thường
         const cClaims = claimsByContainer.get(c.id) || [];
         const multi = cClaims.length > 1;
+        const yellow = multi || clampContainerIds.has(c.id);
 
         if (cClaims.length === 0) {
           stt++;
@@ -798,37 +995,27 @@ export class SubmissionsService {
             stt,
             containerCode: c.containerCode,
             type: c.type,
-            plan: planName,
+            plan: planNameFor(c),
             driver: '',
             claimedAt: '',
             keoVe: c.keoVe ? 'x' : '',
           });
-          row.eachCell((cell) => {
-            cell.border = allBorder;
-            cell.alignment = { vertical: 'middle', horizontal: 'center' };
-          });
+          styleRow(row, false);
           continue;
         }
 
         for (const cl of cClaims) {
           stt++;
-          const sub = cl.submissionRef;
           const row = wsCont.addRow({
             stt,
             containerCode: c.containerCode,
             type: c.type,
-            plan: planName,
-            driver: sub ? sub.user?.fullName || sub.driverName || '' : '',
+            plan: planNameFor(c),
+            driver: driverOf(cl),
             claimedAt: this.fmtVN(cl.createdAt),
             keoVe: cl.claimType === 'KV' ? 'x' : '',
           });
-          row.eachCell((cell) => {
-            cell.border = allBorder;
-            cell.alignment = { vertical: 'middle', horizontal: 'center' };
-            if (multi) {
-              cell.fill = yellowFill;
-            }
-          });
+          styleRow(row, yellow);
         }
       }
     }
