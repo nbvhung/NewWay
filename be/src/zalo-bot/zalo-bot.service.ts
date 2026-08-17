@@ -1869,13 +1869,10 @@ export class ZaloBotService {
 
       const planName = this.planDisplayName(plan);
       if (fromClamp && clampMainCode) {
-        // Thông báo kẹp cho lái xe: ✅ contKẹp kẹp với Cont trên + kế hoạch
-        const mainLabel =
-          TYPE_LABEL[clampMainType] || clampMainType || 'Vỏ';
         await this.reply(
           chatId,
           zaloUserId,
-          `✅ ${container.containerCode} kẹp với Cont trên\n- ${planName} — ${mainLabel}, ${label}: ${newTotal}`,
+          `✅ ${container.containerCode} - ${planName} — ${label}: ${newTotal}\n(Kẹp với con trên)`,
         );
       } else if (members.length > 1) {
         const codes = members.map((m) => m.containerCode).join(', ');
