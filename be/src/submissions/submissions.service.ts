@@ -1864,7 +1864,7 @@ export class SubmissionsService {
       const slFilterName = filter.shippingLineId
         ? (slMap.has(filter.shippingLineId) ? planDisplayName(slMap.get(filter.shippingLineId)!) : `Plan_${filter.shippingLineId}`)
         : (filter.shippingLine || 'All');
-      filename = `SL_${slFilterName.replace(/[/\\?%*:|"<>]/g, '_')}${filter.done ? '(done)' : ''}.xlsx`;
+      filename = `SL_${slFilterName.replace(/[/\\?%*:|"<>]/g, '_')}.xlsx`;
     } else if (role === 'hr') {
       filename = `Tổng hợp lương tháng_${monthStr2.replace('-', '_')}.xlsx`;
     } else {
