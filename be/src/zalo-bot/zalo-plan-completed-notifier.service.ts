@@ -161,23 +161,23 @@ export class ZaloPlanCompletedNotifierService {
       Math.ceil(t.v40fr / 4);
     const salary =
       donGia * tong * heSo + t.vsl * 40000 * heSo + t.kv * donGia * heSo;
-    const tipMoney = t.tip * 1000;
-    const salaryLine =
-      tipMoney > 0
-        ? `💰Tổng lương kế hoạch là: ${this.formatMoney(salary)}. Tip: ${this.formatMoney(tipMoney)}`
-        : `💰Tổng lương kế hoạch là: ${this.formatMoney(salary)}`;
+    let moneyLine = `💰Tổng lương là: ${this.formatK(salary)}`;
+    if (t.tip > 0) {
+      moneyLine += `. TIP: ${this.formatK(t.tip * 1000)}`;
+    }
 
     return [
       `✅${planName} đã hoàn thành`,
-      `Sản lượng của Sếp là:`,
-      parts.length ? parts.join(', ') : 'không có sản lượng',
-      salaryLine,
-      `Nếu sai lệch về thông tin vui lòng liên hệ OPS (SĐT: ${OPS_PHONE})`,
+      parts.length
+        ? `Sản lượng của Sếp: ${parts.join(', ')}`
+        : `Sản lượng của Sếp: không có sản lượng`,
+      moneyLine,
+      `Mọi sai lệch về thông tin liên hệ OPS (SĐT: ${OPS_PHONE})`,
     ].join('\n');
   }
 
-  private formatMoney(n: number): string {
-    return `${Math.round(n).toLocaleString('vi-VN')}đ`;
+  private formatK(n: number): string {
+    return `${Math.round(n / 1000)}K`;
   }
 
   private async resolveDonGia(plan: ShippingLine): Promise<number> {
