@@ -168,7 +168,8 @@ export class ZaloPlanCompletedNotifierService {
         : `💰Tổng lương kế hoạch là: ${this.formatMoney(salary)}`;
 
     return [
-      `✅${planName} đã hoàn thành, sản lượng của bạn là:`,
+      `✅${planName} đã hoàn thành`,
+      `Sản lượng của Sếp là:`,
       parts.length ? parts.join(', ') : 'không có sản lượng',
       salaryLine,
       `Nếu sai lệch về thông tin vui lòng liên hệ OPS (SĐT: ${OPS_PHONE})`,
