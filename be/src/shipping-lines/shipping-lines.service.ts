@@ -9,6 +9,9 @@ import { Repository } from 'typeorm';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Submission } from '../database/entities/submission.entity';
 import { Route } from '../database/entities/route.entity';
+import { ContainerImport } from '../database/entities/container-import.entity';
+import { ContainerClaim } from '../database/entities/container-claim.entity';
+import { EditHistory } from '../database/entities/edit-history.entity';
 import { CreateShippingLineDto } from './dto/create-shipping-line.dto';
 import { UpdateShippingLineDto } from './dto/update-shipping-line.dto';
 import { ZaloPlanCompletedNotifierService } from '../zalo-bot/zalo-plan-completed-notifier.service';
@@ -24,6 +27,12 @@ export class ShippingLinesService {
     private submissionsRepository: Repository<Submission>,
     @InjectRepository(Route)
     private routesRepository: Repository<Route>,
+    @InjectRepository(ContainerImport)
+    private containerImportsRepository: Repository<ContainerImport>,
+    @InjectRepository(ContainerClaim)
+    private containerClaimsRepository: Repository<ContainerClaim>,
+    @InjectRepository(EditHistory)
+    private editHistoryRepository: Repository<EditHistory>,
     private zaloPlanCompletedNotifier: ZaloPlanCompletedNotifierService,
   ) {}
 
@@ -165,11 +174,52 @@ export class ShippingLinesService {
     if (!plan) {
       throw new NotFoundException('Không tìm thấy kế hoạch');
     }
-    if (!plan.completed) {
-      await this.submissionsRepository.delete({ shippingLineId: id });
-    } else {
-      await this.submissionsRepository.update({ shippingLineId: id }, { shippingLineId: null });
+
+    const subs = await this.submissionsRepository.find({
+      where: { shippingLineId: id },
+      select: { id: true },
+    });
+    const submissionIds = subs.map((s) => s.id);
+
+    const containerIds = (
+      await this.containerImportsRepository
+        .createQueryBuilder('ci')
+        .select('ci.id', 'id')
+        .where('ci.shipping_line_id = :planId', { planId: id })
+        .getRawMany<{ id: number }>()
+    ).map((r) => Number(r.id));
+
+    if (containerIds.length > 0) {
+      await this.containerClaimsRepository
+        .createQueryBuilder()
+        .delete()
+        .where('container_import_id IN (:...ids)', { ids: containerIds })
+        .execute();
     }
+
+    if (!plan.completed) {
+      if (submissionIds.length > 0) {
+        await this.editHistoryRepository
+          .createQueryBuilder()
+          .delete()
+          .where('submission_id IN (:...ids)', { ids: submissionIds })
+          .execute();
+        await this.submissionsRepository.delete(submissionIds);
+      }
+      if (containerIds.length > 0) {
+        await this.containerImportsRepository.delete(containerIds);
+      }
+    } else {
+      await this.submissionsRepository.update(
+        { shippingLineId: id },
+        { shippingLineId: null },
+      );
+      await this.containerImportsRepository.update(
+        { shippingLineId: id },
+        { shippingLineId: null },
+      );
+    }
+
     await this.shippingLinesRepository.remove(plan);
     return { message: 'Đã xóa kế hoạch' };
   }
