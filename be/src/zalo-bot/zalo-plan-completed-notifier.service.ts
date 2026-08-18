@@ -161,7 +161,7 @@ export class ZaloPlanCompletedNotifierService {
       Math.ceil(t.v40fr / 4);
     const salary =
       donGia * tong * heSo + t.vsl * 40000 * heSo + t.kv * donGia * heSo;
-    let moneyLine = `💰Tổng lương là: ${this.formatK(salary)}`;
+    let moneyLine = `💰Tổng lương: ${this.formatK(salary)}`;
     if (t.tip > 0) {
       moneyLine += `. TIP: ${this.formatK(t.tip * 1000)}`;
     }
