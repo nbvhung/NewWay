@@ -9,6 +9,7 @@ import { ZaloQueueService } from './zalo-queue.service';
 import { ZaloPollingService } from './zalo-polling.service';
 import { ZaloOpsNotifierService } from './zalo-ops-notifier.service';
 import { ZaloOpsSummaryService } from './zalo-ops-summary.service';
+import { ZaloPlanCompletedNotifierService } from './zalo-plan-completed-notifier.service';
 import { ContainerImportModule } from '../container-import/container-import.module';
 import { ZaloMessagesModule } from '../zalo-messages/zalo-messages.module';
 import { User } from '../database/entities/user.entity';
@@ -16,6 +17,7 @@ import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Submission } from '../database/entities/submission.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
+import { Route } from '../database/entities/route.entity';
 
 @Module({
   imports: [
@@ -25,6 +27,7 @@ import { ContainerImport } from '../database/entities/container-import.entity';
       Submission,
       EditHistory,
       ContainerImport,
+      Route,
     ]),
     ContainerImportModule,
     ZaloMessagesModule,
@@ -39,7 +42,8 @@ import { ContainerImport } from '../database/entities/container-import.entity';
     ZaloPollingService,
     ZaloOpsNotifierService,
     ZaloOpsSummaryService,
+    ZaloPlanCompletedNotifierService,
   ],
-  exports: [ZaloBotService],
+  exports: [ZaloBotService, ZaloPlanCompletedNotifierService],
 })
 export class ZaloBotModule {}

@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
@@ -6,9 +11,12 @@ import { Submission } from '../database/entities/submission.entity';
 import { Route } from '../database/entities/route.entity';
 import { CreateShippingLineDto } from './dto/create-shipping-line.dto';
 import { UpdateShippingLineDto } from './dto/update-shipping-line.dto';
+import { ZaloPlanCompletedNotifierService } from '../zalo-bot/zalo-plan-completed-notifier.service';
 
 @Injectable()
 export class ShippingLinesService {
+  private readonly logger = new Logger(ShippingLinesService.name);
+
   constructor(
     @InjectRepository(ShippingLine)
     private shippingLinesRepository: Repository<ShippingLine>,
@@ -16,6 +24,7 @@ export class ShippingLinesService {
     private submissionsRepository: Repository<Submission>,
     @InjectRepository(Route)
     private routesRepository: Repository<Route>,
+    private zaloPlanCompletedNotifier: ZaloPlanCompletedNotifierService,
   ) {}
 
   async findAll(completed?: boolean, userId?: number): Promise<any[]> {
@@ -67,6 +76,8 @@ export class ShippingLinesService {
       throw new NotFoundException('Không tìm thấy kế hoạch');
     }
 
+    const wasCompleted = plan.completed;
+
     if (dto.name !== undefined) {
       if (!dto.name.trim()) {
         throw new BadRequestException('Tên kế hoạch không được để trống');
@@ -104,7 +115,19 @@ export class ShippingLinesService {
     if (dto.driverIds !== undefined) plan.driverIds = JSON.stringify(dto.driverIds);
     if (dto.allDrivers !== undefined) plan.allDrivers = dto.allDrivers;
 
-    return this.shippingLinesRepository.save(plan);
+    const saved = await this.shippingLinesRepository.save(plan);
+
+    if (dto.completed === true && !wasCompleted) {
+      this.zaloPlanCompletedNotifier
+        .notifyPlanCompleted(saved)
+        .catch((err) =>
+          this.logger.error(
+            `notifyPlanCompleted lỗi cho plan ${saved.id}: ${(err as Error).message}`,
+          ),
+        );
+    }
+
+    return saved;
   }
 
   /**

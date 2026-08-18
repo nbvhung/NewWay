@@ -269,6 +269,15 @@ export class ZaloBotService {
       return;
     }
 
+    if (/\bluong\b/.test(normalized)) {
+      await this.reply(
+        chatId,
+        zaloUserId,
+        'Để xem lương vui lòng truy cập link: https://newwayai.duckdns.org\nTên tài khoản và mật khẩu là biển số xe của bạn, trong trường hợp muốn đổi mật khẩu vui lòng liên hệ với Hưng (SĐT: 0825587779)',
+      );
+      return;
+    }
+
     if (
       lower.startsWith('/help') ||
       lower.startsWith('/start') ||
@@ -522,6 +531,7 @@ export class ZaloBotService {
         'Đổi sang SĐT tài khoản khác: /doi-sdt',
         'Ghi TIP: nhắn "TIP" kèm số lượng (vd: TIP 3, típ. 3, típ ba)',
         'Số may mắn: nhắn "số may mắn" để xem số may mắn hôm nay 🍀',
+        'Xem lương: nhắn "lương" để xem hướng dẫn 💰',
         'Số liệu sẽ được cập nhật vào phần mềm ngay lập tức ✅',
       ].join('\n'),
     );
