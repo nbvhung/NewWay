@@ -40,7 +40,7 @@ export class ShippingLinesController {
 
   @Delete('admin/shipping-lines/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ops', 'admin', 'supper_admin')
+  @Roles('admin', 'supper_admin')
   remove(@Param('id') id: string) {
     return this.shippingLinesService.remove(+id);
   }
