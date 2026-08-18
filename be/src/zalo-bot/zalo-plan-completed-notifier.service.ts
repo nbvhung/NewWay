@@ -162,11 +162,15 @@ export class ZaloPlanCompletedNotifierService {
     const salary =
       donGia * tong * heSo + t.vsl * 40000 * heSo + t.kv * donGia * heSo;
     const tipMoney = t.tip * 1000;
+    const salaryLine =
+      tipMoney > 0
+        ? `💰Tổng lương kế hoạch là: ${this.formatMoney(salary)}. Tip: ${this.formatMoney(tipMoney)}`
+        : `💰Tổng lương kế hoạch là: ${this.formatMoney(salary)}`;
 
     return [
       `✅${planName} đã hoàn thành, sản lượng của bạn là:`,
       parts.length ? parts.join(', ') : 'không có sản lượng',
-      `💰Tổng lương kế hoạch là: ${this.formatMoney(salary)}. Tip: ${this.formatMoney(tipMoney)}`,
+      salaryLine,
       `Nếu sai lệch về thông tin vui lòng liên hệ OPS (SĐT: ${OPS_PHONE})`,
     ].join('\n');
   }
