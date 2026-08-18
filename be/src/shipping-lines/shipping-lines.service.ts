@@ -198,6 +198,9 @@ export class ShippingLinesService {
     }
 
     if (!plan.completed) {
+      if (containerIds.length > 0) {
+        await this.containerImportsRepository.delete(containerIds);
+      }
       if (submissionIds.length > 0) {
         await this.editHistoryRepository
           .createQueryBuilder()
@@ -205,9 +208,6 @@ export class ShippingLinesService {
           .where('submission_id IN (:...ids)', { ids: submissionIds })
           .execute();
         await this.submissionsRepository.delete(submissionIds);
-      }
-      if (containerIds.length > 0) {
-        await this.containerImportsRepository.delete(containerIds);
       }
     } else {
       await this.submissionsRepository.update(
