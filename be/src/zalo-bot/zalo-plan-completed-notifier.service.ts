@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Submission } from '../database/entities/submission.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Route } from '../database/entities/route.entity';
+import { User } from '../database/entities/user.entity';
 import { ZaloApiService } from './zalo-api.service';
 import { ZaloMessagesService } from '../zalo-messages/zalo-messages.service';
 
@@ -30,6 +31,8 @@ export class ZaloPlanCompletedNotifierService {
     private readonly submissionsRepository: Repository<Submission>,
     @InjectRepository(Route)
     private readonly routesRepository: Repository<Route>,
+    @InjectRepository(User)
+    private readonly usersRepository: Repository<User>,
     private readonly zaloApi: ZaloApiService,
     private readonly zaloMessages: ZaloMessagesService,
   ) {}
@@ -50,17 +53,7 @@ export class ZaloPlanCompletedNotifierService {
         let entry = byDriver.get(sub.userId);
         if (!entry) {
           entry = {
-            totals: {
-              h20: 0,
-              h40: 0,
-              v20: 0,
-              v40: 0,
-              v20fr: 0,
-              v40fr: 0,
-              vsl: 0,
-              kv: 0,
-              tip: 0,
-            },
+            totals: this.zeroTotals(),
             zaloId: sub.user?.zaloId || null,
           };
           byDriver.set(sub.userId, entry);
@@ -77,9 +70,30 @@ export class ZaloPlanCompletedNotifierService {
         t.tip += parseFloat(sub.tip) || 0;
       }
 
+      // Gộp thêm tài xế được gán trong driver_ids nhưng chưa có submission
+      if (!plan.allDrivers && plan.driverIds) {
+        let assigned: number[] = [];
+        try {
+          const parsed: unknown = JSON.parse(plan.driverIds);
+          assigned = Array.isArray(parsed) ? (parsed as number[]) : [];
+        } catch {
+          assigned = [];
+        }
+        for (const uid of assigned) {
+          if (byDriver.has(uid)) continue;
+          const user = await this.usersRepository.findOne({
+            where: { id: uid },
+          });
+          byDriver.set(uid, {
+            totals: this.zeroTotals(),
+            zaloId: user?.zaloId || null,
+          });
+        }
+      }
+
       if (byDriver.size === 0) {
         this.logger.log(
-          `Plan ${plan.id} "${plan.name}" không có submission, bỏ qua notify`,
+          `Plan ${plan.id} "${plan.name}" không có ai nhận thông báo, bỏ qua notify`,
         );
         return;
       }
@@ -106,6 +120,20 @@ export class ZaloPlanCompletedNotifierService {
         `notifyPlanCompleted thất bại plan ${plan.id}: ${(err as Error).message}`,
       );
     }
+  }
+
+  private zeroTotals(): DriverTotals {
+    return {
+      h20: 0,
+      h40: 0,
+      v20: 0,
+      v40: 0,
+      v20fr: 0,
+      v40fr: 0,
+      vsl: 0,
+      kv: 0,
+      tip: 0,
+    };
   }
 
   private buildMessage(
