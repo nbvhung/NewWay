@@ -783,9 +783,8 @@ export class ZaloBotService {
               `Không tìm thấy container có số cuối ${digits} trong kế hoạch nào được phân công cho Sếp.`,
               '',
               '1) Vẫn đi (container phát sinh)',
-              '2) Sếp đọc nhầm (bỏ qua)',
               '',
-              'Sếp gửi 1 hoặc 2 giúp em nhé.',
+              'Nếu Sếp đọc nhầm thì bỏ qua, không cần làm gì thêm, chỉ cần đọc số container mới cho em.',
             ].join('\n'),
           );
         }
@@ -839,14 +838,16 @@ export class ZaloBotService {
           '1) Vệ sinh lại',
           '2) Kéo Về',
           '3) Vẫn đi',
-          '4) Sếp đọc nhầm (bỏ qua)',
+          '',
+          'Nếu Sếp đọc nhầm thì bỏ qua, không cần làm gì thêm, chỉ cần đọc số container mới cho em.',
         ]
       : [
           prefix,
           '',
           '1) Vệ sinh lại',
           '2) Kéo Về',
-          '3) Sếp đọc nhầm (bỏ qua)',
+          '',
+          'Nếu Sếp đọc nhầm thì bỏ qua, không cần làm gì thêm, chỉ cần đọc số container mới cho em.',
         ];
     await this.reply(chatId, zaloUserId, lines.join('\n'));
   }
@@ -994,18 +995,8 @@ export class ZaloBotService {
     if (!ps) return;
 
     if (!ps.selectedPlanId && ps.pendingPlanOptions.length === 0) {
-      // Bước 1: chờ chọn "Vẫn đi" / "Đọc nhầm"
-      if (/^[12]$/.test(text.trim())) {
-        if (text.trim() === '2') {
-          session.phatSinh = undefined;
-          await this.sessionService.save(zaloUserId, session);
-          await this.reply(
-            chatId,
-            zaloUserId,
-            'Em hiểu rồi, em bỏ qua nhé. Sếp gửi số cuối mã container mới giúp em.',
-          );
-          return;
-        }
+      // Bước 1: chờ chọn "Vẫn đi"
+      if (/^1$/.test(text.trim())) {
         const plans = await this.shippingLinesRepository.find({
           where: { completed: false },
           order: { id: 'DESC' },
