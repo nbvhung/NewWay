@@ -88,6 +88,14 @@ export class ZaloBotService {
     await this.zaloApi.sendMessage(chatId, text);
   }
 
+  private async replySilent(
+    zaloUserId: string,
+    text: string,
+  ): Promise<void> {
+    const userId = await this.resolveUserId(zaloUserId);
+    await this.zaloMessagesService.log(zaloUserId, userId, 'bot', text);
+  }
+
   private async handlePhoneLink(
     chatId: string,
     zaloUserId: string,
@@ -525,7 +533,7 @@ export class ZaloBotService {
     await this.reply(
       chatId,
       zaloUserId,
-      'Sếp gửi ít nhất 4 số cuối mã container (hoặc đọc to số container) để ghi nhận nhé.',
+      'Em không hiểu tin nhắn này. Sếp gửi ít nhất 4 số cuối mã container (hoặc đọc to số container) để ghi nhận nhé.',
     );
   }
 
@@ -958,12 +966,11 @@ export class ZaloBotService {
         );
       }
 
-      void this.opsNotifier.notifyOpsBuffered(
-        `🚚 ${user.fullName} - ${re.containerCode} (${[re.containerType, type].filter(Boolean).join(', ')}) — "${this.planDisplayName(plan)}"`,
+      void this.opsNotifier.notifyOps(
+        `${user.fullName} - ${re.containerCode} - ${this.planDisplayName(plan)} - ${label}`,
       );
 
-      await this.reply(
-        chatId,
+      await this.replySilent(
         zaloUserId,
         `✅ ${re.containerCode} - ${this.planDisplayName(plan)} — ${label}: ${newTotal}`,
       );
@@ -1132,20 +1139,19 @@ export class ZaloBotService {
         session.pendingCandidates = undefined;
         session.pendingDigits = undefined;
         await this.sessionService.save(zaloUserId, session);
-        void this.opsNotifier.notifyOpsBuffered(
-          `🚚 ${user.fullName} - ${ps.pendingCode} (${type}) — "${
+        void this.opsNotifier.notifyOps(
+          `${user.fullName} - ${ps.pendingCode} - ${
             plan ? this.planDisplayName(plan) : ''
-          }"`,
+          } - Phát sinh`,
         );
-        await this.reply(
-          chatId,
+        await this.replySilent(
           zaloUserId,
           `✅ Phát sinh ${ps.pendingCode} - kế hoạch ${
             plan ? this.planDisplayName(plan) : ''
           }.`,
         );
 
-        // Sau khi ghi nhận phát sinh V20/V20FR → hỏi kẹp như bình thường
+        // Sau khi ghi nhận phát sinh V20/V20FR → vẫn nhận kẹp nếu lái xe tự nhắn, nhưng không hỏi
         if (type === 'V20' || type === 'V20FR') {
           session.awaitingClamp = {
             mainPlanId: ps.selectedPlanId,
@@ -1154,11 +1160,6 @@ export class ZaloBotService {
           };
           session.pendingAt = Date.now();
           await this.sessionService.save(zaloUserId, session);
-          await this.reply(
-            chatId,
-            zaloUserId,
-            'Kẹp với Cont nào?',
-          );
         }
       } catch (err: any) {
         this.logger.error(`createPhatSinh failed: ${err.message}`, err.stack);
@@ -1438,12 +1439,7 @@ export class ZaloBotService {
       session.pendingDigits = undefined;
       await this.sessionService.save(zaloUserId, session);
 
-      void this.opsNotifier.notifyOpsBuffered(
-        `🚚 ${user.fullName} - TIP ${tip.count} — "${this.planDisplayName(plan)}"`,
-      );
-
-      await this.reply(
-        chatId,
+      await this.replySilent(
         zaloUserId,
         `✅ ${label}: ${newTotal} - ${this.planDisplayName(plan)}`,
       );
@@ -1689,17 +1685,12 @@ export class ZaloBotService {
         );
       }
 
-      void this.opsNotifier.notifyOpsBuffered(
-        `🚚 ${user.fullName} - ${re.containerCode} (${re.containerType || ''}) — "${this.planDisplayName(plan)}"`,
-      );
-
-      await this.reply(
-        chatId,
+      await this.replySilent(
         zaloUserId,
         `✅ ${re.containerCode} - ${this.planDisplayName(plan)} — ${label}: ${newTotal}`,
       );
 
-      // Nếu container thật là V20/V20FR → hỏi kẹp (theo quyết định A)
+      // Nếu container thật là V20/V20FR → vẫn nhận kẹp nếu lái xe tự nhắn, nhưng không hỏi
       if (re.containerType === 'V20' || re.containerType === 'V20FR') {
         session.awaitingClamp = {
           mainPlanId: plan.id,
@@ -1708,11 +1699,6 @@ export class ZaloBotService {
         };
         session.pendingAt = Date.now();
         await this.sessionService.save(zaloUserId, session);
-        await this.reply(
-          chatId,
-          zaloUserId,
-          'Kẹp với Cont nào?',
-        );
       }
     } catch (err: any) {
       this.logger.error(`recordAgain failed: ${err.message}`, err.stack);
@@ -1886,8 +1872,6 @@ export class ZaloBotService {
 
       const clampMainCode =
         session.awaitingClamp?.mainCode || session.clampClaimed?.mainCode;
-      const clampMainType =
-        session.awaitingClamp?.mainType || session.clampClaimed?.mainType;
 
       session.pendingCandidates = undefined;
       session.pendingDigits = undefined;
@@ -1896,43 +1880,19 @@ export class ZaloBotService {
       session.awaitingClamp = undefined;
       await this.sessionService.save(zaloUserId, session);
 
-      const planDisplay = this.planDisplayName(plan);
-      let opsText: string;
-      if (fromClamp && clampMainCode) {
-        const mainLabel =
-          TYPE_LABEL[clampMainType] || clampMainType || 'Vỏ';
-        opsText = `✅ ${user.fullName} - ${clampMainCode} (${mainLabel}) \n✅ ${user.fullName} - ${container.containerCode} (${label})\n"${planDisplay}"`;
-      } else if (members.length > 1) {
-        const bundleCodes = members.map((m) => m.containerCode).join(', ');
-        opsText = `🚚 ${user.fullName} - ${container.bundleId} (${members.length} container: ${bundleCodes}) — "${planDisplay}"`;
-      } else {
-        opsText = `🚚 ${user.fullName} - ${container.containerCode} (${container.type}) — "${planDisplay}"`;
-      }
-      void this.opsNotifier.notifyOpsBuffered(opsText);
-
       const planName = this.planDisplayName(plan);
+      let confirmText: string;
       if (fromClamp && clampMainCode) {
-        await this.reply(
-          chatId,
-          zaloUserId,
-          `✅ ${container.containerCode} - ${planName} — ${label}: ${newTotal}\n(Kẹp với con trên)`,
-        );
+        confirmText = `✅ ${container.containerCode} - ${planName} — ${label}: ${newTotal}\n(Kẹp với con trên)`;
       } else if (members.length > 1) {
         const codes = members.map((m) => m.containerCode).join(', ');
-        await this.reply(
-          chatId,
-          zaloUserId,
-          `✅ ${container.bundleId} (${members.length} container: ${codes})\n${planName} — ${label}: ${newTotal}`,
-        );
+        confirmText = `✅ ${container.bundleId} (${members.length} container: ${codes})\n${planName} — ${label}: ${newTotal}`;
       } else {
-        await this.reply(
-          chatId,
-          zaloUserId,
-          `✅ ${container.containerCode} - ${planName} — ${label}: ${newTotal}`,
-        );
+        confirmText = `✅ ${container.containerCode} - ${planName} — ${label}: ${newTotal}`;
       }
+      await this.replySilent(zaloUserId, confirmText);
 
-      // Sau khi ghi V20/V20FR (lần đi thường) → hỏi kẹp, trừ khi đang ghi chính cont kẹp
+      // Sau khi ghi V20/V20FR (lần đi thường) → vẫn nhận kẹp nếu lái xe tự nhắn, nhưng không hỏi
       if (
         !fromClamp &&
         (container.type === 'V20' || container.type === 'V20FR')
@@ -1944,11 +1904,6 @@ export class ZaloBotService {
         };
         session.pendingAt = Date.now();
         await this.sessionService.save(zaloUserId, session);
-        await this.reply(
-          chatId,
-          zaloUserId,
-          'Kẹp với Cont nào?',
-        );
       }
     } catch (err: any) {
       this.logger.error(`upsertContainer failed: ${err.message}`, err.stack);
