@@ -353,13 +353,33 @@ export class ZaloBotService {
     if (session.clampClaimed) {
       if (/^\d{1,2}$/.test(text)) {
         await this.handleClampClaimedPick(chatId, zaloUserId, text, session);
-      } else {
-        await this.reply(
+        return;
+      }
+      // Tài xế nhắn mã container kẹp mới thay vì chọn 1/2 → coi như "Nhầm, đọc lại"
+      // và tìm container kẹp mới ngay, không bắt nhập 2 rồi mới nhập mã.
+      const clampDigits = extractContainerCodes(text);
+      if (clampDigits.length > 0) {
+        session.awaitingClamp = {
+          mainPlanId: session.clampClaimed.shippingLineId,
+          mainCode: session.clampClaimed.mainCode,
+          mainType: session.clampClaimed.mainType,
+        };
+        session.clampClaimed = undefined;
+        await this.sessionService.save(zaloUserId, session);
+        await this.handleClampDigits(
           chatId,
           zaloUserId,
-          'Chưa hợp lệ. Sếp gửi lại giúp em nhé (hoặc gõ "hủy" để thoát).',
+          text,
+          clampDigits[0],
+          session,
         );
+        return;
       }
+      await this.reply(
+        chatId,
+        zaloUserId,
+        'Chưa hợp lệ. Sếp gửi lại giúp em nhé (hoặc gõ "hủy" để thoát).',
+      );
       return;
     }
 
