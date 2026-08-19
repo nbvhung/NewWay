@@ -958,7 +958,7 @@ export class ZaloBotService {
         );
       }
 
-      void this.opsNotifier.notifyOps(
+      void this.opsNotifier.notifyOpsBuffered(
         `🚚 ${user.fullName} - ${re.containerCode} (${[re.containerType, type].filter(Boolean).join(', ')}) — "${this.planDisplayName(plan)}"`,
       );
 
@@ -1132,7 +1132,7 @@ export class ZaloBotService {
         session.pendingCandidates = undefined;
         session.pendingDigits = undefined;
         await this.sessionService.save(zaloUserId, session);
-        void this.opsNotifier.notifyOps(
+        void this.opsNotifier.notifyOpsBuffered(
           `🚚 ${user.fullName} - ${ps.pendingCode} (${type}) — "${
             plan ? this.planDisplayName(plan) : ''
           }"`,
@@ -1438,7 +1438,7 @@ export class ZaloBotService {
       session.pendingDigits = undefined;
       await this.sessionService.save(zaloUserId, session);
 
-      void this.opsNotifier.notifyOps(
+      void this.opsNotifier.notifyOpsBuffered(
         `🚚 ${user.fullName} - TIP ${tip.count} — "${this.planDisplayName(plan)}"`,
       );
 
@@ -1676,7 +1676,7 @@ export class ZaloBotService {
         );
       }
 
-      void this.opsNotifier.notifyOps(
+      void this.opsNotifier.notifyOpsBuffered(
         `🚚 ${user.fullName} - ${re.containerCode} (${re.containerType || ''}) — "${this.planDisplayName(plan)}"`,
       );
 
@@ -1895,7 +1895,7 @@ export class ZaloBotService {
       } else {
         opsText = `🚚 ${user.fullName} - ${container.containerCode} (${container.type}) — "${planDisplay}"`;
       }
-      void this.opsNotifier.notifyOps(opsText);
+      void this.opsNotifier.notifyOpsBuffered(opsText);
 
       const planName = this.planDisplayName(plan);
       if (fromClamp && clampMainCode) {

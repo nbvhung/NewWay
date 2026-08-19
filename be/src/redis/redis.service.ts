@@ -74,6 +74,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return this.safe(() => this.client.llen(key), 0);
   }
 
+  /** Lấy toàn bộ phần tử trong LIST. */
+  async lrange(key: string): Promise<string[]> {
+    return this.safe(() => this.client.lrange(key, 0, -1), []);
+  }
+
   async exists(key: string): Promise<boolean> {
     return this.safe(() => this.client.exists(key).then((r) => r === 1), false);
   }
