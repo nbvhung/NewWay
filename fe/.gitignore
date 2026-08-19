@@ -38,4 +38,7 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# vscode workspace
+*.code-workspace
 next-env.d.ts
