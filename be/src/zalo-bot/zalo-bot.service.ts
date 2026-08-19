@@ -1472,6 +1472,19 @@ export class ZaloBotService {
     // Kẹp phải thuộc cùng kế hoạch với container chính
     const samePlan = candidates.filter((c) => c.shippingLineId === mainPlanId);
     if (samePlan.length === 0) {
+      // Không nằm trong kế hoạch hiện tại nhưng có tồn tại ở kế hoạch khác:
+      // nếu loại không phải loại kẹp (H20/V20FR/...) → tự hiểu là "không kẹp",
+      // không lặp lại hỏi mã kẹp.
+      if (
+        candidates.length > 0 &&
+        !candidates.some((c) => CLAMP_TYPES.has(c.type))
+      ) {
+        session.awaitingClamp = undefined;
+        session.clampClaimed = undefined;
+        await this.sessionService.save(zaloUserId, session);
+        await this.reply(chatId, zaloUserId, 'OK, Sếp chạy lẻ không kẹp nhé.');
+        return;
+      }
       await this.reply(
         chatId,
         zaloUserId,
