@@ -29,6 +29,9 @@ export class User {
   @Column({ name: 'zalo_id', type: 'varchar', length: 100, nullable: true, default: null })
   zaloId: string | null;
 
+  @Column({ name: 'zalo_bot', type: 'int', default: 0 })
+  zaloBot: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

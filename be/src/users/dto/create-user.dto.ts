@@ -33,4 +33,8 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   zaloId?: string;
+
+  @IsOptional()
+  @IsIn([0, 1], { message: 'Bot Zalo không hợp lệ' })
+  zaloBot?: number;
 }

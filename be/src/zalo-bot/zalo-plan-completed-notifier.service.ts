@@ -47,7 +47,7 @@ export class ZaloPlanCompletedNotifierService {
 
       const byDriver = new Map<
         number,
-        { totals: DriverTotals; zaloId: string | null }
+        { totals: DriverTotals; zaloId: string | null; zaloBot: number }
       >();
       for (const sub of subs) {
         let entry = byDriver.get(sub.userId);
@@ -55,6 +55,7 @@ export class ZaloPlanCompletedNotifierService {
           entry = {
             totals: this.zeroTotals(),
             zaloId: sub.user?.zaloId || null,
+            zaloBot: sub.user?.zaloBot ?? 0,
           };
           byDriver.set(sub.userId, entry);
         }
@@ -87,6 +88,7 @@ export class ZaloPlanCompletedNotifierService {
           byDriver.set(uid, {
             totals: this.zeroTotals(),
             zaloId: user?.zaloId || null,
+            zaloBot: user?.zaloBot ?? 0,
           });
         }
       }
@@ -110,7 +112,11 @@ export class ZaloPlanCompletedNotifierService {
           continue;
         }
         const text = this.buildMessage(planName, entry.totals, donGia, heSo);
-        const sent = await this.zaloApi.sendMessage(entry.zaloId, text);
+        const sent = await this.zaloApi.sendMessage(
+          entry.zaloId,
+          text,
+          entry.zaloBot,
+        );
         if (sent) {
           await this.zaloMessages.log(entry.zaloId, userId, 'bot', text);
         }

@@ -60,6 +60,7 @@ export class ZaloBotController {
     return {
       status: 'ok',
       botConfigured: !!process.env.ZALO_BOT_TOKEN,
+      bot2Configured: !!process.env.ZALO_BOT_TOKEN_2,
       sttConfigured: !!process.env.OPENAI_API_KEY,
     };
   }

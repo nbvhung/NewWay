@@ -67,6 +67,7 @@ export class UsersService {
       stt: dto.stt?.trim() || '',
       sdt: dto.sdt?.trim() || '',
       zaloId: dto.zaloId?.trim() || null,
+      zaloBot: dto.zaloBot ?? 0,
     });
     const saved = await this.usersRepository.save(user);
     const { passwordHash, ...result } = saved;
@@ -105,6 +106,7 @@ export class UsersService {
     if (dto.stt !== undefined) target.stt = dto.stt.trim();
     if (dto.sdt !== undefined) target.sdt = dto.sdt.trim();
     if (dto.zaloId !== undefined) target.zaloId = dto.zaloId.trim() || null;
+    if (dto.zaloBot !== undefined) target.zaloBot = dto.zaloBot;
 
     const saved = await this.usersRepository.save(target);
     const { passwordHash, ...result } = saved;

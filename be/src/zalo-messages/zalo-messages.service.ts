@@ -73,7 +73,7 @@ export class ZaloMessagesService {
     if (!user.zaloId) {
       return { ok: false, error: 'Lái xe chưa liên kết Zalo' };
     }
-    const sent = await this.zaloApi.sendMessage(user.zaloId, text);
+    const sent = await this.zaloApi.sendMessage(user.zaloId, text, user.zaloBot ?? 0);
     if (!sent) {
       return { ok: false, error: 'Gửi tin nhắn thất bại' };
     }
@@ -217,10 +217,10 @@ export class ZaloMessagesService {
 
   async resolveUser(
     userId: number,
-  ): Promise<{ zaloId: string | null; fullName: string }> {
+  ): Promise<{ zaloId: string | null; fullName: string; zaloBot: number }> {
     const u = await this.usersRepository.findOne({ where: { id: userId } });
     return u
-      ? { zaloId: u.zaloId, fullName: u.fullName }
-      : { zaloId: null, fullName: `#${userId}` };
+      ? { zaloId: u.zaloId, fullName: u.fullName, zaloBot: u.zaloBot ?? 0 }
+      : { zaloId: null, fullName: `#${userId}`, zaloBot: 0 };
   }
 }

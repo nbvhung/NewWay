@@ -46,6 +46,17 @@ const CANCEL_PATTERN = /^(hủy|huy|thoi|bo qua|bỏ qua|cancel|\/huy)$/i;
 export class ZaloBotService {
   private readonly logger = new Logger(ZaloBotService.name);
 
+  /**
+   * zaloUserId → botIndex đã nhận tin. Cập nhật trong handleEvent; dùng để
+   * trả lời đúng bot vừa nhận tin (reply/sendVoice/downloadFile). Mặc định 0
+   * (bot chính) khi chưa rõ.
+   */
+  private botByUser = new Map<string, number>();
+
+  private botOf(zaloUserId: string): number {
+    return this.botByUser.get(zaloUserId) ?? 0;
+  }
+
   constructor(
     private zaloApi: ZaloApiService,
     private zaloStt: ZaloSttService,
@@ -85,7 +96,7 @@ export class ZaloBotService {
   ): Promise<void> {
     const userId = await this.resolveUserId(zaloUserId);
     await this.zaloMessagesService.log(zaloUserId, userId, 'bot', text);
-    await this.zaloApi.sendMessage(chatId, text);
+    await this.zaloApi.sendMessage(chatId, text, this.botOf(zaloUserId));
   }
 
   private async replySilent(
@@ -135,6 +146,7 @@ export class ZaloBotService {
     }
 
     user.zaloId = zaloUserId;
+    user.zaloBot = this.botOf(zaloUserId);
     await this.usersRepository.save(user);
 
     const session = { userId: user.id, userFullName: user.fullName };
@@ -184,6 +196,8 @@ export class ZaloBotService {
     }
     const chatId = payload.message?.chat?.id || zaloUserId;
     const eventName = payload.event_name || (event as any).type;
+    const botIndex = (event as any).botIndex ?? 0;
+    this.botByUser.set(zaloUserId, botIndex);
 
     let text = '';
     if (eventName === 'message.voice.received') {
@@ -197,7 +211,7 @@ export class ZaloBotService {
         return;
       }
       await this.reply(chatId, zaloUserId, 'Đang nghe...');
-      const audio = await this.zaloApi.downloadFile(voiceUrl);
+      const audio = await this.zaloApi.downloadFile(voiceUrl, this.botOf(zaloUserId));
       if (!audio) {
         await this.reply(
           chatId,
@@ -253,7 +267,7 @@ export class ZaloBotService {
         `trigger buon ngu tu ${zaloUserId} (voiceUrl=${voiceUrl ? 'set' : 'unset'})`,
       );
       if (voiceUrl) {
-        const sent = await this.zaloApi.sendVoice(chatId, voiceUrl);
+        const sent = await this.zaloApi.sendVoice(chatId, voiceUrl, this.botOf(zaloUserId));
         this.logger.log(`sendVoice result=${sent}`);
         if (!sent) {
           await this.reply(
@@ -610,6 +624,7 @@ export class ZaloBotService {
     await this.zaloApi.sendMessage(
       chatId,
       '🔄 Đã hủy liên kết tài khoản cũ.\nSếp gửi SĐT mới đã đăng ký trong hệ thống (vd: 0931234567) để xác nhận lại nhé.',
+      this.botOf(zaloUserId),
     );
   }
 
@@ -1074,7 +1089,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          'Sếp đọc giúp em mã container đầy đủ (gồm cả chữ và số, vd: BMOU6823203) nhé.',
+          'Em cần Sếp đọc 4 chữ cái đầu của container (ví dụ: BEAU) giúp em nhé. Nếu Sếp không nhớ thì ghi tạm ABCD.',
         );
       } else {
         await this.reply(
@@ -1137,9 +1152,9 @@ export class ZaloBotService {
         );
         await this.replySilent(
           zaloUserId,
-          `✅ Phát sinh ${ps.pendingCode} - kế hoạch ${
+          `✅ Phát sinh ${ps.pendingCode} (${type}) - ${
             plan ? this.planDisplayName(plan) : ''
-          }.`,
+          }.\n(Cont phát sinh này sẽ được OPS phê duyệt sau và tạm thời chưa ghi nhận sản lượng.)`,
         );
 
         // Sau khi ghi nhận phát sinh V20/V20FR → vẫn nhận kẹp nếu lái xe tự nhắn, nhưng không hỏi
@@ -1164,13 +1179,13 @@ export class ZaloBotService {
     }
 
     // Bước 3: chờ đọc đầu ngữ của container (4 chữ cái), ghép với 7 số cuối đã nhập
-    const prefix = extractContainerPrefix(text);
+    const prefix = extractContainerPrefix(text) ?? 'ABCD';
     const digits = (ps.digits || '').replace(/\D/g, '').slice(-7);
-    if (!prefix || !digits) {
+    if (!digits) {
       await this.reply(
         chatId,
         zaloUserId,
-        `Em cần Sếp đọc 4 chữ cái đầu của container (vd: BEAU) giúp em nhé.`,
+        'Chưa đủ thông tin mã container. Sếp thử lại giúp em nhé.',
       );
       return;
     }

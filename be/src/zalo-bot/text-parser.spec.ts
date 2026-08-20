@@ -76,7 +76,6 @@ describe('extractContainerCodes', () => {
   it('trích 7 số cuối từ mã container đầy đủ dạng chữ+số liền', () => {
     expect(extractContainerCodes('BMOU6823203')).toEqual(['6823203']);
   });
-  });
 
   it('trích mã đầy đủ có khoảng trắng giữa chữ và số', () => {
     expect(extractContainerCodes('BMOU 6823203')).toEqual(['6823203']);
@@ -100,6 +99,5 @@ describe('extractContainerCodes', () => {
     ]);
     // 'mot hai ba' → digit words: 1,2,3 → '123' (3 chữ số < 4) → bỏ qua
     expect(extractContainerCodes('mot hai ba')).toEqual([]);
-  });
   });
 });

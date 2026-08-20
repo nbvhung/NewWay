@@ -79,7 +79,7 @@ export class ZaloSchedulerService
 
       const users = new Map<
         number,
-        { zaloId: string | null; fullName: string }
+        { zaloId: string | null; fullName: string; zaloBot: number }
       >();
       for (const item of due) {
         try {
@@ -96,7 +96,11 @@ export class ZaloSchedulerService
             );
             continue;
           }
-          const sent = await this.zaloApi.sendMessage(u.zaloId, item.content);
+          const sent = await this.zaloApi.sendMessage(
+            u.zaloId,
+            item.content,
+            u.zaloBot,
+          );
           if (sent) {
             await this.zaloMessages.log(
               u.zaloId,
