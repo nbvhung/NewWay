@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { ZaloApiService } from './zalo-api.service';
 import { ZaloSttService } from './zalo-stt.service';
 import { ZaloSessionService } from './zalo-session.service';
+import { RedisService } from '../redis/redis.service';
 import {
   extractContainerCodes,
   extractContainerPrefix,
@@ -40,6 +41,7 @@ export interface ZaloEvent {
 }
 
 const PENDING_TTL_MS = 7.9 * 60 * 1000;
+const QUIET_TTL_MS = 5 * 60 * 1000;
 const CANCEL_PATTERN = /^(hủy|huy|thoi|bo qua|bỏ qua|cancel|\/huy)$/i;
 
 @Injectable()
@@ -57,10 +59,15 @@ export class ZaloBotService {
     return this.botByUser.get(zaloUserId) ?? 0;
   }
 
+  private async isQuiet(zaloUserId: string): Promise<boolean> {
+    return !(await this.redis.markOnce(`zalo:quiet:${zaloUserId}`, QUIET_TTL_MS));
+  }
+
   constructor(
     private zaloApi: ZaloApiService,
     private zaloStt: ZaloSttService,
     private sessionService: ZaloSessionService,
+    private redis: RedisService,
     private containerImportService: ContainerImportService,
     private zaloMessagesService: ZaloMessagesService,
     private opsNotifier: ZaloOpsNotifierService,
@@ -542,13 +549,14 @@ export class ZaloBotService {
         where: { zaloId: zaloUserId },
       }))?.fullName ||
       zaloUserId;
-    void this.opsNotifier.notifyUnknown(driverName, text);
-
-    await this.reply(
-      chatId,
-      zaloUserId,
-      'Em không hiểu tin nhắn này. Sếp gửi ít nhất 4 số cuối mã container (hoặc đọc to số container) để ghi nhận nhé.',
-    );
+    if (!(await this.isQuiet(zaloUserId))) {
+      void this.opsNotifier.notifyUnknown(driverName, text);
+      await this.reply(
+        chatId,
+        zaloUserId,
+        'Em không hiểu tin nhắn này. Sếp gửi ít nhất 4 số cuối mã container (hoặc đọc to số container) để ghi nhận nhé.',
+      );
+    }
   }
 
   private async sendHelp(chatId: string, zaloUserId: string): Promise<void> {
@@ -717,11 +725,13 @@ export class ZaloBotService {
     session: any,
   ): Promise<void> {
     if (!session.userId) {
-      await this.reply(
-        chatId,
-        zaloUserId,
-        'Zalo này chưa xác nhận. Sếp gửi SĐT đã đăng ký trong tài khoản để kích hoạt nhé (vd: 0931234567).',
-      );
+      if (!(await this.isQuiet(zaloUserId))) {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Zalo này chưa xác nhận. Sếp gửi SĐT đã đăng ký trong tài khoản để kích hoạt nhé (vd: 0931234567).',
+        );
+      }
       return;
     }
 
@@ -1253,11 +1263,13 @@ export class ZaloBotService {
     session: any,
   ): Promise<void> {
     if (!session.userId) {
-      await this.reply(
-        chatId,
-        zaloUserId,
-        'Zalo này chưa xác nhận. Sếp gửi SĐT đã đăng ký trong tài khoản để kích hoạt nhé (vd: 0931234567).',
-      );
+      if (!(await this.isQuiet(zaloUserId))) {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Zalo này chưa xác nhận. Sếp gửi SĐT đã đăng ký trong tài khoản để kích hoạt nhé (vd: 0931234567).',
+        );
+      }
       return;
     }
     const parsed = this.parseTipCommand(text);
