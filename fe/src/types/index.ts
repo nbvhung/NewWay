@@ -7,6 +7,7 @@ export interface User {
   stt: string;
   sdt: string;
   zaloId?: string | null;
+  zaloBot?: number;
   createdAt?: string;
 }
 

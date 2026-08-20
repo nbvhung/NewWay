@@ -58,6 +58,14 @@ export function EditUserModal({ open, onClose, editUserData, setEditUserData, on
           className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" />
       </div>
       <div className="mb-3">
+        <label className="text-xs font-medium text-[#64748b] mb-1 block">Bot Zalo</label>
+        <select value={editUserData?.zaloBot ?? 0} onChange={e => setEditUserData({ ...editUserData, zaloBot: Number(e.target.value) })}
+          className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]">
+          <option value={0}>Bot 1</option>
+          <option value={1}>Bot 2</option>
+        </select>
+      </div>
+      <div className="mb-3">
         <label className="text-xs font-medium text-[#64748b] mb-1 block">Mật khẩu mới <span className="text-[#64748b] font-normal">(để trống = không đổi)</span></label>
         <input type="password" value={editUserData?.password || ''} onChange={e => setEditUserData({ ...editUserData, password: e.target.value })} placeholder="Nhập mật khẩu mới nếu muốn đổi"
           className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />

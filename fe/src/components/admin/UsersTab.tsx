@@ -41,7 +41,7 @@ function roleOptionsFor(currentRole: string) {
 }
 
 export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
-  const [newUser, setNewUser] = useState({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', stt: '', sdt: '', zaloId: '' });
+  const [newUser, setNewUser] = useState({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', stt: '', sdt: '', zaloId: '', zaloBot: 0 });
   const [editUserData, setEditUserData] = useState<any>(null);
   const [editUserModalOpen, setEditUserModalOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ user: User; counts: { submissions: number; containers: number; history: number } } | null>(null);
@@ -57,13 +57,13 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
     try {
       await usersApi.create(newUser);
       toast(`Đã thêm tài khoản: ${newUser.username}`, 'success');
-      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', stt: '', sdt: '', zaloId: '' });
+      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', stt: '', sdt: '', zaloId: '', zaloBot: 0 });
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
   };
 
   const openEditUser = (u: User) => {
-    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, soXe: u.soXe, stt: u.stt, sdt: u.sdt, zaloId: u.zaloId || '', password: '' });
+    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, soXe: u.soXe, stt: u.stt, sdt: u.sdt, zaloId: u.zaloId || '', zaloBot: u.zaloBot ?? 0, password: '' });
     setEditUserModalOpen(true);
   };
 
@@ -77,6 +77,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         stt: editUserData.stt || '',
         sdt: editUserData.sdt || '',
         zaloId: editUserData.zaloId || '',
+        zaloBot: editUserData.zaloBot ?? 0,
         ...(editUserData.password ? { password: editUserData.password } : {}),
       });
       toast('Đã cập nhật tài khoản', 'success');
@@ -142,6 +143,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
                 <div className="text-sm font-semibold">{u.fullName} <span className={roleBadge(u.role)}>{ROLE_LABELS[u.role] || u.role}</span></div>
                 <div className="text-[10px] text-[#64748b] mt-0.5">@{u.username}</div>
                 {u.zaloId ? <div className="text-[9px] text-[#1a56db] mt-0.5">💬 Zalo đã liên kết</div> : null}
+                {u.zaloId && u.zaloBot === 1 ? <div className="text-[9px] text-[#d97706] mt-0.5">🤖 Bot 2</div> : null}
               </div>
               {canManageUser(currentUser.role, u.role) && (
                 <div className="flex gap-1.5 shrink-0">
@@ -206,6 +208,14 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
           <select value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })}
             className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]">
             {roleOptionsFor(currentUser.role).map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+          </select>
+        </div>
+        <div className="mb-4">
+          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Bot Zalo</label>
+          <select value={newUser.zaloBot} onChange={e => setNewUser({ ...newUser, zaloBot: Number(e.target.value) })}
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]">
+            <option value={0}>Bot 1</option>
+            <option value={1}>Bot 2</option>
           </select>
         </div>
         <button onClick={addUser}
