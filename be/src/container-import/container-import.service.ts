@@ -530,6 +530,25 @@ export class ContainerImportService {
     );
   }
 
+  /**
+   * Reset container đã kéo về → coi như chưa ghi nhận (bỏ submissionId + cờ keoVe),
+   * để lái xe mới claim lại bình thường. Lịch sử container_claims vẫn được giữ.
+   */
+  async resetKeoVeByCode(code: string, planId: number): Promise<void> {
+    await this.containerImportsRepository.update(
+      { containerCode: code, shippingLineId: planId },
+      { submissionId: null, keoVe: false },
+    );
+  }
+
+  /** Reset toàn bộ container trong bó đã kéo về → coi như chưa ghi nhận. */
+  async resetBundleKeoVe(bundleId: string, planId: number): Promise<void> {
+    await this.containerImportsRepository.update(
+      { bundleId, shippingLineId: planId },
+      { submissionId: null, keoVe: false },
+    );
+  }
+
   async markVslByCode(code: string, planId: number): Promise<void> {
     await this.containerImportsRepository.update(
       { containerCode: code, shippingLineId: planId },

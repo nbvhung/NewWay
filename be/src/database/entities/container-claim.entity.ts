@@ -17,6 +17,7 @@ export const CONTAINER_CLAIM_TYPES = [
   'REGO',
   'CLAMP',
   'CLASSIFY',
+  'KD2',
 ] as const;
 export type ContainerClaimType = (typeof CONTAINER_CLAIM_TYPES)[number];
 

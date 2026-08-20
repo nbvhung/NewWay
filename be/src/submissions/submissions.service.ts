@@ -844,6 +844,18 @@ export class SubmissionsService {
         fgColor: { argb: 'FFFFFF00' },
       } as ExcelJS.Fill;
 
+      const redFill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFC7CE' },
+      } as ExcelJS.Fill;
+
+      const blueFill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFBDD7EE' },
+      } as ExcelJS.Fill;
+
       const planNameFor = (c: any) => {
         const sl = c.shippingLineRef;
         return sl
@@ -856,12 +868,26 @@ export class SubmissionsService {
         const sub = cl?.submissionRef;
         return sub ? sub.user?.fullName || sub.driverName || '' : '';
       };
-      const styleRow = (row: ExcelJS.Row, fill: boolean) => {
+      const styleRow = (
+        row: ExcelJS.Row,
+        fill: 'yellow' | 'red' | 'blue' | null,
+      ) => {
         row.eachCell((cell) => {
           cell.border = allBorder;
           cell.alignment = { vertical: 'middle', horizontal: 'center' };
-          if (fill) cell.fill = yellowFill;
+          if (fill === 'yellow') cell.fill = yellowFill;
+          else if (fill === 'red') cell.fill = redFill;
+          else if (fill === 'blue') cell.fill = blueFill;
         });
+      };
+
+      // Màu cho từng dòng claim của container: có claim KD2 → CLAIM/KV cũ đỏ, KD2 xanh.
+      const claimFill = (cl: any, claims: any[]): 'red' | 'blue' | null => {
+        const hasKD2 = claims.some((x: any) => x.claimType === 'KD2');
+        if (!hasKD2) return null;
+        if (cl.claimType === 'KD2') return 'blue';
+        if (cl.claimType === 'CLAIM' || cl.claimType === 'KV') return 'red';
+        return null;
       };
 
       let stt = 0;
@@ -894,7 +920,7 @@ export class SubmissionsService {
                 claimedAt: cl ? this.fmtVN(cl.createdAt) : '',
                 keoVe: cl && cl.claimType === 'KV' ? 'x' : '',
               });
-              styleRow(row, yellow);
+              styleRow(row, yellow ? 'yellow' : null);
               if (firstRowNum === null) firstRowNum = row.number;
             }
             if (members.length > 1 && firstRowNum !== null) {
@@ -919,7 +945,7 @@ export class SubmissionsService {
                 claimedAt: this.fmtVN(cl.createdAt),
                 keoVe: cl.claimType === 'KV' ? 'x' : '',
               });
-              styleRow(row, true);
+              styleRow(row, claimFill(cl, mClaims) || 'yellow');
             }
           }
           continue;
@@ -956,8 +982,14 @@ export class SubmissionsService {
                 claimedAt: this.fmtVN(clampClaims[0].createdAt),
                 keoVe: clampClaims[0].claimType === 'KV' ? 'x' : '',
               });
-              styleRow(rowMain, true);
-              styleRow(rowClamp, true);
+              styleRow(
+                rowMain,
+                claimFill(mainClaims[0], mainClaims) || 'yellow',
+              );
+              styleRow(
+                rowClamp,
+                claimFill(clampClaims[0], clampClaims) || 'yellow',
+              );
               wsCont.mergeCells(rowMain.number, 3, rowClamp.number, 3); // Loại
               wsCont.mergeCells(rowMain.number, 4, rowClamp.number, 4); // Kế hoạch
               wsCont.mergeCells(rowMain.number, 5, rowClamp.number, 5); // Người chạy
@@ -977,7 +1009,7 @@ export class SubmissionsService {
                   claimedAt: this.fmtVN(cl.createdAt),
                   keoVe: cl.claimType === 'KV' ? 'x' : '',
                 });
-                styleRow(row, true);
+                styleRow(row, claimFill(cl, memberClaims) || 'yellow');
               }
             }
             continue;
@@ -1000,7 +1032,7 @@ export class SubmissionsService {
             claimedAt: '',
             keoVe: c.keoVe ? 'x' : '',
           });
-          styleRow(row, false);
+          styleRow(row, null);
           continue;
         }
 
@@ -1015,7 +1047,7 @@ export class SubmissionsService {
             claimedAt: this.fmtVN(cl.createdAt),
             keoVe: cl.claimType === 'KV' ? 'x' : '',
           });
-          styleRow(row, yellow);
+          styleRow(row, claimFill(cl, cClaims) || (yellow ? 'yellow' : null));
         }
       }
     }

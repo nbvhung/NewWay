@@ -770,6 +770,11 @@ export class ZaloBotService {
 
     if (pending.length === 0) {
       if (claimed.length === 1) {
+        if ((claimed[0] as any).keoVe) {
+          // Container đã kéo về → reset + claim lại (tag KD2) cho lái xe hiện tại
+          await this.resetAndReclaim(chatId, zaloUserId, claimed[0], session);
+          return;
+        }
         await this.setupReEntry(
           chatId,
           zaloUserId,
@@ -1728,6 +1733,34 @@ export class ZaloBotService {
     }
   }
 
+  /**
+   * Container đã kéo về (keoVe=true) được đọc lại → tự reset như chưa ghi nhận
+   * (bỏ submissionId + cờ keoVe) rồi claim lại cho lái xe hiện tại với tag KD2.
+   * Lịch sử container_claims cũ (CLAIM/KV) + submission cũ vẫn được giữ.
+   */
+  private async resetAndReclaim(
+    chatId: string,
+    zaloUserId: string,
+    container: ContainerImport,
+    session: any,
+  ): Promise<void> {
+    if (container.bundleId && container.shippingLineId) {
+      await this.containerImportService.resetBundleKeoVe(
+        container.bundleId,
+        container.shippingLineId,
+      );
+    } else if (container.shippingLineId) {
+      await this.containerImportService.resetKeoVeByCode(
+        container.containerCode,
+        container.shippingLineId,
+      );
+    }
+    await this.upsertContainer(chatId, zaloUserId, container, session, {
+      allowClaimed: true,
+      claimType: 'KD2',
+    });
+  }
+
   private async upsertContainer(
     chatId: string,
     zaloUserId: string,
@@ -1741,10 +1774,11 @@ export class ZaloBotService {
       | 'bundleId'
     >,
     session: any,
-    opts?: { fromClamp?: boolean; allowClaimed?: boolean },
+    opts?: { fromClamp?: boolean; allowClaimed?: boolean; claimType?: string },
   ): Promise<void> {
     const fromClamp = !!opts?.fromClamp;
     const allowClaimed = !!opts?.allowClaimed;
+    const claimType = opts?.claimType || (fromClamp ? 'CLAMP' : 'CLAIM');
     try {
       const user = await this.usersRepository.findOne({
         where: { id: session.userId },
@@ -1877,14 +1911,14 @@ export class ZaloBotService {
         await this.containerImportService.recordClaims(
           members.map((m) => m.id),
           submission.id,
-          fromClamp ? 'CLAMP' : 'CLAIM',
+          claimType,
         );
       } else {
         await this.containerImportService.claim(container.id, submission.id);
         await this.containerImportService.recordClaims(
           [container.id],
           submission.id,
-          fromClamp ? 'CLAMP' : 'CLAIM',
+          claimType,
         );
       }
 
