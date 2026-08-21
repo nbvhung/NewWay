@@ -298,7 +298,10 @@ export class SubmissionsService {
 
   /** Load salary components (lương cứng, chuyên cần, phụ cấp...) cho tháng để xuất Excel. */
   private async loadSalaryComponents(month: number, year: number) {
-    const settings = await this.salarySettingsRepository.findOne({ order: { id: 'ASC' } });
+    const settings = await this.salarySettingsRepository.findOne({
+      where: {},
+      order: { id: 'ASC' },
+    });
     const fixedSalaryDefault = Number(settings?.fixedSalary) || 0;
     const attendanceBonusDefault = Number(settings?.attendanceBonus) || 0;
     const standardDays = Number(settings?.standardDays) || 26;

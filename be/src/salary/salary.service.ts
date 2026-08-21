@@ -37,6 +37,7 @@ export class SalaryService {
 
   async getSettings(): Promise<SalarySettings> {
     let settings = await this.settingsRepository.findOne({
+      where: {},
       order: { id: 'ASC' },
     });
     if (!settings) {
