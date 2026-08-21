@@ -12,12 +12,13 @@ import { CompletedPlansTab } from '@/components/admin/CompletedPlansTab';
 import { MonthlyPlansTab } from '@/components/admin/MonthlyPlansTab';
 import { ContainerCodesTab } from '@/components/admin/ContainerCodesTab';
 import { ChatHistoryTab } from '@/components/admin/ChatHistoryTab';
+import { SalaryTab } from '@/components/admin/SalaryTab';
 import { usersApi } from '@/lib/api-users';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { routesApi } from '@/lib/api-routes';
 import { User, ShippingLine, Route } from '@/types';
 
-type Tab = 'data' | 'users' | 'shipping-lines' | 'routes' | 'monthly-plans' | 'completed-plans' | 'container-codes' | 'chat';
+type Tab = 'data' | 'users' | 'shipping-lines' | 'routes' | 'monthly-plans' | 'completed-plans' | 'container-codes' | 'chat' | 'salary';
 
 const ALL_TABS: (role?: string) => { key: Tab; label: string; icon: string }[] = (role) => [
   { key: 'data', label: role === 'ops' ? 'Thống kê' : role === 'hr' ? 'Lương chuyến' : 'Tất cả dữ liệu', icon: '📊' },
@@ -28,6 +29,7 @@ const ALL_TABS: (role?: string) => { key: Tab; label: string; icon: string }[] =
   { key: 'completed-plans', label: 'Kế hoạch đã hoàn thành', icon: '✅' },
   { key: 'routes', label: 'Quản lý tuyến đường', icon: '🛤️' },
   { key: 'chat', label: 'Lịch sử chat', icon: '💬' },
+  { key: 'salary', label: 'Thành phần Lương', icon: '💰' },
 ];
 
 export default function AdminPage() {
@@ -42,6 +44,7 @@ export default function AdminPage() {
     if (t.key === 'container-codes' && user?.role !== 'ops' && user?.role !== 'admin' && user?.role !== 'supper_admin') return false;
     if (t.key === 'users' && user?.role !== 'admin' && user?.role !== 'supper_admin') return false;
     if (t.key === 'chat' && user?.role !== 'admin' && user?.role !== 'supper_admin' && user?.role !== 'ops') return false;
+    if (t.key === 'salary' && user?.role !== 'hr' && user?.role !== 'admin' && user?.role !== 'supper_admin') return false;
     return true;
   });
   const [activeTab, setActiveTab] = useState<Tab>('data');
@@ -154,6 +157,13 @@ export default function AdminPage() {
         <ChatHistoryTab
           allUsers={allUsers}
           currentUser={user}
+          toast={toast}
+        />
+      )}
+      {activeTab === 'salary' && (
+        <SalaryTab
+          currentUser={user}
+          allUsers={allUsers}
           toast={toast}
         />
       )}

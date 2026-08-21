@@ -1,4 +1,5 @@
-import { IsString, IsOptional, MinLength, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsNumber, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -7,7 +8,9 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['laixe', 'ops', 'admin', 'supper_admin', 'hr', 'disabled'], { message: 'Vai trò không hợp lệ' })
+  @IsIn(['laixe', 'ops', 'admin', 'supper_admin', 'hr', 'disabled'], {
+    message: 'Vai trò không hợp lệ',
+  })
   role?: string;
 
   @IsOptional()
@@ -33,4 +36,16 @@ export class UpdateUserDto {
   @IsOptional()
   @IsIn([0, 1], { message: 'Bot Zalo không hợp lệ' })
   zaloBot?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Phụ cấp nhà xa không hợp lệ' })
+  @Min(0)
+  allowanceFarHome?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Phụ cấp chờ đóng hàng không hợp lệ' })
+  @Min(0)
+  allowanceWaitLoading?: number;
 }

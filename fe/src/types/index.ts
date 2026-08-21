@@ -8,6 +8,8 @@ export interface User {
   sdt: string;
   zaloId?: string | null;
   zaloBot?: number;
+  allowanceFarHome?: number;
+  allowanceWaitLoading?: number;
   createdAt?: string;
 }
 
@@ -79,4 +81,40 @@ export interface EditHistory {
   editedByName: string;
   changes: string;
   editedAt: string;
+}
+
+export interface SalarySettings {
+  id: number;
+  fixedSalary: number;
+  attendanceBonus: number;
+  standardDays: number;
+}
+
+export interface SalaryRecordItem {
+  id: number;
+  driverId: number;
+  fullName: string;
+  username: string;
+  soXe: string;
+  stt: string;
+  ngayCong: number;
+  standardDays: number;
+  fixedSalary: number;
+  attendanceBonus: number;
+  chuyenCan: number;
+  allowanceFarHome: number;
+  allowanceWaitLoadingRate: number;
+  waitLoadingCount: number;
+  allowanceWaitLoading: number;
+  daysOff: number[];
+  luongKhoan: number;
+  tip: number;
+  total: number;
+}
+
+export interface SalaryRecordsResponse {
+  settings: SalarySettings;
+  month: number;
+  year: number;
+  records: SalaryRecordItem[];
 }

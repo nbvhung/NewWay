@@ -1,4 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+} from 'typeorm';
 
 @Entity('users')
 export class User {
@@ -26,11 +31,35 @@ export class User {
   @Column({ name: 'sdt', length: 20, default: '' })
   sdt: string;
 
-  @Column({ name: 'zalo_id', type: 'varchar', length: 100, nullable: true, default: null })
+  @Column({
+    name: 'zalo_id',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    default: null,
+  })
   zaloId: string | null;
 
   @Column({ name: 'zalo_bot', type: 'int', default: 0 })
   zaloBot: number;
+
+  @Column({
+    name: 'allowance_far_home',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    default: 0,
+  })
+  allowanceFarHome: number;
+
+  @Column({
+    name: 'allowance_wait_loading',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    default: 0,
+  })
+  allowanceWaitLoading: number;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

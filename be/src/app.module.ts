@@ -13,6 +13,7 @@ import { ContainerImportModule } from './container-import/container-import.modul
 import { ZaloBotModule } from './zalo-bot/zalo-bot.module';
 import { ZaloMessagesModule } from './zalo-messages/zalo-messages.module';
 import { SettingsModule } from './settings/settings.module';
+import { SalaryModule } from './salary/salary.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 @Module({
@@ -30,6 +31,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     ZaloBotModule,
     ZaloMessagesModule,
     SettingsModule,
+    SalaryModule,
   ],
   providers: [
     {

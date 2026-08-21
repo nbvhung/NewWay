@@ -10,13 +10,26 @@ import { Route } from '../database/entities/route.entity';
 import { User } from '../database/entities/user.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { ContainerClaim } from '../database/entities/container-claim.entity';
+import { SalarySettings } from '../database/entities/salary-settings.entity';
+import { SalaryRecord } from '../database/entities/salary-record.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Submission, EditHistory, ShippingLine, Route, User, ContainerImport, ContainerClaim]),
+    TypeOrmModule.forFeature([
+      Submission,
+      EditHistory,
+      ShippingLine,
+      Route,
+      User,
+      ContainerImport,
+      ContainerClaim,
+      SalarySettings,
+      SalaryRecord,
+    ]),
     SettingsModule,
   ],
   controllers: [SubmissionsController],
   providers: [SubmissionsService],
+  exports: [SubmissionsService],
 })
 export class SubmissionsModule {}

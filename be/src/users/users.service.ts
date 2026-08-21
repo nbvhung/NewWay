@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
@@ -44,13 +49,18 @@ export class UsersService {
   }
 
   async create(dto: CreateUserDto, currentRole: string) {
-    const existing = await this.usersRepository.findOne({ where: { username: dto.username.trim() } });
+    const existing = await this.usersRepository.findOne({
+      where: { username: dto.username.trim() },
+    });
     if (existing) {
       throw new BadRequestException('Tên đăng nhập đã tồn tại');
     }
 
     let validRole = dto.role || 'laixe';
-    if ((currentRole === 'ops' || currentRole === 'hr') && validRole !== 'laixe') {
+    if (
+      (currentRole === 'ops' || currentRole === 'hr') &&
+      validRole !== 'laixe'
+    ) {
       throw new ForbiddenException('Bạn chỉ có thể tạo tài khoản lái xe');
     }
     if (currentRole === 'admin' && validRole === 'supper_admin') {
@@ -74,7 +84,12 @@ export class UsersService {
     return result;
   }
 
-  async update(id: number, dto: UpdateUserDto, currentRole: string, currentUserId: number) {
+  async update(
+    id: number,
+    dto: UpdateUserDto,
+    currentRole: string,
+    currentUserId: number,
+  ) {
     const target = await this.usersRepository.findOne({ where: { id } });
     if (!target) {
       throw new NotFoundException('Không tìm thấy người dùng');
@@ -91,7 +106,10 @@ export class UsersService {
 
     if (dto.fullName) target.fullName = dto.fullName.trim();
     if (dto.role) {
-      if ((currentRole === 'ops' || currentRole === 'hr') && dto.role !== 'laixe') {
+      if (
+        (currentRole === 'ops' || currentRole === 'hr') &&
+        dto.role !== 'laixe'
+      ) {
         throw new ForbiddenException('Bạn chỉ có thể sửa tài khoản lái xe');
       }
       if (currentRole === 'admin' && dto.role === 'supper_admin') {
@@ -107,6 +125,10 @@ export class UsersService {
     if (dto.sdt !== undefined) target.sdt = dto.sdt.trim();
     if (dto.zaloId !== undefined) target.zaloId = dto.zaloId.trim() || null;
     if (dto.zaloBot !== undefined) target.zaloBot = dto.zaloBot;
+    if (dto.allowanceFarHome !== undefined)
+      target.allowanceFarHome = dto.allowanceFarHome;
+    if (dto.allowanceWaitLoading !== undefined)
+      target.allowanceWaitLoading = dto.allowanceWaitLoading;
 
     const saved = await this.usersRepository.save(target);
     const { passwordHash, ...result } = saved;
@@ -162,7 +184,10 @@ export class UsersService {
       throw new NotFoundException('Không tìm thấy người dùng');
     }
 
-    if ((currentRole === 'ops' || currentRole === 'hr') && target.role !== 'laixe') {
+    if (
+      (currentRole === 'ops' || currentRole === 'hr') &&
+      target.role !== 'laixe'
+    ) {
       throw new ForbiddenException('Bạn chỉ có thể xóa tài khoản lái xe');
     }
     if (currentRole === 'admin' && target.role === 'supper_admin') {
