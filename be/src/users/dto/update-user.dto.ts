@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsIn, IsNumber, Min } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsNumber, Min, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdateUserDto {
@@ -48,4 +48,8 @@ export class UpdateUserDto {
   @IsNumber({}, { message: 'Phụ cấp chờ đóng hàng không hợp lệ' })
   @Min(0)
   allowanceWaitLoading?: number;
+
+  @IsOptional()
+  @IsBoolean({ message: 'Phụ cấp xe cũ không hợp lệ' })
+  oldCar?: boolean;
 }

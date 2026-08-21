@@ -44,6 +44,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const [fixedSalary, setFixedSalary] = useState('');
   const [attendanceBonus, setAttendanceBonus] = useState('');
   const [standardDays, setStandardDays] = useState('');
+  const [oldCarAllowance, setOldCarAllowance] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
 
   // Form tài xế
@@ -54,11 +55,13 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     allowanceWaitLoadingRate: '',
     waitLoadingCount: '',
     daysOff: '',
+    hasOldCar: false,
   });
 
   // Giá trị nền tài xế (sửa trong tab này)
   const [baseFarHome, setBaseFarHome] = useState('');
   const [baseWaitLoading, setBaseWaitLoading] = useState('');
+  const [baseOldCar, setBaseOldCar] = useState(false);
   const [savingBase, setSavingBase] = useState(false);
 
   const loadData = async () => {
@@ -71,6 +74,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       setFixedSalary(fmtMoney(data.settings?.fixedSalary));
       setAttendanceBonus(fmtMoney(data.settings?.attendanceBonus));
       setStandardDays(String(data.settings?.standardDays ?? 26));
+      setOldCarAllowance(fmtMoney(data.settings?.oldCarAllowance));
     } catch (e: any) {
       toast(e?.response?.data?.message || e?.message || 'Không thể tải dữ liệu', 'error');
     } finally {
@@ -94,9 +98,10 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const pickDriver = (id: number | null) => {
     setSelectedId(id);
     if (id == null) {
-      setForm({ fixedSalary: '', attendanceBonus: '', allowanceFarHome: '', allowanceWaitLoadingRate: '', waitLoadingCount: '', daysOff: '' });
+      setForm({ fixedSalary: '', attendanceBonus: '', allowanceFarHome: '', allowanceWaitLoadingRate: '', waitLoadingCount: '', daysOff: '', hasOldCar: false });
       setBaseFarHome('');
       setBaseWaitLoading('');
+      setBaseOldCar(false);
       return;
     }
     const rec = records.find(r => r.driverId === id);
@@ -108,9 +113,11 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       allowanceWaitLoadingRate: fmtMoney(rec?.allowanceWaitLoadingRate),
       waitLoadingCount: String(rec?.waitLoadingCount ?? 0),
       daysOff: (rec?.daysOff || []).join(', '),
+      hasOldCar: rec?.hasOldCar || false,
     });
     setBaseFarHome(fmtMoney(drv?.allowanceFarHome));
     setBaseWaitLoading(fmtMoney(drv?.allowanceWaitLoading));
+    setBaseOldCar(drv?.oldCar || false);
   };
 
   const saveSettings = async () => {
@@ -120,6 +127,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         fixedSalary: Number(fixedSalary.replace(/[^\d]/g, '')) || 0,
         attendanceBonus: Number(attendanceBonus.replace(/[^\d]/g, '')) || 0,
         standardDays: Number(standardDays) || 26,
+        oldCarAllowance: Number(oldCarAllowance.replace(/[^\d]/g, '')) || 0,
       });
       toast('Đã lưu giá trị chung', 'success');
       loadData();
@@ -144,6 +152,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         allowanceWaitLoadingRate: Number(waitLoadingRateValue) || 0,
         waitLoadingCount: Number(waitLoadingCountValue) || 0,
         daysOff: daysOffList,
+        hasOldCar: form.hasOldCar,
       });
       toast(`Đã lưu cho ${selectedDriver.fullName}`, 'success');
       loadData();
@@ -161,6 +170,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       await usersApi.update(selectedDriver.id, {
         allowanceFarHome: Number(baseFarHome.replace(/[^\d]/g, '')) || 0,
         allowanceWaitLoading: Number(baseWaitLoading.replace(/[^\d]/g, '')) || 0,
+        oldCar: baseOldCar,
       });
       toast(`Đã lưu giá trị nền cho ${selectedDriver.fullName}`, 'success');
     } catch (e: any) {
@@ -181,7 +191,9 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const luongKhoan = selectedRecord?.luongKhoan || 0;
   const tip = selectedRecord?.tip || 0;
   const allowanceWaitLoading = waitLoadingRateValue * waitLoadingCountValue;
-  const total = luongKhoan + fixedSalaryValue + chuyenCan + allowanceFarHomeValue + allowanceWaitLoading + tip;
+  const oldCarAllowanceValue = Number(oldCarAllowance.replace(/[^\d]/g, '')) || 0;
+  const allowanceOldCar = form.hasOldCar ? oldCarAllowanceValue : 0;
+  const total = luongKhoan + fixedSalaryValue + chuyenCan + allowanceFarHomeValue + allowanceWaitLoading + allowanceOldCar + tip;
 
   const inputCls = "w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]";
   const labelCls = "block text-xs font-medium text-[#64748b] mb-1.5";
@@ -191,7 +203,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       {/* Giá trị chung */}
       <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
         <h3 className="text-base font-bold mb-4 flex items-center gap-2">💰 Giá trị chung toàn công ty</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className={labelCls}>Lương cứng (VNĐ/tháng)</label>
             <input value={fixedSalary} onChange={e => setFixedSalary(e.target.value)} inputMode="numeric" placeholder="7.000.000" className={inputCls} />
@@ -203,6 +215,10 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           <div>
             <label className={labelCls}>Số ngày công chuẩn</label>
             <input value={standardDays} onChange={e => setStandardDays(e.target.value)} inputMode="numeric" placeholder="26" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Phụ cấp xe cũ (VNĐ/tháng)</label>
+            <input value={oldCarAllowance} onChange={e => setOldCarAllowance(e.target.value)} inputMode="numeric" placeholder="0" className={inputCls} />
           </div>
         </div>
         <button onClick={saveSettings} disabled={savingSettings}
@@ -299,6 +315,14 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                     <label className={labelCls}>Ngày nghỉ (cách nhau dấu phẩy)</label>
                     <input value={form.daysOff} onChange={e => setForm(f => ({ ...f, daysOff: e.target.value }))} placeholder="VD: 2, 8, 15" className={inputCls} />
                   </div>
+                  <div className="flex flex-col justify-end pb-1">
+                    <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
+                      <input type="checkbox" checked={form.hasOldCar} onChange={e => setForm(f => ({ ...f, hasOldCar: e.target.checked }))}
+                        className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                      🚚 Xe cũ
+                    </label>
+                    <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceOldCar)} ₫</p>
+                  </div>
                 </div>
 
                 <button onClick={saveRecord} disabled={saving}
@@ -318,6 +342,13 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                       <label className={labelCls}>Phụ cấp chờ đóng hàng mặc định</label>
                       <input value={baseWaitLoading} onChange={e => setBaseWaitLoading(e.target.value)} inputMode="numeric" className={inputCls} />
                     </div>
+                  </div>
+                  <div className="mt-3">
+                    <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
+                      <input type="checkbox" checked={baseOldCar} onChange={e => setBaseOldCar(e.target.checked)}
+                        className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                      🚚 Xe cũ mặc định
+                    </label>
                   </div>
                   <button onClick={saveBase} disabled={savingBase}
                     className="mt-3 px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer disabled:opacity-50">

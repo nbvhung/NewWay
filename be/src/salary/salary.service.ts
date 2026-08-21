@@ -45,6 +45,7 @@ export class SalaryService {
         fixedSalary: 7000000,
         attendanceBonus: 0,
         standardDays: 26,
+        oldCarAllowance: 0,
       });
     }
     return settings;
@@ -57,6 +58,8 @@ export class SalaryService {
       settings.attendanceBonus = dto.attendanceBonus;
     if (dto.standardDays !== undefined)
       settings.standardDays = dto.standardDays;
+    if (dto.oldCarAllowance !== undefined)
+      settings.oldCarAllowance = dto.oldCarAllowance;
     return this.settingsRepository.save(settings);
   }
 
@@ -97,6 +100,7 @@ export class SalaryService {
       allowanceFarHome: prev?.allowanceFarHome ?? user.allowanceFarHome ?? 0,
       allowanceWaitLoadingRate:
         prev?.allowanceWaitLoadingRate ?? user.allowanceWaitLoading ?? 0,
+      hasOldCar: prev?.hasOldCar ?? user.oldCar ?? false,
       waitLoadingCount: 0,
       daysOff: [],
     });
@@ -112,6 +116,7 @@ export class SalaryService {
     allowanceFarHome: number;
     allowanceWaitLoading: number;
     chuyenCan: number;
+    allowanceOldCar: number;
   } {
     const ngayCong =
       this.daysInMonth(record.month, record.year) -
@@ -127,6 +132,7 @@ export class SalaryService {
       allowanceWaitLoading:
         (Number(record.allowanceWaitLoadingRate) || 0) *
         (record.waitLoadingCount || 0),
+      allowanceOldCar: record.hasOldCar ? Number(settings.oldCarAllowance) || 0 : 0,
       chuyenCan,
     };
   }
@@ -161,6 +167,7 @@ export class SalaryService {
         components.chuyenCan +
         components.allowanceFarHome +
         components.allowanceWaitLoading +
+        components.allowanceOldCar +
         tip;
 
       records.push({
@@ -179,6 +186,8 @@ export class SalaryService {
         allowanceWaitLoadingRate: Number(record.allowanceWaitLoadingRate) || 0,
         waitLoadingCount: record.waitLoadingCount || 0,
         allowanceWaitLoading: components.allowanceWaitLoading,
+        hasOldCar: record.hasOldCar || false,
+        allowanceOldCar: components.allowanceOldCar,
         daysOff: record.daysOff || [],
         luongKhoan,
         tip,
@@ -203,6 +212,7 @@ export class SalaryService {
       record.allowanceWaitLoadingRate = dto.allowanceWaitLoadingRate;
     if (dto.waitLoadingCount !== undefined)
       record.waitLoadingCount = dto.waitLoadingCount;
+    if (dto.hasOldCar !== undefined) record.hasOldCar = dto.hasOldCar;
     if (dto.daysOff !== undefined) record.daysOff = dto.daysOff;
     return this.recordsRepository.save(record);
   }

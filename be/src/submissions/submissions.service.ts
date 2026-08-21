@@ -305,6 +305,7 @@ export class SubmissionsService {
     const fixedSalaryDefault = Number(settings?.fixedSalary) || 0;
     const attendanceBonusDefault = Number(settings?.attendanceBonus) || 0;
     const standardDays = Number(settings?.standardDays) || 26;
+    const oldCarAllowance = Number(settings?.oldCarAllowance) || 0;
 
     const records = await this.salaryRecordsRepository.find({ where: { month, year } });
     const recordMap = new Map<number, SalaryRecord>();
@@ -320,6 +321,7 @@ export class SubmissionsService {
       chuyenCan: number;
       allowanceFarHome: number;
       allowanceWaitLoading: number;
+      allowanceOldCar: number;
     }>();
     for (const d of drivers) {
       const rec = recordMap.get(d.id);
@@ -331,11 +333,13 @@ export class SubmissionsService {
       const daysOff = rec?.daysOff?.length || 0;
       const ngayCong = daysInMonth - daysOff;
       const chuyenCan = ngayCong >= standardDays ? attendanceBonus : 0;
+      const hasOldCar = rec ? rec.hasOldCar : d.oldCar;
       result.set(d.id, {
         fixedSalary,
         chuyenCan,
         allowanceFarHome,
         allowanceWaitLoading: allowanceWaitLoadingRate * waitLoadingCount,
+        allowanceOldCar: hasOldCar ? oldCarAllowance : 0,
       });
     }
     return { settings, standardDays, components: result };
@@ -1148,6 +1152,7 @@ export class SubmissionsService {
           { header: 'Chuyên cần', key: 'chuyenCan', width: 16 },
           { header: 'Phụ cấp nhà xa', key: 'phuCapNhaXa', width: 16 },
           { header: 'Phụ cấp chờ đóng hàng', key: 'phuCapChoDong', width: 18 },
+          { header: 'Phụ cấp xe cũ', key: 'phuCapXeCu', width: 16 },
           { header: 'Tổng thanh toán', key: 'tongThanhToan', width: 16 },
           { header: 'Tàu tăng cường', key: 'tangCuong', width: 12 },
           { header: 'Tàu Lễ, Tết', key: 'leTet', width: 12 },
@@ -1184,7 +1189,7 @@ export class SubmissionsService {
 
           let rowIdx = 0;
           let sumH20 = 0, sumH40 = 0, sumV20 = 0, sumV40 = 0, sumV20fr = 0, sumV40fr = 0, sumVsl = 0, sumKv = 0, sumTip = 0, sumSoChuyen = 0, sumLuong = 0, sumTongThanhToan = 0;
-          const comp = salaryComp.components.get(driver.id) || { fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0 };
+          const comp = salaryComp.components.get(driver.id) || { fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0, allowanceOldCar: 0 };
 
           for (const [planName, group] of planGroups) {
             const sl = group.sl;
@@ -1232,6 +1237,7 @@ export class SubmissionsService {
               chuyenCan: '',
               phuCapNhaXa: '',
               phuCapChoDong: '',
+              phuCapXeCu: '',
               tongThanhToan: tongThanhToan,
               tangCuong: sl?.tangCuong ? 'x' : '',
               leTet: sl?.leTet ? 'x' : '',
@@ -1268,7 +1274,8 @@ export class SubmissionsService {
             chuyenCan: comp.chuyenCan || 0,
             phuCapNhaXa: comp.allowanceFarHome || 0,
             phuCapChoDong: comp.allowanceWaitLoading || 0,
-            tongThanhToan: sumTongThanhToan + comp.fixedSalary + comp.chuyenCan + comp.allowanceFarHome + comp.allowanceWaitLoading,
+            phuCapXeCu: comp.allowanceOldCar || 0,
+            tongThanhToan: sumTongThanhToan + comp.fixedSalary + comp.chuyenCan + comp.allowanceFarHome + comp.allowanceWaitLoading + comp.allowanceOldCar,
             tangCuong: '',
             leTet: '',
           });
@@ -1285,6 +1292,7 @@ export class SubmissionsService {
           wsDriver.getColumn(18).numFmt = '#,##0';
           wsDriver.getColumn(19).numFmt = '#,##0';
           wsDriver.getColumn(20).numFmt = '#,##0';
+          wsDriver.getColumn(21).numFmt = '#,##0';
         }
       }
 
@@ -1313,6 +1321,7 @@ export class SubmissionsService {
         { header: 'Chuyên cần', key: 'chuyenCan', width: 16 },
         { header: 'Phụ cấp nhà xa', key: 'phuCapNhaXa', width: 16 },
         { header: 'Phụ cấp chờ đóng hàng', key: 'phuCapChoDong', width: 18 },
+        { header: 'Phụ cấp xe cũ', key: 'phuCapXeCu', width: 16 },
         { header: 'Tổng thanh toán', key: 'tongThanhToan', width: 16 },
         { header: 'Tàu tăng cường', key: 'tangCuong', width: 12 },
         { header: 'Tàu Lễ, Tết', key: 'leTet', width: 12 },
@@ -1364,8 +1373,8 @@ export class SubmissionsService {
           const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
           const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
           const luong = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
-          const comp = salaryComp.components.get(driver.id) || { fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0 };
-          const tongThanhToan = luong + tip * 1000 + comp.fixedSalary + comp.chuyenCan + comp.allowanceFarHome + comp.allowanceWaitLoading;
+          const comp = salaryComp.components.get(driver.id) || { fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0, allowanceOldCar: 0 };
+          const tongThanhToan = luong + tip * 1000 + comp.fixedSalary + comp.chuyenCan + comp.allowanceFarHome + comp.allowanceWaitLoading + comp.allowanceOldCar;
 
           rowIdx++;
           const row = wsSummary.addRow({
@@ -1389,6 +1398,7 @@ export class SubmissionsService {
             chuyenCan: comp.chuyenCan || 0,
             phuCapNhaXa: comp.allowanceFarHome || 0,
             phuCapChoDong: comp.allowanceWaitLoading || 0,
+            phuCapXeCu: comp.allowanceOldCar || 0,
             tongThanhToan: tongThanhToan,
             tangCuong: sl?.tangCuong ? 'x' : '',
             leTet: sl?.leTet ? 'x' : '',
@@ -1409,6 +1419,7 @@ export class SubmissionsService {
         wsSummary.getColumn(18).numFmt = '#,##0';
         wsSummary.getColumn(19).numFmt = '#,##0';
         wsSummary.getColumn(20).numFmt = '#,##0';
+        wsSummary.getColumn(21).numFmt = '#,##0';
       }
     }
 
@@ -1445,6 +1456,7 @@ export class SubmissionsService {
           { header: 'Chuyên cần', key: 'chuyenCan', width: 16 },
           { header: 'Phụ cấp nhà xa', key: 'phuCapNhaXa', width: 16 },
           { header: 'Phụ cấp chờ đóng hàng', key: 'phuCapChoDong', width: 18 },
+          { header: 'Phụ cấp xe cũ', key: 'phuCapXeCu', width: 16 },
           { header: 'Tổng thanh toán', key: 'tongThanhToan', width: 16 },
           { header: 'Tàu tăng cường', key: 'tangCuong', width: 12 },
           { header: 'Tàu Lễ, Tết', key: 'leTet', width: 12 },
@@ -1482,7 +1494,7 @@ export class SubmissionsService {
 
           let rowIdx = 0;
           let sumH20 = 0, sumH40 = 0, sumV20 = 0, sumV40 = 0, sumV20fr = 0, sumV40fr = 0, sumVsl = 0, sumKv = 0, sumTip = 0, sumSoChuyen = 0, sumLuong = 0, sumTongThanhToan = 0;
-          const comp = salaryComp.components.get(driver.id) || { fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0 };
+          const comp = salaryComp.components.get(driver.id) || { fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0, allowanceOldCar: 0 };
 
           for (const [planName, group] of planGroups) {
             const sl = group.sl;
@@ -1530,6 +1542,7 @@ export class SubmissionsService {
               chuyenCan: '',
               phuCapNhaXa: '',
               phuCapChoDong: '',
+              phuCapXeCu: '',
               tongThanhToan: tongThanhToan,
               tangCuong: sl?.tangCuong ? 'x' : '',
               leTet: sl?.leTet ? 'x' : '',
@@ -1577,6 +1590,7 @@ export class SubmissionsService {
         wsDriver.getColumn(14).numFmt = '#,##0';
         wsDriver.getColumn(15).numFmt = '#,##0';
         wsDriver.getColumn(16).numFmt = '#,##0';
+        wsDriver.getColumn(20).numFmt = '#,##0';
       }
     }
 
@@ -1647,6 +1661,7 @@ export class SubmissionsService {
         { header: 'Chuyên cần', key: 'chuyenCan', width: 16 },
         { header: 'Phụ cấp nhà xa', key: 'phuCapNhaXa', width: 16 },
         { header: 'Phụ cấp chờ đóng hàng', key: 'phuCapChoDong', width: 18 },
+        { header: 'Phụ cấp xe cũ', key: 'phuCapXeCu', width: 16 },
         { header: 'Tổng thanh toán', key: 'tongThanhToan', width: 16 },
       ];
     } else {
@@ -1717,7 +1732,7 @@ export class SubmissionsService {
     }
 
     let rowIdx = 0;
-    let sumH20 = 0, sumH40 = 0, sumV20 = 0, sumV40 = 0, sumV20fr = 0, sumV40fr = 0, sumVsl = 0, sumKv = 0, sumTip = 0, sumSoChuyen = 0, sumLuong = 0, sumLuongCung = 0, sumChuyenCan = 0, sumPhuCapNhaXa = 0, sumPhuCapChoDong = 0, sumTongThanhToan = 0;
+    let sumH20 = 0, sumH40 = 0, sumV20 = 0, sumV40 = 0, sumV20fr = 0, sumV40fr = 0, sumVsl = 0, sumKv = 0, sumTip = 0, sumSoChuyen = 0, sumLuong = 0, sumLuongCung = 0, sumChuyenCan = 0, sumPhuCapNhaXa = 0, sumPhuCapChoDong = 0, sumPhuCapXeCu = 0, sumTongThanhToan = 0;
     for (const driver of allDrivers) {
       const d = driverDataMap.get(driver.id);
       const h20 = d?.h20 || 0;
@@ -1730,11 +1745,11 @@ export class SubmissionsService {
       const tip = d?.tip || 0;
       const kv = d?.kv || 0;
       const salary = showLuong ? (d?.salary || 0) : 0;
-      const comp = salaryComp.components.get(driver.id) || { fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0 };
-      const tongThanhToan = showLuong ? (salary + tip * 1000 + comp.fixedSalary + comp.chuyenCan + comp.allowanceFarHome + comp.allowanceWaitLoading) : 0;
+      const comp = salaryComp.components.get(driver.id) || { fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0, allowanceOldCar: 0 };
+      const tongThanhToan = showLuong ? (salary + tip * 1000 + comp.fixedSalary + comp.chuyenCan + comp.allowanceFarHome + comp.allowanceWaitLoading + comp.allowanceOldCar) : 0;
       const soChuyen = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4) + kv;
 
-      sumH20 += h20; sumH40 += h40; sumV20 += v20; sumV40 += v40; sumV20fr += v20fr; sumV40fr += v40fr; sumVsl += vsl; sumKv += kv; sumTip += tip; sumSoChuyen += soChuyen; sumLuong += salary; sumLuongCung += comp.fixedSalary; sumChuyenCan += comp.chuyenCan; sumPhuCapNhaXa += comp.allowanceFarHome; sumPhuCapChoDong += comp.allowanceWaitLoading; sumTongThanhToan += tongThanhToan;
+      sumH20 += h20; sumH40 += h40; sumV20 += v20; sumV40 += v40; sumV20fr += v20fr; sumV40fr += v40fr; sumVsl += vsl; sumKv += kv; sumTip += tip; sumSoChuyen += soChuyen; sumLuong += salary; sumLuongCung += comp.fixedSalary; sumChuyenCan += comp.chuyenCan; sumPhuCapNhaXa += comp.allowanceFarHome; sumPhuCapChoDong += comp.allowanceWaitLoading; sumPhuCapXeCu += comp.allowanceOldCar; sumTongThanhToan += tongThanhToan;
 
       rowIdx++;
       if (role === 'hr') {
@@ -1758,6 +1773,7 @@ export class SubmissionsService {
           chuyenCan: comp.chuyenCan || 0,
           phuCapNhaXa: comp.allowanceFarHome || 0,
           phuCapChoDong: comp.allowanceWaitLoading || 0,
+          phuCapXeCu: comp.allowanceOldCar || 0,
           tongThanhToan: tongThanhToan || 0,
         });
         row.eachCell((cell) => {
@@ -1823,6 +1839,7 @@ export class SubmissionsService {
         chuyenCan: sumChuyenCan,
         phuCapNhaXa: sumPhuCapNhaXa,
         phuCapChoDong: sumPhuCapChoDong,
+        phuCapXeCu: sumPhuCapXeCu,
         tongThanhToan: sumTongThanhToan,
       });
       totalRow.eachCell((cell) => {
@@ -1978,7 +1995,7 @@ export class SubmissionsService {
       });
       salaryRow.height = 28;
 
-      const salaryMap = new Map<string, { luong: number; luongCung: number; chuyenCan: number; phuCapNhaXa: number; phuCapChoDong: number; tongThanhToan: number }>();
+      const salaryMap = new Map<string, { luong: number; luongCung: number; chuyenCan: number; phuCapNhaXa: number; phuCapChoDong: number; phuCapXeCu: number; tongThanhToan: number }>();
       for (const sub of submissions as any[]) {
         const name = sub.user?.fullName || sub.driverName;
         const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
@@ -1996,22 +2013,23 @@ export class SubmissionsService {
         const tip = parseFloat(sub.tip) || 0;
         const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
         const luong = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
-        const comp = salaryComp.components.get(sub.userId) || { fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0 };
-        const prev = salaryMap.get(name) || { luong: 0, luongCung: 0, chuyenCan: 0, phuCapNhaXa: 0, phuCapChoDong: 0, tongThanhToan: 0 };
+        const comp = salaryComp.components.get(sub.userId) || { fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0, allowanceOldCar: 0 };
+        const prev = salaryMap.get(name) || { luong: 0, luongCung: 0, chuyenCan: 0, phuCapNhaXa: 0, phuCapChoDong: 0, phuCapXeCu: 0, tongThanhToan: 0 };
         salaryMap.set(name, {
           luong: prev.luong + luong,
           luongCung: comp.fixedSalary,
           chuyenCan: comp.chuyenCan,
           phuCapNhaXa: comp.allowanceFarHome,
           phuCapChoDong: comp.allowanceWaitLoading,
-          tongThanhToan: prev.tongThanhToan + luong + tip * 1000 + comp.fixedSalary + comp.chuyenCan + comp.allowanceFarHome + comp.allowanceWaitLoading,
+          phuCapXeCu: comp.allowanceOldCar,
+          tongThanhToan: prev.tongThanhToan + luong + tip * 1000 + comp.fixedSalary + comp.chuyenCan + comp.allowanceFarHome + comp.allowanceWaitLoading + comp.allowanceOldCar,
         });
       }
 
       let idx = 0;
       for (const [name, val] of salaryMap) {
         idx++;
-        const row = wsSalary.addRow({ name, luong: val.luong, luongCung: val.luongCung, chuyenCan: val.chuyenCan, phuCapNhaXa: val.phuCapNhaXa, phuCapChoDong: val.phuCapChoDong, tongThanhToan: val.tongThanhToan });
+        const row = wsSalary.addRow({ name, luong: val.luong, luongCung: val.luongCung, chuyenCan: val.chuyenCan, phuCapNhaXa: val.phuCapNhaXa, phuCapChoDong: val.phuCapChoDong, phuCapXeCu: val.phuCapXeCu, tongThanhToan: val.tongThanhToan });
         row.eachCell((cell) => {
           cell.border = allBorder;
           cell.alignment = { vertical: 'middle' };
@@ -2028,6 +2046,7 @@ export class SubmissionsService {
       wsSalary.getColumn(5).numFmt = '#,##0';
       wsSalary.getColumn(6).numFmt = '#,##0';
       wsSalary.getColumn(7).numFmt = '#,##0';
+      wsSalary.getColumn(8).numFmt = '#,##0';
     }
 
     let filename: string;

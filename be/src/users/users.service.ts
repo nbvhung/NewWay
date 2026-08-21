@@ -78,6 +78,7 @@ export class UsersService {
       sdt: dto.sdt?.trim() || '',
       zaloId: dto.zaloId?.trim() || null,
       zaloBot: dto.zaloBot ?? 0,
+      oldCar: dto.oldCar ?? false,
     });
     const saved = await this.usersRepository.save(user);
     const { passwordHash, ...result } = saved;
@@ -129,6 +130,7 @@ export class UsersService {
       target.allowanceFarHome = dto.allowanceFarHome;
     if (dto.allowanceWaitLoading !== undefined)
       target.allowanceWaitLoading = dto.allowanceWaitLoading;
+    if (dto.oldCar !== undefined) target.oldCar = dto.oldCar;
 
     const saved = await this.usersRepository.save(target);
     const { passwordHash, ...result } = saved;

@@ -66,6 +66,9 @@ export class SalaryRecord {
   @Column({ name: 'wait_loading_count', type: 'int', default: 0 })
   waitLoadingCount: number;
 
+  @Column({ name: 'has_old_car', type: 'boolean', default: false })
+  hasOldCar: boolean;
+
   @Column({ name: 'days_off', type: 'jsonb', nullable: true, default: [] })
   daysOff: number[];
 

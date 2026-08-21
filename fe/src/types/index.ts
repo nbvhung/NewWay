@@ -10,6 +10,7 @@ export interface User {
   zaloBot?: number;
   allowanceFarHome?: number;
   allowanceWaitLoading?: number;
+  oldCar?: boolean;
   createdAt?: string;
 }
 
@@ -88,6 +89,7 @@ export interface SalarySettings {
   fixedSalary: number;
   attendanceBonus: number;
   standardDays: number;
+  oldCarAllowance: number;
 }
 
 export interface SalaryRecordItem {
@@ -106,6 +108,8 @@ export interface SalaryRecordItem {
   allowanceWaitLoadingRate: number;
   waitLoadingCount: number;
   allowanceWaitLoading: number;
+  hasOldCar: boolean;
+  allowanceOldCar: number;
   daysOff: number[];
   luongKhoan: number;
   tip: number;

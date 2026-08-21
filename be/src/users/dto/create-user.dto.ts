@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, MinLength, IsOptional, IsIn } from 'class-validator';
+import { IsString, IsNotEmpty, MinLength, IsOptional, IsIn, IsBoolean } from 'class-validator';
 
 export class CreateUserDto {
   @IsString()
@@ -37,4 +37,8 @@ export class CreateUserDto {
   @IsOptional()
   @IsIn([0, 1], { message: 'Bot Zalo không hợp lệ' })
   zaloBot?: number;
+
+  @IsOptional()
+  @IsBoolean({ message: 'Phụ cấp xe cũ không hợp lệ' })
+  oldCar?: boolean;
 }

@@ -32,6 +32,15 @@ export class SalarySettings {
   @Column({ name: 'standard_days', type: 'int', default: 26 })
   standardDays: number;
 
+  @Column({
+    name: 'old_car_allowance',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    default: 0,
+  })
+  oldCarAllowance: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

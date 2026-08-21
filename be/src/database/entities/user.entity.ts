@@ -61,6 +61,9 @@ export class User {
   })
   allowanceWaitLoading: number;
 
+  @Column({ name: 'old_car', type: 'boolean', default: false })
+  oldCar: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
