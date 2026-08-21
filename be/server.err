@@ -1,0 +1,4 @@
+[31m[Nest] 6012  - [39m08/19/2026, 2:50:33 PM [31m  ERROR[39m [38;5;3m[ZaloApiService] [39m[31mgetUpdates failed: Request failed with status code 429[39m
+[31m[Nest] 6012  - [39m08/19/2026, 2:50:33 PM [31m  ERROR[39m [38;5;3m[ZaloPollingService] [39m[31mgetUpdates/handleEvent lỗi (1): Request failed with status code 429 — backoff 15s[39m
+[31m[Nest] 6012  - [39m08/19/2026, 2:50:54 PM [31m  ERROR[39m [38;5;3m[ZaloApiService] [39m[31mgetUpdates failed: Request failed with status code 429[39m
+[31m[Nest] 6012  - [39m08/19/2026, 2:50:54 PM [31m  ERROR[39m [38;5;3m[ZaloPollingService] [39m[31mgetUpdates/handleEvent lỗi (1): Request failed with status code 429 — backoff 15s[39m
