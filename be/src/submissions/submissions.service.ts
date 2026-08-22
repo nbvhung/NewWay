@@ -893,8 +893,11 @@ export class SubmissionsService {
         { header: 'Loại', key: 'type', width: 16 },
         { header: 'Kế hoạch', key: 'plan', width: 28 },
         { header: 'Người chạy', key: 'driver', width: 22 },
+        { header: 'Biển số xe', key: 'plate', width: 14 },
         { header: 'Thời gian ghi nhận', key: 'claimedAt', width: 20 },
+        { header: 'Vệ sinh lại', key: 'vsl', width: 10 },
         { header: 'Kéo Về', key: 'keoVe', width: 8 },
+        { header: 'Ghi chú', key: 'note', width: 14 },
       ];
       const contHeader = wsCont.getRow(1);
       contHeader.eachCell((cell) => {
@@ -934,6 +937,10 @@ export class SubmissionsService {
       const driverOf = (cl: any) => {
         const sub = cl?.submissionRef;
         return sub ? sub.user?.fullName || sub.driverName || '' : '';
+      };
+      const plateOf = (cl: any) => {
+        const sub = cl?.submissionRef;
+        return sub?.user?.soXe || '';
       };
       const styleRow = (
         row: ExcelJS.Row,
@@ -984,8 +991,11 @@ export class SubmissionsService {
                 type: firstRowNum === null ? m.type : '',
                 plan: firstRowNum === null ? planName : '',
                 driver: firstRowNum === null ? (cl ? driverOf(cl) : '') : '',
+                plate: firstRowNum === null ? (cl ? plateOf(cl) : '') : '',
                 claimedAt: cl ? this.fmtVN(cl.createdAt) : '',
+                vsl: cl && cl.claimType === 'VSL' ? 'x' : '',
                 keoVe: cl && cl.claimType === 'KV' ? 'x' : '',
+                note: cl && cl.claimType === 'KD2' ? 'Kéo Lần 2' : '',
               });
               styleRow(row, yellow ? 'yellow' : null);
               if (firstRowNum === null) firstRowNum = row.number;
@@ -995,6 +1005,7 @@ export class SubmissionsService {
               wsCont.mergeCells(firstRowNum, 3, lastRowNum, 3); // Loại
               wsCont.mergeCells(firstRowNum, 4, lastRowNum, 4); // Kế hoạch
               wsCont.mergeCells(firstRowNum, 5, lastRowNum, 5); // Người chạy
+              wsCont.mergeCells(firstRowNum, 6, lastRowNum, 6); // Biển số xe
             }
             continue;
           }
@@ -1009,8 +1020,11 @@ export class SubmissionsService {
                 type: m.type,
                 plan: planName,
                 driver: driverOf(cl),
+                plate: plateOf(cl),
                 claimedAt: this.fmtVN(cl.createdAt),
+                vsl: cl.claimType === 'VSL' ? 'x' : '',
                 keoVe: cl.claimType === 'KV' ? 'x' : '',
+                note: cl.claimType === 'KD2' ? 'Kéo Lần 2' : '',
               });
               styleRow(row, claimFill(cl, mClaims) || 'yellow');
             }
@@ -1037,8 +1051,11 @@ export class SubmissionsService {
                 type: `${main.type} / ${clamp.type}`,
                 plan: planNameFor(main),
                 driver: mSub ? mSub.user?.fullName || mSub.driverName || '' : '',
+                plate: mSub?.user?.soXe || '',
                 claimedAt: this.fmtVN(mainClaims[0].createdAt),
+                vsl: mainClaims[0].claimType === 'VSL' ? 'x' : '',
                 keoVe: mainClaims[0].claimType === 'KV' ? 'x' : '',
+                note: mainClaims[0].claimType === 'KD2' ? 'Kéo Lần 2' : '',
               });
               const rowClamp = wsCont.addRow({
                 stt: '',
@@ -1046,8 +1063,11 @@ export class SubmissionsService {
                 type: '',
                 plan: '',
                 driver: '',
+                plate: '',
                 claimedAt: this.fmtVN(clampClaims[0].createdAt),
+                vsl: clampClaims[0].claimType === 'VSL' ? 'x' : '',
                 keoVe: clampClaims[0].claimType === 'KV' ? 'x' : '',
+                note: clampClaims[0].claimType === 'KD2' ? 'Kéo Lần 2' : '',
               });
               styleRow(
                 rowMain,
@@ -1060,6 +1080,7 @@ export class SubmissionsService {
               wsCont.mergeCells(rowMain.number, 3, rowClamp.number, 3); // Loại
               wsCont.mergeCells(rowMain.number, 4, rowClamp.number, 4); // Kế hoạch
               wsCont.mergeCells(rowMain.number, 5, rowClamp.number, 5); // Người chạy
+              wsCont.mergeCells(rowMain.number, 6, rowClamp.number, 6); // Biển số xe
               continue;
             }
             // fallback: bên nào ghi nhiều lần → render từng dòng vàng
@@ -1073,8 +1094,11 @@ export class SubmissionsService {
                   type: member.type,
                   plan: planNameFor(member),
                   driver: driverOf(cl),
+                  plate: plateOf(cl),
                   claimedAt: this.fmtVN(cl.createdAt),
+                  vsl: cl.claimType === 'VSL' ? 'x' : '',
                   keoVe: cl.claimType === 'KV' ? 'x' : '',
+                  note: cl.claimType === 'KD2' ? 'Kéo Lần 2' : '',
                 });
                 styleRow(row, claimFill(cl, memberClaims) || 'yellow');
               }
@@ -1096,8 +1120,11 @@ export class SubmissionsService {
             type: c.type,
             plan: planNameFor(c),
             driver: '',
+            plate: '',
             claimedAt: '',
+            vsl: c.veSinhLai ? 'x' : '',
             keoVe: c.keoVe ? 'x' : '',
+            note: '',
           });
           styleRow(row, null);
           continue;
@@ -1111,8 +1138,11 @@ export class SubmissionsService {
             type: c.type,
             plan: planNameFor(c),
             driver: driverOf(cl),
+            plate: plateOf(cl),
             claimedAt: this.fmtVN(cl.createdAt),
+            vsl: cl.claimType === 'VSL' ? 'x' : '',
             keoVe: cl.claimType === 'KV' ? 'x' : '',
+            note: cl.claimType === 'KD2' ? 'Kéo Lần 2' : '',
           });
           styleRow(row, claimFill(cl, cClaims) || (yellow ? 'yellow' : null));
         }
