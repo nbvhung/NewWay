@@ -64,6 +64,15 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     await this.safe(() => this.client.del(key), undefined);
   }
 
+  /** Tăng đếm (INCR), tùy chọn đặt TTL. Trả giá trị sau khi tăng (0 nếu lỗi). */
+  async incr(key: string, ttl?: number): Promise<number> {
+    return this.safe(async () => {
+      const n = await this.client.incr(key);
+      if (ttl) await this.client.expire(key, ttl);
+      return n;
+    }, 0);
+  }
+
   /** Push vào cuối Redis LIST (FIFO). Trả số phần tử sau push (0 nếu lỗi). */
   async rpush(key: string, value: string): Promise<number> {
     return this.safe(() => this.client.rpush(key, value), 0);

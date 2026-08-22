@@ -93,17 +93,21 @@ export function EditSubmissionModal({ open, onClose, editForm, setEditForm, allS
           <div className="text-xs font-semibold text-[#64748b] mb-2">📜 Lịch sử chỉnh sửa ({submission.history.length} lần)</div>
           <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto">
             {submission.history.map(h => {
-              let changesHtml = '';
+              let entries: [string, any][] = [];
+              let rawFallback: string | null = null;
               try {
-                const c = JSON.parse(h.changes);
-                changesHtml = Object.entries(c).map(([k, v]: [string, any]) =>
-                  `<div>${FIELD_LABELS[k] || k}: <span class="text-[#ef4444]">"${v.old || '(trống)'}"</span> → <span class="text-[#10b981]">"${v.new || '(trống)'}"</span></div>`
-                ).join('');
-              } catch { changesHtml = h.changes; }
+                entries = Object.entries(JSON.parse(h.changes));
+              } catch { rawFallback = h.changes; }
               return (
                 <div key={h.id} className="px-3.5 py-2.5 bg-[#f8fafc] rounded-lg border-l-3 border-l-[#f59e0b] text-[11px]">
                   <div className="text-[#64748b] mb-1">🕐 {fmtDate(h.editedAt)} — bởi {h.editedByName}</div>
-                  <div dangerouslySetInnerHTML={{ __html: changesHtml }} />
+                  {rawFallback != null ? (
+                    <div>{rawFallback}</div>
+                  ) : (
+                    entries.map(([k, v]: [string, any]) => (
+                      <div key={k}>{FIELD_LABELS[k] || k}: <span className="text-[#ef4444]">&quot;{v.old || '(trống)'}&quot;</span> → <span className="text-[#10b981]">&quot;{v.new || '(trống)'}&quot;</span></div>
+                    ))
+                  )}
                 </div>
               );
             })}

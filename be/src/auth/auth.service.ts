@@ -20,20 +20,38 @@ export class AuthService {
   ) {}
 
   async login(username: string, password: string) {
+    const failKey = `login_fail:${username}`;
+    const failCount = parseInt((await this.redisService.get(failKey)) || '0', 10);
+    if (failCount >= this.MAX_LOGIN_FAILS) {
+      throw new UnauthorizedException(
+        'Tài khoản bị tạm khóa do nhập sai quá nhiều lần. Vui lòng thử lại sau 15 phút.',
+      );
+    }
+
     const user = await this.usersRepository.findOne({ where: { username } });
     if (!user) {
+      await this.registerLoginFail(failKey);
       throw new UnauthorizedException('Tên đăng nhập hoặc mật khẩu không đúng');
     }
 
     const valid = bcrypt.compareSync(password, user.passwordHash);
     if (!valid) {
+      await this.registerLoginFail(failKey);
       throw new UnauthorizedException('Tên đăng nhập hoặc mật khẩu không đúng');
     }
     if (user.role === 'disabled') {
       throw new UnauthorizedException('Tài khoản đã bị khóa');
     }
 
+    await this.redisService.del(failKey);
     return this.generateTokens(user);
+  }
+
+  private readonly MAX_LOGIN_FAILS = 5;
+  private readonly LOGIN_LOCK_TTL = 15 * 60;
+
+  private async registerLoginFail(key: string): Promise<void> {
+    await this.redisService.incr(key, this.LOGIN_LOCK_TTL);
   }
 
   async refresh(userId: number) {

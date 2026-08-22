@@ -1,5 +1,6 @@
 import { Controller, Post, Get, Body, Req, Res, UseGuards, HttpCode, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
@@ -14,6 +15,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.login(dto.username, dto.password);
     this.setTokenCookies(res, result.accessToken, result.refreshToken);
@@ -22,6 +24,7 @@ export class AuthController {
 
   @Post('mobile-login')
   @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   async mobileLogin(@Body() dto: MobileLoginDto) {
     return this.authService.login(dto.username, dto.password);
   }
