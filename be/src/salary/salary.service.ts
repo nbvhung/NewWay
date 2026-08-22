@@ -46,6 +46,7 @@ export class SalaryService {
         attendanceBonus: 0,
         standardDays: 26,
         oldCarAllowance: 0,
+        bhxhNld: 0,
       });
     }
     return settings;
@@ -60,6 +61,7 @@ export class SalaryService {
       settings.standardDays = dto.standardDays;
     if (dto.oldCarAllowance !== undefined)
       settings.oldCarAllowance = dto.oldCarAllowance;
+    if (dto.bhxhNld !== undefined) settings.bhxhNld = dto.bhxhNld;
     return this.settingsRepository.save(settings);
   }
 
@@ -101,6 +103,7 @@ export class SalaryService {
       allowanceWaitLoadingRate:
         prev?.allowanceWaitLoadingRate ?? user.allowanceWaitLoading ?? 0,
       hasOldCar: prev?.hasOldCar ?? user.oldCar ?? false,
+      chiHo: 0,
       waitLoadingCount: 0,
       daysOff: [],
     });
@@ -161,6 +164,7 @@ export class SalaryService {
       const components = this.computeComponents(record, settings);
       const luongKhoan = Number(summary.totalSalary) || 0;
       const tip = Number(summary.totalTip) || 0;
+      const chiHo = Number(record.chiHo) || 0;
       const total =
         luongKhoan +
         components.fixedSalary +
@@ -168,7 +172,8 @@ export class SalaryService {
         components.allowanceFarHome +
         components.allowanceWaitLoading +
         components.allowanceOldCar +
-        tip;
+        tip -
+        chiHo;
 
       records.push({
         id: record.id,
@@ -188,6 +193,7 @@ export class SalaryService {
         allowanceWaitLoading: components.allowanceWaitLoading,
         hasOldCar: record.hasOldCar || false,
         allowanceOldCar: components.allowanceOldCar,
+        chiHo,
         daysOff: record.daysOff || [],
         luongKhoan,
         tip,
@@ -213,6 +219,7 @@ export class SalaryService {
     if (dto.waitLoadingCount !== undefined)
       record.waitLoadingCount = dto.waitLoadingCount;
     if (dto.hasOldCar !== undefined) record.hasOldCar = dto.hasOldCar;
+    if (dto.chiHo !== undefined) record.chiHo = dto.chiHo;
     if (dto.daysOff !== undefined) record.daysOff = dto.daysOff;
     return this.recordsRepository.save(record);
   }

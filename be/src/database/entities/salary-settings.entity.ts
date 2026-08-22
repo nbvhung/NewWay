@@ -41,6 +41,15 @@ export class SalarySettings {
   })
   oldCarAllowance: number;
 
+  @Column({
+    name: 'bhxh_nld',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    default: 0,
+  })
+  bhxhNld: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

@@ -46,6 +46,12 @@ export class UpdateSalaryRecordDto {
   hasOldCar?: boolean;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Chi hộ không hợp lệ' })
+  @Min(0)
+  chiHo?: number;
+
+  @IsOptional()
   @IsArray({ message: 'Ngày nghỉ không hợp lệ' })
   @ArrayUnique({ message: 'Ngày nghỉ bị trùng' })
   @IsInt({ each: true, message: 'Ngày nghỉ phải là số nguyên' })
@@ -78,4 +84,10 @@ export class UpdateSalarySettingsDto {
   @IsNumber({}, { message: 'Phụ cấp xe cũ không hợp lệ' })
   @Min(0)
   oldCarAllowance?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'BHXH - NLD không hợp lệ' })
+  @Min(0)
+  bhxhNld?: number;
 }

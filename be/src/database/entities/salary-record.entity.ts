@@ -69,6 +69,15 @@ export class SalaryRecord {
   @Column({ name: 'has_old_car', type: 'boolean', default: false })
   hasOldCar: boolean;
 
+  @Column({
+    name: 'chi_ho',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    default: 0,
+  })
+  chiHo: number;
+
   @Column({ name: 'days_off', type: 'jsonb', nullable: true, default: [] })
   daysOff: number[];
 

@@ -90,6 +90,7 @@ export interface SalarySettings {
   attendanceBonus: number;
   standardDays: number;
   oldCarAllowance: number;
+  bhxhNld: number;
 }
 
 export interface SalaryRecordItem {
@@ -110,6 +111,7 @@ export interface SalaryRecordItem {
   allowanceWaitLoading: number;
   hasOldCar: boolean;
   allowanceOldCar: number;
+  chiHo: number;
   daysOff: number[];
   luongKhoan: number;
   tip: number;
