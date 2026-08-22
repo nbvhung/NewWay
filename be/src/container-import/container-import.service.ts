@@ -318,9 +318,59 @@ export class ContainerImportService {
     return entity;
   }
 
+  /**
+   * Lấy thông tin claim (VSL/KV/KD2 + thời gian ghi nhận mới nhất) theo container.
+   * Dùng cho web (ContainerCodesTab) để hiển thị tag VSL/KV/KD2 và giờ tài xế nhập.
+   */
+  private async loadClaimInfo(
+    containerIds: number[],
+  ): Promise<
+    Map<number, { hasVsl: boolean; hasKv: boolean; hasKd2: boolean; claimedAt: Date | null }>
+  > {
+    const result = new Map<
+      number,
+      { hasVsl: boolean; hasKv: boolean; hasKd2: boolean; claimedAt: Date | null }
+    >();
+    const ids = [...new Set(containerIds.filter((id) => id != null))];
+    if (ids.length === 0) return result;
+    const claims = await this.containerClaimsRepository
+      .createQueryBuilder('cl')
+      .where('cl.containerImportId IN (:...ids)', { ids })
+      .orderBy('cl.createdAt', 'ASC')
+      .getMany();
+    const byContainer = new Map<number, ContainerClaim[]>();
+    for (const cl of claims) {
+      if (!byContainer.has(cl.containerImportId))
+        byContainer.set(cl.containerImportId, []);
+      byContainer.get(cl.containerImportId)!.push(cl);
+    }
+    for (const id of ids) {
+      const list = byContainer.get(id) || [];
+      const latest = list.length ? list[list.length - 1] : null;
+      result.set(id, {
+        hasVsl: list.some((c) => c.claimType === 'VSL'),
+        hasKv: list.some((c) => c.claimType === 'KV'),
+        hasKd2: list.some((c) => c.claimType === 'KD2'),
+        claimedAt: latest ? latest.createdAt : null,
+      });
+    }
+    return result;
+  }
+
   async findAll(
     planId?: number,
-  ): Promise<Array<ContainerImport & { recordedBy?: string; importedByName?: string }>> {
+  ): Promise<
+    Array<
+      ContainerImport & {
+        recordedBy?: string;
+        importedByName?: string;
+        hasVsl?: boolean;
+        hasKv?: boolean;
+        hasKd2?: boolean;
+        claimedAt?: Date | null;
+      }
+    >
+  > {
     const qb = this.containerImportsRepository.createQueryBuilder('c');
     if (planId) qb.where('c.shippingLineId = :planId', { planId });
     qb.leftJoinAndSelect('c.submissionRef', 'sub')
@@ -331,13 +381,28 @@ export class ContainerImportService {
       .orderBy('c.createdAt', 'DESC')
       .take(5000);
     const rows = await qb.getMany();
+    const claimInfo = await this.loadClaimInfo(rows.map((r) => r.id));
     return rows.map((r) => {
       const sub: any = (r as any).submissionRef;
       const importer: any = (r as any).importedByRef;
       const recordedBy = r.submissionId
         ? sub?.user?.fullName || sub?.driverName || ''
         : '';
-      return { ...r, recordedBy, importedByName: importer?.fullName || '' };
+      const info = claimInfo.get(r.id) || {
+        hasVsl: false,
+        hasKv: false,
+        hasKd2: false,
+        claimedAt: null,
+      };
+      return {
+        ...r,
+        recordedBy,
+        importedByName: importer?.fullName || '',
+        hasVsl: info.hasVsl,
+        hasKv: info.hasKv,
+        hasKd2: info.hasKd2,
+        claimedAt: info.claimedAt || sub?.lastEditedAt || sub?.updatedAt || null,
+      };
     });
   }
 
@@ -454,11 +519,18 @@ export class ContainerImportService {
       .orderBy('c.containerCode', 'ASC')
       .take(200);
     const rows = await qb.getMany();
+    const claimInfo = await this.loadClaimInfo(rows.map((r) => r.id));
     return rows.map((r) => {
       const sub: any = (r as any).submissionRef;
       const plan: any = (r as any).shippingLineRef;
       const importer: any = (r as any).importedByRef;
       const recordedBy = sub ? sub.user?.fullName || sub.driverName || '' : '';
+      const info = claimInfo.get(r.id) || {
+        hasVsl: false,
+        hasKv: false,
+        hasKd2: false,
+        claimedAt: null,
+      };
       return {
         id: r.id,
         containerCode: r.containerCode,
@@ -470,6 +542,10 @@ export class ContainerImportService {
         importedByName: importer?.fullName || '',
         recorded: !!r.submissionId,
         recordedBy,
+        hasVsl: info.hasVsl,
+        hasKv: info.hasKv,
+        hasKd2: info.hasKd2,
+        claimedAt: info.claimedAt || sub?.lastEditedAt || sub?.updatedAt || null,
         plan: plan
           ? {
               id: plan.id,

@@ -11,6 +11,10 @@ export interface ContainerImport {
   phatSinh?: boolean;
   recordedBy?: string;
   importedByName?: string;
+  hasVsl?: boolean;
+  hasKv?: boolean;
+  hasKd2?: boolean;
+  claimedAt?: string | null;
   createdAt: string;
 }
 
@@ -25,6 +29,10 @@ export interface ContainerSearchResult {
   importedByName?: string;
   recorded: boolean;
   recordedBy: string | null;
+  hasVsl?: boolean;
+  hasKv?: boolean;
+  hasKd2?: boolean;
+  claimedAt?: string | null;
   plan: {
     id: number;
     name: string;

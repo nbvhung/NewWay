@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ShippingLine } from '@/types';
-import { fmtNgay } from '@/lib/utils';
+import { fmtNgay, fmtDateTime } from '@/lib/utils';
 import { containerImportApi, ContainerImport, ContainerSearchResult } from '@/lib/api-container-import';
 
 interface Props {
@@ -25,6 +25,20 @@ const planDisplayName = (p: ShippingLine) =>
   [p.name, p.soChuyen, p.routeName, fmtNgay(p.ngay)].filter(Boolean).join(' / ');
 
 const VALID_TYPES = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'VSL', 'TIP'];
+
+const CLAIM_TAGS: { key: 'hasVsl' | 'hasKv' | 'hasKd2'; label: string; cls: string }[] = [
+  { key: 'hasVsl', label: 'VSL', cls: 'bg-[rgba(139,92,246,0.15)] text-purple-700' },
+  { key: 'hasKv', label: 'KV', cls: 'bg-[rgba(245,158,11,0.15)] text-amber-700' },
+  { key: 'hasKd2', label: 'KD2', cls: 'bg-[rgba(14,165,233,0.15)] text-sky-700' },
+];
+
+const renderClaimTags = (r: { hasVsl?: boolean; hasKv?: boolean; hasKd2?: boolean }) => (
+  <>
+    {CLAIM_TAGS.filter(t => r[t.key]).map(t => (
+      <span key={t.label} className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${t.cls}`}>{t.label}</span>
+    ))}
+  </>
+);
 
 export function ContainerCodesTab({ allShippingLines, toast }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -256,6 +270,7 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-[#0f172a]">{r.containerCode}</span>
                     <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${TYPE_COLORS[r.type] || 'bg-[rgba(0,0,0,0.05)] text-[#64748b]'}`}>{r.type}</span>
+                    {renderClaimTags(r)}
                     {r.bundleId && (
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(14,165,233,0.15)] text-sky-700">🎁 {r.bundleId}</span>
                     )}
@@ -291,6 +306,7 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
                   Kế hoạch: {r.plan ? `${r.plan.name}${r.plan.completed ? ' (đã hoàn thành)' : ''}` : '—'}
                   {r.phatSinh && r.importedByName && <span> · Tài xế: {r.importedByName}</span>}
                   {r.recorded && <span> · Người ghi: {r.recordedBy || '—'}</span>}
+                  {r.recorded && r.claimedAt && <span> · Lúc: {fmtDateTime(r.claimedAt)}</span>}
                 </div>
               </div>
             ))}
@@ -386,12 +402,13 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
                       <th className="px-3 py-2 text-left font-semibold text-[10px] uppercase text-[#334155]">Container</th>
                       <th className="px-3 py-2 text-left font-semibold text-[10px] uppercase text-[#334155]">Trạng thái</th>
                       <th className="px-3 py-2 text-left font-semibold text-[10px] uppercase text-[#334155]">Người chạy</th>
+                      <th className="px-3 py-2 text-left font-semibold text-[10px] uppercase text-[#334155]">Ghi nhận</th>
                       <th className="px-3 py-2 text-right font-semibold text-[10px] uppercase text-[#334155]">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filtered.length === 0 && (
-                      <tr><td colSpan={4} className="text-center py-6 text-[#64748b] text-xs">Chưa có container</td></tr>
+                      <tr><td colSpan={5} className="text-center py-6 text-[#64748b] text-xs">Chưa có container</td></tr>
                     )}
                     {filtered.map(item => (
                       <tr key={item.id} className="border-t border-[rgba(0,0,0,0.05)] bg-[#f8fafc] hover:bg-[#f1f5f9]">
@@ -420,6 +437,9 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
                             : item.phatSinh && item.importedByName
                               ? item.importedByName
                               : ''}
+                        </td>
+                        <td className="px-3 py-2 align-middle">
+                          <div className="flex items-center gap-1">{renderClaimTags(item)}</div>
                         </td>
                         <td className="px-3 py-2 align-middle">
                           <div className="flex items-center justify-end gap-1.5">
