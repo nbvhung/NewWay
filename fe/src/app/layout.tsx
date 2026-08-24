@@ -3,7 +3,7 @@ import './globals.css';
 import { AuthProvider } from '@/providers/auth-provider';
 
 export const metadata: Metadata = {
-  title: 'NEW WAY Traco',
+  title: 'NEW WAY',
   description: 'Hệ thống xác nhận sản lượng New Way',
 };
 
