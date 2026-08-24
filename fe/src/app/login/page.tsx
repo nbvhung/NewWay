@@ -46,17 +46,17 @@ export default function LoginPage() {
 
       <div className="relative z-10 w-full max-w-[420px] bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-2xl p-10 sm:p-12 shadow-lg">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+          <div className="w-28 h-28 mx-auto mb-4 flex items-center justify-center">
             <Image
               src="/logo.png"
               alt="New Way Logo"
-              width={64}
-              height={64}
+              width={112}
+              height={112}
               className="rounded-2xl object-contain shadow-[0_8px_32px_rgba(26,86,219,0.4)]"
               priority
             />
           </div>
-          <h1 className="text-xl font-bold leading-tight">NEW WAY Traco</h1>
+          <h1 className="text-xl font-bold leading-tight">NEW WAY</h1>
           <p className="text-xs text-[#64748b] mt-1">Developed by AI Application & Digital Transformation Department</p>
         </div>
 
