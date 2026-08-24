@@ -50,6 +50,15 @@ export class SalarySettings {
   })
   bhxhNld: number;
 
+  @Column({
+    name: 'parking_hph2',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    default: 0,
+  })
+  parkingHph2: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

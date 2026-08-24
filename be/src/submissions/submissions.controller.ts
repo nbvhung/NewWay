@@ -138,4 +138,18 @@ export class SubmissionsController {
       year: year ? +year : undefined,
     });
   }
+
+  @Get('admin/export/luong-thang')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('hr', 'admin', 'supper_admin')
+  async exportLuongThang(
+    @Res() res: Response,
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+  ) {
+    const now = new Date();
+    const m = month ? parseInt(month) : now.getMonth() + 1;
+    const y = year ? parseInt(year) : now.getFullYear();
+    await this.submissionsService.exportSalaryMonthExcel(res, m, y);
+  }
 }

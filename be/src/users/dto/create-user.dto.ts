@@ -24,6 +24,10 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsString()
+  soMooc?: string;
+
+  @IsOptional()
+  @IsString()
   stt?: string;
 
   @IsOptional()

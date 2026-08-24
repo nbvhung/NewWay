@@ -46,6 +46,10 @@ export class UpdateSalaryRecordDto {
   hasOldCar?: boolean;
 
   @IsOptional()
+  @IsBoolean({ message: 'Gửi xe HPH 2 không hợp lệ' })
+  hasParkingHph2?: boolean;
+
+  @IsOptional()
   @Type(() => Number)
   @IsNumber({}, { message: 'Chi hộ không hợp lệ' })
   @Min(0)
@@ -90,4 +94,10 @@ export class UpdateSalarySettingsDto {
   @IsNumber({}, { message: 'BHXH - NLD không hợp lệ' })
   @Min(0)
   bhxhNld?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Tiền gửi xe HPH 2 không hợp lệ' })
+  @Min(0)
+  parkingHph2?: number;
 }

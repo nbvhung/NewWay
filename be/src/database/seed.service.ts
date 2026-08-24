@@ -87,6 +87,9 @@ export class SeedService implements OnModuleInit {
         fixedSalary: 7000000,
         attendanceBonus: 0,
         standardDays: 26,
+        oldCarAllowance: 0,
+        bhxhNld: 0,
+        parkingHph2: 0,
       });
       console.log('✅ Đã tạo cấu hình Thành phần Lương mặc định');
     }

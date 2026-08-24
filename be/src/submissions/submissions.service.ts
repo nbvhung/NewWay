@@ -306,6 +306,7 @@ export class SubmissionsService {
     const attendanceBonusDefault = Number(settings?.attendanceBonus) || 0;
     const standardDays = Number(settings?.standardDays) || 26;
     const oldCarAllowance = Number(settings?.oldCarAllowance) || 0;
+    const parkingHph2 = Number(settings?.parkingHph2) || 0;
 
     const records = await this.salaryRecordsRepository.find({ where: { month, year } });
     const recordMap = new Map<number, SalaryRecord>();
@@ -322,6 +323,9 @@ export class SubmissionsService {
       allowanceFarHome: number;
       allowanceWaitLoading: number;
       allowanceOldCar: number;
+      parkingHph2: number;
+      hasParkingHph2: boolean;
+      ngayCong: number;
     }>();
     for (const d of drivers) {
       const rec = recordMap.get(d.id);
@@ -334,12 +338,16 @@ export class SubmissionsService {
       const ngayCong = daysInMonth - daysOff;
       const chuyenCan = ngayCong >= standardDays ? attendanceBonus : 0;
       const hasOldCar = rec ? rec.hasOldCar : d.oldCar;
+      const hasParkingHph2 = rec ? rec.hasParkingHph2 : false;
       result.set(d.id, {
         fixedSalary,
         chuyenCan,
         allowanceFarHome,
         allowanceWaitLoading: allowanceWaitLoadingRate * waitLoadingCount,
         allowanceOldCar: hasOldCar ? oldCarAllowance : 0,
+        parkingHph2: hasParkingHph2 ? parkingHph2 : 0,
+        hasParkingHph2,
+        ngayCong,
       });
     }
     return { settings, standardDays, components: result };
@@ -1375,7 +1383,7 @@ export class SubmissionsService {
         const planGroups = new Map<string, { sl: any; subs: any[] }>();
         for (const sub of subs) {
           let key: string;
-          let sl: any;
+let sl: any;
           if (sub.shippingLineId) { key = `id:${sub.shippingLineId}`; sl = slMap.get(sub.shippingLineId); }
           else { key = `${sub.shippingLine}||${sub.route || ''}`; sl = null; }
           if (!planGroups.has(key)) planGroups.set(key, { sl, subs: [] });
@@ -2090,6 +2098,461 @@ export class SubmissionsService {
     } else {
       const today = new Date(); filename = `SanLuongXeNewWay_${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}.xlsx`;
     }
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  }
+
+  /** Đổi số tiền sang chữ tiếng Việt (VD: 21.730.000 → "Hai mươi mốt triệu bảy trăm ba mươi ngàn đồng./.") */
+  private vnMoneyToWords(num: number): string {
+    if (!num || num <= 0) return 'Không đồng';
+    const so = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+    const donVi = ['', 'ngàn', 'triệu', 'tỷ'];
+    const docBa = (n: number): string => {
+      let s = '';
+      const tram = Math.floor(n / 100);
+      const chuc = Math.floor((n % 100) / 10);
+      const don = n % 10;
+      if (tram > 0) {
+        s += so[tram] + ' trăm';
+        if (chuc === 0 && don > 0) s += ' linh';
+      }
+      if (chuc > 0) {
+        if (s) s += ' ';
+        if (chuc === 1) s += 'mười';
+        else s += so[chuc] + ' mươi';
+        if (don > 0) {
+          if (don === 1) s += ' mốt';
+          else if (don === 5) s += ' lăm';
+          else s += ' ' + so[don];
+        }
+      } else if (don > 0) {
+        if (s) s += ' ';
+        s += so[don];
+      }
+      return s;
+    };
+    let n = Math.floor(num);
+    const parts: string[] = [];
+    let idx = 0;
+    while (n > 0) {
+      const group = n % 1000;
+      if (group > 0) {
+        let g = docBa(group);
+        if (donVi[idx]) g += ' ' + donVi[idx];
+        parts.unshift(g);
+      }
+      n = Math.floor(n / 1000);
+      idx++;
+    }
+    let result = parts.join(' ');
+    result = result.charAt(0).toUpperCase() + result.slice(1);
+    return `${result} đồng./.`;
+  }
+
+  /**
+   * Xuất Excel "Lương Tháng" — 1 sheet BANG LUONG LX cho MỖI lái xe (tab Lương Tháng).
+   * Cấu trúc sheet theo file mẫu "Lương - Đội Xe - T{MM}.{YYYY}.xlsx".
+   */
+  async exportSalaryMonthExcel(res: Response, month: number, year: number) {
+    const settings = await this.salarySettingsRepository.findOne({
+      where: {},
+      order: { id: 'ASC' },
+    });
+    const fixedSalaryDefault = Number(settings?.fixedSalary) || 0;
+    const attendanceBonusDefault = Number(settings?.attendanceBonus) || 0;
+    const standardDays = Number(settings?.standardDays) || 26;
+    const oldCarAllowance = Number(settings?.oldCarAllowance) || 0;
+    const bhxhNld = Number(settings?.bhxhNld) || 0;
+    const parkingHph2 = Number(settings?.parkingHph2) || 0;
+
+    const records = await this.salaryRecordsRepository.find({ where: { month, year } });
+    const recordMap = new Map<number, SalaryRecord>();
+    for (const r of records) recordMap.set(r.driverId, r);
+
+    const allRoutes = await this.routesRepository.find();
+    const routeMap = new Map<string, { money: number; effectiveDate: string | null }>();
+    for (const r of allRoutes) {
+      routeMap.set(r.name, { money: Number(r.money) || 0, effectiveDate: r.effectiveDate || null });
+    }
+    const getRouteMoney = (name: string, planDate: string | null | undefined, frozenMoney?: number | null): number => {
+      if (frozenMoney !== null && frozenMoney !== undefined) return Number(frozenMoney);
+      const rt = routeMap.get(name);
+      if (!rt) return 0;
+      if (rt.effectiveDate && planDate && planDate < rt.effectiveDate) return 0;
+      return rt.money;
+    };
+
+    const allShippingLines = await this.shippingLinesRepository.find({ relations: { route: true } });
+    const slMap = new Map<number, ShippingLine>();
+    const slNameMap = new Map<string, ShippingLine>();
+    for (const sl of allShippingLines) {
+      slMap.set(sl.id, sl);
+      slNameMap.set(sl.name, sl);
+    }
+    const fmtNgay = (d: string | null | undefined) => d ? d.split('-').reverse().join('-') : '';
+    const planDisplayName = (sl: ShippingLine) => {
+      return [sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ');
+    };
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const drivers = await this.usersRepository.find({ where: { role: 'laixe' } });
+    drivers.sort((a, b) => (parseInt(a.stt) || 0) - (parseInt(b.stt) || 0) || a.fullName.localeCompare(b.fullName));
+
+    const allSubmissions = await this.submissionsRepository.find({ order: { createdAt: 'DESC' } });
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Hệ thống New Way';
+    workbook.created = new Date();
+    const usedSheetNames = new Set<string>();
+
+    const headerFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
+    const headerFont: Partial<ExcelJS.Font> = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+    const borderStyle: ExcelJS.Border = { style: 'thin', color: { argb: 'FFCCCCCC' } };
+    const allBorder: Partial<ExcelJS.Borders> = { top: borderStyle, left: borderStyle, bottom: borderStyle, right: borderStyle };
+
+    const vnNowParts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).formatToParts(new Date());
+    const vnDay = Number(vnNowParts.find(p => p.type === 'day')?.value);
+    const vnMonthNow = Number(vnNowParts.find(p => p.type === 'month')?.value);
+    const vnYearNow = Number(vnNowParts.find(p => p.type === 'year')?.value);
+
+    for (const driver of drivers) {
+      const rec = recordMap.get(driver.id);
+      const ws = workbook.addWorksheet(this.sanitizeSheetName(`${driver.fullName}${driver.soXe ? ` - ${driver.soXe}` : ''}`, usedSheetNames));
+
+      const fixedSalary = rec ? Number(rec.fixedSalary) || 0 : fixedSalaryDefault;
+      const attendanceBonus = rec ? Number(rec.attendanceBonus) || 0 : attendanceBonusDefault;
+      const chiHo = rec ? Number(rec.chiHo) || 0 : 0;
+      const daysOff = rec?.daysOff?.length || 0;
+      const ngayCong = daysInMonth - daysOff;
+      const hasOldCar = rec ? rec.hasOldCar : driver.oldCar;
+      const hasParkingHph2 = rec ? rec.hasParkingHph2 : false;
+
+      // --- Gom submissions theo plan (cùng plan), lọc theo tháng plan ---
+      const planGroups = new Map<string, { sl: ShippingLine | null; subs: any[] }>();
+      for (const sub of allSubmissions as any[]) {
+        if (sub.userId !== driver.id) continue;
+        const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
+        const planDateStr = sl?.ngay || null;
+        const refDate = planDateStr ? new Date(planDateStr) : new Date(sub.createdAt);
+        if (refDate.getMonth() + 1 !== month || refDate.getFullYear() !== year) continue;
+        let key: string;
+        if (sub.shippingLineId) {
+          key = `id:${sub.shippingLineId}`;
+        } else {
+          key = `${sub.shippingLine}||${sub.route || ''}`;
+        }
+        if (!planGroups.has(key)) planGroups.set(key, { sl: sl || null, subs: [] });
+        planGroups.get(key)!.subs.push(sub);
+      }
+
+      // --- Tạo line items (mỗi item = 1 tuyến con với đơn giá hiệu lực) ---
+      // item: { price, name, trips, money, leTet }
+      const items: { price: number; name: string; trips: number; money: number; leTet: boolean }[] = [];
+      let totalTip = 0;
+      let planTotalTrips = 0;
+      let planTotalMoney = 0;
+      let leTetTotalTrips = 0;
+      let leTetTotalMoney = 0;
+
+      for (const [key, group] of planGroups) {
+        const sl = group.sl;
+        const tenTuyen = group.subs[0].route || sl?.routeName || '';
+        const donGia = getRouteMoney(tenTuyen, sl?.ngay, sl?.frozenMoney);
+        let h20 = 0, h40 = 0, v20 = 0, v40 = 0, v20fr = 0, v40fr = 0, vsl = 0, kv = 0, tip = 0;
+        for (const sub of group.subs) {
+          h20 += parseFloat(sub.hang20) || 0;
+          h40 += parseFloat(sub.hang40) || 0;
+          v20 += parseFloat(sub.vo20) || 0;
+          v40 += parseFloat(sub.vo40) || 0;
+          v20fr += parseFloat(sub.vo20fr) || 0;
+          v40fr += parseFloat(sub.vo40fr) || 0;
+          vsl += parseFloat(sub.veSinhLai) || 0;
+          kv += parseFloat(sub.keoVe) || 0;
+          tip += parseFloat(sub.tip) || 0;
+        }
+        totalTip += tip * 1000;
+        const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+        const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
+        const effPrice = donGia * heSo;
+        const planName = sl
+          ? planDisplayName(sl) + (sl.tangCuong ? ' (TÀU TĂNG CƯỜNG)' : '')
+          : (key.split('||')[0] + (key.includes('||') ? ` - ${key.split('||')[1] || ''}` : ''));
+        const mainTrips = tong + kv;
+        const mainMoney = (tong + kv) * effPrice;
+        const vslPrice = 40000 * heSo;
+        const vslMoney = vsl * vslPrice;
+
+        const leTet = !!sl?.leTet;
+        if (mainTrips > 0) {
+          items.push({ price: effPrice, name: planName, trips: mainTrips, money: mainMoney, leTet });
+        }
+        if (vsl > 0) {
+          items.push({ price: vslPrice, name: 'Vệ sinh lại', trips: vsl, money: vslMoney, leTet });
+        }
+        if (leTet) {
+          leTetTotalTrips += mainTrips + vsl;
+          leTetTotalMoney += mainMoney + vslMoney;
+        } else {
+          planTotalTrips += mainTrips + vsl;
+          planTotalMoney += mainMoney + vslMoney;
+        }
+      }
+
+      // Gom theo đơn giá hiệu lực (tăng dần)
+      const groupByPrice = (list: typeof items) => {
+        const map = new Map<number, typeof items>();
+        for (const it of list) {
+          if (!map.has(it.price)) map.set(it.price, []);
+          map.get(it.price)!.push(it);
+        }
+        const prices = [...map.keys()].sort((a, b) => a - b);
+        return prices.map(p => ({ price: p, subs: map.get(p)! }));
+      };
+
+      // --- Các tổng mục ---
+      const tong4ChiHo = hasOldCar ? oldCarAllowance : 0;
+      const chuyenCan = ngayCong >= standardDays ? attendanceBonus : 0;
+      const tong4GuiXe = hasParkingHph2 ? parkingHph2 : 0;
+      const tong4 = tong4ChiHo + chuyenCan + totalTip + tong4GuiXe; // F44 = trống
+      const luongCoBan = fixedSalary;
+      const tongA = luongCoBan + planTotalMoney + leTetTotalMoney + tong4;
+      const tongGiamTru = bhxhNld + fixedSalary + chiHo; // F49 + F50 + F51
+      const luongConLai = tongA - tongGiamTru;
+
+      // Column widths
+      ws.getColumn(1).width = 6;  // STT
+      ws.getColumn(2).width = 12; // Ngày tháng
+      ws.getColumn(3).width = 45; // Tên tuyến
+      ws.getColumn(4).width = 14; // Đơn giá
+      ws.getColumn(5).width = 10; // Số chuyến
+      ws.getColumn(6).width = 16; // Thành tiền
+      ws.getColumn(7).width = 12; // Ghi chú
+
+      const labelBold = (cell: ExcelJS.Cell) => {
+        cell.font = { bold: true, size: 11 };
+      };
+
+      // Row 2: tiêu đề
+      ws.mergeCells(2, 1, 2, 7);
+      const r2 = ws.getRow(2);
+      r2.getCell(1).value = 'BẢNG THANH TOÁN LƯƠNG';
+      r2.getCell(1).font = { bold: true, size: 16 };
+      r2.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+      r2.height = 30;
+
+      // Row 3: tháng/năm
+      ws.mergeCells(3, 1, 3, 7);
+      const r3 = ws.getRow(3);
+      r3.getCell(1).value = `THÁNG ${String(month).padStart(2, '0')} NĂM ${year}`;
+      r3.getCell(1).font = { bold: true, size: 13 };
+      r3.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+      r3.height = 24;
+
+      // Row 4: Số đầu kéo + tên lái xe
+      ws.mergeCells(4, 1, 4, 2);
+      const r4 = ws.getRow(4);
+      r4.getCell(1).value = 'Số đầu kéo:';
+      labelBold(r4.getCell(1));
+      r4.getCell(3).value = driver.soXe || '';
+      ws.mergeCells(4, 5, 4, 7);
+      r4.getCell(5).value = driver.fullName;
+      r4.getCell(5).font = { bold: true, size: 12 };
+
+      // Row 5: Số Mooc + điện thoại
+      ws.mergeCells(5, 1, 5, 2);
+      const r5 = ws.getRow(5);
+      r5.getCell(1).value = 'Số Mooc:';
+      labelBold(r5.getCell(1));
+      r5.getCell(3).value = driver.soMooc || '';
+      r5.getCell(4).value = 'Điện thoại:';
+      labelBold(r5.getCell(4));
+      r5.getCell(6).value = driver.sdt || '';
+
+      // Row 6: A. TỔNG NGÀY ĐI LÀM/THÁNG
+      ws.mergeCells(6, 1, 6, 5);
+      const r6 = ws.getRow(6);
+      r6.getCell(1).value = 'A. TỔNG NGÀY ĐI LÀM/THÁNG:';
+      r6.getCell(1).font = { bold: true, size: 11 };
+      r6.getCell(6).value = ngayCong;
+      r6.getCell(6).numFmt = '#,##0';
+      r6.getCell(7).value = 'Ngày';
+
+      // Row 7: Tổng A
+      ws.mergeCells(7, 1, 7, 5);
+      const r7 = ws.getRow(7);
+      r7.getCell(6).value = tongA;
+      r7.getCell(6).numFmt = '#,##0';
+      r7.getCell(7).value = 'VND';
+
+      // Row 8: 1. Lương cơ bản/tháng
+      ws.mergeCells(8, 1, 8, 5);
+      const r8 = ws.getRow(8);
+      r8.getCell(1).value = '1. Lương cơ bản/tháng:';
+      r8.getCell(1).font = { bold: true, size: 11 };
+      r8.getCell(6).value = luongCoBan;
+      r8.getCell(6).numFmt = '#,##0';
+      r8.getCell(7).value = 'VND';
+
+      // Row 9: 2. Lương chuyến/tháng
+      ws.mergeCells(9, 1, 9, 4);
+      const r9 = ws.getRow(9);
+      r9.getCell(1).value = '2. Lương chuyến/tháng: Bảng chi tiết';
+      r9.getCell(1).font = { bold: true, size: 11 };
+      r9.getCell(5).value = planTotalTrips;
+      r9.getCell(5).numFmt = '#,##0';
+      r9.getCell(6).value = planTotalMoney;
+      r9.getCell(6).numFmt = '#,##0';
+      r9.getCell(7).value = 'VND';
+
+      // Row 10: header bảng chi tiết
+      const hRow = ws.getRow(10);
+      const headers = ['Số TT', 'Ngày tháng', 'Tên tuyến', 'Đơn giá', 'Số chuyến', 'Thành tiền', 'Ghi chú'];
+      headers.forEach((v, i) => {
+        const cell = hRow.getCell(i + 1);
+        cell.value = v;
+        cell.fill = headerFill;
+        cell.font = headerFont;
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = allBorder;
+      });
+      hRow.height = 22;
+
+      // Row 11+: chi tiết tuyến (gom theo đơn giá)
+      let rowIdx = 11;
+      let stt = 0;
+      const writeGroup = (group: { price: number; subs: typeof items }) => {
+        const sumTrips = group.subs.reduce((s, it) => s + it.trips, 0);
+        const sumMoney = group.subs.reduce((s, it) => s + it.money, 0);
+        const gr = ws.getRow(rowIdx);
+        gr.getCell(3).value = '—';
+        gr.getCell(4).value = group.price;
+        gr.getCell(4).numFmt = '#,##0';
+        gr.getCell(5).value = sumTrips;
+        gr.getCell(5).numFmt = '#,##0';
+        gr.getCell(6).value = sumMoney;
+        gr.getCell(6).numFmt = '#,##0';
+        gr.eachCell((cell) => {
+          cell.font = { bold: true, size: 10 };
+          cell.border = allBorder;
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        });
+        rowIdx++;
+        for (const it of group.subs) {
+          stt++;
+          const r = ws.getRow(rowIdx);
+          r.getCell(1).value = stt;
+          r.getCell(3).value = it.name;
+          r.getCell(5).value = it.trips;
+          r.getCell(5).numFmt = '#,##0';
+          r.getCell(6).value = it.money;
+          r.getCell(6).numFmt = '#,##0';
+          r.eachCell((cell) => {
+            cell.border = allBorder;
+            cell.alignment = { vertical: 'middle' };
+          });
+          rowIdx++;
+        }
+      };
+
+      const normalItems = items.filter(it => !it.leTet);
+      const leTetItems = items.filter(it => it.leTet);
+      for (const g of groupByPrice(normalItems)) writeGroup(g);
+
+      // Mục 3: Tiền lương ngày lễ, Tết
+      if (leTetItems.length > 0 || leTetTotalMoney > 0) {
+        ws.mergeCells(rowIdx, 1, rowIdx, 4);
+        const r = ws.getRow(rowIdx);
+        r.getCell(1).value = '3. Tiền lương Ngày lễ, Tết';
+        r.getCell(1).font = { bold: true, size: 11 };
+        r.getCell(5).value = leTetTotalTrips || '';
+        r.getCell(6).value = leTetTotalMoney || 0;
+        r.getCell(6).numFmt = '#,##0';
+        r.getCell(7).value = 'VND';
+        rowIdx++;
+        for (const g of groupByPrice(leTetItems)) writeGroup(g);
+      }
+
+      // Mục 4: Các khoản Lái xe đã chi hộ Công ty
+      ws.mergeCells(rowIdx, 1, rowIdx, 5);
+      const r4t = ws.getRow(rowIdx);
+      r4t.getCell(1).value = '4. Các khoản Lái xe đã chi hộ Công ty (Nếu có):';
+      r4t.getCell(1).font = { bold: true, size: 11 };
+      r4t.getCell(6).value = tong4;
+      r4t.getCell(6).numFmt = '#,##0';
+      r4t.getCell(7).value = 'VND';
+      rowIdx++;
+      const writeChiHoRow = (name: string, val: number | string, isTotal = false) => {
+        ws.mergeCells(rowIdx, 1, rowIdx, 5);
+        const r = ws.getRow(rowIdx);
+        r.getCell(1).value = name;
+        r.getCell(1).font = { size: 10 };
+        if (typeof val === 'number') {
+          r.getCell(6).value = val;
+          r.getCell(6).numFmt = '#,##0';
+        } else {
+          r.getCell(6).value = val;
+        }
+        rowIdx++;
+      };
+      writeChiHoRow('Hỗ trợ xe đời cũ', tong4ChiHo);
+      writeChiHoRow('Tiền chuyên cần', chuyenCan);
+      writeChiHoRow('Chi hộ tiền tip xe nâng tại các bãi, cảng.', totalTip);
+      writeChiHoRow('Chi hộ tiền gửi xe tại bãi 2 (HPH)', tong4GuiXe);
+      writeChiHoRow('Lương còn lại Tháng 6', '');
+
+      // Mục C: CÁC KHOẢN GIẢM TRỪ
+      ws.mergeCells(rowIdx, 1, rowIdx, 5);
+      const rC = ws.getRow(rowIdx);
+      rC.getCell(1).value = 'C. CÁC KHOẢN GIẢM TRỪ';
+      rC.getCell(1).font = { bold: true, size: 11 };
+      rC.getCell(6).value = tongGiamTru;
+      rC.getCell(6).numFmt = '#,##0';
+      rC.getCell(7).value = 'VND';
+      rowIdx++;
+      writeChiHoRow('BHXH -NLĐ nộp 10,5%', bhxhNld);
+      writeChiHoRow('Tạm ứng lương /Tháng', fixedSalary);
+      writeChiHoRow('Các khoản chi hộ khác:', chiHo);
+
+      // Mục D: TIỀN LƯƠNG CÒN LẠI/THÁNG
+      ws.mergeCells(rowIdx, 1, rowIdx, 5);
+      const rD = ws.getRow(rowIdx);
+      rD.getCell(1).value = 'D. TIỀN LƯƠNG CÒN LẠI/THÁNG (B-C)';
+      rD.getCell(1).font = { bold: true, size: 11 };
+      rD.getCell(6).value = luongConLai;
+      rD.getCell(6).numFmt = '#,##0';
+      rD.getCell(6).font = { bold: true, size: 12 };
+      rD.getCell(7).value = 'VND';
+      rowIdx++;
+
+      // Bằng chữ
+      ws.mergeCells(rowIdx, 1, rowIdx, 7);
+      const rChu = ws.getRow(rowIdx);
+      rChu.getCell(1).value = this.vnMoneyToWords(luongConLai);
+      rChu.getCell(1).font = { size: 11 };
+      rowIdx += 2;
+
+      // Ngày tháng + ký tên
+      ws.mergeCells(rowIdx, 4, rowIdx, 7);
+      const rDate = ws.getRow(rowIdx);
+      rDate.getCell(4).value = `Hải Phòng Ngày ${vnDay} tháng ${vnMonthNow} năm ${vnYearNow}`;
+      rDate.getCell(4).alignment = { horizontal: 'center' };
+      rowIdx += 2;
+      ws.mergeCells(rowIdx, 4, rowIdx, 7);
+      const rGD = ws.getRow(rowIdx);
+      rGD.getCell(4).value = 'Giám Đốc';
+      rGD.getCell(4).font = { bold: true, size: 11 };
+      rGD.getCell(4).alignment = { horizontal: 'center' };
+    }
+
+    const filename = `Lương - Đội Xe - T${String(month).padStart(2, '0')}.${year}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
 

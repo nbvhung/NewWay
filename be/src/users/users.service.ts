@@ -74,6 +74,7 @@ export class UsersService {
       fullName: dto.fullName.trim(),
       role: validRole,
       soXe: dto.soXe?.trim() || '',
+      soMooc: dto.soMooc?.trim() || '',
       stt: dto.stt?.trim() || '',
       sdt: dto.sdt?.trim() || '',
       zaloId: dto.zaloId?.trim() || null,
@@ -122,6 +123,7 @@ export class UsersService {
       target.passwordHash = bcrypt.hashSync(dto.password, 10);
     }
     if (dto.soXe !== undefined) target.soXe = dto.soXe.trim();
+    if (dto.soMooc !== undefined) target.soMooc = dto.soMooc.trim();
     if (dto.stt !== undefined) target.stt = dto.stt.trim();
     if (dto.sdt !== undefined) target.sdt = dto.sdt.trim();
     if (dto.zaloId !== undefined) target.zaloId = dto.zaloId.trim() || null;

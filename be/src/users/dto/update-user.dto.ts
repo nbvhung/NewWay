@@ -23,6 +23,10 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
+  soMooc?: string;
+
+  @IsOptional()
+  @IsString()
   stt?: string;
 
   @IsOptional()

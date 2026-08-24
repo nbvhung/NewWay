@@ -47,6 +47,7 @@ export class SalaryService {
         standardDays: 26,
         oldCarAllowance: 0,
         bhxhNld: 0,
+        parkingHph2: 0,
       });
     }
     return settings;
@@ -62,6 +63,7 @@ export class SalaryService {
     if (dto.oldCarAllowance !== undefined)
       settings.oldCarAllowance = dto.oldCarAllowance;
     if (dto.bhxhNld !== undefined) settings.bhxhNld = dto.bhxhNld;
+    if (dto.parkingHph2 !== undefined) settings.parkingHph2 = dto.parkingHph2;
     return this.settingsRepository.save(settings);
   }
 
@@ -103,6 +105,7 @@ export class SalaryService {
       allowanceWaitLoadingRate:
         prev?.allowanceWaitLoadingRate ?? user.allowanceWaitLoading ?? 0,
       hasOldCar: prev?.hasOldCar ?? user.oldCar ?? false,
+      hasParkingHph2: false,
       chiHo: 0,
       waitLoadingCount: 0,
       daysOff: [],
@@ -192,6 +195,8 @@ export class SalaryService {
         waitLoadingCount: record.waitLoadingCount || 0,
         allowanceWaitLoading: components.allowanceWaitLoading,
         hasOldCar: record.hasOldCar || false,
+        hasParkingHph2: record.hasParkingHph2 || false,
+        parkingHph2: Number(settings.parkingHph2) || 0,
         allowanceOldCar: components.allowanceOldCar,
         chiHo,
         daysOff: record.daysOff || [],
@@ -219,6 +224,8 @@ export class SalaryService {
     if (dto.waitLoadingCount !== undefined)
       record.waitLoadingCount = dto.waitLoadingCount;
     if (dto.hasOldCar !== undefined) record.hasOldCar = dto.hasOldCar;
+    if (dto.hasParkingHph2 !== undefined)
+      record.hasParkingHph2 = dto.hasParkingHph2;
     if (dto.chiHo !== undefined) record.chiHo = dto.chiHo;
     if (dto.daysOff !== undefined) record.daysOff = dto.daysOff;
     return this.recordsRepository.save(record);

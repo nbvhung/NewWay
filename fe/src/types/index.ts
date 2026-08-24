@@ -4,6 +4,7 @@ export interface User {
   fullName: string;
   role: Role;
   soXe: string;
+  soMooc?: string;
   stt: string;
   sdt: string;
   zaloId?: string | null;
@@ -91,6 +92,7 @@ export interface SalarySettings {
   standardDays: number;
   oldCarAllowance: number;
   bhxhNld: number;
+  parkingHph2: number;
 }
 
 export interface SalaryRecordItem {
@@ -110,6 +112,8 @@ export interface SalaryRecordItem {
   waitLoadingCount: number;
   allowanceWaitLoading: number;
   hasOldCar: boolean;
+  hasParkingHph2: boolean;
+  parkingHph2: number;
   allowanceOldCar: number;
   chiHo: number;
   daysOff: number[];

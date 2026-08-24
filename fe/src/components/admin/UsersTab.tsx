@@ -41,7 +41,7 @@ function roleOptionsFor(currentRole: string) {
 }
 
 export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
-  const [newUser, setNewUser] = useState({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', stt: '', sdt: '', zaloId: '', zaloBot: 0 });
+  const [newUser, setNewUser] = useState({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', zaloId: '', zaloBot: 0 });
   const [editUserData, setEditUserData] = useState<any>(null);
   const [editUserModalOpen, setEditUserModalOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ user: User; counts: { submissions: number; containers: number; history: number } } | null>(null);
@@ -57,13 +57,13 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
     try {
       await usersApi.create(newUser);
       toast(`Đã thêm tài khoản: ${newUser.username}`, 'success');
-      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', stt: '', sdt: '', zaloId: '', zaloBot: 0 });
+      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', zaloId: '', zaloBot: 0 });
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
   };
 
   const openEditUser = (u: User) => {
-    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, soXe: u.soXe, stt: u.stt, sdt: u.sdt, zaloId: u.zaloId || '', zaloBot: u.zaloBot ?? 0, password: '' });
+    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, soXe: u.soXe, soMooc: u.soMooc || '', stt: u.stt, sdt: u.sdt, zaloId: u.zaloId || '', zaloBot: u.zaloBot ?? 0, password: '' });
     setEditUserModalOpen(true);
   };
 
@@ -74,6 +74,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         fullName: editUserData.fullName,
         role: editUserData.role,
         soXe: editUserData.soXe || '',
+        soMooc: editUserData.soMooc || '',
         stt: editUserData.stt || '',
         sdt: editUserData.sdt || '',
         zaloId: editUserData.zaloId || '',
@@ -186,6 +187,11 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         <div className="mb-3">
           <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Biển số xe</label>
           <input type="text" value={newUser.soXe} onChange={e => setNewUser({ ...newUser, soXe: e.target.value })} placeholder="vd: 15H 07883"
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+        </div>
+        <div className="mb-3">
+          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Số mooc</label>
+          <input type="text" value={newUser.soMooc} onChange={e => setNewUser({ ...newUser, soMooc: e.target.value })} placeholder="vd: 15RM 08266"
             className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
         </div>
         <div className="mb-3">

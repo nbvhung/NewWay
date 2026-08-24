@@ -46,6 +46,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const [standardDays, setStandardDays] = useState('');
   const [oldCarAllowance, setOldCarAllowance] = useState('');
   const [bhxhNld, setBhxhNld] = useState('');
+  const [parkingHph2, setParkingHph2] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
 
   // Form tài xế
@@ -57,6 +58,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     waitLoadingCount: '',
     daysOff: '',
     hasOldCar: false,
+    hasParkingHph2: false,
     chiHo: '',
   });
 
@@ -78,6 +80,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       setStandardDays(String(data.settings?.standardDays ?? 26));
       setOldCarAllowance(fmtMoney(data.settings?.oldCarAllowance));
       setBhxhNld(fmtMoney(data.settings?.bhxhNld));
+      setParkingHph2(fmtMoney(data.settings?.parkingHph2));
     } catch (e: any) {
       toast(e?.response?.data?.message || e?.message || 'Không thể tải dữ liệu', 'error');
     } finally {
@@ -101,7 +104,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const pickDriver = (id: number | null) => {
     setSelectedId(id);
     if (id == null) {
-      setForm({ fixedSalary: '', attendanceBonus: '', allowanceFarHome: '', allowanceWaitLoadingRate: '', waitLoadingCount: '', daysOff: '', hasOldCar: false, chiHo: '' });
+      setForm({ fixedSalary: '', attendanceBonus: '', allowanceFarHome: '', allowanceWaitLoadingRate: '', waitLoadingCount: '', daysOff: '', hasOldCar: false, hasParkingHph2: false, chiHo: '' });
       setBaseFarHome('');
       setBaseWaitLoading('');
       setBaseOldCar(false);
@@ -117,6 +120,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       waitLoadingCount: String(rec?.waitLoadingCount ?? 0),
       daysOff: (rec?.daysOff || []).join(', '),
       hasOldCar: rec?.hasOldCar || false,
+      hasParkingHph2: rec?.hasParkingHph2 || false,
       chiHo: fmtMoney(rec?.chiHo),
     });
     setBaseFarHome(fmtMoney(drv?.allowanceFarHome));
@@ -133,6 +137,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         standardDays: Number(standardDays) || 26,
         oldCarAllowance: Number(oldCarAllowance.replace(/[^\d]/g, '')) || 0,
         bhxhNld: Number(bhxhNld.replace(/[^\d]/g, '')) || 0,
+        parkingHph2: Number(parkingHph2.replace(/[^\d]/g, '')) || 0,
       });
       toast('Đã lưu giá trị chung', 'success');
       loadData();
@@ -158,6 +163,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         waitLoadingCount: Number(waitLoadingCountValue) || 0,
         daysOff: daysOffList,
         hasOldCar: form.hasOldCar,
+        hasParkingHph2: form.hasParkingHph2,
         chiHo: Number(chiHoValue) || 0,
       });
       toast(`Đã lưu cho ${selectedDriver.fullName}`, 'success');
@@ -200,7 +206,9 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const allowanceWaitLoading = waitLoadingRateValue * waitLoadingCountValue;
   const oldCarAllowanceValue = Number(oldCarAllowance.replace(/[^\d]/g, '')) || 0;
   const allowanceOldCar = form.hasOldCar ? oldCarAllowanceValue : 0;
-  const total = luongKhoan + fixedSalaryValue + chuyenCan + allowanceFarHomeValue + allowanceWaitLoading + allowanceOldCar + tip - chiHoValue;
+  const parkingHph2Value = Number(parkingHph2.replace(/[^\d]/g, '')) || 0;
+  const allowanceParking = form.hasParkingHph2 ? parkingHph2Value : 0;
+  const total = luongKhoan + fixedSalaryValue + chuyenCan + allowanceFarHomeValue + allowanceWaitLoading + allowanceOldCar + allowanceParking + tip - chiHoValue;
 
   const inputCls = "w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]";
   const labelCls = "block text-xs font-medium text-[#64748b] mb-1.5";
@@ -210,7 +218,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       {/* Giá trị chung */}
       <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
         <h3 className="text-base font-bold mb-4 flex items-center gap-2">💰 Giá trị chung toàn công ty</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
           <div>
             <label className={labelCls}>Lương cứng (VNĐ/tháng)</label>
             <input value={fixedSalary} onChange={e => setFixedSalary(e.target.value)} inputMode="numeric" placeholder="7.000.000" className={inputCls} />
@@ -230,6 +238,10 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           <div>
             <label className={labelCls}>BHXH - NLD (VNĐ/tháng)</label>
             <input value={bhxhNld} onChange={e => setBhxhNld(e.target.value)} inputMode="numeric" placeholder="0" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Tiền gửi xe HPH 2 (VNĐ/tháng)</label>
+            <input value={parkingHph2} onChange={e => setParkingHph2(e.target.value)} inputMode="numeric" placeholder="0" className={inputCls} />
           </div>
         </div>
         <button onClick={saveSettings} disabled={savingSettings}
@@ -333,6 +345,14 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                       🚚 Xe cũ
                     </label>
                     <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceOldCar)} ₫</p>
+                  </div>
+                  <div className="flex flex-col justify-end pb-1">
+                    <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
+                      <input type="checkbox" checked={form.hasParkingHph2} onChange={e => setForm(f => ({ ...f, hasParkingHph2: e.target.checked }))}
+                        className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                      🅿️ Gửi xe HPH 2
+                    </label>
+                    <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceParking)} ₫</p>
                   </div>
                   <div>
                     <label className={labelCls}>Chi hộ (Cty chi) (VNĐ)</label>

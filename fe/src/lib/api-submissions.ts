@@ -48,4 +48,10 @@ export const submissionsApi = {
       responseType: 'blob',
     });
   },
+
+  exportLuongThang: (month: number, year: number) =>
+    api.get('/admin/export/luong-thang', {
+      params: { month, year },
+      responseType: 'blob',
+    }),
 };
