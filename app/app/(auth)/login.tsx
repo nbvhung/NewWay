@@ -34,8 +34,8 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-        <Text style={styles.title}>Xác nhận sản lượng xe NEW WAY</Text>
-        <Text style={styles.subtitle}>Vui lòng đăng nhập</Text>
+        <Text style={styles.title}>NEW WAY Traco</Text>
+        <Text style={styles.subtitle}>Developed by AI Application & Digital Transformation Department</Text>
 
         <TextInput
           style={styles.input}

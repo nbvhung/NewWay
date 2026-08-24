@@ -56,8 +56,8 @@ export default function LoginPage() {
               priority
             />
           </div>
-          <h1 className="text-xl font-bold leading-tight">Xác nhận sản lượng<br />xe NEW WAY</h1>
-          <p className="text-xs text-[#64748b] mt-1">Vui lòng đăng nhập để tiếp tục</p>
+          <h1 className="text-xl font-bold leading-tight">NEW WAY Traco</h1>
+          <p className="text-xs text-[#64748b] mt-1">Developed by AI Application & Digital Transformation Department</p>
         </div>
 
         {error && (
