@@ -13,7 +13,7 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
-  @Roles('admin', 'supper_admin', 'ops')
+  @Roles('admin', 'supper_admin', 'ops', 'hr')
   findAll(@CurrentUser() user: any) {
     return this.usersService.findAll(user.role);
   }
@@ -25,7 +25,7 @@ export class UsersController {
   }
 
   @Put(':id')
-  @Roles('admin', 'supper_admin')
+  @Roles('admin', 'supper_admin', 'hr')
   update(@Param('id') id: string, @Body() dto: UpdateUserDto, @CurrentUser() user: any) {
     return this.usersService.update(+id, dto, user.role, user.id);
   }
