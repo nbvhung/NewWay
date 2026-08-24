@@ -2210,9 +2210,7 @@ let sl: any;
     workbook.created = new Date();
     const usedSheetNames = new Set<string>();
 
-    // Styling theo file mẫu BANG LUONG LX: font Times New Roman, header fill #CCCCFF
-    const headerFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCCCFF' } };
-    const headerFont: Partial<ExcelJS.Font> = { bold: true, color: { argb: 'FF000000' }, size: 12, name: 'Times New Roman' };
+    // Styling theo file mẫu BANG LUONG LX: font Times New Roman
     const borderStyle: ExcelJS.Border = { style: 'thin', color: { argb: 'FF7F7F7F' } };
     const allBorder: Partial<ExcelJS.Borders> = { top: borderStyle, left: borderStyle, bottom: borderStyle, right: borderStyle };
     const moneyFmt = '#,##0';
@@ -2231,7 +2229,7 @@ let sl: any;
     const COMPANY_ADDR = 'Đ/c: Số 31C Bùi Thị Từ Nhiên, P. Đông Hải 1, Q. Hải An, TP Hải Phòng';
     const COMPANY_TEL = 'Tel: 0384. 985.668/ 0334.985.668; Email: Newway.traseco@gmail.com';
     const GIAM_DOC = 'Ngô Phương Dung';
-    const NGUOI_LAP = 'Ngô Cẩm Vân';
+    const NGUOI_LAP = 'Trần Anh Thư';
 
     const vnNowParts = new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Asia/Ho_Chi_Minh',
@@ -2326,7 +2324,23 @@ let sl: any;
         }
       }
 
-      // Gom theo đơn giá hiệu lực (tăng dần)
+      // Gom theo đơn giá hiệu lực (tăng dần).
+      // Cùng tuyến đường (cùng tên) thì cộng tổng số chuyến lại 1 mục.
+      // Các tuyến cùng mức giá viết chung vào 1 ô Tên tuyến, cách nhau dấu ","
+      const mergeByName = (list: typeof items) => {
+        const map = new Map<string, { price: number; name: string; trips: number; money: number; leTet: boolean }>();
+        for (const it of list) {
+          const key = `${it.price}|${it.name}`;
+          const prev = map.get(key);
+          if (prev) {
+            prev.trips += it.trips;
+            prev.money += it.money;
+          } else {
+            map.set(key, { ...it });
+          }
+        }
+        return [...map.values()];
+      };
       const groupByPrice = (list: typeof items) => {
         const map = new Map<number, typeof items>();
         for (const it of list) {
@@ -2411,10 +2425,13 @@ let sl: any;
       r6.getCell(1).font = tnr(false);
       r6.getCell(3).value = driver.soXe || '';
       r6.getCell(3).font = tnr(false);
-      ws.mergeCells(6, 5, 6, 7);
-      r6.getCell(5).value = driver.fullName;
-      r6.getCell(5).font = tnr(true, 12);
-      r6.getCell(5).alignment = { horizontal: 'right' };
+      ws.mergeCells(6, 4, 6, 5);
+      r6.getCell(4).value = 'Tên lái xe: ';
+      r6.getCell(4).font = tnr(false);
+      r6.getCell(4).alignment = { horizontal: 'right' };
+      ws.mergeCells(6, 6, 6, 7);
+      r6.getCell(6).value = driver.fullName;
+      r6.getCell(6).font = tnr(true, 12);
 
       // Row 7: Số Mooc + điện thoại
       ws.mergeCells(7, 1, 7, 2);
@@ -2439,14 +2456,19 @@ let sl: any;
       r8.getCell(7).value = 'Ngày';
       r8.getCell(7).font = tnr(false);
 
-      // Row 9: Tổng A
+      // Row 9: B. TỔNG TIỀN LƯƠNG/THÁNG (mẫu: chữ đỏ, nền xám nhạt)
       ws.mergeCells(9, 1, 9, 5);
       const r9 = ws.getRow(9);
+      r9.getCell(1).value = 'B. TỔNG TIỀN LƯƠNG/THÁNG (1+2+3+4): ';
+      r9.getCell(1).font = tnr(true, 12, 'FFFF0000');
+      r9.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDEDED' } };
       r9.getCell(6).value = tongA;
       r9.getCell(6).numFmt = moneyFmt;
-      r9.getCell(6).font = tnr(true);
+      r9.getCell(6).font = tnr(true, 12, 'FFFF0000');
+      r9.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDEDED' } };
       r9.getCell(7).value = 'VND';
       r9.getCell(7).font = tnr(false);
+      r9.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDEDED' } };
 
       // Row 10: 1. Lương cơ bản/tháng
       ws.mergeCells(10, 1, 10, 5);
@@ -2473,27 +2495,31 @@ let sl: any;
       r11.getCell(7).value = 'VND';
       r11.getCell(7).font = tnr(false);
 
-      // Row 12: header bảng chi tiết
+      // Row 12: header bảng chi tiết (mẫu: không tô màu, chỉ viền, chữ đen)
       const hRow = ws.getRow(12);
       const headers = ['Số TT', 'Ngày tháng', 'Tên tuyến', 'Đơn giá', 'Số chuyến', 'Thành tiền', 'Ghi chú'];
       headers.forEach((v, i) => {
         const cell = hRow.getCell(i + 1);
         cell.value = v;
-        cell.fill = headerFill;
-        cell.font = headerFont;
+        cell.font = tnr(true, 12);
         cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         cell.border = allBorder;
       });
-      hRow.height = 22;
+      hRow.height = 31;
 
-      // Row 13+: chi tiết tuyến (gom theo đơn giá)
+      // Row 13+: chi tiết tuyến (gom theo đơn giá, 1 dòng/đơn giá, Tên tuyến nối bằng dấu ",")
       let rowIdx = 13;
       let stt = 0;
       const writeGroup = (group: { price: number; subs: typeof items }) => {
+        stt++;
         const sumTrips = group.subs.reduce((s, it) => s + it.trips, 0);
         const sumMoney = group.subs.reduce((s, it) => s + it.money, 0);
+        const names = group.subs.map(it => it.name).join(', ');
         const gr = ws.getRow(rowIdx);
-        gr.getCell(3).value = '—';
+        gr.getCell(1).value = stt;
+        gr.getCell(3).value = names;
+        gr.getCell(3).font = tnr(false, 12);
+        gr.getCell(3).alignment = { vertical: 'middle', wrapText: true };
         gr.getCell(4).value = group.price;
         gr.getCell(4).numFmt = moneyFmt;
         gr.getCell(5).value = sumTrips;
@@ -2501,32 +2527,14 @@ let sl: any;
         gr.getCell(6).value = sumMoney;
         gr.getCell(6).numFmt = moneyFmt;
         gr.eachCell((cell) => {
-          cell.font = tnr(true, 12);
           cell.border = allBorder;
           cell.alignment = { horizontal: 'center', vertical: 'middle' };
         });
         rowIdx++;
-        for (const it of group.subs) {
-          stt++;
-          const r = ws.getRow(rowIdx);
-          r.getCell(1).value = stt;
-          r.getCell(3).value = it.name;
-          r.getCell(3).font = tnr(false, 12);
-          r.getCell(3).alignment = { vertical: 'middle', wrapText: true };
-          r.getCell(5).value = it.trips;
-          r.getCell(5).numFmt = moneyFmt;
-          r.getCell(6).value = it.money;
-          r.getCell(6).numFmt = moneyFmt;
-          r.eachCell((cell) => {
-            cell.border = allBorder;
-            cell.alignment = { vertical: 'middle' };
-          });
-          rowIdx++;
-        }
       };
 
-      const normalItems = items.filter(it => !it.leTet);
-      const leTetItems = items.filter(it => it.leTet);
+      const normalItems = mergeByName(items.filter(it => !it.leTet));
+      const leTetItems = mergeByName(items.filter(it => it.leTet));
       for (const g of groupByPrice(normalItems)) writeGroup(g);
 
       // Mục 3: Tiền lương ngày lễ, Tết
