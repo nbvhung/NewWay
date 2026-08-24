@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import type { Response } from 'express';
+import * as path from 'path';
+import * as fs from 'fs';
 import { Submission } from '../database/entities/submission.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
@@ -2208,10 +2210,28 @@ let sl: any;
     workbook.created = new Date();
     const usedSheetNames = new Set<string>();
 
-    const headerFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
-    const headerFont: Partial<ExcelJS.Font> = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
-    const borderStyle: ExcelJS.Border = { style: 'thin', color: { argb: 'FFCCCCCC' } };
+    // Styling theo file mẫu BANG LUONG LX: font Times New Roman, header fill #CCCCFF
+    const headerFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCCCFF' } };
+    const headerFont: Partial<ExcelJS.Font> = { bold: true, color: { argb: 'FF000000' }, size: 12, name: 'Times New Roman' };
+    const borderStyle: ExcelJS.Border = { style: 'thin', color: { argb: 'FF7F7F7F' } };
     const allBorder: Partial<ExcelJS.Borders> = { top: borderStyle, left: borderStyle, bottom: borderStyle, right: borderStyle };
+    const moneyFmt = '#,##0';
+    const fontFamily = 'Times New Roman';
+
+    // Logo công ty (file mẫu BANG LUONG LX dùng logo ở góc trái phía trên)
+    let logoId: number | undefined;
+    try {
+      const logoPath = path.join(process.cwd(), 'public', 'logo-luong-thang.png');
+      if (fs.existsSync(logoPath)) {
+        logoId = workbook.addImage({ filename: logoPath, extension: 'png' });
+      }
+    } catch {}
+
+    const COMPANY_NAME = 'CÔNG TY TNHH DỊCH VỤ & THƯƠNG MAI NEW WAY';
+    const COMPANY_ADDR = 'Đ/c: Số 31C Bùi Thị Từ Nhiên, P. Đông Hải 1, Q. Hải An, TP Hải Phòng';
+    const COMPANY_TEL = 'Tel: 0384. 985.668/ 0334.985.668; Email: Newway.traseco@gmail.com';
+    const GIAM_DOC = 'Ngô Phương Dung';
+    const NGUOI_LAP = 'Ngô Cẩm Vân';
 
     const vnNowParts = new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Asia/Ho_Chi_Minh',
@@ -2282,9 +2302,9 @@ let sl: any;
         const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
         const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
         const effPrice = donGia * heSo;
-        const planName = sl
-          ? planDisplayName(sl) + (sl.tangCuong ? ' (TÀU TĂNG CƯỜNG)' : '')
-          : (key.split('||')[0] + (key.includes('||') ? ` - ${key.split('||')[1] || ''}` : ''));
+        // Cột Tên tuyến: chỉ lấy tên tuyến đường (không lấy tên kế hoạch)
+        const routeName = sl?.routeName || tenTuyen || key.split('||')[0];
+        const planName = routeName + (sl?.tangCuong ? ' (TÀU TĂNG CƯỜNG)' : '');
         const mainTrips = tong + kv;
         const mainMoney = (tong + kv) * effPrice;
         const vslPrice = 40000 * heSo;
@@ -2330,103 +2350,144 @@ let sl: any;
       // Column widths
       ws.getColumn(1).width = 6;  // STT
       ws.getColumn(2).width = 12; // Ngày tháng
-      ws.getColumn(3).width = 45; // Tên tuyến
+      ws.getColumn(3).width = 55; // Tên tuyến
       ws.getColumn(4).width = 14; // Đơn giá
       ws.getColumn(5).width = 10; // Số chuyến
       ws.getColumn(6).width = 16; // Thành tiền
       ws.getColumn(7).width = 12; // Ghi chú
 
-      const labelBold = (cell: ExcelJS.Cell) => {
-        cell.font = { bold: true, size: 11 };
-      };
+      const tnr = (bold = false, size = 12, color = 'FF000000') =>
+        ({ bold, size, color: { argb: color }, name: fontFamily } as Partial<ExcelJS.Font>);
 
-      // Row 2: tiêu đề
+      // Row 1: logo + công ty (merge A1:G1, logo đặt góc trái)
+      const r1 = ws.getRow(1);
+      ws.mergeCells(1, 1, 1, 7);
+      r1.height = 50;
+      if (logoId !== undefined) {
+        ws.addImage(logoId, {
+          tl: { col: 0, row: 0 },
+          ext: { width: 95, height: 47 },
+        });
+      }
+      const r1c = r1.getCell(3);
+      r1c.value = COMPANY_NAME;
+      r1c.font = tnr(true, 11);
+      r1c.alignment = { horizontal: 'center', vertical: 'middle' };
+
+      // Row 2: địa chỉ
+      const r2c = ws.getRow(2);
       ws.mergeCells(2, 1, 2, 7);
-      const r2 = ws.getRow(2);
-      r2.getCell(1).value = 'BẢNG THANH TOÁN LƯƠNG';
-      r2.getCell(1).font = { bold: true, size: 16 };
-      r2.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-      r2.height = 30;
+      r2c.getCell(1).value = COMPANY_ADDR;
+      r2c.getCell(1).font = tnr(false, 9);
+      r2c.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
 
-      // Row 3: tháng/năm
+      // Row 3: điện thoại
+      const r3c = ws.getRow(3);
       ws.mergeCells(3, 1, 3, 7);
-      const r3 = ws.getRow(3);
-      r3.getCell(1).value = `THÁNG ${String(month).padStart(2, '0')} NĂM ${year}`;
-      r3.getCell(1).font = { bold: true, size: 13 };
-      r3.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-      r3.height = 24;
+      r3c.getCell(1).value = COMPANY_TEL;
+      r3c.getCell(1).font = tnr(false, 9);
+      r3c.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
 
-      // Row 4: Số đầu kéo + tên lái xe
-      ws.mergeCells(4, 1, 4, 2);
+      // Row 4: tiêu đề
+      ws.mergeCells(4, 1, 4, 7);
       const r4 = ws.getRow(4);
-      r4.getCell(1).value = 'Số đầu kéo:';
-      labelBold(r4.getCell(1));
-      r4.getCell(3).value = driver.soXe || '';
-      ws.mergeCells(4, 5, 4, 7);
-      r4.getCell(5).value = driver.fullName;
-      r4.getCell(5).font = { bold: true, size: 12 };
+      r4.getCell(1).value = 'BẢNG THANH TOÁN LƯƠNG';
+      r4.getCell(1).font = tnr(true, 16);
+      r4.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+      r4.height = 30;
 
-      // Row 5: Số Mooc + điện thoại
-      ws.mergeCells(5, 1, 5, 2);
+      // Row 5: tháng/năm
+      ws.mergeCells(5, 1, 5, 7);
       const r5 = ws.getRow(5);
-      r5.getCell(1).value = 'Số Mooc:';
-      labelBold(r5.getCell(1));
-      r5.getCell(3).value = driver.soMooc || '';
-      r5.getCell(4).value = 'Điện thoại:';
-      labelBold(r5.getCell(4));
-      r5.getCell(6).value = driver.sdt || '';
+      r5.getCell(1).value = `THÁNG ${String(month).padStart(2, '0')} NĂM ${year}`;
+      r5.getCell(1).font = tnr(true, 13);
+      r5.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+      r5.height = 24;
 
-      // Row 6: A. TỔNG NGÀY ĐI LÀM/THÁNG
-      ws.mergeCells(6, 1, 6, 5);
+      // Row 6: Số đầu kéo + tên lái xe
+      ws.mergeCells(6, 1, 6, 2);
       const r6 = ws.getRow(6);
-      r6.getCell(1).value = 'A. TỔNG NGÀY ĐI LÀM/THÁNG:';
-      r6.getCell(1).font = { bold: true, size: 11 };
-      r6.getCell(6).value = ngayCong;
-      r6.getCell(6).numFmt = '#,##0';
-      r6.getCell(7).value = 'Ngày';
+      r6.getCell(1).value = 'Số đầu kéo:';
+      r6.getCell(1).font = tnr(false);
+      r6.getCell(3).value = driver.soXe || '';
+      r6.getCell(3).font = tnr(false);
+      ws.mergeCells(6, 5, 6, 7);
+      r6.getCell(5).value = driver.fullName;
+      r6.getCell(5).font = tnr(true, 12);
+      r6.getCell(5).alignment = { horizontal: 'right' };
 
-      // Row 7: Tổng A
-      ws.mergeCells(7, 1, 7, 5);
+      // Row 7: Số Mooc + điện thoại
+      ws.mergeCells(7, 1, 7, 2);
       const r7 = ws.getRow(7);
-      r7.getCell(6).value = tongA;
-      r7.getCell(6).numFmt = '#,##0';
-      r7.getCell(7).value = 'VND';
+      r7.getCell(1).value = 'Số Mooc:';
+      r7.getCell(1).font = tnr(false);
+      r7.getCell(3).value = driver.soMooc || '';
+      r7.getCell(3).font = tnr(false);
+      r7.getCell(4).value = 'Điện thoại:';
+      r7.getCell(4).font = tnr(false);
+      r7.getCell(5).value = driver.sdt || '';
+      r7.getCell(5).font = tnr(false);
 
-      // Row 8: 1. Lương cơ bản/tháng
+      // Row 8: A. TỔNG NGÀY ĐI LÀM/THÁNG
       ws.mergeCells(8, 1, 8, 5);
       const r8 = ws.getRow(8);
-      r8.getCell(1).value = '1. Lương cơ bản/tháng:';
-      r8.getCell(1).font = { bold: true, size: 11 };
-      r8.getCell(6).value = luongCoBan;
-      r8.getCell(6).numFmt = '#,##0';
-      r8.getCell(7).value = 'VND';
+      r8.getCell(1).value = 'A. TỔNG NGÀY ĐI LÀM/THÁNG:';
+      r8.getCell(1).font = tnr(true);
+      r8.getCell(6).value = ngayCong;
+      r8.getCell(6).numFmt = moneyFmt;
+      r8.getCell(6).font = tnr(false);
+      r8.getCell(7).value = 'Ngày';
+      r8.getCell(7).font = tnr(false);
 
-      // Row 9: 2. Lương chuyến/tháng
-      ws.mergeCells(9, 1, 9, 4);
+      // Row 9: Tổng A
+      ws.mergeCells(9, 1, 9, 5);
       const r9 = ws.getRow(9);
-      r9.getCell(1).value = '2. Lương chuyến/tháng: Bảng chi tiết';
-      r9.getCell(1).font = { bold: true, size: 11 };
-      r9.getCell(5).value = planTotalTrips;
-      r9.getCell(5).numFmt = '#,##0';
-      r9.getCell(6).value = planTotalMoney;
-      r9.getCell(6).numFmt = '#,##0';
+      r9.getCell(6).value = tongA;
+      r9.getCell(6).numFmt = moneyFmt;
+      r9.getCell(6).font = tnr(true);
       r9.getCell(7).value = 'VND';
+      r9.getCell(7).font = tnr(false);
 
-      // Row 10: header bảng chi tiết
-      const hRow = ws.getRow(10);
+      // Row 10: 1. Lương cơ bản/tháng
+      ws.mergeCells(10, 1, 10, 5);
+      const r10 = ws.getRow(10);
+      r10.getCell(1).value = '1. Lương cơ bản/tháng:';
+      r10.getCell(1).font = tnr(true);
+      r10.getCell(6).value = luongCoBan;
+      r10.getCell(6).numFmt = moneyFmt;
+      r10.getCell(6).font = tnr(false);
+      r10.getCell(7).value = 'VND';
+      r10.getCell(7).font = tnr(false);
+
+      // Row 11: 2. Lương chuyến/tháng
+      ws.mergeCells(11, 1, 11, 4);
+      const r11 = ws.getRow(11);
+      r11.getCell(1).value = '2. Lương chuyến/tháng: Bảng chi tiết';
+      r11.getCell(1).font = tnr(true);
+      r11.getCell(5).value = planTotalTrips;
+      r11.getCell(5).numFmt = moneyFmt;
+      r11.getCell(5).font = tnr(false);
+      r11.getCell(6).value = planTotalMoney;
+      r11.getCell(6).numFmt = moneyFmt;
+      r11.getCell(6).font = tnr(false);
+      r11.getCell(7).value = 'VND';
+      r11.getCell(7).font = tnr(false);
+
+      // Row 12: header bảng chi tiết
+      const hRow = ws.getRow(12);
       const headers = ['Số TT', 'Ngày tháng', 'Tên tuyến', 'Đơn giá', 'Số chuyến', 'Thành tiền', 'Ghi chú'];
       headers.forEach((v, i) => {
         const cell = hRow.getCell(i + 1);
         cell.value = v;
         cell.fill = headerFill;
         cell.font = headerFont;
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         cell.border = allBorder;
       });
       hRow.height = 22;
 
-      // Row 11+: chi tiết tuyến (gom theo đơn giá)
-      let rowIdx = 11;
+      // Row 13+: chi tiết tuyến (gom theo đơn giá)
+      let rowIdx = 13;
       let stt = 0;
       const writeGroup = (group: { price: number; subs: typeof items }) => {
         const sumTrips = group.subs.reduce((s, it) => s + it.trips, 0);
@@ -2434,13 +2495,13 @@ let sl: any;
         const gr = ws.getRow(rowIdx);
         gr.getCell(3).value = '—';
         gr.getCell(4).value = group.price;
-        gr.getCell(4).numFmt = '#,##0';
+        gr.getCell(4).numFmt = moneyFmt;
         gr.getCell(5).value = sumTrips;
-        gr.getCell(5).numFmt = '#,##0';
+        gr.getCell(5).numFmt = moneyFmt;
         gr.getCell(6).value = sumMoney;
-        gr.getCell(6).numFmt = '#,##0';
+        gr.getCell(6).numFmt = moneyFmt;
         gr.eachCell((cell) => {
-          cell.font = { bold: true, size: 10 };
+          cell.font = tnr(true, 12);
           cell.border = allBorder;
           cell.alignment = { horizontal: 'center', vertical: 'middle' };
         });
@@ -2450,10 +2511,12 @@ let sl: any;
           const r = ws.getRow(rowIdx);
           r.getCell(1).value = stt;
           r.getCell(3).value = it.name;
+          r.getCell(3).font = tnr(false, 12);
+          r.getCell(3).alignment = { vertical: 'middle', wrapText: true };
           r.getCell(5).value = it.trips;
-          r.getCell(5).numFmt = '#,##0';
+          r.getCell(5).numFmt = moneyFmt;
           r.getCell(6).value = it.money;
-          r.getCell(6).numFmt = '#,##0';
+          r.getCell(6).numFmt = moneyFmt;
           r.eachCell((cell) => {
             cell.border = allBorder;
             cell.alignment = { vertical: 'middle' };
@@ -2471,10 +2534,10 @@ let sl: any;
         ws.mergeCells(rowIdx, 1, rowIdx, 4);
         const r = ws.getRow(rowIdx);
         r.getCell(1).value = '3. Tiền lương Ngày lễ, Tết';
-        r.getCell(1).font = { bold: true, size: 11 };
+        r.getCell(1).font = tnr(true);
         r.getCell(5).value = leTetTotalTrips || '';
         r.getCell(6).value = leTetTotalMoney || 0;
-        r.getCell(6).numFmt = '#,##0';
+        r.getCell(6).numFmt = moneyFmt;
         r.getCell(7).value = 'VND';
         rowIdx++;
         for (const g of groupByPrice(leTetItems)) writeGroup(g);
@@ -2484,19 +2547,20 @@ let sl: any;
       ws.mergeCells(rowIdx, 1, rowIdx, 5);
       const r4t = ws.getRow(rowIdx);
       r4t.getCell(1).value = '4. Các khoản Lái xe đã chi hộ Công ty (Nếu có):';
-      r4t.getCell(1).font = { bold: true, size: 11 };
+      r4t.getCell(1).font = tnr(true);
       r4t.getCell(6).value = tong4;
-      r4t.getCell(6).numFmt = '#,##0';
+      r4t.getCell(6).numFmt = moneyFmt;
       r4t.getCell(7).value = 'VND';
       rowIdx++;
       const writeChiHoRow = (name: string, val: number | string, isTotal = false) => {
         ws.mergeCells(rowIdx, 1, rowIdx, 5);
         const r = ws.getRow(rowIdx);
         r.getCell(1).value = name;
-        r.getCell(1).font = { size: 10 };
+        r.getCell(1).font = tnr(isTotal, 12);
         if (typeof val === 'number') {
           r.getCell(6).value = val;
-          r.getCell(6).numFmt = '#,##0';
+          r.getCell(6).numFmt = moneyFmt;
+          r.getCell(6).font = tnr(isTotal, 12);
         } else {
           r.getCell(6).value = val;
         }
@@ -2512,9 +2576,10 @@ let sl: any;
       ws.mergeCells(rowIdx, 1, rowIdx, 5);
       const rC = ws.getRow(rowIdx);
       rC.getCell(1).value = 'C. CÁC KHOẢN GIẢM TRỪ';
-      rC.getCell(1).font = { bold: true, size: 11 };
+      rC.getCell(1).font = tnr(true);
       rC.getCell(6).value = tongGiamTru;
-      rC.getCell(6).numFmt = '#,##0';
+      rC.getCell(6).numFmt = moneyFmt;
+      rC.getCell(6).font = tnr(true);
       rC.getCell(7).value = 'VND';
       rowIdx++;
       writeChiHoRow('BHXH -NLĐ nộp 10,5%', bhxhNld);
@@ -2525,10 +2590,10 @@ let sl: any;
       ws.mergeCells(rowIdx, 1, rowIdx, 5);
       const rD = ws.getRow(rowIdx);
       rD.getCell(1).value = 'D. TIỀN LƯƠNG CÒN LẠI/THÁNG (B-C)';
-      rD.getCell(1).font = { bold: true, size: 11 };
+      rD.getCell(1).font = tnr(true);
       rD.getCell(6).value = luongConLai;
-      rD.getCell(6).numFmt = '#,##0';
-      rD.getCell(6).font = { bold: true, size: 12 };
+      rD.getCell(6).numFmt = moneyFmt;
+      rD.getCell(6).font = tnr(true, 12);
       rD.getCell(7).value = 'VND';
       rowIdx++;
 
@@ -2536,20 +2601,35 @@ let sl: any;
       ws.mergeCells(rowIdx, 1, rowIdx, 7);
       const rChu = ws.getRow(rowIdx);
       rChu.getCell(1).value = this.vnMoneyToWords(luongConLai);
-      rChu.getCell(1).font = { size: 11 };
+      rChu.getCell(1).font = tnr(false, 12);
       rowIdx += 2;
 
-      // Ngày tháng + ký tên
-      ws.mergeCells(rowIdx, 4, rowIdx, 7);
+      // Ngày tháng + ký tên (Người lập trái, Giám đốc phải)
+      ws.mergeCells(rowIdx, 1, rowIdx, 7);
       const rDate = ws.getRow(rowIdx);
-      rDate.getCell(4).value = `Hải Phòng Ngày ${vnDay} tháng ${vnMonthNow} năm ${vnYearNow}`;
-      rDate.getCell(4).alignment = { horizontal: 'center' };
+      rDate.getCell(1).value = `Hải Phòng Ngày ${vnDay} tháng ${vnMonthNow} năm ${vnYearNow}`;
+      rDate.getCell(1).font = tnr(false, 12);
+      rDate.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
       rowIdx += 2;
-      ws.mergeCells(rowIdx, 4, rowIdx, 7);
-      const rGD = ws.getRow(rowIdx);
-      rGD.getCell(4).value = 'Giám Đốc';
-      rGD.getCell(4).font = { bold: true, size: 11 };
-      rGD.getCell(4).alignment = { horizontal: 'center' };
+      ws.mergeCells(rowIdx, 1, rowIdx, 3);
+      ws.mergeCells(rowIdx, 5, rowIdx, 7);
+      const rRoles = ws.getRow(rowIdx);
+      rRoles.getCell(1).value = 'Người Lập';
+      rRoles.getCell(1).font = tnr(true);
+      rRoles.getCell(1).alignment = { horizontal: 'center' };
+      rRoles.getCell(5).value = 'Giám Đốc';
+      rRoles.getCell(5).font = tnr(true);
+      rRoles.getCell(5).alignment = { horizontal: 'center' };
+      rowIdx += 2;
+      ws.mergeCells(rowIdx, 1, rowIdx, 3);
+      ws.mergeCells(rowIdx, 5, rowIdx, 7);
+      const rNames = ws.getRow(rowIdx);
+      rNames.getCell(1).value = NGUOI_LAP;
+      rNames.getCell(1).font = tnr(false, 12);
+      rNames.getCell(1).alignment = { horizontal: 'center' };
+      rNames.getCell(5).value = GIAM_DOC;
+      rNames.getCell(5).font = tnr(false, 12);
+      rNames.getCell(5).alignment = { horizontal: 'center' };
     }
 
     const filename = `Lương - Đội Xe - T${String(month).padStart(2, '0')}.${year}.xlsx`;
