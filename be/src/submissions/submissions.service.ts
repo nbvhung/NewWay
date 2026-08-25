@@ -2380,13 +2380,37 @@ let sl: any;
         }
       }
 
-      // Sắp xếp: không lễ tết trước, lễ tết sau; trong mỗi nhóm sắp xếp theo price tăng dần
-      items.sort((a, b) => {
-        if (a.leTet !== b.leTet) return a.leTet ? 1 : -1;
-        return a.price - b.price;
-      });
-
-      // Không gom theo đơn giá — mỗi tuyến hiển thị riêng 1 dòng (theo file mẫu abc.xlsx)
+      // Gom theo đơn giá hiệu lực (tăng dần).
+      // Các tuyến cùng mức giá viết chung vào 1 ô Tên tuyến, cách nhau dấu ","
+      // Nếu có bất kỳ chuyến nào là tăng cường, đánh dấu tangCuong = true
+      const mergeByName = (list: typeof items) => {
+        const map = new Map<string, { price: number; name: string; trips: number; money: number; leTet: boolean; tangCuong: boolean }>();
+        for (const it of list) {
+          const key = `${it.price}|${it.name}`;
+          const prev = map.get(key);
+          if (prev) {
+            prev.trips += it.trips;
+            prev.money += it.money;
+            prev.tangCuong = prev.tangCuong || it.tangCuong;
+          } else {
+            map.set(key, { ...it });
+          }
+        }
+        return [...map.values()];
+      };
+      const groupByPrice = (list: typeof items) => {
+        const map = new Map<number, typeof items>();
+        for (const it of list) {
+          if (!map.has(it.price)) map.set(it.price, []);
+          map.get(it.price)!.push(it);
+        }
+        const prices = [...map.keys()].sort((a, b) => a - b);
+        return prices.map(p => {
+          const subs = map.get(p)!;
+          const isTangCuong = subs.some(s => s.tangCuong);
+          return { price: p, subs, tangCuong: isTangCuong };
+        });
+      };
 
       // --- Các tổng mục ---
       const tong4ChiHo = hasOldCar ? oldCarAllowance : 0;
@@ -2457,31 +2481,30 @@ let sl: any;
       r5.height = 24;
 
       // Row 6: Số đầu kéo + tên lái xe
-      ws.mergeCells(6, 1, 6, 2);
       const r6 = ws.getRow(6);
       r6.getCell(1).value = 'Số đầu kéo:';
-      r6.getCell(1).font = tnr(false);
+      r6.getCell(1).font = tnr(true, 12);
       r6.getCell(3).value = driver.soXe || '';
-      r6.getCell(3).font = tnr(false);
-      ws.mergeCells(6, 4, 6, 5);
-      r6.getCell(4).value = 'Tên lái xe: ';
-      r6.getCell(4).font = tnr(false);
-      r6.getCell(4).alignment = { horizontal: 'right' };
-      ws.mergeCells(6, 6, 6, 7);
-      r6.getCell(6).value = driver.fullName;
-      r6.getCell(6).font = tnr(false, 12);
+      r6.getCell(3).font = tnr(true, 12);
+      r6.getCell(4).value = 'Tên lái xe:';
+      r6.getCell(4).font = tnr(true, 12);
+      ws.mergeCells(6, 5, 6, 7);
+      r6.getCell(5).value = driver.fullName;
+      r6.getCell(5).font = tnr(true, 12);
+      r6.getCell(5).alignment = { horizontal: 'left' };
 
       // Row 7: Số Mooc + điện thoại
-      ws.mergeCells(7, 1, 7, 2);
       const r7 = ws.getRow(7);
       r7.getCell(1).value = 'Số Mooc:';
-      r7.getCell(1).font = tnr(false);
+      r7.getCell(1).font = tnr(true, 12);
       r7.getCell(3).value = driver.soMooc || '';
-      r7.getCell(3).font = tnr(false);
+      r7.getCell(3).font = tnr(true, 12);
       r7.getCell(4).value = 'Điện thoại:';
-      r7.getCell(4).font = tnr(false);
+      r7.getCell(4).font = tnr(true, 12);
+      ws.mergeCells(7, 5, 7, 7);
       r7.getCell(5).value = driver.sdt || '';
-      r7.getCell(5).font = tnr(false);
+      r7.getCell(5).font = tnr(true, 12);
+      r7.getCell(5).alignment = { horizontal: 'left' };
 
       // Row 8: A. TỔNG NGÀY ĐI LÀM/THÁNG (mẫu: TNR 12)
       ws.mergeCells(8, 1, 8, 5);
@@ -2547,47 +2570,57 @@ let sl: any;
       });
       hRow.height = 31;
 
-      // Row 13+: chi tiết từng tuyến riêng (mỗi tuyến 1 dòng — theo file mẫu abc.xlsx)
+      // Row 13+: chi tiết tuyến (gom theo đơn giá)
       let rowIdx = 13;
       let stt = 0;
       const borderLTB: Partial<ExcelJS.Borders> = { top: borderStyle, left: borderStyle, bottom: borderStyle, right: undefined };
       const borderRTB: Partial<ExcelJS.Borders> = { top: borderStyle, left: undefined, bottom: borderStyle, right: borderStyle };
       const borderFull: Partial<ExcelJS.Borders> = allBorder;
 
-      const normalItems = items.filter(it => !it.leTet);
-      for (const it of normalItems) {
+      const writeGroup = (group: { price: number; subs: typeof items; tangCuong?: boolean }, isLeTet = false) => {
         stt++;
+        const sumTrips = group.subs.reduce((s, it) => s + it.trips, 0);
+        const sumMoney = group.subs.reduce((s, it) => s + it.money, 0);
+        const names = group.subs.map(it => it.name).join(', ');
         const gr = ws.getRow(rowIdx);
         gr.getCell(1).value = stt;
         gr.getCell(1).font = tnr(false, 11);
         gr.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
         gr.getCell(1).border = borderLTB;
         gr.getCell(2).border = borderFull;
-        gr.getCell(3).value = it.name;
+        gr.getCell(3).value = names;
         gr.getCell(3).font = tnr(false, 12);
-        gr.getCell(3).alignment = { vertical: 'middle', wrapText: true };
+        gr.getCell(3).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         gr.getCell(3).border = borderRTB;
-        gr.getCell(4).value = it.price;
+        gr.getCell(4).value = group.price;
         gr.getCell(4).numFmt = moneyFmt;
         gr.getCell(4).font = tnr(false, 11);
         gr.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' };
         gr.getCell(4).border = borderFull;
-        gr.getCell(5).value = it.trips;
+        gr.getCell(5).value = sumTrips;
         gr.getCell(5).numFmt = '#,##0';
         gr.getCell(5).font = tnr(false, 11);
         gr.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
         gr.getCell(5).border = borderFull;
-        gr.getCell(6).value = it.money;
+        gr.getCell(6).value = sumMoney;
         gr.getCell(6).numFmt = moneyFmt;
         gr.getCell(6).font = tnr(false, 11);
         gr.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
         gr.getCell(6).border = borderLTB;
-        // Cột G: 'TC' nếu tàu tăng cường (theo mẫu abc.xlsx)
-        gr.getCell(7).value = it.tangCuong ? 'TC' : '';
+        
+        let note = '';
+        if (isLeTet) note = 'Lễ, Tết x3';
+        else if (group.tangCuong) note = 'Tăng cường +15%';
+        
+        gr.getCell(7).value = note;
         gr.getCell(7).font = tnr(false, 11);
+        gr.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' };
         gr.getCell(7).border = borderRTB;
         rowIdx++;
-      }
+      };
+
+      const normalItems = mergeByName(items.filter(it => !it.leTet));
+      for (const g of groupByPrice(normalItems)) writeGroup(g);
 
       const leTetItems = items.filter(it => it.leTet);
 
@@ -2605,120 +2638,94 @@ let sl: any;
         r.getCell(7).value = 'VND';
         r.getCell(7).font = tnr(false, 11);
         rowIdx++;
-        for (const it of leTetItems) {
-          stt++;
-          const gr = ws.getRow(rowIdx);
-          gr.getCell(1).value = stt;
-          gr.getCell(1).font = tnr(false, 11);
-          gr.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-          gr.getCell(1).border = borderLTB;
-          gr.getCell(2).border = borderFull;
-          gr.getCell(3).value = it.name;
-          gr.getCell(3).font = tnr(false, 12);
-          gr.getCell(3).alignment = { vertical: 'middle', wrapText: true };
-          gr.getCell(3).border = borderRTB;
-          gr.getCell(4).value = it.price;
-          gr.getCell(4).numFmt = moneyFmt;
-          gr.getCell(4).font = tnr(false, 11);
-          gr.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' };
-          gr.getCell(4).border = borderFull;
-          gr.getCell(5).value = it.trips;
-          gr.getCell(5).numFmt = '#,##0';
-          gr.getCell(5).font = tnr(false, 11);
-          gr.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
-          gr.getCell(5).border = borderFull;
-          gr.getCell(6).value = it.money;
-          gr.getCell(6).numFmt = moneyFmt;
-          gr.getCell(6).font = tnr(false, 11);
-          gr.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
-          gr.getCell(6).border = borderLTB;
-          gr.getCell(7).value = it.tangCuong ? 'TC' : '';
-          gr.getCell(7).font = tnr(false, 11);
-          gr.getCell(7).border = borderRTB;
-          rowIdx++;
-        }
+        const leTetItemsMerged = mergeByName(leTetItems);
+        for (const g of groupByPrice(leTetItemsMerged)) writeGroup(g, true);
       }
 
       // Mục 4: Các khoản Lái xe đã chi hộ Công ty
       ws.mergeCells(rowIdx, 1, rowIdx, 5);
       const r4t = ws.getRow(rowIdx);
       r4t.getCell(1).value = '4. Các khoản Lái xe đã chi hộ Công ty (Nếu có):';
-      r4t.getCell(1).font = tnr(false, 12);
+      r4t.getCell(1).font = tnr(true, 12);
       r4t.getCell(1).alignment = { horizontal: 'left' };
       r4t.getCell(6).value = tong4;
       r4t.getCell(6).numFmt = moneyFmt;
-      r4t.getCell(6).font = tnr(false, 11);
+      r4t.getCell(6).font = tnr(true, 11);
       r4t.getCell(7).value = 'VND';
-      r4t.getCell(7).font = tnr(false, 11);
+      r4t.getCell(7).font = tnr(true, 11);
       rowIdx++;
-      const writeChiHoRow = (name: string, val: number | string, isTotal = false) => {
+      const writeChiHoRow = (name: string, val: number | string, isTotal = false, italic = false) => {
         ws.mergeCells(rowIdx, 1, rowIdx, 5);
         const r = ws.getRow(rowIdx);
         r.getCell(1).value = name;
-        r.getCell(1).font = tnr(isTotal, 12);
+        r.getCell(1).font = { ...tnr(isTotal, 12), italic };
         if (typeof val === 'number') {
           r.getCell(6).value = val;
           r.getCell(6).numFmt = moneyFmt;
-          r.getCell(6).font = tnr(isTotal, 11);
+          r.getCell(6).font = tnr(isTotal, 11); // changed to 12 in other place? The script output said Size 12. Let's use 12 for the value.
+          r.getCell(6).font = tnr(isTotal, 12);
         } else {
           r.getCell(6).value = val;
         }
         rowIdx++;
       };
-      writeChiHoRow('Hỗ trợ xe đời cũ', tong4ChiHo);
-      writeChiHoRow('Tiền chuyên cần', chuyenCan);
-      writeChiHoRow('Chi hộ tiền tip xe nâng tại các bãi, cảng.', totalTip);
-      writeChiHoRow('Chi hộ tiền gửi xe tại bãi 2 (HPH)', tong4GuiXe);
+      writeChiHoRow('Hỗ trợ xe đời cũ', tong4ChiHo, false, true);
+      writeChiHoRow('Tiền chuyên cần', chuyenCan, false, true);
+      writeChiHoRow('Chi hộ tiền tip xe nâng tại các bãi, cảng.', totalTip, false, true);
+      writeChiHoRow('Chi hộ tiền gửi xe tại bãi 2 (HPH)', tong4GuiXe, false, true);
       for (const ri of recItemRows) {
-        if (ri.kind === 'add') writeChiHoRow(ri.name, ri.amount);
+        if (ri.kind === 'add') writeChiHoRow(ri.name, ri.amount, false, true);
       }
-      writeChiHoRow('Lương còn lại Tháng 6', '');
+      writeChiHoRow('Lương còn lại Tháng 6', '', false, true);
 
       // Mục C: CÁC KHOẢN GIẢM TRỪ (mẫu: nền xanh FFD4ECC2)
       ws.mergeCells(rowIdx, 1, rowIdx, 5);
       const rC = ws.getRow(rowIdx);
       rC.getCell(1).value = 'C. CÁC KHOẢN GIẢM TRỪ';
-      rC.getCell(1).font = tnr(false, 12);
+      rC.getCell(1).font = tnr(true, 12);
       rC.getCell(1).fill = fillXanh;
       rC.getCell(6).value = tongGiamTru;
       rC.getCell(6).numFmt = moneyFmt;
-      rC.getCell(6).font = tnr(false, 12);
+      rC.getCell(6).font = tnr(true, 12);
       rC.getCell(6).fill = fillXanh;
       rC.getCell(7).value = 'VND';
-      rC.getCell(7).font = tnr(false, 11);
+      rC.getCell(7).font = tnr(true, 11);
       rC.getCell(7).fill = fillXanh;
       rowIdx++;
       const pctLabel = String(bhxhPercent).replace('.', ',');
-      writeChiHoRow(`BHXH -NLĐ nộp ${pctLabel}%`, bhxh);
-      writeChiHoRow('Tạm ứng lương /Tháng', fixedSalary);
+      writeChiHoRow(`BHXH -NLĐ nộp ${pctLabel}%`, bhxh, false, false);
+      writeChiHoRow('Tạm ứng lương /Tháng', fixedSalary, false, false);
+      writeChiHoRow('Các khoản chi hộ khác:', chiHo, false, false);
       for (const ri of recItemRows) {
-        if (ri.kind === 'deduct') writeChiHoRow(ri.name, ri.amount);
+        if (ri.kind === 'deduct') writeChiHoRow(ri.name, ri.amount, false, false);
       }
-      writeChiHoRow('Các khoản chi hộ khác:', chiHo);
 
       // Mục D: TIỀN LƯƠNG CÒN LẠI/THÁNG (mẫu: nền vàng FFFCF3C0)
       ws.mergeCells(rowIdx, 1, rowIdx, 5);
       const rD = ws.getRow(rowIdx);
       rD.getCell(1).value = 'D. TIỀN LƯƠNG CÒN LẠI/THÁNG (B-C)';
-      rD.getCell(1).font = tnr(false, 12);
+      rD.getCell(1).font = tnr(true, 12);
       rD.getCell(1).fill = fillVang;
       rD.getCell(6).value = luongConLai;
       rD.getCell(6).numFmt = moneyFmt;
-      rD.getCell(6).font = tnr(false, 12);
+      rD.getCell(6).font = tnr(true, 12);
       rD.getCell(6).fill = fillVang;
       rD.getCell(7).value = 'VND';
-      rD.getCell(7).font = tnr(false, 11);
+      rD.getCell(7).font = tnr(true, 11);
       rD.getCell(7).fill = fillVang;
       rowIdx++;
 
       // Bằng chữ — theo mẫu: A = "Bằng chữ:", merge C:D = nội dung
       const rChu = ws.getRow(rowIdx);
       rChu.height = 15.75;
+      ws.mergeCells(rowIdx, 1, rowIdx, 2);
       rChu.getCell(1).value = 'Bằng chữ:';
-      rChu.getCell(1).font = tnr(false, 12);
+      rChu.getCell(1).font = { ...tnr(true, 12), italic: true };
+      rChu.getCell(1).alignment = { horizontal: 'center' };
       ws.mergeCells(rowIdx, 3, rowIdx, 4);
       rChu.getCell(3).value = this.vnMoneyToWords(luongConLai);
-      rChu.getCell(3).font = tnr(false, 12);
+      rChu.getCell(3).font = { ...tnr(true, 12), italic: true };
+      rChu.getCell(3).alignment = { horizontal: 'center' };
       rowIdx += 3; // 2 dòng trống + tới dòng ngày
 
       // Ngày tháng — theo mẫu: merge D:G (D33:G33)
@@ -2726,7 +2733,7 @@ let sl: any;
       const rDate = ws.getRow(rowIdx);
       rDate.height = 15.75;
       rDate.getCell(4).value = `Hải Phòng, ngày ${vnDay} tháng ${vnMonthNow} năm ${vnYearNow}`;
-      rDate.getCell(4).font = tnr(false, 12);
+      rDate.getCell(4).font = { ...tnr(false, 12), italic: true };
       rDate.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' };
       rowIdx += 2; // 1 dòng trống + tới dòng chức danh
 
@@ -2735,10 +2742,10 @@ let sl: any;
       const rRoles = ws.getRow(rowIdx);
       rRoles.height = 15.75;
       rRoles.getCell(2).value = 'Người Lập';
-      rRoles.getCell(2).font = tnr(false, 12);
+      rRoles.getCell(2).font = tnr(true, 12);
       rRoles.getCell(2).alignment = { horizontal: 'center' };
       rRoles.getCell(4).value = 'Giám Đốc';
-      rRoles.getCell(4).font = tnr(false, 12);
+      rRoles.getCell(4).font = tnr(true, 12);
       rRoles.getCell(4).alignment = { horizontal: 'center' };
       rowIdx += 5; // 4 dòng ký tên + tới dòng tên
 
@@ -2748,10 +2755,10 @@ let sl: any;
       const rNames = ws.getRow(rowIdx);
       rNames.height = 15.75;
       rNames.getCell(2).value = NGUOI_LAP;
-      rNames.getCell(2).font = tnr(false, 12);
-      rNames.getCell(2).alignment = { horizontal: 'center' };
+      rNames.getCell(2).font = tnr(true, 12);
+      rNames.getCell(2).alignment = { horizontal: 'left' };
       rNames.getCell(4).value = GIAM_DOC;
-      rNames.getCell(4).font = tnr(false, 12);
+      rNames.getCell(4).font = tnr(true, 11);
       rNames.getCell(4).alignment = { horizontal: 'center' };
     }
 
