@@ -13,17 +13,15 @@ import { MonthlyPlansTab } from '@/components/admin/MonthlyPlansTab';
 import { ContainerCodesTab } from '@/components/admin/ContainerCodesTab';
 import { ChatHistoryTab } from '@/components/admin/ChatHistoryTab';
 import { SalaryTab } from '@/components/admin/SalaryTab';
-import { MonthlySalaryTab } from '@/components/admin/MonthlySalaryTab';
 import { usersApi } from '@/lib/api-users';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { routesApi } from '@/lib/api-routes';
 import { User, ShippingLine, Route } from '@/types';
 
-type Tab = 'data' | 'luong-thang' | 'users' | 'shipping-lines' | 'routes' | 'monthly-plans' | 'completed-plans' | 'container-codes' | 'chat' | 'salary';
+type Tab = 'data' | 'users' | 'shipping-lines' | 'routes' | 'monthly-plans' | 'completed-plans' | 'container-codes' | 'chat' | 'salary';
 
 const ALL_TABS: (role?: string) => { key: Tab; label: string; icon: string }[] = (role) => [
   { key: 'data', label: role === 'ops' ? 'Thống kê' : role === 'hr' ? 'Lương chuyến' : 'Tất cả dữ liệu', icon: '📊' },
-  { key: 'luong-thang', label: 'Lương Tháng', icon: '💵' },
   { key: 'users', label: 'Quản lý tài khoản', icon: '👥' },
   { key: 'shipping-lines', label: role === 'ops' ? 'Quản lý/Tạo kế hoạch' : 'Quản lý kế hoạch', icon: '🚢' },
   { key: 'container-codes', label: 'Mã Số Container', icon: '🗃️' },
@@ -31,7 +29,7 @@ const ALL_TABS: (role?: string) => { key: Tab; label: string; icon: string }[] =
   { key: 'completed-plans', label: 'Kế hoạch đã hoàn thành', icon: '✅' },
   { key: 'routes', label: 'Quản lý tuyến đường', icon: '🛤️' },
   { key: 'chat', label: 'Lịch sử chat', icon: '💬' },
-  { key: 'salary', label: 'Thành phần Lương', icon: '💰' },
+  { key: 'salary', label: 'Lương Tháng', icon: '💵' },
 ];
 
 export default function AdminPage() {
@@ -43,7 +41,6 @@ export default function AdminPage() {
     if (t.key === 'monthly-plans' && (user?.role === 'laixe' || user?.role === 'hr')) return false;
     if (t.key === 'routes' && user?.role === 'ops') return false;
     if (t.key === 'shipping-lines' && user?.role === 'hr') return false;
-    if (t.key === 'luong-thang' && user?.role !== 'hr' && user?.role !== 'admin' && user?.role !== 'supper_admin') return false;
     if (t.key === 'container-codes' && user?.role !== 'ops' && user?.role !== 'admin' && user?.role !== 'supper_admin') return false;
     if (t.key === 'users' && user?.role !== 'admin' && user?.role !== 'supper_admin') return false;
     if (t.key === 'chat' && user?.role !== 'admin' && user?.role !== 'supper_admin' && user?.role !== 'ops') return false;
@@ -121,9 +118,6 @@ export default function AdminPage() {
           loadUsers={loadUsers}
           loadShippingLines={loadShippingLines}
         />
-      )}
-      {activeTab === 'luong-thang' && (
-        <MonthlySalaryTab toast={toast} />
       )}
       {activeTab === 'users' && (
         <UsersTab

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { salaryApi } from '@/lib/api-salary';
 import { usersApi } from '@/lib/api-users';
+import { submissionsApi } from '@/lib/api-submissions';
 import { SalaryRecordItem, SalarySettings, User } from '@/types';
 
 interface Props {
@@ -39,6 +40,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Giá trị chung (form)
   const [fixedSalary, setFixedSalary] = useState('');
@@ -192,6 +194,28 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     }
   };
 
+  const exportExcel = async () => {
+    setExporting(true);
+    try {
+      const res = await submissionsApi.exportLuongThang(month, year);
+      const disposition = res.headers['content-disposition'] || '';
+      const match = disposition.match(/filename\*?=(?:UTF-8''|)([^;]+)/);
+      const filename = match ? decodeURIComponent(match[1]) : `Lương - Đội Xe - T${String(month).padStart(2, '0')}.${year}.xlsx`;
+      const blob = res.data;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast(`Đã xuất file lương tháng ${MONTHS_VI[month]} ${year}`, 'success');
+    } catch (e: any) {
+      toast(e?.response?.data?.message || e?.message || 'Xuất Excel thất bại', 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const fixedSalaryValue = Number(form.fixedSalary.replace(/[^\d]/g, '')) || 0;
   const attendanceBonusValue = Number(form.attendanceBonus.replace(/[^\d]/g, '')) || 0;
   const allowanceFarHomeValue = Number(form.allowanceFarHome.replace(/[^\d]/g, '')) || 0;
@@ -278,6 +302,10 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           <button onClick={loadData}
             className="px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">
             🔄 Làm mới
+          </button>
+          <button onClick={exportExcel} disabled={exporting}
+            className="px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-[0_4px_15px_rgba(16,185,129,0.3)] disabled:opacity-50 cursor-pointer">
+            {exporting ? '⏳ Đang xuất...' : '📥 Xuất Excel'}
           </button>
         </div>
 
