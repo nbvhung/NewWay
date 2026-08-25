@@ -48,6 +48,11 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const [itemDraft, setItemDraft] = useState<{ id: number | null; name: string; kind: 'add' | 'deduct'; defaultAmount: string }[]>([]);
   const [savingItems, setSavingItems] = useState(false);
 
+  // Modal sửa số tiền theo lái xe
+  const [showAmountModal, setShowAmountModal] = useState(false);
+  const [amountDraft, setAmountDraft] = useState<{ itemId: number; name: string; kind: 'add' | 'deduct'; enabled: boolean; amount: string }[]>([]);
+  const [savingAmount, setSavingAmount] = useState(false);
+
   // Giá trị chung (form)
   const [fixedSalary, setFixedSalary] = useState('');
   const [attendanceBonus, setAttendanceBonus] = useState('');
@@ -55,6 +60,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const [oldCarAllowance, setOldCarAllowance] = useState('');
   const [bhxhNld, setBhxhNld] = useState('');
   const [parkingHph2, setParkingHph2] = useState('');
+  const [waitLoadingRate, setWaitLoadingRate] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
 
   // Form tài xế
@@ -62,8 +68,8 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     fixedSalary: '',
     attendanceBonus: '',
     allowanceFarHome: '',
-    allowanceWaitLoadingRate: '',
-    waitLoadingCount: '',
+    hasWaitLoading: false,
+    waitLoadingHours: '',
     daysOff: '',
     hasOldCar: false,
     hasParkingHph2: false,
@@ -72,7 +78,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
 
   // Giá trị nền tài xế (sửa trong tab này)
   const [baseFarHome, setBaseFarHome] = useState('');
-  const [baseWaitLoading, setBaseWaitLoading] = useState('');
   const [baseOldCar, setBaseOldCar] = useState(false);
   const [savingBase, setSavingBase] = useState(false);
 
@@ -90,6 +95,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       setOldCarAllowance(fmtMoney(data.settings?.oldCarAllowance));
       setBhxhNld(String(data.settings?.bhxhNld ?? 10.5));
       setParkingHph2(fmtMoney(data.settings?.parkingHph2));
+      setWaitLoadingRate(fmtMoney(data.settings?.allowanceWaitLoadingRate));
     } catch (e: any) {
       toast(e?.response?.data?.message || e?.message || 'Không thể tải dữ liệu', 'error');
     } finally {
@@ -113,9 +119,8 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const pickDriver = (id: number | null) => {
     setSelectedId(id);
     if (id == null) {
-      setForm({ fixedSalary: '', attendanceBonus: '', allowanceFarHome: '', allowanceWaitLoadingRate: '', waitLoadingCount: '', daysOff: '', hasOldCar: false, hasParkingHph2: false, chiHo: '' });
+      setForm({ fixedSalary: '', attendanceBonus: '', allowanceFarHome: '', hasWaitLoading: false, waitLoadingHours: '', daysOff: '', hasOldCar: false, hasParkingHph2: false, chiHo: '' });
       setBaseFarHome('');
-      setBaseWaitLoading('');
       setBaseOldCar(false);
       return;
     }
@@ -125,15 +130,14 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       fixedSalary: fmtMoney(rec?.fixedSalary),
       attendanceBonus: fmtMoney(rec?.attendanceBonus),
       allowanceFarHome: fmtMoney(rec?.allowanceFarHome),
-      allowanceWaitLoadingRate: fmtMoney(rec?.allowanceWaitLoadingRate),
-      waitLoadingCount: String(rec?.waitLoadingCount ?? 0),
+      hasWaitLoading: rec?.hasWaitLoading || false,
+      waitLoadingHours: String(rec?.waitLoadingHours ?? 0),
       daysOff: (rec?.daysOff || []).join(', '),
       hasOldCar: rec?.hasOldCar || false,
       hasParkingHph2: rec?.hasParkingHph2 || false,
       chiHo: fmtMoney(rec?.chiHo),
     });
     setBaseFarHome(fmtMoney(drv?.allowanceFarHome));
-    setBaseWaitLoading(fmtMoney(drv?.allowanceWaitLoading));
     setBaseOldCar(drv?.oldCar || false);
   };
 
@@ -147,6 +151,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         oldCarAllowance: Number(oldCarAllowance.replace(/[^\d]/g, '')) || 0,
         bhxhNld: Number(bhxhNld.replace(',', '.')) || 0,
         parkingHph2: Number(parkingHph2.replace(/[^\d]/g, '')) || 0,
+        allowanceWaitLoadingRate: Number(waitLoadingRate.replace(/[^\d]/g, '')) || 0,
       });
       toast('Đã lưu giá trị chung', 'success');
       loadData();
@@ -168,8 +173,8 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         fixedSalary: Number(fixedSalaryValue) || 0,
         attendanceBonus: Number(attendanceBonusValue) || 0,
         allowanceFarHome: Number(allowanceFarHomeValue) || 0,
-        allowanceWaitLoadingRate: Number(waitLoadingRateValue) || 0,
-        waitLoadingCount: Number(waitLoadingCountValue) || 0,
+        hasWaitLoading: form.hasWaitLoading,
+        waitLoadingHours: Number(waitLoadingHoursValue) || 0,
         daysOff: daysOffList,
         hasOldCar: form.hasOldCar,
         hasParkingHph2: form.hasParkingHph2,
@@ -190,7 +195,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     try {
       await usersApi.update(selectedDriver.id, {
         allowanceFarHome: Number(baseFarHome.replace(/[^\d]/g, '')) || 0,
-        allowanceWaitLoading: Number(baseWaitLoading.replace(/[^\d]/g, '')) || 0,
         oldCar: baseOldCar,
       });
       toast(`Đã lưu giá trị nền cho ${selectedDriver.fullName}`, 'success');
@@ -306,19 +310,115 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     }
   };
 
+  // Tick cập nhật ngay (optimistic) cho phụ cấp theo lái xe — không unmount form
+  const toggleFarHome = async (checked: boolean) => {
+    if (!selectedRecord) return;
+    if (!checked) {
+      setForm(f => ({ ...f, allowanceFarHome: '' }));
+      try {
+        await salaryApi.updateRecord(selectedRecord.id, { allowanceFarHome: 0 });
+        loadData();
+      } catch (e: any) {
+        toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
+      }
+      return;
+    }
+    const prev = selectedRecord.allowanceFarHome;
+    if (prev > 0) {
+      setForm(f => ({ ...f, allowanceFarHome: fmtMoney(prev) }));
+    }
+    try {
+      await salaryApi.updateRecord(selectedRecord.id, { allowanceFarHome: prev > 0 ? prev : 0 });
+      loadData();
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
+    }
+  };
+
+  const updateFarHomeAmount = async (amountStr: string) => {
+    if (!selectedRecord) return;
+    const amount = Number(amountStr.replace(/[^\d]/g, '')) || 0;
+    setForm(f => ({ ...f, allowanceFarHome: amountStr }));
+    try {
+      await salaryApi.updateRecord(selectedRecord.id, { allowanceFarHome: amount });
+      loadData();
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
+    }
+  };
+
+  const toggleWaitLoading = async (checked: boolean) => {
+    if (!selectedRecord) return;
+    setForm(f => ({ ...f, hasWaitLoading: checked }));
+    try {
+      await salaryApi.updateRecord(selectedRecord.id, {
+        hasWaitLoading: checked,
+      });
+      loadData();
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
+    }
+  };
+
+  const updateWaitLoadingHours = async (hoursStr: string) => {
+    if (!selectedRecord) return;
+    const hours = Number(hoursStr.replace(/[^\d]/g, '')) || 0;
+    setForm(f => ({ ...f, waitLoadingHours: hoursStr }));
+    try {
+      await salaryApi.updateRecord(selectedRecord.id, {
+        waitLoadingHours: hours,
+      });
+      loadData();
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
+    }
+  };
+
+  // Modal sửa số tiền theo lái xe
+  const openAmountModal = () => {
+    setAmountDraft(recordItems.map(v => ({
+      itemId: v.itemId,
+      name: v.name,
+      kind: v.kind,
+      enabled: v.enabled,
+      amount: fmtMoney(v.amount),
+    })));
+    setShowAmountModal(true);
+  };
+
+  const saveAmounts = async () => {
+    if (!selectedRecord) return;
+    setSavingAmount(true);
+    try {
+      const recordItemsPayload: Record<string, { enabled: boolean; amount: number | null }> = {};
+      for (const row of amountDraft) {
+        const amt = row.amount.trim() === '' ? null : (Number(row.amount.replace(/[^\d]/g, '')) || 0);
+        recordItemsPayload[row.itemId] = { enabled: row.enabled, amount: amt };
+      }
+      await salaryApi.updateRecord(selectedRecord.id, { recordItems: recordItemsPayload });
+      setShowAmountModal(false);
+      toast(`Đã lưu số tiền cho ${selectedDriver?.fullName}`, 'success');
+      loadData();
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Lưu thất bại', 'error');
+    } finally {
+      setSavingAmount(false);
+    }
+  };
+
 
   const fixedSalaryValue = Number(form.fixedSalary.replace(/[^\d]/g, '')) || 0;
   const attendanceBonusValue = Number(form.attendanceBonus.replace(/[^\d]/g, '')) || 0;
   const allowanceFarHomeValue = Number(form.allowanceFarHome.replace(/[^\d]/g, '')) || 0;
-  const waitLoadingRateValue = Number(form.allowanceWaitLoadingRate.replace(/[^\d]/g, '')) || 0;
-  const waitLoadingCountValue = Number(form.waitLoadingCount.replace(/[^\d]/g, '')) || 0;
+  const waitLoadingHoursValue = Number(form.waitLoadingHours.replace(/[^\d]/g, '')) || 0;
   const chiHoValue = Number(form.chiHo.replace(/[^\d]/g, '')) || 0;
   const daysOffList = form.daysOff.split(',').map(s => s.trim()).filter(s => s !== '').map(s => parseInt(s)).filter(n => !isNaN(n));
 
   const chuyenCan = (selectedRecord && selectedRecord.ngayCong >= selectedRecord.standardDays) ? attendanceBonusValue : 0;
   const luongKhoan = selectedRecord?.luongKhoan || 0;
   const tip = selectedRecord?.tip || 0;
-  const allowanceWaitLoading = waitLoadingRateValue * waitLoadingCountValue;
+  const waitLoadingRateValue = Number(waitLoadingRate.replace(/[^\d]/g, '')) || 0;
+  const allowanceWaitLoading = form.hasWaitLoading ? waitLoadingRateValue * waitLoadingHoursValue : 0;
   const oldCarAllowanceValue = Number(oldCarAllowance.replace(/[^\d]/g, '')) || 0;
   const allowanceOldCar = form.hasOldCar ? oldCarAllowanceValue : 0;
   const parkingHph2Value = Number(parkingHph2.replace(/[^\d]/g, '')) || 0;
@@ -407,6 +507,10 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
             <label className={labelCls}>Tiền gửi xe HPH 2 (VNĐ/tháng)</label>
             <input value={parkingHph2} onChange={e => setParkingHph2(e.target.value)} inputMode="numeric" placeholder="0" className={inputCls} />
           </div>
+          <div>
+            <label className={labelCls}>Chờ đóng hàng (VNĐ/giờ)</label>
+            <input value={waitLoadingRate} onChange={e => setWaitLoadingRate(e.target.value)} inputMode="numeric" placeholder="0" className={inputCls} />
+          </div>
         </div>
         <button onClick={saveSettings} disabled={savingSettings}
           className="mt-4 px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] disabled:opacity-50 cursor-pointer">
@@ -479,6 +583,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                   </div>
                 </div>
 
+                {/* Phần INPUT (trên) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   <div>
                     <label className={labelCls}>Lương cứng (VNĐ)</label>
@@ -490,37 +595,8 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                     <p className="text-[10px] text-[#64748b] mt-1">Chuyên cần tháng này: {chuyenCan >= 0 ? `${fmtMoney(chuyenCan)} ₫` : ''} ({selectedRecord.ngayCong >= selectedRecord.standardDays ? 'Đủ ngày' : 'Thiếu ngày'})</p>
                   </div>
                   <div>
-                    <label className={labelCls}>Phụ cấp nhà xa (VNĐ/tháng)</label>
-                    <input value={form.allowanceFarHome} onChange={e => setForm(f => ({ ...f, allowanceFarHome: e.target.value }))} inputMode="numeric" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Phụ cấp chờ đóng hàng (VNĐ/chuyến)</label>
-                    <input value={form.allowanceWaitLoadingRate} onChange={e => setForm(f => ({ ...f, allowanceWaitLoadingRate: e.target.value }))} inputMode="numeric" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Số lần chờ đóng hàng</label>
-                    <input value={form.waitLoadingCount} onChange={e => setForm(f => ({ ...f, waitLoadingCount: e.target.value }))} inputMode="numeric" className={inputCls} />
-                    <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceWaitLoading)} ₫</p>
-                  </div>
-                  <div>
                     <label className={labelCls}>Ngày nghỉ (cách nhau dấu phẩy)</label>
                     <input value={form.daysOff} onChange={e => setForm(f => ({ ...f, daysOff: e.target.value }))} placeholder="VD: 2, 8, 15" className={inputCls} />
-                  </div>
-                  <div className="flex flex-col justify-end pb-1">
-                    <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
-                      <input type="checkbox" checked={form.hasOldCar} onChange={e => setForm(f => ({ ...f, hasOldCar: e.target.checked }))}
-                        className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
-                      🚚 Xe cũ
-                    </label>
-                    <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceOldCar)} ₫</p>
-                  </div>
-                  <div className="flex flex-col justify-end pb-1">
-                    <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
-                      <input type="checkbox" checked={form.hasParkingHph2} onChange={e => setForm(f => ({ ...f, hasParkingHph2: e.target.checked }))}
-                        className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
-                      🅿️ Gửi xe HPH 2
-                    </label>
-                    <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceParking)} ₫</p>
                   </div>
                   <div>
                     <label className={labelCls}>Chi hộ (Cty chi) (VNĐ)</label>
@@ -534,47 +610,84 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                   </div>
                 </div>
 
-                {/* Khoản lương động theo lái xe — tick + sửa số tiền */}
-                {recordItems.length > 0 && (
-                  <div className="border-t border-[rgba(0,0,0,0.06)] pt-4">
-                    <h4 className="text-sm font-bold mb-2">📋 Khoản lương theo lái xe — {selectedDriver.fullName}</h4>
-                    <div className="overflow-x-auto border border-[rgba(0,0,0,0.06)] rounded-lg">
-                      <table className="w-full text-xs">
-                        <thead className="bg-[#f8fafc] text-[#334155]">
-                          <tr>
-                            <th className="px-3 py-2 text-left font-semibold">Bật/Tắt</th>
-                            <th className="px-3 py-2 text-left font-semibold">Khoản</th>
-                            <th className="px-3 py-2 text-left font-semibold">Loại</th>
-                            <th className="px-3 py-2 text-right font-semibold">Số tiền (VNĐ)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {recordItems.map(v => (
-                            <tr key={v.itemId} className="border-t border-[rgba(0,0,0,0.05)]">
-                              <td className="px-3 py-2">
-                                <input type="checkbox" checked={v.enabled}
-                                  onChange={e => toggleRecordItem(v.itemId, e.target.checked)}
-                                  className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
-                              </td>
-                              <td className="px-3 py-2 font-medium">{v.name}</td>
-                              <td className="px-3 py-2">
-                                {v.kind === 'add'
-                                  ? <span className="text-[#15803d]">Cộng thêm</span>
-                                  : <span className="text-[#b91c1c]">Khấu trừ</span>}
-                              </td>
-                              <td className="px-3 py-2">
-                                <input defaultValue={fmtMoney(v.amount)} onBlur={e => updateRecordItemAmount(v.itemId, e.target.value)}
-                                  inputMode="numeric" disabled={!v.enabled}
-                                  className="w-36 px-2 py-1.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-right text-[#0f172a] outline-none focus:border-[#1a56db] disabled:opacity-40" />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                {/* Phần TICK (dưới) — Phụ cấp */}
+                <div className="border-t border-[rgba(0,0,0,0.06)] pt-4">
+                  <h4 className="text-sm font-bold mb-3">✅ Phụ cấp — {selectedDriver.fullName}</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {/* Phụ cấp nhà xa */}
+                    <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
+                      <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
+                        <input type="checkbox" checked={form.allowanceFarHome !== '' && Number(form.allowanceFarHome.replace(/[^\d]/g, '')) > 0}
+                          onChange={e => toggleFarHome(e.target.checked)}
+                          className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                        🏠 Phụ cấp nhà xa
+                      </label>
+                      {form.allowanceFarHome !== '' && Number(form.allowanceFarHome.replace(/[^\d]/g, '')) > 0 && (
+                        <input value={form.allowanceFarHome} onChange={e => updateFarHomeAmount(e.target.value)} inputMode="numeric" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                      )}
+                      <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceFarHomeValue)} ₫</p>
                     </div>
-                    <p className="text-[10px] text-[#64748b] mt-1">Bấm ✏️ rồi sửa số tiền riêng cho lái xe này (bỏ trống để dùng giá trị chung).</p>
+
+                    {/* Phụ cấp chờ đóng hàng (theo giờ) */}
+                    <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
+                      <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
+                        <input type="checkbox" checked={form.hasWaitLoading}
+                          onChange={e => toggleWaitLoading(e.target.checked)}
+                          className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                        ⏱️ Chờ đóng hàng
+                      </label>
+                      {form.hasWaitLoading && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <input value={form.waitLoadingHours} onChange={e => updateWaitLoadingHours(e.target.value)} inputMode="numeric" placeholder="Số tiếng" className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                          <span className="text-xs text-[#64748b]">giờ × {fmtMoney(waitLoadingRateValue)}</span>
+                        </div>
+                      )}
+                      <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceWaitLoading)} ₫</p>
+                    </div>
+
+                    {/* Xe cũ */}
+                    <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
+                      <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
+                        <input type="checkbox" checked={form.hasOldCar} onChange={e => setForm(f => ({ ...f, hasOldCar: e.target.checked }))}
+                          className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                        🚚 Xe cũ
+                      </label>
+                      <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceOldCar)} ₫</p>
+                    </div>
+
+                    {/* Gửi xe HPH 2 */}
+                    <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
+                      <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
+                        <input type="checkbox" checked={form.hasParkingHph2} onChange={e => setForm(f => ({ ...f, hasParkingHph2: e.target.checked }))}
+                          className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                        🅿️ Gửi xe HPH 2
+                      </label>
+                      <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceParking)} ₫</p>
+                    </div>
+
+                    {/* Khoản lương động — mỗi khoản 1 tick */}
+                    {recordItems.map(v => (
+                      <div key={v.itemId} className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
+                        <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
+                          <input type="checkbox" checked={v.enabled}
+                            onChange={e => toggleRecordItem(v.itemId, e.target.checked)}
+                            className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                          {v.kind === 'add' ? '➕' : '➖'} {v.name}
+                        </label>
+                        <p className="text-[10px] text-[#64748b] mt-1">
+                          {v.kind === 'add' ? 'Cộng thêm' : 'Khấu trừ'}: {fmtMoney(v.amount)} ₫
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                )}
+
+                  {recordItems.length > 0 && (
+                    <button onClick={openAmountModal}
+                      className="mt-3 px-4 py-2 rounded-lg text-xs font-medium text-[#1a56db] border border-[#1a56db]/30 hover:bg-[#1a56db]/5 cursor-pointer">
+                      ✏️ Sửa số tiền
+                    </button>
+                  )}
+                </div>
 
                 <button onClick={saveRecord} disabled={saving}
                   className="px-5 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-[0_4px_15px_rgba(16,185,129,0.3)] disabled:opacity-50 cursor-pointer">
@@ -588,10 +701,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                     <div>
                       <label className={labelCls}>Phụ cấp nhà xa mặc định</label>
                       <input value={baseFarHome} onChange={e => setBaseFarHome(e.target.value)} inputMode="numeric" className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Phụ cấp chờ đóng hàng mặc định</label>
-                      <input value={baseWaitLoading} onChange={e => setBaseWaitLoading(e.target.value)} inputMode="numeric" className={inputCls} />
                     </div>
                   </div>
                   <div className="mt-3">
@@ -611,6 +720,46 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           </div>
         )}
       </div>
+
+      {/* Modal sửa số tiền theo lái xe */}
+      {showAmountModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowAmountModal(false)}>
+          <div className="bg-[#ffffff] rounded-xl shadow-2xl w-full max-w-xl p-5 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold">✏️ Sửa số tiền — {selectedDriver?.fullName}</h3>
+              <button onClick={() => setShowAmountModal(false)} className="text-xl text-[#64748b] hover:text-[#0f172a] cursor-pointer">×</button>
+            </div>
+            <p className="text-xs text-[#64748b] mb-3">Để trống số tiền = dùng giá trị chung của khoản.</p>
+            <div className="space-y-2">
+              {amountDraft.map(row => (
+                <div key={row.itemId} className="flex items-center gap-3 border border-[rgba(0,0,0,0.06)] rounded-lg p-3">
+                  <input type="checkbox" checked={row.enabled} onChange={e => {
+                    const next = [...amountDraft];
+                    const i = next.findIndex(x => x.itemId === row.itemId);
+                    next[i] = { ...next[i], enabled: e.target.checked };
+                    setAmountDraft(next);
+                  }} className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                  <span className="flex-1 text-sm font-medium">{row.name}
+                    <span className="ml-2 text-[10px] font-normal text-[#64748b]">{row.kind === 'add' ? 'Cộng thêm' : 'Khấu trừ'}</span>
+                  </span>
+                  <input value={row.amount} onChange={e => {
+                    const next = [...amountDraft];
+                    const i = next.findIndex(x => x.itemId === row.itemId);
+                    next[i] = { ...next[i], amount: e.target.value };
+                    setAmountDraft(next);
+                  }} inputMode="numeric" placeholder="Giá trị chung" className="w-32 px-2 py-1.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-right text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button onClick={saveAmounts} disabled={savingAmount}
+                className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-[0_4px_15px_rgba(16,185,129,0.3)] disabled:opacity-50 cursor-pointer">
+                {savingAmount ? 'Đang lưu...' : '💾 Lưu'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal thêm/sửa khoản lương */}
       {showItemModal && (

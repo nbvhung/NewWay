@@ -58,6 +58,7 @@ export class SalaryService {
         oldCarAllowance: 0,
         bhxhNld: 10.5,
         parkingHph2: 0,
+        allowanceWaitLoadingRate: 0,
       });
     }
     return settings;
@@ -74,6 +75,8 @@ export class SalaryService {
       settings.oldCarAllowance = dto.oldCarAllowance;
     if (dto.bhxhNld !== undefined) settings.bhxhNld = dto.bhxhNld;
     if (dto.parkingHph2 !== undefined) settings.parkingHph2 = dto.parkingHph2;
+    if (dto.allowanceWaitLoadingRate !== undefined)
+      settings.allowanceWaitLoadingRate = dto.allowanceWaitLoadingRate;
     return this.settingsRepository.save(settings);
   }
 
@@ -143,12 +146,11 @@ export class SalaryService {
       fixedSalary: prev?.fixedSalary ?? settings.fixedSalary,
       attendanceBonus: prev?.attendanceBonus ?? settings.attendanceBonus,
       allowanceFarHome: prev?.allowanceFarHome ?? user.allowanceFarHome ?? 0,
-      allowanceWaitLoadingRate:
-        prev?.allowanceWaitLoadingRate ?? user.allowanceWaitLoading ?? 0,
       hasOldCar: prev?.hasOldCar ?? user.oldCar ?? false,
       hasParkingHph2: false,
+      hasWaitLoading: false,
+      waitLoadingHours: 0,
       chiHo: 0,
-      waitLoadingCount: 0,
       daysOff: [],
     });
     return this.recordsRepository.save(record);
@@ -176,9 +178,10 @@ export class SalaryService {
       fixedSalary: Number(record.fixedSalary) || 0,
       attendanceBonus: Number(record.attendanceBonus) || 0,
       allowanceFarHome: Number(record.allowanceFarHome) || 0,
-      allowanceWaitLoading:
-        (Number(record.allowanceWaitLoadingRate) || 0) *
-        (record.waitLoadingCount || 0),
+      allowanceWaitLoading: record.hasWaitLoading
+        ? (Number(settings.allowanceWaitLoadingRate) || 0) *
+          (record.waitLoadingHours || 0)
+        : 0,
       allowanceOldCar: record.hasOldCar ? Number(settings.oldCarAllowance) || 0 : 0,
       chuyenCan,
     };
@@ -278,8 +281,9 @@ export class SalaryService {
         attendanceBonus: Number(record.attendanceBonus) || 0,
         chuyenCan: components.chuyenCan,
         allowanceFarHome: components.allowanceFarHome,
-        allowanceWaitLoadingRate: Number(record.allowanceWaitLoadingRate) || 0,
-        waitLoadingCount: record.waitLoadingCount || 0,
+        hasWaitLoading: record.hasWaitLoading || false,
+        waitLoadingHours: record.waitLoadingHours || 0,
+        allowanceWaitLoadingRate: Number(settings.allowanceWaitLoadingRate) || 0,
         allowanceWaitLoading: components.allowanceWaitLoading,
         hasOldCar: record.hasOldCar || false,
         hasParkingHph2: record.hasParkingHph2 || false,
@@ -310,10 +314,10 @@ export class SalaryService {
       record.attendanceBonus = dto.attendanceBonus;
     if (dto.allowanceFarHome !== undefined)
       record.allowanceFarHome = dto.allowanceFarHome;
-    if (dto.allowanceWaitLoadingRate !== undefined)
-      record.allowanceWaitLoadingRate = dto.allowanceWaitLoadingRate;
-    if (dto.waitLoadingCount !== undefined)
-      record.waitLoadingCount = dto.waitLoadingCount;
+    if (dto.hasWaitLoading !== undefined)
+      record.hasWaitLoading = dto.hasWaitLoading;
+    if (dto.waitLoadingHours !== undefined)
+      record.waitLoadingHours = dto.waitLoadingHours;
     if (dto.hasOldCar !== undefined) record.hasOldCar = dto.hasOldCar;
     if (dto.hasParkingHph2 !== undefined)
       record.hasParkingHph2 = dto.hasParkingHph2;

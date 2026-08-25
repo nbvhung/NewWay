@@ -315,6 +315,7 @@ export class SubmissionsService {
     const standardDays = Number(settings?.standardDays) || 26;
     const oldCarAllowance = Number(settings?.oldCarAllowance) || 0;
     const parkingHph2 = Number(settings?.parkingHph2) || 0;
+    const waitLoadingRate = Number(settings?.allowanceWaitLoadingRate) || 0;
 
     const records = await this.salaryRecordsRepository.find({ where: { month, year } });
     const recordMap = new Map<number, SalaryRecord>();
@@ -340,8 +341,7 @@ export class SubmissionsService {
       const fixedSalary = rec ? Number(rec.fixedSalary) || 0 : fixedSalaryDefault;
       const attendanceBonus = rec ? Number(rec.attendanceBonus) || 0 : attendanceBonusDefault;
       const allowanceFarHome = rec ? Number(rec.allowanceFarHome) || 0 : Number(d.allowanceFarHome) || 0;
-      const allowanceWaitLoadingRate = rec ? Number(rec.allowanceWaitLoadingRate) || 0 : Number(d.allowanceWaitLoading) || 0;
-      const waitLoadingCount = rec ? rec.waitLoadingCount || 0 : 0;
+      const waitLoadingHours = rec ? (rec.hasWaitLoading ? rec.waitLoadingHours || 0 : 0) : 0;
       const daysOff = rec?.daysOff?.length || 0;
       const ngayCong = daysInMonth - daysOff;
       const chuyenCan = ngayCong >= standardDays ? attendanceBonus : 0;
@@ -351,7 +351,7 @@ export class SubmissionsService {
         fixedSalary,
         chuyenCan,
         allowanceFarHome,
-        allowanceWaitLoading: allowanceWaitLoadingRate * waitLoadingCount,
+        allowanceWaitLoading: waitLoadingRate * waitLoadingHours,
         allowanceOldCar: hasOldCar ? oldCarAllowance : 0,
         parkingHph2: hasParkingHph2 ? parkingHph2 : 0,
         hasParkingHph2,

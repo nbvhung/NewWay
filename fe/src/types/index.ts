@@ -93,6 +93,7 @@ export interface SalarySettings {
   oldCarAllowance: number;
   bhxhNld: number;
   parkingHph2: number;
+  allowanceWaitLoadingRate: number;
 }
 
 export interface SalaryItem {
@@ -137,6 +138,8 @@ export interface SalaryRecordItem {
   itemSumAdd: number;
   itemSumDeduct: number;
   recordItems: SalaryRecordItemValue[];
+  hasWaitLoading: boolean;
+  waitLoadingHours: number;
   daysOff: number[];
   luongKhoan: number;
   tip: number;

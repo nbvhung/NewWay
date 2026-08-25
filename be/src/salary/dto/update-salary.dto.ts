@@ -32,16 +32,14 @@ export class UpdateSalaryRecordDto {
   allowanceFarHome?: number;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber({}, { message: 'Phụ cấp chờ đóng hàng không hợp lệ' })
-  @Min(0)
-  allowanceWaitLoadingRate?: number;
+  @IsBoolean({ message: 'Trạng thái chờ đóng hàng không hợp lệ' })
+  hasWaitLoading?: boolean;
 
   @IsOptional()
   @Type(() => Number)
-  @IsInt({ message: 'Số lần chờ đóng hàng phải là số nguyên' })
+  @IsInt({ message: 'Số tiếng chờ đóng hàng phải là số nguyên' })
   @Min(0)
-  waitLoadingCount?: number;
+  waitLoadingHours?: number;
 
   @IsOptional()
   @IsBoolean({ message: 'Phụ cấp xe cũ không hợp lệ' })
@@ -107,4 +105,10 @@ export class UpdateSalarySettingsDto {
   @IsNumber({}, { message: 'Tiền gửi xe HPH 2 không hợp lệ' })
   @Min(0)
   parkingHph2?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Phụ cấp chờ đóng hàng (VNĐ/giờ) không hợp lệ' })
+  @Min(0)
+  allowanceWaitLoadingRate?: number;
 }

@@ -59,6 +59,15 @@ export class SalarySettings {
   })
   parkingHph2: number;
 
+  @Column({
+    name: 'allowance_wait_loading_rate',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    default: 0,
+  })
+  allowanceWaitLoadingRate: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
