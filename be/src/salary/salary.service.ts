@@ -216,7 +216,7 @@ export class SalaryService {
     const recordMap = new Map<number, SalaryRecord>();
     for (const r of existingRecords) recordMap.set(r.driverId, r);
     const recordItems = await this.recordItemsRepository.find({
-      where: { recordId: In([...recordMap.keys()]) },
+      where: { recordId: In(existingRecords.map((r) => r.id)) },
     });
     const recordItemsMap = new Map<number, Map<number, SalaryRecordItem>>();
     for (const ri of recordItems) {
