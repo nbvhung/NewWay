@@ -1,7 +1,9 @@
 import {
   Controller,
   Get,
+  Post,
   Put,
+  Delete,
   Param,
   Body,
   Query,
@@ -12,6 +14,10 @@ import {
   UpdateSalaryRecordDto,
   UpdateSalarySettingsDto,
 } from './dto/update-salary.dto';
+import {
+  CreateSalaryItemDto,
+  UpdateSalaryItemDto,
+} from './dto/update-salary-item.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -33,6 +39,31 @@ export class SalaryController {
   async updateSettings(@Body() dto: UpdateSalarySettingsDto) {
     const settings = await this.salaryService.updateSettings(dto);
     return { data: settings };
+  }
+
+  @Get('items')
+  @Roles('hr', 'admin', 'supper_admin')
+  async getItems() {
+    return { data: await this.salaryService.getItems() };
+  }
+
+  @Post('items')
+  @Roles('hr', 'admin', 'supper_admin')
+  async createItem(@Body() dto: CreateSalaryItemDto) {
+    return { data: await this.salaryService.createItem(dto) };
+  }
+
+  @Put('items/:id')
+  @Roles('hr', 'admin', 'supper_admin')
+  async updateItem(@Param('id') id: string, @Body() dto: UpdateSalaryItemDto) {
+    return { data: await this.salaryService.updateItem(+id, dto) };
+  }
+
+  @Delete('items/:id')
+  @Roles('hr', 'admin', 'supper_admin')
+  async deleteItem(@Param('id') id: string) {
+    await this.salaryService.deleteItem(+id);
+    return { message: 'Đã xóa khoản lương' };
   }
 
   @Get('records')

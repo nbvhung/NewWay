@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { salaryApi } from '@/lib/api-salary';
 import { usersApi } from '@/lib/api-users';
 import { submissionsApi } from '@/lib/api-submissions';
-import { SalaryRecordItem, SalarySettings, User } from '@/types';
+import { SalaryItem, SalaryRecordItem, SalarySettings, User } from '@/types';
 
 interface Props {
   currentUser: any;
@@ -37,10 +37,16 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const [year, setYear] = useState(vnNow.year);
   const [settings, setSettings] = useState<SalarySettings | null>(null);
   const [records, setRecords] = useState<SalaryRecordItem[]>([]);
+  const [items, setItems] = useState<SalaryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+
+  // Modal thêm/sửa khoản lương
+  const [showItemModal, setShowItemModal] = useState(false);
+  const [itemDraft, setItemDraft] = useState<{ id: number | null; name: string; kind: 'add' | 'deduct'; defaultAmount: string }[]>([]);
+  const [savingItems, setSavingItems] = useState(false);
 
   // Giá trị chung (form)
   const [fixedSalary, setFixedSalary] = useState('');
@@ -77,6 +83,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       const data = res.data?.data;
       setSettings(data.settings);
       setRecords(data.records || []);
+      setItems(data.items || []);
       setFixedSalary(fmtMoney(data.settings?.fixedSalary));
       setAttendanceBonus(fmtMoney(data.settings?.attendanceBonus));
       setStandardDays(String(data.settings?.standardDays ?? 26));
@@ -216,6 +223,90 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     }
   };
 
+  const openAddItemModal = () => {
+    setItemDraft([{ id: null, name: '', kind: 'add', defaultAmount: '' }]);
+    setShowItemModal(true);
+  };
+
+  const openEditItemModal = () => {
+    setItemDraft(items.map(it => ({
+      id: it.id,
+      name: it.name,
+      kind: it.kind,
+      defaultAmount: fmtMoney(it.defaultAmount),
+    })));
+    setShowItemModal(true);
+  };
+
+  const saveItems = async () => {
+    const valid = itemDraft.filter(r => r.name.trim() !== '');
+    if (valid.length === 0) {
+      toast('Chưa có khoản nào để lưu', 'error');
+      return;
+    }
+    setSavingItems(true);
+    try {
+      for (const row of valid) {
+        const payload = {
+          name: row.name.trim(),
+          kind: row.kind,
+          defaultAmount: Number(row.defaultAmount.replace(/[^\d]/g, '')) || 0,
+        };
+        if (row.id == null) {
+          await salaryApi.createItem(payload);
+        } else {
+          await salaryApi.updateItem(row.id, payload);
+        }
+      }
+      setShowItemModal(false);
+      toast('Đã lưu khoản lương', 'success');
+      loadData();
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Lưu khoản thất bại', 'error');
+    } finally {
+      setSavingItems(false);
+    }
+  };
+
+  const deleteItem = async (id: number) => {
+    if (!confirm('Xóa khoản lương này?')) return;
+    try {
+      await salaryApi.deleteItem(id);
+      toast('Đã xóa khoản lương', 'success');
+      loadData();
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Xóa thất bại', 'error');
+    }
+  };
+
+  const toggleRecordItem = async (itemId: number, enabled: boolean) => {
+    if (!selectedRecord) return;
+    try {
+      const ri = recordItems.find(v => v.itemId === itemId);
+      await salaryApi.updateRecord(selectedRecord.id, {
+        recordItems: { [itemId]: { enabled, amount: ri?.amount ?? null } },
+      });
+      loadData();
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
+    }
+  };
+
+  const updateRecordItemAmount = async (itemId: number, amountStr: string) => {
+    if (!selectedRecord) return;
+    const ri = recordItems.find(v => v.itemId === itemId);
+    const amount = Number(amountStr.replace(/[^\d]/g, '')) || 0;
+    try {
+      await salaryApi.updateRecord(selectedRecord.id, {
+        recordItems: { [itemId]: { enabled: ri?.enabled ?? true, amount } },
+      });
+      loadData();
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
+    }
+  };
+
+
   const fixedSalaryValue = Number(form.fixedSalary.replace(/[^\d]/g, '')) || 0;
   const attendanceBonusValue = Number(form.attendanceBonus.replace(/[^\d]/g, '')) || 0;
   const allowanceFarHomeValue = Number(form.allowanceFarHome.replace(/[^\d]/g, '')) || 0;
@@ -234,7 +325,13 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const allowanceParking = form.hasParkingHph2 ? parkingHph2Value : 0;
   const bhxhPercentValue = Number(bhxhNld.replace(',', '.')) || 0;
   const bhxhValue = Math.round((fixedSalaryValue * bhxhPercentValue) / 100);
-  const total = luongKhoan + fixedSalaryValue + chuyenCan + allowanceFarHomeValue + allowanceWaitLoading + allowanceOldCar + allowanceParking + tip - chiHoValue - bhxhValue;
+
+  // Khoản lương động — đọc từ selectedRecord.recordItems (đã có enabled + amount)
+  const recordItems = selectedRecord?.recordItems || [];
+  const itemSumAdd = recordItems.filter(v => v.enabled && v.kind === 'add').reduce((s, v) => s + v.amount, 0);
+  const itemSumDeduct = recordItems.filter(v => v.enabled && v.kind === 'deduct').reduce((s, v) => s + v.amount, 0);
+
+  const total = luongKhoan + fixedSalaryValue + chuyenCan + allowanceFarHomeValue + allowanceWaitLoading + allowanceOldCar + allowanceParking + tip + itemSumAdd - itemSumDeduct - chiHoValue - bhxhValue;
 
   const inputCls = "w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]";
   const labelCls = "block text-xs font-medium text-[#64748b] mb-1.5";
@@ -243,7 +340,47 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     <div className="space-y-5">
       {/* Giá trị chung */}
       <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
-        <h3 className="text-base font-bold mb-4 flex items-center gap-2">💰 Giá trị chung toàn công ty</h3>
+        <h3 className="text-base font-bold mb-4 flex items-center gap-2">💰 Lương và Phụ cấp
+          <button onClick={openAddItemModal}
+            className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] cursor-pointer">
+            ➕ Thêm khoản lương
+          </button>
+        </h3>
+
+        {/* Danh sách khoản lương động */}
+        {items.length > 0 && (
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-medium text-[#64748b]">Khoản lương cộng/khấu trừ</span>
+              <button onClick={openEditItemModal}
+                className="text-[11px] font-medium text-[#1a56db] hover:underline cursor-pointer">✏️ Sửa danh sách</button>
+            </div>
+            <div className="overflow-x-auto border border-[rgba(0,0,0,0.06)] rounded-lg">
+              <table className="w-full text-xs">
+                <thead className="bg-[#f8fafc] text-[#334155]">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-semibold">Tên khoản</th>
+                    <th className="px-3 py-2 text-left font-semibold">Loại</th>
+                    <th className="px-3 py-2 text-right font-semibold">Giá trị chung (VNĐ)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map(it => (
+                    <tr key={it.id} className="border-t border-[rgba(0,0,0,0.05)]">
+                      <td className="px-3 py-2">{it.name}</td>
+                      <td className="px-3 py-2">
+                        {it.kind === 'add'
+                          ? <span className="text-[#15803d]">➕ Cộng thêm</span>
+                          : <span className="text-[#b91c1c]">➖ Khấu trừ</span>}
+                      </td>
+                      <td className="px-3 py-2 text-right">{fmtMoney(it.defaultAmount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
           <div>
             <label className={labelCls}>Lương cứng (VNĐ/tháng)</label>
@@ -325,7 +462,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
               <div className="mt-5 space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="px-4 py-3 rounded-lg bg-[#f0f9ff] border border-[#bae6fd]">
-                    <div className="text-[10px] font-medium text-[#0284c7]">Lương khoán</div>
+                    <div className="text-[10px] font-medium text-[#0284c7]">Lương chuyến</div>
                     <div className="text-sm font-bold text-[#0369a1]">{fmtMoney(luongKhoan)} ₫</div>
                   </div>
                   <div className="px-4 py-3 rounded-lg bg-[#f0fdf4] border border-[#bbf7d0]">
@@ -397,6 +534,48 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                   </div>
                 </div>
 
+                {/* Khoản lương động theo lái xe — tick + sửa số tiền */}
+                {recordItems.length > 0 && (
+                  <div className="border-t border-[rgba(0,0,0,0.06)] pt-4">
+                    <h4 className="text-sm font-bold mb-2">📋 Khoản lương theo lái xe — {selectedDriver.fullName}</h4>
+                    <div className="overflow-x-auto border border-[rgba(0,0,0,0.06)] rounded-lg">
+                      <table className="w-full text-xs">
+                        <thead className="bg-[#f8fafc] text-[#334155]">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-semibold">Bật/Tắt</th>
+                            <th className="px-3 py-2 text-left font-semibold">Khoản</th>
+                            <th className="px-3 py-2 text-left font-semibold">Loại</th>
+                            <th className="px-3 py-2 text-right font-semibold">Số tiền (VNĐ)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {recordItems.map(v => (
+                            <tr key={v.itemId} className="border-t border-[rgba(0,0,0,0.05)]">
+                              <td className="px-3 py-2">
+                                <input type="checkbox" checked={v.enabled}
+                                  onChange={e => toggleRecordItem(v.itemId, e.target.checked)}
+                                  className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                              </td>
+                              <td className="px-3 py-2 font-medium">{v.name}</td>
+                              <td className="px-3 py-2">
+                                {v.kind === 'add'
+                                  ? <span className="text-[#15803d]">Cộng thêm</span>
+                                  : <span className="text-[#b91c1c]">Khấu trừ</span>}
+                              </td>
+                              <td className="px-3 py-2">
+                                <input defaultValue={fmtMoney(v.amount)} onBlur={e => updateRecordItemAmount(v.itemId, e.target.value)}
+                                  inputMode="numeric" disabled={!v.enabled}
+                                  className="w-36 px-2 py-1.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-right text-[#0f172a] outline-none focus:border-[#1a56db] disabled:opacity-40" />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="text-[10px] text-[#64748b] mt-1">Bấm ✏️ rồi sửa số tiền riêng cho lái xe này (bỏ trống để dùng giá trị chung).</p>
+                  </div>
+                )}
+
                 <button onClick={saveRecord} disabled={saving}
                   className="px-5 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-[0_4px_15px_rgba(16,185,129,0.3)] disabled:opacity-50 cursor-pointer">
                   {saving ? 'Đang lưu...' : '💾 Lưu thành phần lương'}
@@ -432,6 +611,79 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           </div>
         )}
       </div>
+
+      {/* Modal thêm/sửa khoản lương */}
+      {showItemModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowItemModal(false)}>
+          <div className="bg-[#ffffff] rounded-xl shadow-2xl w-full max-w-2xl p-5 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold">➕ Khoản lương (cộng thêm / khấu trừ)</h3>
+              <button onClick={() => setShowItemModal(false)} className="text-xl text-[#64748b] hover:text-[#0f172a] cursor-pointer">×</button>
+            </div>
+            <div className="overflow-x-auto border border-[rgba(0,0,0,0.06)] rounded-lg">
+              <table className="w-full text-xs">
+                <thead className="bg-[#f8fafc] text-[#334155]">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-semibold">Tên phụ cấp</th>
+                    <th className="px-3 py-2 text-left font-semibold">Loại</th>
+                    <th className="px-3 py-2 text-right font-semibold">Giá trị (VNĐ)</th>
+                    <th className="px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {itemDraft.map((row, idx) => (
+                    <tr key={idx} className="border-t border-[rgba(0,0,0,0.05)]">
+                      <td className="px-2 py-2">
+                        <input value={row.name} onChange={e => {
+                          const next = [...itemDraft];
+                          next[idx] = { ...next[idx], name: e.target.value };
+                          setItemDraft(next);
+                        }} placeholder="VD: Phụ cấp điện thoại" className={inputCls} />
+                      </td>
+                      <td className="px-2 py-2">
+                        <select value={row.kind} onChange={e => {
+                          const next = [...itemDraft];
+                          next[idx] = { ...next[idx], kind: e.target.value as 'add' | 'deduct' };
+                          setItemDraft(next);
+                        }} className="px-2 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
+                          <option value="add">➕ Cộng thêm</option>
+                          <option value="deduct">➖ Khấu trừ</option>
+                        </select>
+                      </td>
+                      <td className="px-2 py-2">
+                        <input value={row.defaultAmount} onChange={e => {
+                          const next = [...itemDraft];
+                          next[idx] = { ...next[idx], defaultAmount: e.target.value };
+                          setItemDraft(next);
+                        }} inputMode="numeric" placeholder="0" className={inputCls} />
+                      </td>
+                      <td className="px-2 py-2 text-center">
+                        <button onClick={() => {
+                          if (row.id != null) {
+                            salaryApi.deleteItem(row.id).then(() => { toast('Đã xóa khoản lương', 'success'); setItemDraft(itemDraft.filter((_, i) => i !== idx)); });
+                          } else {
+                            setItemDraft(itemDraft.filter((_, i) => i !== idx));
+                          }
+                        }} className="text-[#b91c1c] hover:underline cursor-pointer">🗑</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <button onClick={() => setItemDraft([...itemDraft, { id: null, name: '', kind: 'add', defaultAmount: '' }])}
+                className="px-3 py-2 rounded-lg text-xs font-medium text-[#1a56db] border border-[#1a56db]/30 hover:bg-[#1a56db]/5 cursor-pointer">
+                ➕ Thêm dòng
+              </button>
+              <button onClick={saveItems} disabled={savingItems}
+                className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-[0_4px_15px_rgba(16,185,129,0.3)] disabled:opacity-50 cursor-pointer">
+                {savingItems ? 'Đang lưu...' : '💾 Lưu khoản lương'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

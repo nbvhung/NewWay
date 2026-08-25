@@ -7,8 +7,10 @@ import {
   Max,
   IsInt,
   IsBoolean,
+  IsObject,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { UpdateSalaryRecordItemDto } from './update-salary-item.dto';
 
 export class UpdateSalaryRecordDto {
   @IsOptional()
@@ -62,6 +64,10 @@ export class UpdateSalaryRecordDto {
   @Min(1, { each: true, message: 'Ngày nghỉ không hợp lệ' })
   @Max(31, { each: true, message: 'Ngày nghỉ không hợp lệ' })
   daysOff?: number[];
+
+  @IsOptional()
+  @IsObject({ message: 'Khoản lương không hợp lệ' })
+  recordItems?: Record<string, UpdateSalaryRecordItemDto>;
 }
 
 export class UpdateSalarySettingsDto {

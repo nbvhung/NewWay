@@ -1,14 +1,20 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { SalarySettings } from '../database/entities/salary-settings.entity';
 import { SalaryRecord } from '../database/entities/salary-record.entity';
+import { SalaryItem } from '../database/entities/salary-item.entity';
+import { SalaryRecordItem } from '../database/entities/salary-record-item.entity';
 import { User } from '../database/entities/user.entity';
 import { SubmissionsService } from '../submissions/submissions.service';
 import {
   UpdateSalaryRecordDto,
   UpdateSalarySettingsDto,
 } from './dto/update-salary.dto';
+import {
+  CreateSalaryItemDto,
+  UpdateSalaryItemDto,
+} from './dto/update-salary-item.dto';
 
 const VN_TZ = 'Asia/Ho_Chi_Minh';
 
@@ -19,6 +25,10 @@ export class SalaryService {
     private settingsRepository: Repository<SalarySettings>,
     @InjectRepository(SalaryRecord)
     private recordsRepository: Repository<SalaryRecord>,
+    @InjectRepository(SalaryItem)
+    private itemsRepository: Repository<SalaryItem>,
+    @InjectRepository(SalaryRecordItem)
+    private recordItemsRepository: Repository<SalaryRecordItem>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private submissionsService: SubmissionsService,
@@ -65,6 +75,37 @@ export class SalaryService {
     if (dto.bhxhNld !== undefined) settings.bhxhNld = dto.bhxhNld;
     if (dto.parkingHph2 !== undefined) settings.parkingHph2 = dto.parkingHph2;
     return this.settingsRepository.save(settings);
+  }
+
+  async getItems(): Promise<SalaryItem[]> {
+    return this.itemsRepository.find({ order: { sortOrder: 'ASC', id: 'ASC' } });
+  }
+
+  async createItem(dto: CreateSalaryItemDto): Promise<SalaryItem> {
+    return this.itemsRepository.save({
+      name: dto.name,
+      kind: dto.kind,
+      defaultAmount: dto.defaultAmount ?? 0,
+      isActive: true,
+      sortOrder: dto.sortOrder ?? 0,
+    });
+  }
+
+  async updateItem(id: number, dto: UpdateSalaryItemDto): Promise<SalaryItem> {
+    const item = await this.itemsRepository.findOne({ where: { id } });
+    if (!item) throw new NotFoundException('Không tìm thấy khoản lương');
+    if (dto.name !== undefined) item.name = dto.name;
+    if (dto.kind !== undefined) item.kind = dto.kind;
+    if (dto.defaultAmount !== undefined) item.defaultAmount = dto.defaultAmount;
+    if (dto.isActive !== undefined) item.isActive = dto.isActive;
+    if (dto.sortOrder !== undefined) item.sortOrder = dto.sortOrder;
+    return this.itemsRepository.save(item);
+  }
+
+  async deleteItem(id: number): Promise<void> {
+    const item = await this.itemsRepository.findOne({ where: { id } });
+    if (!item) throw new NotFoundException('Không tìm thấy khoản lương');
+    await this.itemsRepository.remove(item);
   }
 
   private daysInMonth(month: number, year: number): number {
@@ -149,6 +190,23 @@ export class SalaryService {
       where: { role: 'laixe' },
       order: { stt: 'ASC' },
     });
+    const items = await this.itemsRepository.find({
+      where: { isActive: true },
+      order: { sortOrder: 'ASC', id: 'ASC' },
+    });
+    const existingRecords = await this.recordsRepository.find({
+      where: { month, year },
+    });
+    const recordMap = new Map<number, SalaryRecord>();
+    for (const r of existingRecords) recordMap.set(r.driverId, r);
+    const recordItems = await this.recordItemsRepository.find({
+      where: { recordId: In([...recordMap.keys()]) },
+    });
+    const recordItemsMap = new Map<number, Map<number, SalaryRecordItem>>();
+    for (const ri of recordItems) {
+      if (!recordItemsMap.has(ri.recordId)) recordItemsMap.set(ri.recordId, new Map());
+      recordItemsMap.get(ri.recordId)!.set(ri.itemId, ri);
+    }
 
     const records: any[] = [];
     for (const driver of drivers) {
@@ -171,6 +229,29 @@ export class SalaryService {
       const bhxh = Math.round(
         (components.fixedSalary * (Number(settings.bhxhNld) || 0)) / 100,
       );
+
+      const riMap = recordItemsMap.get(record.id) || new Map<number, SalaryRecordItem>();
+      const driverItemValues = items.map((it) => {
+        const ri = riMap.get(it.id);
+        const enabled = ri?.enabled ?? false;
+        const amount = ri?.amount !== null && ri?.amount !== undefined
+          ? Number(ri.amount)
+          : Number(it.defaultAmount) || 0;
+        return {
+          itemId: it.id,
+          name: it.name,
+          kind: it.kind,
+          enabled,
+          amount,
+        };
+      });
+      const itemSumAdd = driverItemValues
+        .filter((v) => v.enabled && v.kind === 'add')
+        .reduce((s, v) => s + v.amount, 0);
+      const itemSumDeduct = driverItemValues
+        .filter((v) => v.enabled && v.kind === 'deduct')
+        .reduce((s, v) => s + v.amount, 0);
+
       const total =
         luongKhoan +
         components.fixedSalary +
@@ -178,7 +259,9 @@ export class SalaryService {
         components.allowanceFarHome +
         components.allowanceWaitLoading +
         components.allowanceOldCar +
-        tip -
+        tip +
+        itemSumAdd -
+        itemSumDeduct -
         chiHo -
         bhxh;
 
@@ -204,6 +287,9 @@ export class SalaryService {
         allowanceOldCar: components.allowanceOldCar,
         chiHo,
         bhxh,
+        itemSumAdd,
+        itemSumDeduct,
+        recordItems: driverItemValues,
         daysOff: record.daysOff || [],
         luongKhoan,
         tip,
@@ -211,7 +297,7 @@ export class SalaryService {
       });
     }
 
-    return { settings, month, year, records };
+    return { settings, month, year, items, records };
   }
 
   async updateRecord(id: number, dto: UpdateSalaryRecordDto) {
@@ -233,6 +319,30 @@ export class SalaryService {
       record.hasParkingHph2 = dto.hasParkingHph2;
     if (dto.chiHo !== undefined) record.chiHo = dto.chiHo;
     if (dto.daysOff !== undefined) record.daysOff = dto.daysOff;
-    return this.recordsRepository.save(record);
+    const saved = await this.recordsRepository.save(record);
+
+    if (dto.recordItems) {
+      for (const [itemIdStr, value] of Object.entries(dto.recordItems)) {
+        const itemId = Number(itemIdStr);
+        const item = await this.itemsRepository.findOne({ where: { id: itemId } });
+        if (!item) continue;
+        let ri = await this.recordItemsRepository.findOne({
+          where: { recordId: saved.id, itemId },
+        });
+        if (!ri) {
+          ri = this.recordItemsRepository.create({
+            recordId: saved.id,
+            itemId,
+            enabled: false,
+            amount: null,
+          });
+        }
+        if (value.enabled !== undefined) ri.enabled = value.enabled;
+        if (value.amount !== undefined) ri.amount = value.amount ?? null;
+        await this.recordItemsRepository.save(ri);
+      }
+    }
+
+    return saved;
   }
 }

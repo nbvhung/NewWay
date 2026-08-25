@@ -12,6 +12,8 @@ import { ZaloMessage } from './entities/zalo-message.entity';
 import { ZaloScheduledMessage } from './entities/zalo-scheduled-message.entity';
 import { SalarySettings } from './entities/salary-settings.entity';
 import { SalaryRecord } from './entities/salary-record.entity';
+import { SalaryItem } from './entities/salary-item.entity';
+import { SalaryRecordItem } from './entities/salary-record-item.entity';
 import { SeedService } from './seed.service';
 
 @Module({
@@ -37,6 +39,8 @@ import { SeedService } from './seed.service';
               ZaloScheduledMessage,
               SalarySettings,
               SalaryRecord,
+              SalaryItem,
+              SalaryRecordItem,
             ],
             synchronize: !isProd,
             logging: false,
@@ -63,6 +67,8 @@ import { SeedService } from './seed.service';
             ZaloScheduledMessage,
             SalarySettings,
             SalaryRecord,
+            SalaryItem,
+            SalaryRecordItem,
           ],
           synchronize: !isProd,
           logging: false,
@@ -86,6 +92,8 @@ import { SeedService } from './seed.service';
       ZaloScheduledMessage,
       SalarySettings,
       SalaryRecord,
+      SalaryItem,
+      SalaryRecordItem,
     ]),
   ],
   providers: [SeedService],

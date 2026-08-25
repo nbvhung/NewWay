@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import type { Response } from 'express';
 import * as path from 'path';
@@ -14,6 +14,8 @@ import { ContainerImport } from '../database/entities/container-import.entity';
 import { ContainerClaim } from '../database/entities/container-claim.entity';
 import { SalarySettings } from '../database/entities/salary-settings.entity';
 import { SalaryRecord } from '../database/entities/salary-record.entity';
+import { SalaryItem } from '../database/entities/salary-item.entity';
+import { SalaryRecordItem } from '../database/entities/salary-record-item.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateSubmissionDto } from './dto/update-submission.dto';
 import { SettingsService } from '../settings/settings.service';
@@ -39,6 +41,10 @@ export class SubmissionsService {
     private salarySettingsRepository: Repository<SalarySettings>,
     @InjectRepository(SalaryRecord)
     private salaryRecordsRepository: Repository<SalaryRecord>,
+    @InjectRepository(SalaryItem)
+    private salaryItemsRepository: Repository<SalaryItem>,
+    @InjectRepository(SalaryRecordItem)
+    private salaryRecordItemsRepository: Repository<SalaryRecordItem>,
     private settingsService: SettingsService,
   ) {}
 
@@ -2174,6 +2180,21 @@ let sl: any;
     const recordMap = new Map<number, SalaryRecord>();
     for (const r of records) recordMap.set(r.driverId, r);
 
+    const salaryItems = await this.salaryItemsRepository.find({
+      where: { isActive: true },
+      order: { sortOrder: 'ASC', id: 'ASC' },
+    });
+    const itemMap = new Map<number, SalaryItem>();
+    for (const it of salaryItems) itemMap.set(it.id, it);
+    const allRecordItems = await this.salaryRecordItemsRepository.find({
+      where: { recordId: In(records.map((r) => r.id)) },
+    });
+    const recordItemsByRecord = new Map<number, SalaryRecordItem[]>();
+    for (const ri of allRecordItems) {
+      if (!recordItemsByRecord.has(ri.recordId)) recordItemsByRecord.set(ri.recordId, []);
+      recordItemsByRecord.get(ri.recordId)!.push(ri);
+    }
+
     const allRoutes = await this.routesRepository.find();
     const routeMap = new Map<string, { money: number; effectiveDate: string | null }>();
     for (const r of allRoutes) {
@@ -2253,6 +2274,25 @@ let sl: any;
       const ngayCong = daysInMonth - daysOff;
       const hasOldCar = rec ? rec.hasOldCar : driver.oldCar;
       const hasParkingHph2 = rec ? rec.hasParkingHph2 : false;
+
+      // --- Khoản lương động (salary_items) theo lái xe ---
+      const recItemRows: { name: string; kind: string; amount: number }[] = [];
+      let itemSumAdd = 0;
+      let itemSumDeduct = 0;
+      if (rec) {
+        const ris = recordItemsByRecord.get(rec.id) || [];
+        for (const ri of ris) {
+          const item = itemMap.get(ri.itemId);
+          if (!item || !ri.enabled) continue;
+          const amount = ri.amount !== null && ri.amount !== undefined
+            ? Number(ri.amount)
+            : Number(item.defaultAmount) || 0;
+          if (amount <= 0) continue;
+          recItemRows.push({ name: item.name, kind: item.kind, amount });
+          if (item.kind === 'add') itemSumAdd += amount;
+          else itemSumDeduct += amount;
+        }
+      }
 
       // --- Gom submissions theo plan (cùng plan), lọc theo tháng plan ---
       const planGroups = new Map<string, { sl: ShippingLine | null; subs: any[] }>();
@@ -2358,8 +2398,8 @@ let sl: any;
       const tong4GuiXe = hasParkingHph2 ? parkingHph2 : 0;
       const tong4 = tong4ChiHo + chuyenCan + totalTip + tong4GuiXe; // F44 = trống
       const luongCoBan = fixedSalary;
-      const tongA = luongCoBan + planTotalMoney + leTetTotalMoney + tong4;
-      const tongGiamTru = bhxh + fixedSalary + chiHo; // F49 + F50 + F51
+      const tongA = luongCoBan + planTotalMoney + leTetTotalMoney + tong4 + itemSumAdd;
+      const tongGiamTru = bhxh + fixedSalary + chiHo + itemSumDeduct; // F49 + F50 + F51 + khoản khấu trừ động
       const luongConLai = tongA - tongGiamTru;
 
       // Column widths
@@ -2579,6 +2619,9 @@ let sl: any;
       writeChiHoRow('Tiền chuyên cần', chuyenCan);
       writeChiHoRow('Chi hộ tiền tip xe nâng tại các bãi, cảng.', totalTip);
       writeChiHoRow('Chi hộ tiền gửi xe tại bãi 2 (HPH)', tong4GuiXe);
+      for (const ri of recItemRows) {
+        if (ri.kind === 'add') writeChiHoRow(ri.name, ri.amount);
+      }
       writeChiHoRow('Lương còn lại Tháng 6', '');
 
       // Mục C: CÁC KHOẢN GIẢM TRỪ
@@ -2594,6 +2637,9 @@ let sl: any;
       const pctLabel = String(bhxhPercent).replace('.', ',');
       writeChiHoRow(`BHXH -NLĐ nộp ${pctLabel}%`, bhxh);
       writeChiHoRow('Tạm ứng lương /Tháng', fixedSalary);
+      for (const ri of recItemRows) {
+        if (ri.kind === 'deduct') writeChiHoRow(ri.name, ri.amount);
+      }
       writeChiHoRow('Các khoản chi hộ khác:', chiHo);
 
       // Mục D: TIỀN LƯƠNG CÒN LẠI/THÁNG

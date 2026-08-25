@@ -12,6 +12,8 @@ import { ContainerImport } from '../database/entities/container-import.entity';
 import { ContainerClaim } from '../database/entities/container-claim.entity';
 import { SalarySettings } from '../database/entities/salary-settings.entity';
 import { SalaryRecord } from '../database/entities/salary-record.entity';
+import { SalaryItem } from '../database/entities/salary-item.entity';
+import { SalaryRecordItem } from '../database/entities/salary-record-item.entity';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { SalaryRecord } from '../database/entities/salary-record.entity';
       ContainerClaim,
       SalarySettings,
       SalaryRecord,
+      SalaryItem,
+      SalaryRecordItem,
     ]),
     SettingsModule,
   ],

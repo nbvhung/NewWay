@@ -95,6 +95,23 @@ export interface SalarySettings {
   parkingHph2: number;
 }
 
+export interface SalaryItem {
+  id: number;
+  name: string;
+  kind: 'add' | 'deduct';
+  defaultAmount: number;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface SalaryRecordItemValue {
+  itemId: number;
+  name: string;
+  kind: 'add' | 'deduct';
+  enabled: boolean;
+  amount: number;
+}
+
 export interface SalaryRecordItem {
   id: number;
   driverId: number;
@@ -117,6 +134,9 @@ export interface SalaryRecordItem {
   allowanceOldCar: number;
   chiHo: number;
   bhxh: number;
+  itemSumAdd: number;
+  itemSumDeduct: number;
+  recordItems: SalaryRecordItemValue[];
   daysOff: number[];
   luongKhoan: number;
   tip: number;
@@ -127,5 +147,6 @@ export interface SalaryRecordsResponse {
   settings: SalarySettings;
   month: number;
   year: number;
+  items: SalaryItem[];
   records: SalaryRecordItem[];
 }
