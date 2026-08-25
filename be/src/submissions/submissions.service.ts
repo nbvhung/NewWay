@@ -2167,7 +2167,7 @@ let sl: any;
     const attendanceBonusDefault = Number(settings?.attendanceBonus) || 0;
     const standardDays = Number(settings?.standardDays) || 26;
     const oldCarAllowance = Number(settings?.oldCarAllowance) || 0;
-    const bhxhNld = Number(settings?.bhxhNld) || 0;
+    const bhxhPercent = Number(settings?.bhxhNld) || 0;
     const parkingHph2 = Number(settings?.parkingHph2) || 0;
 
     const records = await this.salaryRecordsRepository.find({ where: { month, year } });
@@ -2248,6 +2248,7 @@ let sl: any;
       const fixedSalary = rec ? Number(rec.fixedSalary) || 0 : fixedSalaryDefault;
       const attendanceBonus = rec ? Number(rec.attendanceBonus) || 0 : attendanceBonusDefault;
       const chiHo = rec ? Number(rec.chiHo) || 0 : 0;
+      const bhxh = Math.round((fixedSalary * bhxhPercent) / 100);
       const daysOff = rec?.daysOff?.length || 0;
       const ngayCong = daysInMonth - daysOff;
       const hasOldCar = rec ? rec.hasOldCar : driver.oldCar;
@@ -2358,7 +2359,7 @@ let sl: any;
       const tong4 = tong4ChiHo + chuyenCan + totalTip + tong4GuiXe; // F44 = trống
       const luongCoBan = fixedSalary;
       const tongA = luongCoBan + planTotalMoney + leTetTotalMoney + tong4;
-      const tongGiamTru = bhxhNld + fixedSalary + chiHo; // F49 + F50 + F51
+      const tongGiamTru = bhxh + fixedSalary + chiHo; // F49 + F50 + F51
       const luongConLai = tongA - tongGiamTru;
 
       // Column widths
@@ -2590,7 +2591,8 @@ let sl: any;
       rC.getCell(6).font = tnr(true);
       rC.getCell(7).value = 'VND';
       rowIdx++;
-      writeChiHoRow('BHXH -NLĐ nộp 10,5%', bhxhNld);
+      const pctLabel = String(bhxhPercent).replace('.', ',');
+      writeChiHoRow(`BHXH -NLĐ nộp ${pctLabel}%`, bhxh);
       writeChiHoRow('Tạm ứng lương /Tháng', fixedSalary);
       writeChiHoRow('Các khoản chi hộ khác:', chiHo);
 

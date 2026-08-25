@@ -91,8 +91,9 @@ export class UpdateSalarySettingsDto {
 
   @IsOptional()
   @Type(() => Number)
-  @IsNumber({}, { message: 'BHXH - NLD không hợp lệ' })
+  @IsNumber({}, { message: 'Tỷ lệ BHXH - NLĐ không hợp lệ' })
   @Min(0)
+  @Max(100)
   bhxhNld?: number;
 
   @IsOptional()

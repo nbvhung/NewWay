@@ -46,7 +46,7 @@ export class SalaryService {
         attendanceBonus: 0,
         standardDays: 26,
         oldCarAllowance: 0,
-        bhxhNld: 0,
+        bhxhNld: 10.5,
         parkingHph2: 0,
       });
     }
@@ -168,6 +168,9 @@ export class SalaryService {
       const luongKhoan = Number(summary.totalSalary) || 0;
       const tip = Number(summary.totalTip) || 0;
       const chiHo = Number(record.chiHo) || 0;
+      const bhxh = Math.round(
+        (components.fixedSalary * (Number(settings.bhxhNld) || 0)) / 100,
+      );
       const total =
         luongKhoan +
         components.fixedSalary +
@@ -176,7 +179,8 @@ export class SalaryService {
         components.allowanceWaitLoading +
         components.allowanceOldCar +
         tip -
-        chiHo;
+        chiHo -
+        bhxh;
 
       records.push({
         id: record.id,
@@ -199,6 +203,7 @@ export class SalaryService {
         parkingHph2: Number(settings.parkingHph2) || 0,
         allowanceOldCar: components.allowanceOldCar,
         chiHo,
+        bhxh,
         daysOff: record.daysOff || [],
         luongKhoan,
         tip,

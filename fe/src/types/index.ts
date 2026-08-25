@@ -116,6 +116,7 @@ export interface SalaryRecordItem {
   parkingHph2: number;
   allowanceOldCar: number;
   chiHo: number;
+  bhxh: number;
   daysOff: number[];
   luongKhoan: number;
   tip: number;

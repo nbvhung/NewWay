@@ -79,7 +79,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       setAttendanceBonus(fmtMoney(data.settings?.attendanceBonus));
       setStandardDays(String(data.settings?.standardDays ?? 26));
       setOldCarAllowance(fmtMoney(data.settings?.oldCarAllowance));
-      setBhxhNld(fmtMoney(data.settings?.bhxhNld));
+      setBhxhNld(String(data.settings?.bhxhNld ?? 10.5));
       setParkingHph2(fmtMoney(data.settings?.parkingHph2));
     } catch (e: any) {
       toast(e?.response?.data?.message || e?.message || 'Không thể tải dữ liệu', 'error');
@@ -136,7 +136,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         attendanceBonus: Number(attendanceBonus.replace(/[^\d]/g, '')) || 0,
         standardDays: Number(standardDays) || 26,
         oldCarAllowance: Number(oldCarAllowance.replace(/[^\d]/g, '')) || 0,
-        bhxhNld: Number(bhxhNld.replace(/[^\d]/g, '')) || 0,
+        bhxhNld: Number(bhxhNld.replace(',', '.')) || 0,
         parkingHph2: Number(parkingHph2.replace(/[^\d]/g, '')) || 0,
       });
       toast('Đã lưu giá trị chung', 'success');
@@ -208,7 +208,9 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const allowanceOldCar = form.hasOldCar ? oldCarAllowanceValue : 0;
   const parkingHph2Value = Number(parkingHph2.replace(/[^\d]/g, '')) || 0;
   const allowanceParking = form.hasParkingHph2 ? parkingHph2Value : 0;
-  const total = luongKhoan + fixedSalaryValue + chuyenCan + allowanceFarHomeValue + allowanceWaitLoading + allowanceOldCar + allowanceParking + tip - chiHoValue;
+  const bhxhPercentValue = Number(bhxhNld.replace(',', '.')) || 0;
+  const bhxhValue = Math.round((fixedSalaryValue * bhxhPercentValue) / 100);
+  const total = luongKhoan + fixedSalaryValue + chuyenCan + allowanceFarHomeValue + allowanceWaitLoading + allowanceOldCar + allowanceParking + tip - chiHoValue - bhxhValue;
 
   const inputCls = "w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]";
   const labelCls = "block text-xs font-medium text-[#64748b] mb-1.5";
@@ -236,8 +238,9 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
             <input value={oldCarAllowance} onChange={e => setOldCarAllowance(e.target.value)} inputMode="numeric" placeholder="0" className={inputCls} />
           </div>
           <div>
-            <label className={labelCls}>BHXH - NLD (VNĐ/tháng)</label>
-            <input value={bhxhNld} onChange={e => setBhxhNld(e.target.value)} inputMode="numeric" placeholder="0" className={inputCls} />
+            <label className={labelCls}>BHXH - NLĐ (%)</label>
+            <input value={bhxhNld} onChange={e => setBhxhNld(e.target.value)} inputMode="decimal" placeholder="10,5" className={inputCls} />
+            <p className="text-[10px] text-[#64748b] mt-1">Tính theo lương cứng của từng lái xe (VD lương 7.000.000 × 10,5% = 735.000 ₫)</p>
           </div>
           <div>
             <label className={labelCls}>Tiền gửi xe HPH 2 (VNĐ/tháng)</label>
@@ -358,6 +361,11 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                     <label className={labelCls}>Chi hộ (Cty chi) (VNĐ)</label>
                     <input value={form.chiHo} onChange={e => setForm(f => ({ ...f, chiHo: e.target.value }))} inputMode="numeric" placeholder="0" className={inputCls} />
                     <p className="text-[10px] text-[#64748b] mt-1">Trừ vào lương: {fmtMoney(chiHoValue)} ₫</p>
+                  </div>
+                  <div>
+                    <label className={labelCls}>BHXH - NLĐ ({String(bhxhPercentValue).replace('.', ',')}%)</label>
+                    <div className="px-3.5 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a]">{fmtMoney(bhxhValue)} ₫</div>
+                    <p className="text-[10px] text-[#64748b] mt-1">Trừ vào lương: {fmtMoney(bhxhValue)} ₫</p>
                   </div>
                 </div>
 
