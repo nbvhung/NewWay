@@ -297,6 +297,17 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
 
   const toggleRecordItem = async (itemId: number, enabled: boolean) => {
     if (!selectedRecord) return;
+    // Optimistic: cập nhật ngay để checkbox xanh tức thì
+    const prev = records;
+    setRecords(prev.map(r => {
+      if (r.driverId !== selectedRecord.driverId) return r;
+      return {
+        ...r,
+        recordItems: (r.recordItems || []).map(v =>
+          v.itemId === itemId ? { ...v, enabled } : v
+        ),
+      };
+    }));
     try {
       const ri = recordItems.find(v => v.itemId === itemId);
       await salaryApi.updateRecord(selectedRecord.id, {
@@ -304,6 +315,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       });
       loadData(true);
     } catch (e: any) {
+      setRecords(prev);
       toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
     }
   };
