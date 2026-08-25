@@ -78,8 +78,8 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const [baseOldCar, setBaseOldCar] = useState(false);
   const [savingBase, setSavingBase] = useState(false);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await salaryApi.getRecords(month, year);
       const data = res.data?.data;
@@ -96,7 +96,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     } catch (e: any) {
       toast(e?.response?.data?.message || e?.message || 'Không thể tải dữ liệu', 'error');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -302,7 +302,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       await salaryApi.updateRecord(selectedRecord.id, {
         recordItems: { [itemId]: { enabled, amount: ri?.overrideAmount ?? null } },
       });
-      loadData();
+      loadData(true);
     } catch (e: any) {
       toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
     }
@@ -315,7 +315,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       await salaryApi.updateRecord(selectedRecord.id, {
         recordItems: { [itemId]: { enabled: ri?.enabled ?? true, amount: amountStr.trim() === '' ? null : (Number(amountStr.replace(/[^\d]/g, '')) || 0) } },
       });
-      loadData();
+      loadData(true);
     } catch (e: any) {
       toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
     }
@@ -330,7 +330,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         hasFarHome: checked,
         allowanceFarHome: checked ? (form.allowanceFarHome.trim() === '' ? null : Number(allowanceFarHomeValue) || 0) : null,
       });
-      loadData();
+      loadData(true);
     } catch (e: any) {
       toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
     }
@@ -338,12 +338,35 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
 
   const updateFarHomeAmount = async (amountStr: string) => {
     if (!selectedRecord) return;
-    setForm(f => ({ ...f, allowanceFarHome: amountStr }));
     try {
       await salaryApi.updateRecord(selectedRecord.id, {
         allowanceFarHome: amountStr.trim() === '' ? null : (Number(amountStr.replace(/[^\d]/g, '')) || 0),
       });
-      loadData();
+      loadData(true);
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
+    }
+  };
+
+  const updateOldCarAmount = async (amountStr: string) => {
+    if (!selectedRecord) return;
+    try {
+      await salaryApi.updateRecord(selectedRecord.id, {
+        oldCarAllowance: amountStr.trim() === '' ? null : (Number(amountStr.replace(/[^\d]/g, '')) || 0),
+      });
+      loadData(true);
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
+    }
+  };
+
+  const updateParkingAmount = async (amountStr: string) => {
+    if (!selectedRecord) return;
+    try {
+      await salaryApi.updateRecord(selectedRecord.id, {
+        parkingHph2: amountStr.trim() === '' ? null : (Number(amountStr.replace(/[^\d]/g, '')) || 0),
+      });
+      loadData(true);
     } catch (e: any) {
       toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
     }
@@ -491,7 +514,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
               ))}
             </select>
           </div>
-          <button onClick={loadData}
+          <button onClick={() => loadData()}
             className="px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">
             🔄 Làm mới
           </button>
@@ -579,7 +602,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                         🏠 Phụ cấp nhà xa
                       </label>
                       {form.hasFarHome && (
-                        <input value={form.allowanceFarHome} onChange={e => updateFarHomeAmount(e.target.value)} inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                        <input value={form.allowanceFarHome} onChange={e => setForm(f => ({ ...f, allowanceFarHome: e.target.value }))} onBlur={e => updateFarHomeAmount(e.target.value)} inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
                       )}
                       <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceFarHomeValue)} ₫</p>
                     </div>
@@ -592,7 +615,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                         🚚 Xe cũ
                       </label>
                       {form.hasOldCar && (
-                        <input value={form.allowanceOldCar} onChange={e => setForm(f => ({ ...f, allowanceOldCar: e.target.value }))} inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                        <input value={form.allowanceOldCar} onChange={e => setForm(f => ({ ...f, allowanceOldCar: e.target.value }))} onBlur={e => updateOldCarAmount(e.target.value)} inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
                       )}
                       <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceOldCar)} ₫</p>
                     </div>
@@ -605,7 +628,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                         🅿️ Gửi xe HPH 2
                       </label>
                       {form.hasParkingHph2 && (
-                        <input value={form.allowanceParking} onChange={e => setForm(f => ({ ...f, allowanceParking: e.target.value }))} inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                        <input value={form.allowanceParking} onChange={e => setForm(f => ({ ...f, allowanceParking: e.target.value }))} onBlur={e => updateParkingAmount(e.target.value)} inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
                       )}
                       <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceParking)} ₫</p>
                     </div>
