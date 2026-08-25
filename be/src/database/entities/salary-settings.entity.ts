@@ -68,6 +68,15 @@ export class SalarySettings {
   })
   allowanceWaitLoadingRate: number;
 
+  @Column({
+    name: 'allowance_far_home',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    default: 0,
+  })
+  allowanceFarHome: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

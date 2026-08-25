@@ -50,7 +50,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
 
   // Modal sửa số tiền theo lái xe
   const [showAmountModal, setShowAmountModal] = useState(false);
-  const [amountDraft, setAmountDraft] = useState<{ itemId: number; name: string; kind: 'add' | 'deduct'; enabled: boolean; amount: string }[]>([]);
+  const [amountDraft, setAmountDraft] = useState<{ key: string; name: string; kind: 'add' | 'deduct'; enabled: boolean; amount: string }[]>([]);
   const [savingAmount, setSavingAmount] = useState(false);
 
   // Giá trị chung (form)
@@ -61,12 +61,14 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const [bhxhNld, setBhxhNld] = useState('');
   const [parkingHph2, setParkingHph2] = useState('');
   const [waitLoadingRate, setWaitLoadingRate] = useState('');
+  const [farHomeCommon, setFarHomeCommon] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
 
   // Form tài xế
   const [form, setForm] = useState({
     fixedSalary: '',
     attendanceBonus: '',
+    hasFarHome: false,
     allowanceFarHome: '',
     hasWaitLoading: false,
     waitLoadingHours: '',
@@ -96,6 +98,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       setBhxhNld(String(data.settings?.bhxhNld ?? 10.5));
       setParkingHph2(fmtMoney(data.settings?.parkingHph2));
       setWaitLoadingRate(fmtMoney(data.settings?.allowanceWaitLoadingRate));
+      setFarHomeCommon(fmtMoney(data.settings?.allowanceFarHome));
     } catch (e: any) {
       toast(e?.response?.data?.message || e?.message || 'Không thể tải dữ liệu', 'error');
     } finally {
@@ -119,7 +122,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const pickDriver = (id: number | null) => {
     setSelectedId(id);
     if (id == null) {
-      setForm({ fixedSalary: '', attendanceBonus: '', allowanceFarHome: '', hasWaitLoading: false, waitLoadingHours: '', daysOff: '', hasOldCar: false, hasParkingHph2: false, chiHo: '' });
+      setForm({ fixedSalary: '', attendanceBonus: '', hasFarHome: false, allowanceFarHome: '', hasWaitLoading: false, waitLoadingHours: '', daysOff: '', hasOldCar: false, hasParkingHph2: false, chiHo: '' });
       setBaseFarHome('');
       setBaseOldCar(false);
       return;
@@ -129,7 +132,8 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     setForm({
       fixedSalary: fmtMoney(rec?.fixedSalary),
       attendanceBonus: fmtMoney(rec?.attendanceBonus),
-      allowanceFarHome: fmtMoney(rec?.allowanceFarHome),
+      hasFarHome: rec?.hasFarHome || false,
+      allowanceFarHome: rec?.allowanceFarHomeOverride != null ? fmtMoney(rec.allowanceFarHomeOverride) : '',
       hasWaitLoading: rec?.hasWaitLoading || false,
       waitLoadingHours: String(rec?.waitLoadingHours ?? 0),
       daysOff: (rec?.daysOff || []).join(', '),
@@ -152,6 +156,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         bhxhNld: Number(bhxhNld.replace(',', '.')) || 0,
         parkingHph2: Number(parkingHph2.replace(/[^\d]/g, '')) || 0,
         allowanceWaitLoadingRate: Number(waitLoadingRate.replace(/[^\d]/g, '')) || 0,
+        allowanceFarHome: Number(farHomeCommon.replace(/[^\d]/g, '')) || 0,
       });
       toast('Đã lưu giá trị chung', 'success');
       loadData();
@@ -172,7 +177,8 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       await salaryApi.updateRecord(selectedRecord.id, {
         fixedSalary: Number(fixedSalaryValue) || 0,
         attendanceBonus: Number(attendanceBonusValue) || 0,
-        allowanceFarHome: Number(allowanceFarHomeValue) || 0,
+        allowanceFarHome: form.allowanceFarHome.trim() === '' ? null : (Number(allowanceFarHomeValue) || 0),
+        hasFarHome: form.hasFarHome,
         hasWaitLoading: form.hasWaitLoading,
         waitLoadingHours: Number(waitLoadingHoursValue) || 0,
         daysOff: daysOffList,
@@ -283,6 +289,17 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     }
   };
 
+  const updateItemDefaultAmount = async (id: number, amountStr: string) => {
+    try {
+      await salaryApi.updateItem(id, {
+        defaultAmount: Number(amountStr.replace(/[^\d]/g, '')) || 0,
+      });
+      loadData();
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
+    }
+  };
+
   const toggleRecordItem = async (itemId: number, enabled: boolean) => {
     if (!selectedRecord) return;
     try {
@@ -313,22 +330,12 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   // Tick cập nhật ngay (optimistic) cho phụ cấp theo lái xe — không unmount form
   const toggleFarHome = async (checked: boolean) => {
     if (!selectedRecord) return;
-    if (!checked) {
-      setForm(f => ({ ...f, allowanceFarHome: '' }));
-      try {
-        await salaryApi.updateRecord(selectedRecord.id, { allowanceFarHome: 0 });
-        loadData();
-      } catch (e: any) {
-        toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
-      }
-      return;
-    }
-    const prev = selectedRecord.allowanceFarHome;
-    if (prev > 0) {
-      setForm(f => ({ ...f, allowanceFarHome: fmtMoney(prev) }));
-    }
+    setForm(f => ({ ...f, hasFarHome: checked }));
     try {
-      await salaryApi.updateRecord(selectedRecord.id, { allowanceFarHome: prev > 0 ? prev : 0 });
+      await salaryApi.updateRecord(selectedRecord.id, {
+        hasFarHome: checked,
+        allowanceFarHome: checked ? (form.allowanceFarHome.trim() === '' ? null : Number(allowanceFarHomeValue) || 0) : null,
+      });
       loadData();
     } catch (e: any) {
       toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
@@ -337,10 +344,11 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
 
   const updateFarHomeAmount = async (amountStr: string) => {
     if (!selectedRecord) return;
-    const amount = Number(amountStr.replace(/[^\d]/g, '')) || 0;
     setForm(f => ({ ...f, allowanceFarHome: amountStr }));
     try {
-      await salaryApi.updateRecord(selectedRecord.id, { allowanceFarHome: amount });
+      await salaryApi.updateRecord(selectedRecord.id, {
+        allowanceFarHome: amountStr.trim() === '' ? null : (Number(amountStr.replace(/[^\d]/g, '')) || 0),
+      });
       loadData();
     } catch (e: any) {
       toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
@@ -376,13 +384,26 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
 
   // Modal sửa số tiền theo lái xe
   const openAmountModal = () => {
-    setAmountDraft(recordItems.map(v => ({
-      itemId: v.itemId,
-      name: v.name,
-      kind: v.kind,
-      enabled: v.enabled,
-      amount: fmtMoney(v.amount),
-    })));
+    const draft: { key: string; name: string; kind: 'add' | 'deduct'; enabled: boolean; amount: string }[] = [];
+    if (form.hasFarHome) {
+      draft.push({
+        key: 'farHome',
+        name: '🏠 Phụ cấp nhà xa',
+        kind: 'add',
+        enabled: true,
+        amount: form.allowanceFarHome.trim() === '' ? '' : fmtMoney(Number(form.allowanceFarHome.replace(/[^\d]/g, '')) || 0),
+      });
+    }
+    for (const v of recordItems) {
+      draft.push({
+        key: `item:${v.itemId}`,
+        name: v.name,
+        kind: v.kind,
+        enabled: v.enabled,
+        amount: fmtMoney(v.amount),
+      });
+    }
+    setAmountDraft(draft);
     setShowAmountModal(true);
   };
 
@@ -391,11 +412,20 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     setSavingAmount(true);
     try {
       const recordItemsPayload: Record<string, { enabled: boolean; amount: number | null }> = {};
+      let farHomeOverride: number | null | undefined;
       for (const row of amountDraft) {
+        if (row.key === 'farHome') {
+          farHomeOverride = row.amount.trim() === '' ? null : (Number(row.amount.replace(/[^\d]/g, '')) || 0);
+          continue;
+        }
+        const itemId = Number(row.key.replace('item:', ''));
         const amt = row.amount.trim() === '' ? null : (Number(row.amount.replace(/[^\d]/g, '')) || 0);
-        recordItemsPayload[row.itemId] = { enabled: row.enabled, amount: amt };
+        recordItemsPayload[itemId] = { enabled: row.enabled, amount: amt };
       }
-      await salaryApi.updateRecord(selectedRecord.id, { recordItems: recordItemsPayload });
+      await salaryApi.updateRecord(selectedRecord.id, {
+        recordItems: recordItemsPayload,
+        ...(farHomeOverride !== undefined ? { allowanceFarHome: farHomeOverride } : {}),
+      });
       setShowAmountModal(false);
       toast(`Đã lưu số tiền cho ${selectedDriver?.fullName}`, 'success');
       loadData();
@@ -409,7 +439,10 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
 
   const fixedSalaryValue = Number(form.fixedSalary.replace(/[^\d]/g, '')) || 0;
   const attendanceBonusValue = Number(form.attendanceBonus.replace(/[^\d]/g, '')) || 0;
-  const allowanceFarHomeValue = Number(form.allowanceFarHome.replace(/[^\d]/g, '')) || 0;
+  const farHomeCommonValue = Number(farHomeCommon.replace(/[^\d]/g, '')) || 0;
+  const allowanceFarHomeValue = form.hasFarHome
+    ? (form.allowanceFarHome.trim() === '' ? farHomeCommonValue : (Number(form.allowanceFarHome.replace(/[^\d]/g, '')) || 0))
+    : 0;
   const waitLoadingHoursValue = Number(form.waitLoadingHours.replace(/[^\d]/g, '')) || 0;
   const chiHoValue = Number(form.chiHo.replace(/[^\d]/g, '')) || 0;
   const daysOffList = form.daysOff.split(',').map(s => s.trim()).filter(s => s !== '').map(s => parseInt(s)).filter(n => !isNaN(n));
@@ -447,13 +480,11 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           </button>
         </h3>
 
-        {/* Danh sách khoản lương động */}
+        {/* Danh sách khoản lương động — sửa giá trị trực tiếp */}
         {items.length > 0 && (
           <div className="mb-4">
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="mb-1.5">
               <span className="text-xs font-medium text-[#64748b]">Khoản lương cộng/khấu trừ</span>
-              <button onClick={openEditItemModal}
-                className="text-[11px] font-medium text-[#1a56db] hover:underline cursor-pointer">✏️ Sửa danh sách</button>
             </div>
             <div className="overflow-x-auto border border-[rgba(0,0,0,0.06)] rounded-lg">
               <table className="w-full text-xs">
@@ -462,6 +493,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                     <th className="px-3 py-2 text-left font-semibold">Tên khoản</th>
                     <th className="px-3 py-2 text-left font-semibold">Loại</th>
                     <th className="px-3 py-2 text-right font-semibold">Giá trị chung (VNĐ)</th>
+                    <th className="px-3 py-2"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -473,7 +505,13 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                           ? <span className="text-[#15803d]">➕ Cộng thêm</span>
                           : <span className="text-[#b91c1c]">➖ Khấu trừ</span>}
                       </td>
-                      <td className="px-3 py-2 text-right">{fmtMoney(it.defaultAmount)}</td>
+                      <td className="px-3 py-2 text-right">
+                        <input defaultValue={fmtMoney(it.defaultAmount)} onBlur={e => updateItemDefaultAmount(it.id, e.target.value)}
+                          inputMode="numeric" className="w-32 px-2 py-1.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-right text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <button onClick={() => deleteItem(it.id)} className="text-[#b91c1c] hover:underline cursor-pointer">🗑</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -510,6 +548,10 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           <div>
             <label className={labelCls}>Chờ đóng hàng (VNĐ/giờ)</label>
             <input value={waitLoadingRate} onChange={e => setWaitLoadingRate(e.target.value)} inputMode="numeric" placeholder="0" className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>Phụ cấp nhà xa (VNĐ/tháng)</label>
+            <input value={farHomeCommon} onChange={e => setFarHomeCommon(e.target.value)} inputMode="numeric" placeholder="0" className={inputCls} />
           </div>
         </div>
         <button onClick={saveSettings} disabled={savingSettings}
@@ -617,13 +659,13 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                     {/* Phụ cấp nhà xa */}
                     <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
                       <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
-                        <input type="checkbox" checked={form.allowanceFarHome !== '' && Number(form.allowanceFarHome.replace(/[^\d]/g, '')) > 0}
+                        <input type="checkbox" checked={form.hasFarHome}
                           onChange={e => toggleFarHome(e.target.checked)}
                           className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
                         🏠 Phụ cấp nhà xa
                       </label>
-                      {form.allowanceFarHome !== '' && Number(form.allowanceFarHome.replace(/[^\d]/g, '')) > 0 && (
-                        <input value={form.allowanceFarHome} onChange={e => updateFarHomeAmount(e.target.value)} inputMode="numeric" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                      {form.hasFarHome && (
+                        <input value={form.allowanceFarHome} onChange={e => updateFarHomeAmount(e.target.value)} inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
                       )}
                       <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceFarHomeValue)} ₫</p>
                     </div>
@@ -732,10 +774,10 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
             <p className="text-xs text-[#64748b] mb-3">Để trống số tiền = dùng giá trị chung của khoản.</p>
             <div className="space-y-2">
               {amountDraft.map(row => (
-                <div key={row.itemId} className="flex items-center gap-3 border border-[rgba(0,0,0,0.06)] rounded-lg p-3">
+                <div key={row.key} className="flex items-center gap-3 border border-[rgba(0,0,0,0.06)] rounded-lg p-3">
                   <input type="checkbox" checked={row.enabled} onChange={e => {
                     const next = [...amountDraft];
-                    const i = next.findIndex(x => x.itemId === row.itemId);
+                    const i = next.findIndex(x => x.key === row.key);
                     next[i] = { ...next[i], enabled: e.target.checked };
                     setAmountDraft(next);
                   }} className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
@@ -744,7 +786,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                   </span>
                   <input value={row.amount} onChange={e => {
                     const next = [...amountDraft];
-                    const i = next.findIndex(x => x.itemId === row.itemId);
+                    const i = next.findIndex(x => x.key === row.key);
                     next[i] = { ...next[i], amount: e.target.value };
                     setAmountDraft(next);
                   }} inputMode="numeric" placeholder="Giá trị chung" className="w-32 px-2 py-1.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-right text-[#0f172a] outline-none focus:border-[#1a56db]" />

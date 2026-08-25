@@ -29,7 +29,11 @@ export class UpdateSalaryRecordDto {
   @Type(() => Number)
   @IsNumber({}, { message: 'Phụ cấp nhà xa không hợp lệ' })
   @Min(0)
-  allowanceFarHome?: number;
+  allowanceFarHome?: number | null;
+
+  @IsOptional()
+  @IsBoolean({ message: 'Trạng thái phụ cấp nhà xa không hợp lệ' })
+  hasFarHome?: boolean;
 
   @IsOptional()
   @IsBoolean({ message: 'Trạng thái chờ đóng hàng không hợp lệ' })
@@ -111,4 +115,10 @@ export class UpdateSalarySettingsDto {
   @IsNumber({}, { message: 'Phụ cấp chờ đóng hàng (VNĐ/giờ) không hợp lệ' })
   @Min(0)
   allowanceWaitLoadingRate?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Phụ cấp nhà xa (chung) không hợp lệ' })
+  @Min(0)
+  allowanceFarHome?: number;
 }

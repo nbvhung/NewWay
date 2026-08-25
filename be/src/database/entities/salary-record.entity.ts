@@ -50,9 +50,12 @@ export class SalaryRecord {
     type: 'numeric',
     precision: 15,
     scale: 2,
-    default: 0,
+    nullable: true,
   })
-  allowanceFarHome: number;
+  allowanceFarHome: number | null;
+
+  @Column({ name: 'has_far_home', type: 'boolean', default: false })
+  hasFarHome: boolean;
 
   @Column({
     name: 'allowance_wait_loading_rate',

@@ -316,6 +316,7 @@ export class SubmissionsService {
     const oldCarAllowance = Number(settings?.oldCarAllowance) || 0;
     const parkingHph2 = Number(settings?.parkingHph2) || 0;
     const waitLoadingRate = Number(settings?.allowanceWaitLoadingRate) || 0;
+    const farHomeCommon = Number(settings?.allowanceFarHome) || 0;
 
     const records = await this.salaryRecordsRepository.find({ where: { month, year } });
     const recordMap = new Map<number, SalaryRecord>();
@@ -340,7 +341,13 @@ export class SubmissionsService {
       const rec = recordMap.get(d.id);
       const fixedSalary = rec ? Number(rec.fixedSalary) || 0 : fixedSalaryDefault;
       const attendanceBonus = rec ? Number(rec.attendanceBonus) || 0 : attendanceBonusDefault;
-      const allowanceFarHome = rec ? Number(rec.allowanceFarHome) || 0 : Number(d.allowanceFarHome) || 0;
+      const allowanceFarHome = rec
+        ? rec.hasFarHome
+          ? rec.allowanceFarHome != null
+            ? Number(rec.allowanceFarHome)
+            : farHomeCommon
+          : 0
+        : 0;
       const waitLoadingHours = rec ? (rec.hasWaitLoading ? rec.waitLoadingHours || 0 : 0) : 0;
       const daysOff = rec?.daysOff?.length || 0;
       const ngayCong = daysInMonth - daysOff;

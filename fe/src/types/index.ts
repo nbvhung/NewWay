@@ -94,6 +94,7 @@ export interface SalarySettings {
   bhxhNld: number;
   parkingHph2: number;
   allowanceWaitLoadingRate: number;
+  allowanceFarHome: number;
 }
 
 export interface SalaryItem {
@@ -126,6 +127,8 @@ export interface SalaryRecordItem {
   attendanceBonus: number;
   chuyenCan: number;
   allowanceFarHome: number;
+  allowanceFarHomeOverride: number | null;
+  hasFarHome: boolean;
   allowanceWaitLoadingRate: number;
   waitLoadingCount: number;
   allowanceWaitLoading: number;

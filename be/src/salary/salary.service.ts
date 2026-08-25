@@ -59,6 +59,7 @@ export class SalaryService {
         bhxhNld: 10.5,
         parkingHph2: 0,
         allowanceWaitLoadingRate: 0,
+        allowanceFarHome: 0,
       });
     }
     return settings;
@@ -77,6 +78,8 @@ export class SalaryService {
     if (dto.parkingHph2 !== undefined) settings.parkingHph2 = dto.parkingHph2;
     if (dto.allowanceWaitLoadingRate !== undefined)
       settings.allowanceWaitLoadingRate = dto.allowanceWaitLoadingRate;
+    if (dto.allowanceFarHome !== undefined)
+      settings.allowanceFarHome = dto.allowanceFarHome;
     return this.settingsRepository.save(settings);
   }
 
@@ -145,7 +148,8 @@ export class SalaryService {
       year,
       fixedSalary: prev?.fixedSalary ?? settings.fixedSalary,
       attendanceBonus: prev?.attendanceBonus ?? settings.attendanceBonus,
-      allowanceFarHome: prev?.allowanceFarHome ?? user.allowanceFarHome ?? 0,
+      allowanceFarHome: prev?.allowanceFarHome ?? null,
+      hasFarHome: prev?.hasFarHome ?? false,
       hasOldCar: prev?.hasOldCar ?? user.oldCar ?? false,
       hasParkingHph2: false,
       hasWaitLoading: false,
@@ -177,7 +181,11 @@ export class SalaryService {
     return {
       fixedSalary: Number(record.fixedSalary) || 0,
       attendanceBonus: Number(record.attendanceBonus) || 0,
-      allowanceFarHome: Number(record.allowanceFarHome) || 0,
+      allowanceFarHome: record.hasFarHome
+        ? record.allowanceFarHome != null
+          ? Number(record.allowanceFarHome)
+          : Number(settings.allowanceFarHome) || 0
+        : 0,
       allowanceWaitLoading: record.hasWaitLoading
         ? (Number(settings.allowanceWaitLoadingRate) || 0) *
           (record.waitLoadingHours || 0)
@@ -281,6 +289,8 @@ export class SalaryService {
         attendanceBonus: Number(record.attendanceBonus) || 0,
         chuyenCan: components.chuyenCan,
         allowanceFarHome: components.allowanceFarHome,
+        allowanceFarHomeOverride: record.allowanceFarHome,
+        hasFarHome: record.hasFarHome || false,
         hasWaitLoading: record.hasWaitLoading || false,
         waitLoadingHours: record.waitLoadingHours || 0,
         allowanceWaitLoadingRate: Number(settings.allowanceWaitLoadingRate) || 0,
@@ -314,6 +324,7 @@ export class SalaryService {
       record.attendanceBonus = dto.attendanceBonus;
     if (dto.allowanceFarHome !== undefined)
       record.allowanceFarHome = dto.allowanceFarHome;
+    if (dto.hasFarHome !== undefined) record.hasFarHome = dto.hasFarHome;
     if (dto.hasWaitLoading !== undefined)
       record.hasWaitLoading = dto.hasWaitLoading;
     if (dto.waitLoadingHours !== undefined)
