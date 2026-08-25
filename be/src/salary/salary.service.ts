@@ -322,7 +322,6 @@ export class SalaryService {
   }
 
   async updateRecord(id: number, dto: UpdateSalaryRecordDto) {
-    console.log('[SALARY-UPDATE] id=', id, 'dto=', JSON.stringify(dto));
     const record = await this.recordsRepository.findOne({ where: { id } });
     if (!record) {
       throw new NotFoundException('Không tìm thấy bản ghi lương');
@@ -364,7 +363,6 @@ export class SalaryService {
         if (value.enabled !== undefined) ri.enabled = value.enabled;
         if (value.amount !== undefined) ri.amount = value.amount ?? null;
         await this.recordItemsRepository.save(ri);
-        console.log('[SALARY-UPDATE] saved recordItem recordId=', saved.id, 'itemId=', itemId, 'enabled=', ri.enabled, 'amount=', ri.amount);
       }
     }
 

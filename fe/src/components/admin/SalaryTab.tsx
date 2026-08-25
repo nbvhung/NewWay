@@ -313,7 +313,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       await salaryApi.updateRecord(selectedRecord.id, {
         recordItems: { [itemId]: { enabled, amount: ri?.overrideAmount ?? null } },
       });
-      loadData(true);
+      await loadData(true);
     } catch (e: any) {
       setRecords(prev);
       toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
@@ -327,7 +327,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       await salaryApi.updateRecord(selectedRecord.id, {
         recordItems: { [itemId]: { enabled: ri?.enabled ?? true, amount: amountStr.trim() === '' ? null : (Number(amountStr.replace(/[^\d]/g, '')) || 0) } },
       });
-      loadData(true);
+      await loadData(true);
     } catch (e: any) {
       toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
     }
@@ -342,7 +342,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         hasFarHome: checked,
         allowanceFarHome: checked ? (form.allowanceFarHome.trim() === '' ? null : Number(allowanceFarHomeValue) || 0) : null,
       });
-      loadData(true);
+      await loadData(true);
     } catch (e: any) {
       toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
     }
@@ -354,7 +354,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       await salaryApi.updateRecord(selectedRecord.id, {
         allowanceFarHome: amountStr.trim() === '' ? null : (Number(amountStr.replace(/[^\d]/g, '')) || 0),
       });
-      loadData(true);
+      await loadData(true);
     } catch (e: any) {
       toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
     }
@@ -366,7 +366,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       await salaryApi.updateRecord(selectedRecord.id, {
         oldCarAllowance: amountStr.trim() === '' ? null : (Number(amountStr.replace(/[^\d]/g, '')) || 0),
       });
-      loadData(true);
+      await loadData(true);
     } catch (e: any) {
       toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
     }
@@ -378,7 +378,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       await salaryApi.updateRecord(selectedRecord.id, {
         parkingHph2: amountStr.trim() === '' ? null : (Number(amountStr.replace(/[^\d]/g, '')) || 0),
       });
-      loadData(true);
+      await loadData(true);
     } catch (e: any) {
       toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
     }
@@ -648,12 +648,14 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                     {/* Khoản lương động — mỗi khoản 1 tick + ô nhập số tiền */}
                     {recordItems.map(v => (
                       <div key={v.itemId} className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
-                        <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
+                        <div className="flex items-center gap-2">
                           <input type="checkbox" checked={v.enabled}
                             onChange={e => toggleRecordItem(v.itemId, e.target.checked)}
                             className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
-                          {v.kind === 'add' ? '➕' : '➖'} {v.name}
-                        </label>
+                          <span className="text-xs font-medium text-[#64748b] cursor-pointer" onClick={() => toggleRecordItem(v.itemId, !v.enabled)}>
+                            {v.kind === 'add' ? '➕' : '➖'} {v.name}
+                          </span>
+                        </div>
                         {v.enabled && (
                           <input defaultValue={v.overrideAmount != null ? fmtMoney(v.overrideAmount) : ''} onBlur={e => updateRecordItemAmount(v.itemId, e.target.value)}
                             inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
