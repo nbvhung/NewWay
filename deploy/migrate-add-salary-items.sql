@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS salary_record_items (
     item_id INTEGER NOT NULL,
     enabled BOOLEAN NOT NULL DEFAULT false,    -- tick bật/tắt cho lái xe
     amount NUMERIC(15,2) NULL,                 -- NULL = dùng default_amount của khoản
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP NOT NULL DEFAULT now(),
     CONSTRAINT FK_salary_record_items_record FOREIGN KEY (record_id) REFERENCES salary_records(id) ON DELETE CASCADE,
     CONSTRAINT FK_salary_record_items_item FOREIGN KEY (item_id) REFERENCES salary_items(id) ON DELETE CASCADE,
     CONSTRAINT UQ_salary_record_items UNIQUE (record_id, item_id)
