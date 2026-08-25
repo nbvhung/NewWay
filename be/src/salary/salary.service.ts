@@ -58,7 +58,6 @@ export class SalaryService {
         oldCarAllowance: 0,
         bhxhNld: 10.5,
         parkingHph2: 0,
-        allowanceWaitLoadingRate: 0,
         allowanceFarHome: 0,
       });
     }
@@ -76,8 +75,6 @@ export class SalaryService {
       settings.oldCarAllowance = dto.oldCarAllowance;
     if (dto.bhxhNld !== undefined) settings.bhxhNld = dto.bhxhNld;
     if (dto.parkingHph2 !== undefined) settings.parkingHph2 = dto.parkingHph2;
-    if (dto.allowanceWaitLoadingRate !== undefined)
-      settings.allowanceWaitLoadingRate = dto.allowanceWaitLoadingRate;
     if (dto.allowanceFarHome !== undefined)
       settings.allowanceFarHome = dto.allowanceFarHome;
     return this.settingsRepository.save(settings);
@@ -150,10 +147,11 @@ export class SalaryService {
       attendanceBonus: prev?.attendanceBonus ?? settings.attendanceBonus,
       allowanceFarHome: prev?.allowanceFarHome ?? null,
       hasFarHome: prev?.hasFarHome ?? false,
+      allowanceWaitLoadingRate: prev?.allowanceWaitLoadingRate ?? 0,
       hasOldCar: prev?.hasOldCar ?? user.oldCar ?? false,
-      hasParkingHph2: false,
-      hasWaitLoading: false,
-      waitLoadingHours: 0,
+      oldCarAllowance: prev?.oldCarAllowance ?? null,
+      hasParkingHph2: prev?.hasParkingHph2 ?? false,
+      parkingHph2: prev?.parkingHph2 ?? null,
       chiHo: 0,
       daysOff: [],
     });
@@ -170,6 +168,7 @@ export class SalaryService {
     allowanceWaitLoading: number;
     chuyenCan: number;
     allowanceOldCar: number;
+    parkingHph2: number;
   } {
     const ngayCong =
       this.daysInMonth(record.month, record.year) -
@@ -186,11 +185,17 @@ export class SalaryService {
           ? Number(record.allowanceFarHome)
           : Number(settings.allowanceFarHome) || 0
         : 0,
-      allowanceWaitLoading: record.hasWaitLoading
-        ? (Number(settings.allowanceWaitLoadingRate) || 0) *
-          (record.waitLoadingHours || 0)
+      allowanceWaitLoading: Number(record.allowanceWaitLoadingRate) || 0,
+      allowanceOldCar: record.hasOldCar
+        ? record.oldCarAllowance != null
+          ? Number(record.oldCarAllowance)
+          : Number(settings.oldCarAllowance) || 0
         : 0,
-      allowanceOldCar: record.hasOldCar ? Number(settings.oldCarAllowance) || 0 : 0,
+      parkingHph2: record.hasParkingHph2
+        ? record.parkingHph2 != null
+          ? Number(record.parkingHph2)
+          : Number(settings.parkingHph2) || 0
+        : 0,
       chuyenCan,
     };
   }
@@ -254,6 +259,7 @@ export class SalaryService {
           kind: it.kind,
           enabled,
           amount,
+          overrideAmount: ri?.amount != null ? Number(ri.amount) : null,
         };
       });
       const itemSumAdd = driverItemValues
@@ -270,6 +276,7 @@ export class SalaryService {
         components.allowanceFarHome +
         components.allowanceWaitLoading +
         components.allowanceOldCar +
+        components.parkingHph2 +
         tip +
         itemSumAdd -
         itemSumDeduct -
@@ -291,13 +298,13 @@ export class SalaryService {
         allowanceFarHome: components.allowanceFarHome,
         allowanceFarHomeOverride: record.allowanceFarHome,
         hasFarHome: record.hasFarHome || false,
-        hasWaitLoading: record.hasWaitLoading || false,
-        waitLoadingHours: record.waitLoadingHours || 0,
-        allowanceWaitLoadingRate: Number(settings.allowanceWaitLoadingRate) || 0,
+        allowanceWaitLoadingRate: Number(record.allowanceWaitLoadingRate) || 0,
         allowanceWaitLoading: components.allowanceWaitLoading,
         hasOldCar: record.hasOldCar || false,
+        oldCarAllowanceOverride: record.oldCarAllowance,
         hasParkingHph2: record.hasParkingHph2 || false,
-        parkingHph2: Number(settings.parkingHph2) || 0,
+        parkingHph2Override: record.parkingHph2,
+        parkingHph2: components.parkingHph2,
         allowanceOldCar: components.allowanceOldCar,
         chiHo,
         bhxh,
@@ -325,13 +332,14 @@ export class SalaryService {
     if (dto.allowanceFarHome !== undefined)
       record.allowanceFarHome = dto.allowanceFarHome;
     if (dto.hasFarHome !== undefined) record.hasFarHome = dto.hasFarHome;
-    if (dto.hasWaitLoading !== undefined)
-      record.hasWaitLoading = dto.hasWaitLoading;
-    if (dto.waitLoadingHours !== undefined)
-      record.waitLoadingHours = dto.waitLoadingHours;
+    if (dto.allowanceWaitLoadingRate !== undefined)
+      record.allowanceWaitLoadingRate = dto.allowanceWaitLoadingRate;
     if (dto.hasOldCar !== undefined) record.hasOldCar = dto.hasOldCar;
+    if (dto.oldCarAllowance !== undefined)
+      record.oldCarAllowance = dto.oldCarAllowance;
     if (dto.hasParkingHph2 !== undefined)
       record.hasParkingHph2 = dto.hasParkingHph2;
+    if (dto.parkingHph2 !== undefined) record.parkingHph2 = dto.parkingHph2;
     if (dto.chiHo !== undefined) record.chiHo = dto.chiHo;
     if (dto.daysOff !== undefined) record.daysOff = dto.daysOff;
     const saved = await this.recordsRepository.save(record);

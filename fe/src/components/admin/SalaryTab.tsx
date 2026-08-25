@@ -48,11 +48,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const [itemDraft, setItemDraft] = useState<{ id: number | null; name: string; kind: 'add' | 'deduct'; defaultAmount: string }[]>([]);
   const [savingItems, setSavingItems] = useState(false);
 
-  // Modal sửa số tiền theo lái xe
-  const [showAmountModal, setShowAmountModal] = useState(false);
-  const [amountDraft, setAmountDraft] = useState<{ key: string; name: string; kind: 'add' | 'deduct'; enabled: boolean; amount: string }[]>([]);
-  const [savingAmount, setSavingAmount] = useState(false);
-
   // Giá trị chung (form)
   const [fixedSalary, setFixedSalary] = useState('');
   const [attendanceBonus, setAttendanceBonus] = useState('');
@@ -60,7 +55,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const [oldCarAllowance, setOldCarAllowance] = useState('');
   const [bhxhNld, setBhxhNld] = useState('');
   const [parkingHph2, setParkingHph2] = useState('');
-  const [waitLoadingRate, setWaitLoadingRate] = useState('');
   const [farHomeCommon, setFarHomeCommon] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
 
@@ -70,11 +64,12 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     attendanceBonus: '',
     hasFarHome: false,
     allowanceFarHome: '',
-    hasWaitLoading: false,
-    waitLoadingHours: '',
+    allowanceWaitLoadingRate: '',
     daysOff: '',
     hasOldCar: false,
+    allowanceOldCar: '',
     hasParkingHph2: false,
+    allowanceParking: '',
     chiHo: '',
   });
 
@@ -97,7 +92,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       setOldCarAllowance(fmtMoney(data.settings?.oldCarAllowance));
       setBhxhNld(String(data.settings?.bhxhNld ?? 10.5));
       setParkingHph2(fmtMoney(data.settings?.parkingHph2));
-      setWaitLoadingRate(fmtMoney(data.settings?.allowanceWaitLoadingRate));
       setFarHomeCommon(fmtMoney(data.settings?.allowanceFarHome));
     } catch (e: any) {
       toast(e?.response?.data?.message || e?.message || 'Không thể tải dữ liệu', 'error');
@@ -122,7 +116,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const pickDriver = (id: number | null) => {
     setSelectedId(id);
     if (id == null) {
-      setForm({ fixedSalary: '', attendanceBonus: '', hasFarHome: false, allowanceFarHome: '', hasWaitLoading: false, waitLoadingHours: '', daysOff: '', hasOldCar: false, hasParkingHph2: false, chiHo: '' });
+      setForm({ fixedSalary: '', attendanceBonus: '', hasFarHome: false, allowanceFarHome: '', allowanceWaitLoadingRate: '', daysOff: '', hasOldCar: false, allowanceOldCar: '', hasParkingHph2: false, allowanceParking: '', chiHo: '' });
       setBaseFarHome('');
       setBaseOldCar(false);
       return;
@@ -134,11 +128,12 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       attendanceBonus: fmtMoney(rec?.attendanceBonus),
       hasFarHome: rec?.hasFarHome || false,
       allowanceFarHome: rec?.allowanceFarHomeOverride != null ? fmtMoney(rec.allowanceFarHomeOverride) : '',
-      hasWaitLoading: rec?.hasWaitLoading || false,
-      waitLoadingHours: String(rec?.waitLoadingHours ?? 0),
+      allowanceWaitLoadingRate: fmtMoney(rec?.allowanceWaitLoadingRate),
       daysOff: (rec?.daysOff || []).join(', '),
       hasOldCar: rec?.hasOldCar || false,
+      allowanceOldCar: rec?.oldCarAllowanceOverride != null ? fmtMoney(rec.oldCarAllowanceOverride) : '',
       hasParkingHph2: rec?.hasParkingHph2 || false,
+      allowanceParking: rec?.parkingHph2Override != null ? fmtMoney(rec.parkingHph2Override) : '',
       chiHo: fmtMoney(rec?.chiHo),
     });
     setBaseFarHome(fmtMoney(drv?.allowanceFarHome));
@@ -155,7 +150,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         oldCarAllowance: Number(oldCarAllowance.replace(/[^\d]/g, '')) || 0,
         bhxhNld: Number(bhxhNld.replace(',', '.')) || 0,
         parkingHph2: Number(parkingHph2.replace(/[^\d]/g, '')) || 0,
-        allowanceWaitLoadingRate: Number(waitLoadingRate.replace(/[^\d]/g, '')) || 0,
         allowanceFarHome: Number(farHomeCommon.replace(/[^\d]/g, '')) || 0,
       });
       toast('Đã lưu giá trị chung', 'success');
@@ -179,11 +173,12 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         attendanceBonus: Number(attendanceBonusValue) || 0,
         allowanceFarHome: form.allowanceFarHome.trim() === '' ? null : (Number(allowanceFarHomeValue) || 0),
         hasFarHome: form.hasFarHome,
-        hasWaitLoading: form.hasWaitLoading,
-        waitLoadingHours: Number(waitLoadingHoursValue) || 0,
+        allowanceWaitLoadingRate: Number(waitLoadingAmountValue) || 0,
         daysOff: daysOffList,
         hasOldCar: form.hasOldCar,
+        oldCarAllowance: form.allowanceOldCar.trim() === '' ? null : (Number(oldCarOverrideValue) || 0),
         hasParkingHph2: form.hasParkingHph2,
+        parkingHph2: form.allowanceParking.trim() === '' ? null : (Number(parkingOverrideValue) || 0),
         chiHo: Number(chiHoValue) || 0,
       });
       toast(`Đã lưu cho ${selectedDriver.fullName}`, 'success');
@@ -305,7 +300,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     try {
       const ri = recordItems.find(v => v.itemId === itemId);
       await salaryApi.updateRecord(selectedRecord.id, {
-        recordItems: { [itemId]: { enabled, amount: ri?.amount ?? null } },
+        recordItems: { [itemId]: { enabled, amount: ri?.overrideAmount ?? null } },
       });
       loadData();
     } catch (e: any) {
@@ -316,10 +311,9 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const updateRecordItemAmount = async (itemId: number, amountStr: string) => {
     if (!selectedRecord) return;
     const ri = recordItems.find(v => v.itemId === itemId);
-    const amount = Number(amountStr.replace(/[^\d]/g, '')) || 0;
     try {
       await salaryApi.updateRecord(selectedRecord.id, {
-        recordItems: { [itemId]: { enabled: ri?.enabled ?? true, amount } },
+        recordItems: { [itemId]: { enabled: ri?.enabled ?? true, amount: amountStr.trim() === '' ? null : (Number(amountStr.replace(/[^\d]/g, '')) || 0) } },
       });
       loadData();
     } catch (e: any) {
@@ -355,107 +349,26 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     }
   };
 
-  const toggleWaitLoading = async (checked: boolean) => {
-    if (!selectedRecord) return;
-    setForm(f => ({ ...f, hasWaitLoading: checked }));
-    try {
-      await salaryApi.updateRecord(selectedRecord.id, {
-        hasWaitLoading: checked,
-      });
-      loadData();
-    } catch (e: any) {
-      toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
-    }
-  };
-
-  const updateWaitLoadingHours = async (hoursStr: string) => {
-    if (!selectedRecord) return;
-    const hours = Number(hoursStr.replace(/[^\d]/g, '')) || 0;
-    setForm(f => ({ ...f, waitLoadingHours: hoursStr }));
-    try {
-      await salaryApi.updateRecord(selectedRecord.id, {
-        waitLoadingHours: hours,
-      });
-      loadData();
-    } catch (e: any) {
-      toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
-    }
-  };
-
-  // Modal sửa số tiền theo lái xe
-  const openAmountModal = () => {
-    const draft: { key: string; name: string; kind: 'add' | 'deduct'; enabled: boolean; amount: string }[] = [];
-    if (form.hasFarHome) {
-      draft.push({
-        key: 'farHome',
-        name: '🏠 Phụ cấp nhà xa',
-        kind: 'add',
-        enabled: true,
-        amount: form.allowanceFarHome.trim() === '' ? '' : fmtMoney(Number(form.allowanceFarHome.replace(/[^\d]/g, '')) || 0),
-      });
-    }
-    for (const v of recordItems) {
-      draft.push({
-        key: `item:${v.itemId}`,
-        name: v.name,
-        kind: v.kind,
-        enabled: v.enabled,
-        amount: fmtMoney(v.amount),
-      });
-    }
-    setAmountDraft(draft);
-    setShowAmountModal(true);
-  };
-
-  const saveAmounts = async () => {
-    if (!selectedRecord) return;
-    setSavingAmount(true);
-    try {
-      const recordItemsPayload: Record<string, { enabled: boolean; amount: number | null }> = {};
-      let farHomeOverride: number | null | undefined;
-      for (const row of amountDraft) {
-        if (row.key === 'farHome') {
-          farHomeOverride = row.amount.trim() === '' ? null : (Number(row.amount.replace(/[^\d]/g, '')) || 0);
-          continue;
-        }
-        const itemId = Number(row.key.replace('item:', ''));
-        const amt = row.amount.trim() === '' ? null : (Number(row.amount.replace(/[^\d]/g, '')) || 0);
-        recordItemsPayload[itemId] = { enabled: row.enabled, amount: amt };
-      }
-      await salaryApi.updateRecord(selectedRecord.id, {
-        recordItems: recordItemsPayload,
-        ...(farHomeOverride !== undefined ? { allowanceFarHome: farHomeOverride } : {}),
-      });
-      setShowAmountModal(false);
-      toast(`Đã lưu số tiền cho ${selectedDriver?.fullName}`, 'success');
-      loadData();
-    } catch (e: any) {
-      toast(e?.response?.data?.message || 'Lưu thất bại', 'error');
-    } finally {
-      setSavingAmount(false);
-    }
-  };
-
-
   const fixedSalaryValue = Number(form.fixedSalary.replace(/[^\d]/g, '')) || 0;
   const attendanceBonusValue = Number(form.attendanceBonus.replace(/[^\d]/g, '')) || 0;
   const farHomeCommonValue = Number(farHomeCommon.replace(/[^\d]/g, '')) || 0;
   const allowanceFarHomeValue = form.hasFarHome
     ? (form.allowanceFarHome.trim() === '' ? farHomeCommonValue : (Number(form.allowanceFarHome.replace(/[^\d]/g, '')) || 0))
     : 0;
-  const waitLoadingHoursValue = Number(form.waitLoadingHours.replace(/[^\d]/g, '')) || 0;
+  const waitLoadingAmountValue = Number(form.allowanceWaitLoadingRate.replace(/[^\d]/g, '')) || 0;
+  const oldCarOverrideValue = Number(form.allowanceOldCar.replace(/[^\d]/g, '')) || 0;
+  const parkingOverrideValue = Number(form.allowanceParking.replace(/[^\d]/g, '')) || 0;
   const chiHoValue = Number(form.chiHo.replace(/[^\d]/g, '')) || 0;
   const daysOffList = form.daysOff.split(',').map(s => s.trim()).filter(s => s !== '').map(s => parseInt(s)).filter(n => !isNaN(n));
 
   const chuyenCan = (selectedRecord && selectedRecord.ngayCong >= selectedRecord.standardDays) ? attendanceBonusValue : 0;
   const luongKhoan = selectedRecord?.luongKhoan || 0;
   const tip = selectedRecord?.tip || 0;
-  const waitLoadingRateValue = Number(waitLoadingRate.replace(/[^\d]/g, '')) || 0;
-  const allowanceWaitLoading = form.hasWaitLoading ? waitLoadingRateValue * waitLoadingHoursValue : 0;
+  const allowanceWaitLoading = waitLoadingAmountValue;
   const oldCarAllowanceValue = Number(oldCarAllowance.replace(/[^\d]/g, '')) || 0;
-  const allowanceOldCar = form.hasOldCar ? oldCarAllowanceValue : 0;
+  const allowanceOldCar = form.hasOldCar ? (form.allowanceOldCar.trim() === '' ? oldCarAllowanceValue : oldCarOverrideValue) : 0;
   const parkingHph2Value = Number(parkingHph2.replace(/[^\d]/g, '')) || 0;
-  const allowanceParking = form.hasParkingHph2 ? parkingHph2Value : 0;
+  const allowanceParking = form.hasParkingHph2 ? (form.allowanceParking.trim() === '' ? parkingHph2Value : parkingOverrideValue) : 0;
   const bhxhPercentValue = Number(bhxhNld.replace(',', '.')) || 0;
   const bhxhValue = Math.round((fixedSalaryValue * bhxhPercentValue) / 100);
 
@@ -544,10 +457,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           <div>
             <label className={labelCls}>Tiền gửi xe HPH 2 (VNĐ/tháng)</label>
             <input value={parkingHph2} onChange={e => setParkingHph2(e.target.value)} inputMode="numeric" placeholder="0" className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Chờ đóng hàng (VNĐ/giờ)</label>
-            <input value={waitLoadingRate} onChange={e => setWaitLoadingRate(e.target.value)} inputMode="numeric" placeholder="0" className={inputCls} />
           </div>
           <div>
             <label className={labelCls}>Phụ cấp nhà xa (VNĐ/tháng)</label>
@@ -650,6 +559,11 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                     <div className="px-3.5 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a]">{fmtMoney(bhxhValue)} ₫</div>
                     <p className="text-[10px] text-[#64748b] mt-1">Trừ vào lương: {fmtMoney(bhxhValue)} ₫</p>
                   </div>
+                  <div>
+                    <label className={labelCls}>Chờ đóng hàng (VNĐ)</label>
+                    <input value={form.allowanceWaitLoadingRate} onChange={e => setForm(f => ({ ...f, allowanceWaitLoadingRate: e.target.value }))} inputMode="numeric" placeholder="0" className={inputCls} />
+                    <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceWaitLoading)} ₫</p>
+                  </div>
                 </div>
 
                 {/* Phần TICK (dưới) — Phụ cấp */}
@@ -670,23 +584,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                       <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceFarHomeValue)} ₫</p>
                     </div>
 
-                    {/* Phụ cấp chờ đóng hàng (theo giờ) */}
-                    <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
-                      <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
-                        <input type="checkbox" checked={form.hasWaitLoading}
-                          onChange={e => toggleWaitLoading(e.target.checked)}
-                          className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
-                        ⏱️ Chờ đóng hàng
-                      </label>
-                      {form.hasWaitLoading && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <input value={form.waitLoadingHours} onChange={e => updateWaitLoadingHours(e.target.value)} inputMode="numeric" placeholder="Số tiếng" className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
-                          <span className="text-xs text-[#64748b]">giờ × {fmtMoney(waitLoadingRateValue)}</span>
-                        </div>
-                      )}
-                      <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceWaitLoading)} ₫</p>
-                    </div>
-
                     {/* Xe cũ */}
                     <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
                       <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
@@ -694,6 +591,9 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                           className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
                         🚚 Xe cũ
                       </label>
+                      {form.hasOldCar && (
+                        <input value={form.allowanceOldCar} onChange={e => setForm(f => ({ ...f, allowanceOldCar: e.target.value }))} inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                      )}
                       <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceOldCar)} ₫</p>
                     </div>
 
@@ -704,10 +604,13 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                           className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
                         🅿️ Gửi xe HPH 2
                       </label>
+                      {form.hasParkingHph2 && (
+                        <input value={form.allowanceParking} onChange={e => setForm(f => ({ ...f, allowanceParking: e.target.value }))} inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                      )}
                       <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceParking)} ₫</p>
                     </div>
 
-                    {/* Khoản lương động — mỗi khoản 1 tick */}
+                    {/* Khoản lương động — mỗi khoản 1 tick + ô nhập số tiền */}
                     {recordItems.map(v => (
                       <div key={v.itemId} className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
                         <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
@@ -716,19 +619,16 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                             className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
                           {v.kind === 'add' ? '➕' : '➖'} {v.name}
                         </label>
+                        {v.enabled && (
+                          <input defaultValue={v.overrideAmount != null ? fmtMoney(v.overrideAmount) : ''} onBlur={e => updateRecordItemAmount(v.itemId, e.target.value)}
+                            inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                        )}
                         <p className="text-[10px] text-[#64748b] mt-1">
                           {v.kind === 'add' ? 'Cộng thêm' : 'Khấu trừ'}: {fmtMoney(v.amount)} ₫
                         </p>
                       </div>
                     ))}
                   </div>
-
-                  {recordItems.length > 0 && (
-                    <button onClick={openAmountModal}
-                      className="mt-3 px-4 py-2 rounded-lg text-xs font-medium text-[#1a56db] border border-[#1a56db]/30 hover:bg-[#1a56db]/5 cursor-pointer">
-                      ✏️ Sửa số tiền
-                    </button>
-                  )}
                 </div>
 
                 <button onClick={saveRecord} disabled={saving}
@@ -762,46 +662,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           </div>
         )}
       </div>
-
-      {/* Modal sửa số tiền theo lái xe */}
-      {showAmountModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowAmountModal(false)}>
-          <div className="bg-[#ffffff] rounded-xl shadow-2xl w-full max-w-xl p-5 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold">✏️ Sửa số tiền — {selectedDriver?.fullName}</h3>
-              <button onClick={() => setShowAmountModal(false)} className="text-xl text-[#64748b] hover:text-[#0f172a] cursor-pointer">×</button>
-            </div>
-            <p className="text-xs text-[#64748b] mb-3">Để trống số tiền = dùng giá trị chung của khoản.</p>
-            <div className="space-y-2">
-              {amountDraft.map(row => (
-                <div key={row.key} className="flex items-center gap-3 border border-[rgba(0,0,0,0.06)] rounded-lg p-3">
-                  <input type="checkbox" checked={row.enabled} onChange={e => {
-                    const next = [...amountDraft];
-                    const i = next.findIndex(x => x.key === row.key);
-                    next[i] = { ...next[i], enabled: e.target.checked };
-                    setAmountDraft(next);
-                  }} className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
-                  <span className="flex-1 text-sm font-medium">{row.name}
-                    <span className="ml-2 text-[10px] font-normal text-[#64748b]">{row.kind === 'add' ? 'Cộng thêm' : 'Khấu trừ'}</span>
-                  </span>
-                  <input value={row.amount} onChange={e => {
-                    const next = [...amountDraft];
-                    const i = next.findIndex(x => x.key === row.key);
-                    next[i] = { ...next[i], amount: e.target.value };
-                    setAmountDraft(next);
-                  }} inputMode="numeric" placeholder="Giá trị chung" className="w-32 px-2 py-1.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-right text-[#0f172a] outline-none focus:border-[#1a56db]" />
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 flex justify-end">
-              <button onClick={saveAmounts} disabled={savingAmount}
-                className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-[0_4px_15px_rgba(16,185,129,0.3)] disabled:opacity-50 cursor-pointer">
-                {savingAmount ? 'Đang lưu...' : '💾 Lưu'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal thêm/sửa khoản lương */}
       {showItemModal && (

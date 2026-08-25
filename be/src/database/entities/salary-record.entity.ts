@@ -78,8 +78,26 @@ export class SalaryRecord {
   @Column({ name: 'has_old_car', type: 'boolean', default: false })
   hasOldCar: boolean;
 
+  @Column({
+    name: 'old_car_allowance',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+  })
+  oldCarAllowance: number | null;
+
   @Column({ name: 'has_parking_hph2', type: 'boolean', default: false })
   hasParkingHph2: boolean;
+
+  @Column({
+    name: 'parking_hph2',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+  })
+  parkingHph2: number | null;
 
   @Column({
     name: 'chi_ho',

@@ -112,6 +112,7 @@ export interface SalaryRecordItemValue {
   kind: 'add' | 'deduct';
   enabled: boolean;
   amount: number;
+  overrideAmount: number | null;
 }
 
 export interface SalaryRecordItem {
@@ -130,10 +131,11 @@ export interface SalaryRecordItem {
   allowanceFarHomeOverride: number | null;
   hasFarHome: boolean;
   allowanceWaitLoadingRate: number;
-  waitLoadingCount: number;
   allowanceWaitLoading: number;
   hasOldCar: boolean;
+  oldCarAllowanceOverride: number | null;
   hasParkingHph2: boolean;
+  parkingHph2Override: number | null;
   parkingHph2: number;
   allowanceOldCar: number;
   chiHo: number;

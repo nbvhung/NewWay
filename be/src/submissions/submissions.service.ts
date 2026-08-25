@@ -315,7 +315,6 @@ export class SubmissionsService {
     const standardDays = Number(settings?.standardDays) || 26;
     const oldCarAllowance = Number(settings?.oldCarAllowance) || 0;
     const parkingHph2 = Number(settings?.parkingHph2) || 0;
-    const waitLoadingRate = Number(settings?.allowanceWaitLoadingRate) || 0;
     const farHomeCommon = Number(settings?.allowanceFarHome) || 0;
 
     const records = await this.salaryRecordsRepository.find({ where: { month, year } });
@@ -348,7 +347,7 @@ export class SubmissionsService {
             : farHomeCommon
           : 0
         : 0;
-      const waitLoadingHours = rec ? (rec.hasWaitLoading ? rec.waitLoadingHours || 0 : 0) : 0;
+      const waitLoadingAmount = rec ? Number(rec.allowanceWaitLoadingRate) || 0 : 0;
       const daysOff = rec?.daysOff?.length || 0;
       const ngayCong = daysInMonth - daysOff;
       const chuyenCan = ngayCong >= standardDays ? attendanceBonus : 0;
@@ -358,9 +357,17 @@ export class SubmissionsService {
         fixedSalary,
         chuyenCan,
         allowanceFarHome,
-        allowanceWaitLoading: waitLoadingRate * waitLoadingHours,
-        allowanceOldCar: hasOldCar ? oldCarAllowance : 0,
-        parkingHph2: hasParkingHph2 ? parkingHph2 : 0,
+        allowanceWaitLoading: waitLoadingAmount,
+        allowanceOldCar: hasOldCar
+          ? rec?.oldCarAllowance != null
+            ? Number(rec.oldCarAllowance)
+            : oldCarAllowance
+          : 0,
+        parkingHph2: hasParkingHph2
+          ? rec?.parkingHph2 != null
+            ? Number(rec.parkingHph2)
+            : parkingHph2
+          : 0,
         hasParkingHph2,
         ngayCong,
       });
