@@ -533,15 +533,9 @@ export default function MyDataPage() {
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] to-[#34d399]">
-            {formatMoney(salarySummary?.totalSalary)}
+            {formatMoney((salarySummary?.totalSalary ?? 0) + (salarySummary?.totalTip ?? 0))}
           </div>
-          {salarySummary && !!salarySummary.totalTip && salarySummary.totalTip > 0 && (
-            <div className="mt-2 flex items-center gap-2">
-              <span className="text-xs font-medium text-[#64748b]">📌 TIP:</span>
-              <span className="text-base font-bold text-[#f59e0b]">{formatMoney(salarySummary.totalTip)}</span>
-            </div>
-          )}
-          <p className="text-xs font-medium text-[#64748b] mt-1">* Chưa bao gồm lương cứng, các khoản hỗ trợ,...( nếu có )</p>
+          <p className="text-xs font-medium text-[#64748b] mt-1">* Bao gồm lương chuyến và TIP. Chưa bao gồm lương cứng, các khoản hỗ trợ,...( nếu có )</p>
           <p className="text-xs text-[#64748b] mt-1">📌 Dữ liệu chỉ mang tính chất tham khảo</p>
         </div>
       </div>
