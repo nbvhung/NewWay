@@ -79,10 +79,27 @@ export default function MyDataPage() {
   const now = new Date();
   const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
   const [viewYear, setViewYear] = useState(now.getFullYear());
-  const [salarySummary, setSalarySummary] = useState<{ totalSalary: number; totalTip: number; count: number } | null>(null);
+  const [salarySummary, setSalarySummary] = useState<{
+    totalSalary: number;
+    totalTip: number;
+    count: number;
+    components?: {
+      fixedSalary: number;
+      chuyenCan: number;
+      allowanceFarHome: number;
+      allowanceWaitLoading: number;
+      allowanceOldCar: number;
+      parkingHph2: number;
+      bhxh: number;
+      chiHo: number;
+      daysOffList: number[];
+      deductions: { name: string; amount: number }[];
+    };
+  } | null>(null);
   const [salaryMonth, setSalaryMonth] = useState(now.getMonth() + 1);
   const [salaryYear, setSalaryYear] = useState(now.getFullYear());
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showSalaryDetails, setShowSalaryDetails] = useState(false);
 
   const planDisplayName = (sl: ShippingLine) => {
     return [sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ');
@@ -497,49 +514,163 @@ export default function MyDataPage() {
         )}
       </div>
 
-      {user?.role !== 'ops' && (
-      <div className="mt-6">
-        <div className="bg-gradient-to-br from-[#ffffff] to-[#f1f5f9] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold">💰 Thu nhập:</h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-[#ffffff] border border-[rgba(0,0,0,0.06)] rounded-lg px-2 py-1">
-                <button
-                  onClick={() => {
-                    const newM = salaryMonth === 1 ? 12 : salaryMonth - 1;
-                    const newY = salaryMonth === 1 ? salaryYear - 1 : salaryYear;
-                    setSalaryMonth(newM);
-                    setSalaryYear(newY);
-                  }}
-                  className="p-0.5 rounded text-[#64748b] hover:text-[#0f172a] hover:bg-[rgba(0,0,0,0.06)] transition-all cursor-pointer text-xs"
-                >◀</button>
-                <span className="text-xs font-semibold text-[#0f172a] px-1 min-w-[80px] text-center">
-                  {MONTHS_VI[salaryMonth]}/{salaryYear}
-                </span>
-                <button
-                  onClick={() => {
-                    const newM = salaryMonth === 12 ? 1 : salaryMonth + 1;
-                    const newY = salaryMonth === 12 ? salaryYear + 1 : salaryYear;
-                    if (newY > now.getFullYear() || (newY === now.getFullYear() && newM > now.getMonth() + 1)) return;
-                    setSalaryMonth(newM);
-                    setSalaryYear(newY);
-                  }}
-                  className="p-0.5 rounded text-[#64748b] hover:text-[#0f172a] hover:bg-[rgba(0,0,0,0.06)] transition-all cursor-pointer text-xs"
-                >▶</button>
+      {user?.role !== 'ops' && (() => {
+        const c = salarySummary?.components;
+        const income =
+          (salarySummary?.totalSalary || 0) +
+          (salarySummary?.totalTip || 0) +
+          (c?.fixedSalary || 0) +
+          (c?.chuyenCan || 0) +
+          (c?.allowanceFarHome || 0) +
+          (c?.allowanceWaitLoading || 0) +
+          (c?.allowanceOldCar || 0) +
+          (c?.parkingHph2 || 0);
+        const bhxh = c?.bhxh || 0;
+        const chiHo = c?.chiHo || 0;
+        const deductions: { name: string; amount: number }[] = c?.deductions || [];
+        const totalDeduct = bhxh + chiHo + deductions.reduce((s, d) => s + (d.amount || 0), 0);
+        const grandTotal = income - totalDeduct;
+        const daysOffList: number[] = c?.daysOffList || [];
+
+        return (
+        <div className="mt-6">
+          <div className="bg-gradient-to-br from-[#ffffff] to-[#f1f5f9] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold">💰 Tổng thu nhập dự kiến:</h3>
               </div>
-              <span className="text-xs text-[#64748b]">{salarySummary?.count ?? 0} bản ghi</span>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-[#ffffff] border border-[rgba(0,0,0,0.06)] rounded-lg px-2 py-1">
+                  <button
+                    onClick={() => {
+                      const newM = salaryMonth === 1 ? 12 : salaryMonth - 1;
+                      const newY = salaryMonth === 1 ? salaryYear - 1 : salaryYear;
+                      setSalaryMonth(newM);
+                      setSalaryYear(newY);
+                    }}
+                    className="p-0.5 rounded text-[#64748b] hover:text-[#0f172a] hover:bg-[rgba(0,0,0,0.06)] transition-all cursor-pointer text-xs"
+                  >◀</button>
+                  <span className="text-xs font-semibold text-[#0f172a] px-1 min-w-[80px] text-center">
+                    {MONTHS_VI[salaryMonth]}/{salaryYear}
+                  </span>
+                  <button
+                    onClick={() => {
+                      const newM = salaryMonth === 12 ? 1 : salaryMonth + 1;
+                      const newY = salaryMonth === 12 ? salaryYear + 1 : salaryYear;
+                      if (newY > now.getFullYear() || (newY === now.getFullYear() && newM > now.getMonth() + 1)) return;
+                      setSalaryMonth(newM);
+                      setSalaryYear(newY);
+                    }}
+                    className="p-0.5 rounded text-[#64748b] hover:text-[#0f172a] hover:bg-[rgba(0,0,0,0.06)] transition-all cursor-pointer text-xs"
+                  >▶</button>
+                </div>
+                <span className="text-xs text-[#64748b]">{salarySummary?.count ?? 0} bản ghi</span>
+              </div>
             </div>
+
+            <button
+              onClick={() => setShowSalaryDetails(!showSalaryDetails)}
+              className="w-full flex items-center justify-between gap-2 py-2 cursor-pointer group"
+            >
+              <span className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] to-[#34d399]">
+                {formatMoney(grandTotal)}
+              </span>
+              <span className="text-xs font-semibold text-[#64748b] shrink-0 group-hover:text-[#0f172a] transition-all">
+                {showSalaryDetails ? 'Thu gọn ▲' : 'Xem chi tiết ▼'}
+              </span>
+            </button>
+
+            {showSalaryDetails && (
+              <div className="mt-3 pt-3 border-t border-[rgba(0,0,0,0.08)] flex flex-col gap-2">
+                <p className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">I. Thu nhập</p>
+
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-[#475569]">🚛 Lương chuyến ({salarySummary?.count || 0} chuyến):</span>
+                  <span className="font-bold text-[#0f172a]">{formatMoney(salarySummary?.totalSalary)}</span>
+                </div>
+
+                {(salarySummary?.totalTip || 0) > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[#475569]">💰 TIP:</span>
+                    <span className="font-bold text-[#0f172a]">{formatMoney(salarySummary?.totalTip)}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between text-sm">
+                  <div>
+                    <span className="text-[#475569]">💵 Lương cứng:</span>
+                    {daysOffList.length > 0 && (
+                      <p className="text-[11px] text-[#94a3b8] mt-0.5">
+                        Tháng này bạn đã nghỉ ngày: {daysOffList.join(', ')}
+                      </p>
+                    )}
+                  </div>
+                  <span className="font-bold text-[#0f172a]">{formatMoney(c?.fixedSalary)}</span>
+                </div>
+
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-[#475569]">🌟 Chuyên cần:</span>
+                  <span className="font-bold text-[#0f172a]">{formatMoney(c?.chuyenCan)}</span>
+                </div>
+
+                {(c?.allowanceFarHome || 0) > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[#475569]">🏠 Phụ cấp xa nhà:</span>
+                    <span className="font-bold text-[#0f172a]">{formatMoney(c?.allowanceFarHome)}</span>
+                  </div>
+                )}
+                {(c?.allowanceWaitLoading || 0) > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[#475569]">⏳ PC chờ đóng hàng:</span>
+                    <span className="font-bold text-[#0f172a]">{formatMoney(c?.allowanceWaitLoading)}</span>
+                  </div>
+                )}
+                {(c?.allowanceOldCar || 0) > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[#475569]">🚙 Phụ cấp xe cũ:</span>
+                    <span className="font-bold text-[#0f172a]">{formatMoney(c?.allowanceOldCar)}</span>
+                  </div>
+                )}
+                {(c?.parkingHph2 || 0) > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[#475569]">🅿️ Gửi bãi HPH2:</span>
+                    <span className="font-bold text-[#0f172a]">{formatMoney(c?.parkingHph2)}</span>
+                  </div>
+                )}
+
+                <p className="text-xs font-bold text-[#0f172a] uppercase tracking-wider mt-2">II. Khoản khấu trừ</p>
+
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-[#475569]">1. BHXH (bắt buộc 10,5%):</span>
+                  <span className="font-bold text-red-600">-{formatMoney(bhxh)}</span>
+                </div>
+
+                {chiHo > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[#475569]">Chi hộ:</span>
+                    <span className="font-bold text-red-600">-{formatMoney(chiHo)}</span>
+                  </div>
+                )}
+
+                {deductions.map((d, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <span className="text-[#475569]">{d.name}:</span>
+                    <span className="font-bold text-red-600">-{formatMoney(d.amount)}</span>
+                  </div>
+                ))}
+
+                <div className="flex items-center justify-between text-sm mt-2 pt-2 border-t border-[rgba(0,0,0,0.08)]">
+                  <span className="font-bold text-[#0f172a]">= Tổng cộng:</span>
+                  <span className="font-extrabold text-[#10b981]">{formatMoney(grandTotal)}</span>
+                </div>
+              </div>
+            )}
+
+            <p className="text-xs text-[#64748b] mt-1">📌 Dữ liệu chỉ mang tính chất tham khảo</p>
           </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] to-[#34d399]">
-            {formatMoney((salarySummary?.totalSalary ?? 0) + (salarySummary?.totalTip ?? 0))}
-          </div>
-          <p className="text-xs font-medium text-[#64748b] mt-1">* Bao gồm lương chuyến và TIP. Chưa bao gồm lương cứng, các khoản hỗ trợ,...( nếu có )</p>
-          <p className="text-xs text-[#64748b] mt-1">📌 Dữ liệu chỉ mang tính chất tham khảo</p>
         </div>
-      </div>
-      )}
+        );
+      })()}
 
       <Modal
         open={editModal}
