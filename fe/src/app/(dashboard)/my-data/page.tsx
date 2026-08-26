@@ -599,9 +599,12 @@ export default function MyDataPage() {
                 <div className="flex items-center justify-between text-sm">
                   <div>
                     <span className="text-[#475569]">💵 Lương cứng:</span>
+                    <p className="text-[11px] text-[#94a3b8] mt-0.5">
+                      Ứng trước từ 1-6 tháng {MONTHS_VI[salaryMonth]}/{salaryYear}
+                    </p>
                     {daysOffList.length > 0 && (
                       <p className="text-[11px] text-[#94a3b8] mt-0.5">
-                        Tháng này bạn đã nghỉ ngày: {daysOffList.join(', ')}
+                        Tháng này bạn đã nghỉ những ngày: {daysOffList.join(', ')}
                       </p>
                     )}
                   </div>
@@ -621,7 +624,7 @@ export default function MyDataPage() {
                 )}
                 {(c?.allowanceWaitLoading || 0) > 0 && (
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#475569]">⏳ PC chờ đóng hàng:</span>
+                    <span className="text-[#475569]">⏳ Phụ cấp chờ đóng hàng:</span>
                     <span className="font-bold text-[#0f172a]">{formatMoney(c?.allowanceWaitLoading)}</span>
                   </div>
                 )}
@@ -641,7 +644,7 @@ export default function MyDataPage() {
                 <p className="text-xs font-bold text-[#0f172a] uppercase tracking-wider mt-2">II. Khoản khấu trừ</p>
 
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-[#475569]">1. BHXH (bắt buộc 10,5%):</span>
+                  <span className="text-[#475569]">1, BHXH (bắt buộc 10,5%):</span>
                   <span className="font-bold text-red-600">-{formatMoney(bhxh)}</span>
                 </div>
 
@@ -660,7 +663,7 @@ export default function MyDataPage() {
                 ))}
 
                 <div className="flex items-center justify-between text-sm mt-2 pt-2 border-t border-[rgba(0,0,0,0.08)]">
-                  <span className="font-bold text-[#0f172a]">= Tổng cộng:</span>
+                  <span className="font-bold text-[#0f172a]">Tổng thực nhận:</span>
                   <span className="font-extrabold text-[#10b981]">{formatMoney(grandTotal)}</span>
                 </div>
               </div>
