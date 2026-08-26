@@ -58,7 +58,8 @@ export default function MyDataScreen() {
   const now = new Date();
   const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
   const [viewYear, setViewYear] = useState(now.getFullYear());
-  const [salarySummary, setSalarySummary] = useState<{ totalSalary: number; count: number } | null>(null);
+  const [salarySummary, setSalarySummary] = useState<any | null>(null);
+  const [showSalaryDetails, setShowSalaryDetails] = useState(false);
   const [salaryMonth, setSalaryMonth] = useState(now.getMonth() + 1);
   const [salaryYear, setSalaryYear] = useState(now.getFullYear());
 
@@ -355,28 +356,142 @@ export default function MyDataScreen() {
       )}
 
       {/* Salary Summary */}
-      {user?.role !== 'ops' && (
-        <View style={styles.salaryCard}>
-          <View style={styles.salaryHeader}>
-            <Text style={styles.salaryTitle}>💰 Thu nhập của bạn là:</Text>
-            <View style={styles.salaryNav}>
-              <TouchableOpacity onPress={prevSalaryMonth} style={styles.navBtn}>
-                <Text style={styles.navBtnText}>◀</Text>
-              </TouchableOpacity>
-              <Text style={styles.monthLabel}>{MONTHS_VI[salaryMonth]}</Text>
-              <TouchableOpacity onPress={nextSalaryMonth} style={styles.navBtn}>
-                <Text style={styles.navBtnText}>▶</Text>
-              </TouchableOpacity>
+      {user?.role !== 'ops' && (() => {
+        const c = salarySummary?.components;
+        const income =
+          (salarySummary?.totalSalary || 0) +
+          (salarySummary?.totalTip || 0) +
+          (c?.fixedSalary || 0) +
+          (c?.chuyenCan || 0) +
+          (c?.allowanceFarHome || 0) +
+          (c?.allowanceWaitLoading || 0) +
+          (c?.allowanceOldCar || 0) +
+          (c?.parkingHph2 || 0);
+        const bhxh = c?.bhxh || 0;
+        const chiHo = c?.chiHo || 0;
+        const deductions: { name: string; amount: number }[] = c?.deductions || [];
+        const totalDeduct = bhxh + chiHo + deductions.reduce((s: number, d: any) => s + d.amount, 0);
+        const grandTotal = income - totalDeduct;
+        const daysOffList: number[] = c?.daysOffList || [];
+
+        return (
+          <View style={styles.salaryCard}>
+            <View style={styles.salaryHeader}>
+              <Text style={styles.salaryTitle}>💰 Tổng thu nhập dự kiến:</Text>
+              <View style={styles.salaryNav}>
+                <TouchableOpacity onPress={prevSalaryMonth} style={styles.navBtn}>
+                  <Text style={styles.navBtnText}>◀</Text>
+                </TouchableOpacity>
+                <Text style={styles.monthLabel}>{MONTHS_VI[salaryMonth]}</Text>
+                <TouchableOpacity onPress={nextSalaryMonth} style={styles.navBtn}>
+                  <Text style={styles.navBtnText}>▶</Text>
+                </TouchableOpacity>
+              </View>
             </View>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setShowSalaryDetails(!showSalaryDetails)}
+              style={styles.salaryAmountRow}
+            >
+              <Text style={styles.salaryAmount}>{formatMoney(grandTotal)}</Text>
+              <Text style={styles.salaryToggle}>
+                {showSalaryDetails ? 'Thu gọn ▲' : 'Xem chi tiết ▼'}
+              </Text>
+            </TouchableOpacity>
+
+            {showSalaryDetails && (
+              <View style={styles.salaryDetails}>
+                {/* Phần I: Thu nhập */}
+                <Text style={styles.salarySection}>I. Thu nhập</Text>
+
+                <View style={styles.salaryRow}>
+                  <Text style={styles.salaryLabel}>🚛 Lương chuyến ({salarySummary?.count || 0} chuyến):</Text>
+                  <Text style={styles.salaryValue}>{formatMoney(salarySummary?.totalSalary)}</Text>
+                </View>
+
+                {(salarySummary?.totalTip || 0) > 0 && (
+                  <View style={styles.salaryRow}>
+                    <Text style={styles.salaryLabel}>💰 TIP:</Text>
+                    <Text style={styles.salaryValue}>{formatMoney(salarySummary?.totalTip)}</Text>
+                  </View>
+                )}
+
+                <View style={styles.salaryRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.salaryLabel}>💵 Lương cứng:</Text>
+                    <Text style={styles.salarySubNote}>Ứng trước từ 1-6 {MONTHS_VI[salaryMonth]}/{salaryYear}</Text>
+                    {daysOffList.length > 0 && (
+                      <Text style={styles.salarySubNote}>
+                        Tháng này bạn đã nghỉ ngày: {daysOffList.join(', ')}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={styles.salaryValue}>{formatMoney(c?.fixedSalary)}</Text>
+                </View>
+
+                <View style={styles.salaryRow}>
+                  <Text style={styles.salaryLabel}>🌟 Chuyên cần:</Text>
+                  <Text style={styles.salaryValue}>{formatMoney(c?.chuyenCan)}</Text>
+                </View>
+
+                {(c?.allowanceFarHome || 0) > 0 && (
+                  <View style={styles.salaryRow}>
+                    <Text style={styles.salaryLabel}>🏠 Phụ cấp xa nhà:</Text>
+                    <Text style={styles.salaryValue}>{formatMoney(c?.allowanceFarHome)}</Text>
+                  </View>
+                )}
+                {(c?.allowanceWaitLoading || 0) > 0 && (
+                  <View style={styles.salaryRow}>
+                    <Text style={styles.salaryLabel}>⏳ PC chờ đóng hàng:</Text>
+                    <Text style={styles.salaryValue}>{formatMoney(c?.allowanceWaitLoading)}</Text>
+                  </View>
+                )}
+                {(c?.allowanceOldCar || 0) > 0 && (
+                  <View style={styles.salaryRow}>
+                    <Text style={styles.salaryLabel}>🚙 Phụ cấp xe cũ:</Text>
+                    <Text style={styles.salaryValue}>{formatMoney(c?.allowanceOldCar)}</Text>
+                  </View>
+                )}
+                {(c?.parkingHph2 || 0) > 0 && (
+                  <View style={styles.salaryRow}>
+                    <Text style={styles.salaryLabel}>🅿️ Gửi bãi HPH2:</Text>
+                    <Text style={styles.salaryValue}>{formatMoney(c?.parkingHph2)}</Text>
+                  </View>
+                )}
+
+                {/* Phần II: Khấu trừ */}
+                <Text style={[styles.salarySection, { marginTop: 12 }]}>II. Khoản khấu trừ</Text>
+
+                <View style={styles.salaryRow}>
+                  <Text style={styles.salaryLabel}>1. BHXH (bắt buộc 10,5%):</Text>
+                  <Text style={styles.salaryValueDeduct}>-{formatMoney(bhxh)}</Text>
+                </View>
+
+                {chiHo > 0 && (
+                  <View style={styles.salaryRow}>
+                    <Text style={styles.salaryLabel}>Chi hộ:</Text>
+                    <Text style={styles.salaryValueDeduct}>-{formatMoney(chiHo)}</Text>
+                  </View>
+                )}
+
+                {deductions.map((d: any, i: number) => (
+                  <View key={i} style={styles.salaryRow}>
+                    <Text style={styles.salaryLabel}>{d.name}:</Text>
+                    <Text style={styles.salaryValueDeduct}>-{formatMoney(d.amount)}</Text>
+                  </View>
+                ))}
+
+                {/* Tổng cộng */}
+                <View style={styles.salaryTotalRow}>
+                  <Text style={styles.salaryTotalLabel}>= Tổng cộng:</Text>
+                  <Text style={styles.salaryTotalValue}>{formatMoney(grandTotal)}</Text>
+                </View>
+              </View>
+            )}
           </View>
-          <Text style={styles.salaryAmount}>
-            {formatMoney(salarySummary?.totalSalary)}
-          </Text>
-          <Text style={styles.salaryNote}>
-            {salarySummary?.count ?? 0} bản ghi — Chưa bao gồm lương cứng, hỗ trợ,...
-          </Text>
-        </View>
-      )}
+        );
+      })()}
 
       {/* Edit Modal */}
       <Modal
@@ -595,8 +710,19 @@ const styles = StyleSheet.create({
   salaryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   salaryTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a' },
   salaryNav: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  salaryAmountRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 4 },
   salaryAmount: { fontSize: 26, fontWeight: '800', color: '#10b981' },
-  salaryNote: { fontSize: 11, color: '#64748b', marginTop: 4 },
+  salaryToggle: { fontSize: 13, color: '#1a56db', fontWeight: '600' },
+  salaryDetails: { marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)' },
+  salarySection: { fontSize: 12, fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
+  salaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.04)' },
+  salaryLabel: { fontSize: 13, color: '#475569', flex: 1 },
+  salarySubNote: { fontSize: 11, color: '#94a3b8', marginTop: 1 },
+  salaryValue: { fontSize: 13, fontWeight: '600', color: '#0f172a' },
+  salaryValueDeduct: { fontSize: 13, fontWeight: '600', color: '#ef4444' },
+  salaryTotalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingTop: 8, borderTopWidth: 2, borderTopColor: '#10b981' },
+  salaryTotalLabel: { fontSize: 14, fontWeight: '700', color: '#0f172a' },
+  salaryTotalValue: { fontSize: 16, fontWeight: '800', color: '#10b981' },
   modalFooter: { flexDirection: 'row', gap: 10 },
   cancelBtn: {
     paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8,

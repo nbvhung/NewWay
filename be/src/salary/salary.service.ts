@@ -177,8 +177,24 @@ export class SalaryService {
       ngayCong >= settings.standardDays
         ? Number(record.attendanceBonus) || 0
         : 0;
+    // Lương cứng theo ngày công (thang mới +1tr so với chính sách cũ)
+    let fixedSalary: number;
+    if (ngayCong <= 10) {
+      fixedSalary = 5000000;
+    } else if (ngayCong <= 20) {
+      fixedSalary = 6000000;
+    } else {
+      fixedSalary = 7000000;
+    }
+    // Override nếu admin nhập tay mức khác (không thuộc 3 mức tự động)
+    const recFixed = Number(record.fixedSalary);
+    const setFixed = Number(settings.fixedSalary);
+    if (recFixed !== 0 && ![5000000, 6000000, 7000000, setFixed].includes(recFixed)) {
+      fixedSalary = recFixed;
+    }
+
     return {
-      fixedSalary: Number(record.fixedSalary) || 0,
+      fixedSalary,
       attendanceBonus: Number(record.attendanceBonus) || 0,
       allowanceFarHome: record.hasFarHome
         ? record.allowanceFarHome != null

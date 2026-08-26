@@ -301,26 +301,49 @@ export class SubmissionsService {
       details.push({ ...sub, salary, planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine, tangCuong: sl?.tangCuong || false, leTet: sl?.leTet || false });
     }
 
-    return { totalSalary, totalTip, count, month, year, details };
+    const salaryComp = await this.loadSalaryComponents(month, year);
+    const components = salaryComp.components.get(userId) || {
+      fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0,
+      allowanceOldCar: 0, parkingHph2: 0, hasParkingHph2: false, ngayCong: 0,
+      daysOffList: [], bhxh: 0, chiHo: 0, deductions: [],
+    };
+
+    return { totalSalary, totalTip, count, month, year, details, components };
   }
 
-  /** Load salary components (lương cứng, chuyên cần, phụ cấp...) cho tháng để xuất Excel. */
+  /**
+   * Load salary components (lương cứng, chuyên cần, phụ cấp...) cho tháng.
+   * Dùng cho cả xuất Excel và trả dữ liệu về App cho lái xe xem.
+   */
   private async loadSalaryComponents(month: number, year: number) {
     const settings = await this.salarySettingsRepository.findOne({
       where: {},
       order: { id: 'ASC' },
     });
-    const fixedSalaryDefault = Number(settings?.fixedSalary) || 0;
     const attendanceBonusDefault = Number(settings?.attendanceBonus) || 0;
     const standardDays = Number(settings?.standardDays) || 26;
     const oldCarAllowance = Number(settings?.oldCarAllowance) || 0;
     const parkingHph2 = Number(settings?.parkingHph2) || 0;
     const farHomeCommon = Number(settings?.allowanceFarHome) || 0;
+    const bhxhPercent = Number(settings?.bhxhNld) || 10.5;
 
     const records = await this.salaryRecordsRepository.find({ where: { month, year } });
     const recordMap = new Map<number, SalaryRecord>();
-    for (const r of records) {
-      recordMap.set(r.driverId, r);
+    for (const r of records) recordMap.set(r.driverId, r);
+
+    // Load SalaryItems và SalaryRecordItems để tính khấu trừ
+    const allItems = await this.salaryItemsRepository.find({
+      where: { isActive: true },
+      order: { sortOrder: 'ASC', id: 'ASC' },
+    });
+    const recordIds = records.map(r => r.id);
+    const allRecordItems = recordIds.length > 0
+      ? await this.salaryRecordItemsRepository.find({ where: { recordId: In(recordIds) } })
+      : [];
+    const recordItemsMap = new Map<number, Map<number, SalaryRecordItem>>();
+    for (const ri of allRecordItems) {
+      if (!recordItemsMap.has(ri.recordId)) recordItemsMap.set(ri.recordId, new Map());
+      recordItemsMap.get(ri.recordId)!.set(ri.itemId, ri);
     }
 
     const daysInMonth = new Date(year, month, 0).getDate();
@@ -335,41 +358,78 @@ export class SubmissionsService {
       parkingHph2: number;
       hasParkingHph2: boolean;
       ngayCong: number;
+      daysOffList: number[];  // mảng ngày nghỉ (vd: [3, 15, 22])
+      bhxh: number;           // tiền BHXH phải đóng
+      chiHo: number;          // chi hộ
+      deductions: { name: string; amount: number }[]; // các khoản khấu trừ khác
     }>();
+
     for (const d of drivers) {
       const rec = recordMap.get(d.id);
-      const fixedSalary = rec ? Number(rec.fixedSalary) || 0 : fixedSalaryDefault;
+      const daysOffList: number[] = rec?.daysOff || [];
+      const daysOff = daysOffList.length;
+      const ngayCong = daysInMonth - daysOff;
+
+      // Lương cứng theo ngày công (thang mới +1tr)
+      let fixedSalary: number;
+      if (ngayCong <= 10) {
+        fixedSalary = 5000000;
+      } else if (ngayCong <= 20) {
+        fixedSalary = 6000000;
+      } else {
+        fixedSalary = 7000000;
+      }
+      // Override nếu admin nhập tay mức khác
+      if (rec?.fixedSalary != null) {
+        const recFixed = Number(rec.fixedSalary);
+        if (recFixed !== 0 && ![5000000, 6000000, 7000000].includes(recFixed)) {
+          fixedSalary = recFixed;
+        }
+      }
+
       const attendanceBonus = rec ? Number(rec.attendanceBonus) || 0 : attendanceBonusDefault;
+      const chuyenCan = ngayCong >= standardDays ? attendanceBonus : 0;
       const allowanceFarHome = rec
         ? rec.hasFarHome
-          ? rec.allowanceFarHome != null
-            ? Number(rec.allowanceFarHome)
-            : farHomeCommon
+          ? rec.allowanceFarHome != null ? Number(rec.allowanceFarHome) : farHomeCommon
           : 0
         : 0;
       const waitLoadingAmount = rec ? Number(rec.allowanceWaitLoadingRate) || 0 : 0;
-      const daysOff = rec?.daysOff?.length || 0;
-      const ngayCong = daysInMonth - daysOff;
-      const chuyenCan = ngayCong >= standardDays ? attendanceBonus : 0;
       const hasOldCar = rec ? rec.hasOldCar : d.oldCar;
       const hasParkingHph2 = rec ? rec.hasParkingHph2 : false;
+      const chiHo = Number(rec?.chiHo) || 0;
+
+      // Tính BHXH
+      const bhxh = Math.round(fixedSalary * bhxhPercent / 100);
+
+      // Tính các khoản khấu trừ từ SalaryItems (kind='deduct')
+      const riMap = rec ? (recordItemsMap.get(rec.id) || new Map()) : new Map<number, SalaryRecordItem>();
+      const deductions: { name: string; amount: number }[] = [];
+      for (const item of allItems) {
+        if (item.kind !== 'deduct') continue;
+        const ri = riMap.get(item.id);
+        if (!ri?.enabled) continue;
+        const amount = ri.amount != null ? Number(ri.amount) : Number(item.defaultAmount) || 0;
+        if (amount > 0) deductions.push({ name: item.name, amount });
+      }
+
       result.set(d.id, {
         fixedSalary,
         chuyenCan,
         allowanceFarHome,
         allowanceWaitLoading: waitLoadingAmount,
         allowanceOldCar: hasOldCar
-          ? rec?.oldCarAllowance != null
-            ? Number(rec.oldCarAllowance)
-            : oldCarAllowance
+          ? rec?.oldCarAllowance != null ? Number(rec.oldCarAllowance) : oldCarAllowance
           : 0,
         parkingHph2: hasParkingHph2
-          ? rec?.parkingHph2 != null
-            ? Number(rec.parkingHph2)
-            : parkingHph2
+          ? rec?.parkingHph2 != null ? Number(rec.parkingHph2) : parkingHph2
           : 0,
         hasParkingHph2,
         ngayCong,
+        daysOffList,
+        bhxh,
+        chiHo,
+        deductions,
       });
     }
     return { settings, standardDays, components: result };
