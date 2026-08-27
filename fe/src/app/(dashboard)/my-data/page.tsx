@@ -585,7 +585,7 @@ export default function MyDataPage() {
                 <p className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">I. Thu nhập</p>
 
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-[#475569]">🚛 Lương chuyến ({salarySummary?.count || 0} chuyến):</span>
+                  <span className="text-[#475569]">🚛 Lương chuyến:</span>
                   <span className="font-bold text-[#0f172a]">{formatMoney(salarySummary?.totalSalary)}</span>
                 </div>
 
@@ -603,7 +603,7 @@ export default function MyDataPage() {
                       Ứng trước từ 1-6 tháng {MONTHS_VI[salaryMonth]}/{salaryYear}
                     </p>
                     {daysOffList.length > 0 && (
-                      <p className="text-[11px] text-[#94a3b8] mt-0.5">
+                      <p className="text-[11px] font-bold text-red-600 mt-0.5">
                         Tháng này bạn đã nghỉ những ngày: {daysOffList.join(', ')}
                       </p>
                     )}
