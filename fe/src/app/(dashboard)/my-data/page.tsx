@@ -669,7 +669,10 @@ export default function MyDataPage() {
               </div>
             )}
 
-            <p className="text-xs text-[#64748b] mt-1">📌 Dữ liệu chỉ mang tính chất tham khảo</p>
+            <p className="text-xs text-[#64748b] mt-1">
+              📌 Vui lòng kiểm tra số liệu và báo lại cho Huy ( 0985124650 ) trước ngày 5/ {viewMonth === 12 ? 1 : viewMonth + 1}.{' '}
+              Quá thời hạn trên, công ty mặc định số liệu đúng và tiến hành chi trả lương.
+            </p>
           </div>
         </div>
         );
