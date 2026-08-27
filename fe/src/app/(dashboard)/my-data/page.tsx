@@ -644,7 +644,7 @@ export default function MyDataPage() {
                 <p className="text-xs font-bold text-[#0f172a] uppercase tracking-wider mt-2">II. Khoản khấu trừ</p>
 
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-[#475569]">1, BHXH (bắt buộc 10,5%):</span>
+                  <span className="text-[#475569]">BHXH (bắt buộc 10,5%):</span>
                   <span className="font-bold text-red-600">-{formatMoney(bhxh)}</span>
                 </div>
 
