@@ -2833,6 +2833,363 @@ let sl: any;
       rNames.getCell(4).alignment = { horizontal: 'center' };
     }
 
+    // ── Sheet "Container - Người chạy" (Lương tháng) ────────────────────────
+    // Bao gồm tất cả container của các kế hoạch có ngày trong tháng/năm.
+    // Thêm cột Giá chuyến. Container kẹp: bỏ merge cột Người chạy.
+    {
+      // 1) Lọc các shipping line có ngày trong tháng
+      const slInMonth = allShippingLines.filter((sl) => {
+        if (!sl.ngay) return false;
+        const d = new Date(sl.ngay);
+        return d.getMonth() + 1 === month && d.getFullYear() === year;
+      });
+      const slIdsInMonth = slInMonth.map((sl) => sl.id);
+
+      const salContainers: any[] = slIdsInMonth.length > 0
+        ? await this.containerImportsRepository
+            .createQueryBuilder('c')
+            .leftJoinAndSelect('c.shippingLineRef', 'sl')
+            .where('c.shippingLineId IN (:...ids)', { ids: slIdsInMonth })
+            .orderBy('c.containerCode', 'ASC')
+            .getMany()
+        : [];
+
+      const salClaims: any[] = salContainers.length > 0
+        ? await this.containerClaimsRepository
+            .createQueryBuilder('cl')
+            .leftJoinAndSelect('cl.submissionRef', 'sub')
+            .leftJoinAndSelect('sub.user', 'u')
+            .where('cl.containerImportId IN (:...ids)', {
+              ids: salContainers.map((c) => c.id),
+            })
+            .orderBy('cl.createdAt', 'ASC')
+            .getMany()
+        : [];
+
+      const salClaimsByContainer = new Map<number, any[]>();
+      for (const cl of salClaims) {
+        if (!salClaimsByContainer.has(cl.containerImportId))
+          salClaimsByContainer.set(cl.containerImportId, []);
+        salClaimsByContainer.get(cl.containerImportId)!.push(cl);
+      }
+
+      // 2) Hàm tính giá chuyến
+      const priceFor = (c: any): number => {
+        const sl = c.shippingLineRef;
+        if (!sl) return 0;
+        return getRouteMoney(sl.routeName || '', sl.ngay, sl.frozenMoney);
+      };
+
+      // 3) Phát hiện bó FR và cặp kẹp (logic giống OPS)
+      const FR_BUNDLE_TYPES_SAL = new Set(['V20FR', 'V40FR']);
+      const salUnitKey = (c: any) =>
+        c.bundleId && FR_BUNDLE_TYPES_SAL.has(c.type)
+          ? `bundle:${c.shippingLineId}:${c.bundleId}`
+          : `single:${c.id}`;
+      const salUnitByContainer = new Map<number, string>();
+      const salBundleMembers = new Map<string, any[]>();
+      for (const c of salContainers) {
+        const key = salUnitKey(c);
+        salUnitByContainer.set(c.id, key);
+        if (key.startsWith('bundle:')) {
+          if (!salBundleMembers.has(key)) salBundleMembers.set(key, []);
+          salBundleMembers.get(key)!.push(c);
+        }
+      }
+      for (const members of salBundleMembers.values()) {
+        members.sort((a, b) => String(a.containerCode).localeCompare(String(b.containerCode)));
+      }
+
+      const salClampContainerIds = new Set<number>();
+      const salKepUnits = new Set<string>();
+      const salPairs: { mainId: number; clampId: number }[] = [];
+      const salPairByContainer = new Map<number, { mainId: number; clampId: number }>();
+      {
+        const sortedClaims = [...salClaims].sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() || (a.id || 0) - (b.id || 0),
+        );
+        const lastBySub = new Map<number, any>();
+        for (const cl of sortedClaims) {
+          if (cl.claimType === 'CLAMP') {
+            salClampContainerIds.add(cl.containerImportId);
+            const clampUnit = salUnitByContainer.get(cl.containerImportId);
+            if (clampUnit) salKepUnits.add(clampUnit);
+            const main = lastBySub.get(cl.submissionId);
+            if (main) {
+              salClampContainerIds.add(main.containerImportId);
+              const mainUnit = salUnitByContainer.get(main.containerImportId);
+              if (mainUnit) salKepUnits.add(mainUnit);
+              if (mainUnit && clampUnit && mainUnit.startsWith('single:') && clampUnit.startsWith('single:')) {
+                const p = { mainId: main.containerImportId, clampId: cl.containerImportId };
+                salPairs.push(p);
+                salPairByContainer.set(p.mainId, p);
+                salPairByContainer.set(p.clampId, p);
+              }
+            }
+          }
+          lastBySub.set(cl.submissionId, cl);
+        }
+      }
+
+      // 4) Tạo worksheet
+      const wsSalCont = workbook.addWorksheet(
+        this.sanitizeSheetName('Container - Người chạy', usedSheetNames),
+      );
+      // Columns: STT | Số container | Loại | Kế hoạch | Giá chuyến | Người chạy | Biển số xe | Thời gian ghi nhận | Vệ sinh lại | Kéo Về | Ghi chú
+      wsSalCont.columns = [
+        { header: 'STT', key: 'stt', width: 6 },
+        { header: 'Số container', key: 'containerCode', width: 20 },
+        { header: 'Loại', key: 'type', width: 16 },
+        { header: 'Kế hoạch', key: 'plan', width: 28 },
+        { header: 'Giá chuyến', key: 'giaGhuyen', width: 14 },
+        { header: 'Người chạy', key: 'driver', width: 22 },
+        { header: 'Biển số xe', key: 'plate', width: 14 },
+        { header: 'Thời gian ghi nhận', key: 'claimedAt', width: 20 },
+        { header: 'Vệ sinh lại', key: 'vsl', width: 10 },
+        { header: 'Kéo Về', key: 'keoVe', width: 8 },
+        { header: 'Ghi chú', key: 'note', width: 14 },
+      ];
+
+      const salHeaderFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
+      const salHeaderFont: Partial<ExcelJS.Font> = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      const salBorderStyle: ExcelJS.Border = { style: 'thin', color: { argb: 'FFCCCCCC' } };
+      const salAllBorder: Partial<ExcelJS.Borders> = { top: salBorderStyle, left: salBorderStyle, bottom: salBorderStyle, right: salBorderStyle };
+
+      const salContHeader = wsSalCont.getRow(1);
+      salContHeader.eachCell((cell) => {
+        cell.fill = salHeaderFill;
+        cell.font = salHeaderFont;
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = salAllBorder;
+      });
+      salContHeader.height = 28;
+      wsSalCont.getColumn(5).numFmt = '#,##0';
+
+      const salYellowFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+      const salRedFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+      const salBlueFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBDD7EE' } };
+
+      const salPlanNameFor = (c: any) => {
+        const sl = c.shippingLineRef;
+        return sl ? planDisplayName(sl) : c.shippingLineId ? `Plan #${c.shippingLineId}` : '';
+      };
+      const salDriverOf = (cl: any) => {
+        const sub = cl?.submissionRef;
+        return sub ? sub.user?.fullName || sub.driverName || '' : '';
+      };
+      const salPlateOf = (cl: any) => cl?.submissionRef?.user?.soXe || '';
+
+      const salStyleRow = (row: ExcelJS.Row, fill: 'yellow' | 'red' | 'blue' | null) => {
+        row.eachCell((cell) => {
+          cell.border = salAllBorder;
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          if (fill === 'yellow') cell.fill = salYellowFill;
+          else if (fill === 'red') cell.fill = salRedFill;
+          else if (fill === 'blue') cell.fill = salBlueFill;
+        });
+      };
+      const salClaimFill = (cl: any, cls: any[]): 'red' | 'blue' | null => {
+        const hasKD2 = cls.some((x: any) => x.claimType === 'KD2');
+        if (!hasKD2) return null;
+        if (cl.claimType === 'KD2') return 'blue';
+        if (cl.claimType === 'CLAIM' || cl.claimType === 'KV') return 'red';
+        return null;
+      };
+
+      // 5) Render
+      let salStt = 0;
+      const salRendered = new Set<number>();
+
+      for (const c of salContainers) {
+        if (salRendered.has(c.id)) continue;
+        const key = salUnitByContainer.get(c.id)!;
+        const isBundle = key.startsWith('bundle:');
+
+        // a) Bó FR — giữ nguyên merge Người chạy (chỉ bỏ merge với kẹp)
+        if (isBundle) {
+          const members = salBundleMembers.get(key)!;
+          members.forEach((m) => salRendered.add(m.id));
+          const planName = salPlanNameFor(c);
+          const price = priceFor(c);
+          const yellow = salKepUnits.has(key);
+          const canMerge = members.every((m) => (salClaimsByContainer.get(m.id) || []).length <= 1);
+          if (canMerge) {
+            let firstRowNum: number | null = null;
+            for (const m of members) {
+              if (firstRowNum === null) salStt++;
+              const cl = (salClaimsByContainer.get(m.id) || [])[0];
+              const row = wsSalCont.addRow({
+                stt: firstRowNum === null ? salStt : '',
+                containerCode: m.containerCode,
+                type: firstRowNum === null ? m.type : '',
+                plan: firstRowNum === null ? planName : '',
+                giaGhuyen: firstRowNum === null ? price : '',
+                driver: firstRowNum === null ? (cl ? salDriverOf(cl) : '') : '',
+                plate: firstRowNum === null ? (cl ? salPlateOf(cl) : '') : '',
+                claimedAt: cl ? this.fmtVN(cl.createdAt) : '',
+                vsl: cl && cl.claimType === 'VSL' ? 'x' : '',
+                keoVe: cl && cl.claimType === 'KV' ? 'x' : '',
+                note: cl && cl.claimType === 'KD2' ? 'Kéo Lần 2' : '',
+              });
+              salStyleRow(row, yellow ? 'yellow' : null);
+              if (firstRowNum === null) firstRowNum = row.number;
+            }
+            if (members.length > 1 && firstRowNum !== null) {
+              const lastRowNum = firstRowNum + members.length - 1;
+              wsSalCont.mergeCells(firstRowNum, 3, lastRowNum, 3); // Loại
+              wsSalCont.mergeCells(firstRowNum, 4, lastRowNum, 4); // Kế hoạch
+              wsSalCont.mergeCells(firstRowNum, 5, lastRowNum, 5); // Giá chuyến
+              wsSalCont.mergeCells(firstRowNum, 6, lastRowNum, 6); // Người chạy (bó FR vẫn merge)
+              wsSalCont.mergeCells(firstRowNum, 7, lastRowNum, 7); // Biển số xe
+            }
+            continue;
+          }
+          // fallback: member nào ghi nhiều lần
+          for (const m of members) {
+            const mClaims = salClaimsByContainer.get(m.id) || [];
+            for (const cl of mClaims) {
+              salStt++;
+              const row = wsSalCont.addRow({
+                stt: salStt,
+                containerCode: m.containerCode,
+                type: m.type,
+                plan: planName,
+                giaGhuyen: price,
+                driver: salDriverOf(cl),
+                plate: salPlateOf(cl),
+                claimedAt: this.fmtVN(cl.createdAt),
+                vsl: cl.claimType === 'VSL' ? 'x' : '',
+                keoVe: cl.claimType === 'KV' ? 'x' : '',
+                note: cl.claimType === 'KD2' ? 'Kéo Lần 2' : '',
+              });
+              salStyleRow(row, salClaimFill(cl, mClaims) || 'yellow');
+            }
+          }
+          continue;
+        }
+
+        // b) Cặp kẹp lẻ — 2 dòng, BỎ merge Người chạy, mỗi dòng điền lái xe riêng
+        const pair = salPairByContainer.get(c.id);
+        if (pair) {
+          const main = salContainers.find((x: any) => x.id === pair.mainId);
+          const clamp = salContainers.find((x: any) => x.id === pair.clampId);
+          if (main && clamp) {
+            salRendered.add(pair.mainId);
+            salRendered.add(pair.clampId);
+            const mainClaims = salClaimsByContainer.get(main.id) || [];
+            const clampClaims = salClaimsByContainer.get(clamp.id) || [];
+            const price = priceFor(main);
+            if (mainClaims.length === 1 && clampClaims.length === 1) {
+              salStt++;
+              const mSub = mainClaims[0].submissionRef;
+              const cSub = clampClaims[0].submissionRef;
+              const rowMain = wsSalCont.addRow({
+                stt: salStt,
+                containerCode: main.containerCode,
+                type: `${main.type} / ${clamp.type}`,
+                plan: salPlanNameFor(main),
+                giaGhuyen: price,
+                driver: mSub ? mSub.user?.fullName || mSub.driverName || '' : '',
+                plate: mSub?.user?.soXe || '',
+                claimedAt: this.fmtVN(mainClaims[0].createdAt),
+                vsl: mainClaims[0].claimType === 'VSL' ? 'x' : '',
+                keoVe: mainClaims[0].claimType === 'KV' ? 'x' : '',
+                note: mainClaims[0].claimType === 'KD2' ? 'Kéo Lần 2' : '',
+              });
+              const rowClamp = wsSalCont.addRow({
+                stt: '',
+                containerCode: clamp.containerCode,
+                type: '',
+                plan: '',
+                giaGhuyen: '',
+                // Không merge Người chạy → điền lái xe clamp thực sự
+                driver: cSub ? cSub.user?.fullName || cSub.driverName || '' : '',
+                plate: cSub?.user?.soXe || '',
+                claimedAt: this.fmtVN(clampClaims[0].createdAt),
+                vsl: clampClaims[0].claimType === 'VSL' ? 'x' : '',
+                keoVe: clampClaims[0].claimType === 'KV' ? 'x' : '',
+                note: clampClaims[0].claimType === 'KD2' ? 'Kéo Lần 2' : '',
+              });
+              salStyleRow(rowMain, salClaimFill(mainClaims[0], mainClaims) || 'yellow');
+              salStyleRow(rowClamp, salClaimFill(clampClaims[0], clampClaims) || 'yellow');
+              // Merge Loại, Kế hoạch, Giá chuyến, Biển số — KHÔNG merge Người chạy (col 6)
+              wsSalCont.mergeCells(rowMain.number, 3, rowClamp.number, 3); // Loại
+              wsSalCont.mergeCells(rowMain.number, 4, rowClamp.number, 4); // Kế hoạch
+              wsSalCont.mergeCells(rowMain.number, 5, rowClamp.number, 5); // Giá chuyến
+              wsSalCont.mergeCells(rowMain.number, 7, rowClamp.number, 7); // Biển số xe
+              continue;
+            }
+            // fallback: bên nào ghi nhiều lần
+            for (const member of [main, clamp]) {
+              const memberClaims = salClaimsByContainer.get(member.id) || [];
+              for (const cl of memberClaims) {
+                salStt++;
+                const row = wsSalCont.addRow({
+                  stt: salStt,
+                  containerCode: member.containerCode,
+                  type: member.type,
+                  plan: salPlanNameFor(member),
+                  giaGhuyen: priceFor(member),
+                  driver: salDriverOf(cl),
+                  plate: salPlateOf(cl),
+                  claimedAt: this.fmtVN(cl.createdAt),
+                  vsl: cl.claimType === 'VSL' ? 'x' : '',
+                  keoVe: cl.claimType === 'KV' ? 'x' : '',
+                  note: cl.claimType === 'KD2' ? 'Kéo Lần 2' : '',
+                });
+                salStyleRow(row, salClaimFill(cl, memberClaims) || 'yellow');
+              }
+            }
+            continue;
+          }
+        }
+
+        // c) Container lẻ bình thường
+        const cClaims = salClaimsByContainer.get(c.id) || [];
+        const multi = cClaims.length > 1;
+        const yellow = multi || salClampContainerIds.has(c.id);
+        const price = priceFor(c);
+
+        if (cClaims.length === 0) {
+          salStt++;
+          const row = wsSalCont.addRow({
+            stt: salStt,
+            containerCode: c.containerCode,
+            type: c.type,
+            plan: salPlanNameFor(c),
+            giaGhuyen: price,
+            driver: '',
+            plate: '',
+            claimedAt: '',
+            vsl: c.veSinhLai ? 'x' : '',
+            keoVe: c.keoVe ? 'x' : '',
+            note: '',
+          });
+          salStyleRow(row, null);
+          continue;
+        }
+
+        for (const cl of cClaims) {
+          salStt++;
+          const row = wsSalCont.addRow({
+            stt: salStt,
+            containerCode: c.containerCode,
+            type: c.type,
+            plan: salPlanNameFor(c),
+            giaGhuyen: price,
+            driver: salDriverOf(cl),
+            plate: salPlateOf(cl),
+            claimedAt: this.fmtVN(cl.createdAt),
+            vsl: cl.claimType === 'VSL' ? 'x' : '',
+            keoVe: cl.claimType === 'KV' ? 'x' : '',
+            note: cl.claimType === 'KD2' ? 'Kéo Lần 2' : '',
+          });
+          salStyleRow(row, salClaimFill(cl, cClaims) || (yellow ? 'yellow' : null));
+        }
+      }
+    }
+    // ── Kết thúc sheet "Container - Người chạy" ─────────────────────────────
+
     const filename = `Lương - Đội Xe - T${String(month).padStart(2, '0')}.${year}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
