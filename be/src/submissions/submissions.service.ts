@@ -3101,7 +3101,7 @@ let sl: any;
                 containerCode: clamp.containerCode,
                 type: '',
                 plan: '',
-                giaGhuyen: '',
+                giaGhuyen: price,
                 // Không merge Người chạy → điền lái xe clamp thực sự
                 driver: cSub ? cSub.user?.fullName || cSub.driverName || '' : '',
                 plate: cSub?.user?.soXe || '',
@@ -3112,10 +3112,9 @@ let sl: any;
               });
               salStyleRow(rowMain, salClaimFill(mainClaims[0], mainClaims) || 'yellow');
               salStyleRow(rowClamp, salClaimFill(clampClaims[0], clampClaims) || 'yellow');
-              // Merge Loại, Kế hoạch, Giá chuyến, Biển số — KHÔNG merge Người chạy (col 6)
+              // Merge Loại, Kế hoạch, Biển số — KHÔNG merge Giá chuyến (col 5) và Người chạy (col 6)
               wsSalCont.mergeCells(rowMain.number, 3, rowClamp.number, 3); // Loại
               wsSalCont.mergeCells(rowMain.number, 4, rowClamp.number, 4); // Kế hoạch
-              wsSalCont.mergeCells(rowMain.number, 5, rowClamp.number, 5); // Giá chuyến
               wsSalCont.mergeCells(rowMain.number, 7, rowClamp.number, 7); // Biển số xe
               continue;
             }
