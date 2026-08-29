@@ -237,7 +237,7 @@ export class SubmissionsService {
     return this.findByIdWithHistory(submission.id);
   }
 
-  async getSalarySummary(userId: number, month: number, year: number): Promise<any> {
+  async getSalarySummary(userId: number, month: number, year: number, fromDay?: number, toDay?: number): Promise<any> {
     const allRoutes = await this.routesRepository.find();
     const routeMap = new Map<string, { money: number; effectiveDate: string | null }>();
     for (const r of allRoutes) {
@@ -280,6 +280,10 @@ export class SubmissionsService {
       const planDateStr = sl?.ngay || null;
       const refDate = planDateStr ? new Date(planDateStr) : new Date(sub.createdAt);
       if (refDate.getMonth() + 1 !== month || refDate.getFullYear() !== year) continue;
+      // Filter by day range within month if provided
+      const dayOfMonth = refDate.getDate();
+      if (fromDay !== undefined && dayOfMonth < fromDay) continue;
+      if (toDay !== undefined && dayOfMonth > toDay) continue;
 
       const tenTuyen = sub.route || sl?.routeName || '';
       const donGia = getRouteMoney(tenTuyen, sl?.ngay, sl?.frozenMoney);

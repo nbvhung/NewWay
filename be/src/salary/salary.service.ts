@@ -216,7 +216,7 @@ export class SalaryService {
     };
   }
 
-  async getRecords(month: number, year: number) {
+  async getRecords(month: number, year: number, fromDay?: number, toDay?: number) {
     const settings = await this.getSettings();
     const drivers = await this.usersRepository.find({
       where: { role: 'laixe' },
@@ -253,6 +253,8 @@ export class SalaryService {
         driver.id,
         month,
         year,
+        fromDay,
+        toDay,
       )) as { totalSalary: number; totalTip: number };
       const components = this.computeComponents(record, settings);
       const luongKhoan = Number(summary.totalSalary) || 0;
