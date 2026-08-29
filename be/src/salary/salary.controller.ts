@@ -71,15 +71,11 @@ export class SalaryController {
   async getRecords(
     @Query('month') month?: string,
     @Query('year') year?: string,
-    @Query('fromDay') fromDay?: string,
-    @Query('toDay') toDay?: string,
   ) {
     const now = this.salaryService.nowVN();
     const m = month ? parseInt(month) : now.month;
     const y = year ? parseInt(year) : now.year;
-    const fd = fromDay ? parseInt(fromDay) : undefined;
-    const td = toDay ? parseInt(toDay) : undefined;
-    return { data: await this.salaryService.getRecords(m, y, fd, td) };
+    return { data: await this.salaryService.getRecords(m, y) };
   }
 
   @Put('records/:id')

@@ -20,8 +20,8 @@ export const salaryApi = {
   deleteItem: (id: number) =>
     api.delete(`/admin/salary/items/${id}`),
 
-  getRecords: (month: number, year: number, fromDay?: number, toDay?: number) =>
-    api.get<{ data: SalaryRecordsResponse }>('/admin/salary/records', { params: { month, year, ...(fromDay !== undefined ? { fromDay } : {}), ...(toDay !== undefined ? { toDay } : {}) } }),
+  getRecords: (month: number, year: number) =>
+    api.get<{ data: SalaryRecordsResponse }>('/admin/salary/records', { params: { month, year } }),
 
   updateRecord: (id: number, data: Record<string, unknown>) =>
     api.put(`/admin/salary/records/${id}`, data),

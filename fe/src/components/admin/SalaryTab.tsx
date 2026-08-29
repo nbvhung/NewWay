@@ -35,8 +35,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const vnNow = useMemo(nowVN, []);
   const [month, setMonth] = useState(vnNow.month);
   const [year, setYear] = useState(vnNow.year);
-  const [fromDay, setFromDay] = useState<number | ''>('');
-  const [toDay, setToDay] = useState<number | ''>('');
   const [settings, setSettings] = useState<SalarySettings | null>(null);
   const [records, setRecords] = useState<SalaryRecordItem[]>([]);
   const [items, setItems] = useState<SalaryItem[]>([]);
@@ -83,9 +81,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const fd = fromDay !== '' ? fromDay : undefined;
-      const td = toDay !== '' ? toDay : undefined;
-      const res = await salaryApi.getRecords(month, year, fd, td);
+      const res = await salaryApi.getRecords(month, year);
       const data = res.data?.data;
       setSettings(data.settings);
       setRecords(data.records || []);
@@ -106,7 +102,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
 
   useEffect(() => {
     loadData();
-  }, [month, year, fromDay, toDay]);
+  }, [month, year]);
 
   const drivers = useMemo(() => {
     return allUsers
@@ -530,32 +526,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
               ))}
             </select>
           </div>
-          <div>
-            <label className={labelCls}>Từ ngày</label>
-            <input
-              type="number" min={1} max={31}
-              value={fromDay}
-              onChange={e => setFromDay(e.target.value === '' ? '' : Math.min(31, Math.max(1, Number(e.target.value))))}
-              placeholder="1"
-              className="w-20 px-3 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]"
-            />
-          </div>
-          <div>
-            <label className={labelCls}>Đến ngày</label>
-            <input
-              type="number" min={1} max={31}
-              value={toDay}
-              onChange={e => setToDay(e.target.value === '' ? '' : Math.min(31, Math.max(1, Number(e.target.value))))}
-              placeholder="31"
-              className="w-20 px-3 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]"
-            />
-          </div>
-          {(fromDay !== '' || toDay !== '') && (
-            <button onClick={() => { setFromDay(''); setToDay(''); }}
-              className="px-3 py-2.5 rounded-lg text-xs font-medium text-[#b91c1c] border border-[#b91c1c]/30 hover:bg-[#b91c1c]/5 transition-all cursor-pointer">
-              ✕ Xóa lọc ngày
-            </button>
-          )}
           <button onClick={() => loadData()}
             className="px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">
             🔄 Làm mới

@@ -216,7 +216,7 @@ export class SalaryService {
     };
   }
 
-  async getRecords(month: number, year: number, fromDay?: number, toDay?: number) {
+  async getRecords(month: number, year: number) {
     const settings = await this.getSettings();
     const drivers = await this.usersRepository.find({
       where: { role: 'laixe' },
@@ -253,8 +253,6 @@ export class SalaryService {
         driver.id,
         month,
         year,
-        fromDay,
-        toDay,
       )) as { totalSalary: number; totalTip: number };
       const components = this.computeComponents(record, settings);
       const luongKhoan = Number(summary.totalSalary) || 0;
@@ -287,34 +285,10 @@ export class SalaryService {
         .filter((v) => v.enabled && v.kind === 'deduct')
         .reduce((s, v) => s + v.amount, 0);
 
-      // Tính ngayCong theo khoảng ngày nếu có filter
-      const totalDaysInRange = (() => {
-        const fd = fromDay ?? 1;
-        const td = toDay ?? this.daysInMonth(month, year);
-        return Math.max(0, td - fd + 1);
-      })();
-      const daysOffInRange = (record.daysOff || []).filter((d: number) => {
-        const fd = fromDay ?? 1;
-        const td = toDay ?? this.daysInMonth(month, year);
-        return d >= fd && d <= td;
-      }).length;
-      const ngayCongInRange = totalDaysInRange - daysOffInRange;
-
-      // Tính lại chuyenCan nếu đang filter ngày
-      const effectiveNgayCong = (fromDay !== undefined || toDay !== undefined)
-        ? ngayCongInRange
-        : this.daysInMonth(month, year) - (record.daysOff?.length || 0);
-      const effectiveStandardDays = (fromDay !== undefined || toDay !== undefined)
-        ? totalDaysInRange  // tiêu chuẩn = số ngày trong khoảng
-        : settings.standardDays;
-      const effectiveChuyenCan = (effectiveNgayCong >= effectiveStandardDays)
-        ? (Number(record.attendanceBonus) || Number(settings.attendanceBonus) || 0)
-        : 0;
-
-      const effectiveTotal =
+      const total =
         luongKhoan +
         components.fixedSalary +
-        effectiveChuyenCan +
+        components.chuyenCan +
         components.allowanceFarHome +
         components.allowanceWaitLoading +
         components.allowanceOldCar +
@@ -332,11 +306,11 @@ export class SalaryService {
         username: driver.username,
         soXe: driver.soXe,
         stt: driver.stt,
-        ngayCong: effectiveNgayCong,
-        standardDays: effectiveStandardDays,
+        ngayCong: this.daysInMonth(month, year) - (record.daysOff?.length || 0),
+        standardDays: settings.standardDays,
         fixedSalary: components.fixedSalary,
         attendanceBonus: Number(record.attendanceBonus) || 0,
-        chuyenCan: effectiveChuyenCan,
+        chuyenCan: components.chuyenCan,
         allowanceFarHome: components.allowanceFarHome,
         allowanceFarHomeOverride: record.allowanceFarHome,
         hasFarHome: record.hasFarHome || false,
@@ -356,7 +330,7 @@ export class SalaryService {
         daysOff: record.daysOff || [],
         luongKhoan,
         tip,
-        total: effectiveTotal,
+        total,
       });
     }
 
