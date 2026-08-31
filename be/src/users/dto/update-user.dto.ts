@@ -56,4 +56,8 @@ export class UpdateUserDto {
   @IsOptional()
   @IsBoolean({ message: 'Phụ cấp xe cũ không hợp lệ' })
   oldCar?: boolean;
+
+  @IsOptional()
+  @IsBoolean({ message: 'Trạng thái đóng bảo hiểm không hợp lệ' })
+  payBhxh?: boolean;
 }

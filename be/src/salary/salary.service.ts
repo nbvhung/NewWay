@@ -152,6 +152,7 @@ export class SalaryService {
       oldCarAllowance: prev?.oldCarAllowance ?? null,
       hasParkingHph2: prev?.hasParkingHph2 ?? false,
       parkingHph2: prev?.parkingHph2 ?? null,
+      hasBhxh: prev?.hasBhxh ?? user.payBhxh ?? true,
       chiHo: 0,
       daysOff: [],
     });
@@ -258,9 +259,11 @@ export class SalaryService {
       const luongKhoan = Number(summary.totalSalary) || 0;
       const tip = Number(summary.totalTip) || 0;
       const chiHo = Number(record.chiHo) || 0;
-      const bhxh = Math.round(
-        (components.fixedSalary * (Number(settings.bhxhNld) || 0)) / 100,
-      );
+      const bhxh = record.hasBhxh
+        ? Math.round(
+            (components.fixedSalary * (Number(settings.bhxhNld) || 0)) / 100,
+          )
+        : 0;
 
       const riMap = recordItemsMap.get(record.id) || new Map<number, SalaryRecordItem>();
       const driverItemValues = items.map((it) => {
@@ -324,6 +327,7 @@ export class SalaryService {
         allowanceOldCar: components.allowanceOldCar,
         chiHo,
         bhxh,
+        hasBhxh: record.hasBhxh,
         itemSumAdd,
         itemSumDeduct,
         recordItems: driverItemValues,
@@ -356,6 +360,7 @@ export class SalaryService {
     if (dto.hasParkingHph2 !== undefined)
       record.hasParkingHph2 = dto.hasParkingHph2;
     if (dto.parkingHph2 !== undefined) record.parkingHph2 = dto.parkingHph2;
+    if (dto.hasBhxh !== undefined) record.hasBhxh = dto.hasBhxh;
     if (dto.chiHo !== undefined) record.chiHo = dto.chiHo;
     if (dto.daysOff !== undefined) record.daysOff = dto.daysOff;
     const saved = await this.recordsRepository.save(record);

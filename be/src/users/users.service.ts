@@ -80,6 +80,7 @@ export class UsersService {
       zaloId: dto.zaloId?.trim() || null,
       zaloBot: dto.zaloBot ?? 0,
       oldCar: dto.oldCar ?? false,
+      payBhxh: dto.payBhxh ?? true,
     });
     const saved = await this.usersRepository.save(user);
     const { passwordHash, ...result } = saved;
@@ -133,6 +134,7 @@ export class UsersService {
     if (dto.allowanceWaitLoading !== undefined)
       target.allowanceWaitLoading = dto.allowanceWaitLoading;
     if (dto.oldCar !== undefined) target.oldCar = dto.oldCar;
+    if (dto.payBhxh !== undefined) target.payBhxh = dto.payBhxh;
 
     const saved = await this.usersRepository.save(target);
     const { passwordHash, ...result } = saved;

@@ -463,10 +463,12 @@ export default function MyDataScreen() {
                 {/* Phần II: Khấu trừ */}
                 <Text style={[styles.salarySection, { marginTop: 12 }]}>II. Khoản khấu trừ</Text>
 
-                <View style={styles.salaryRow}>
-                  <Text style={styles.salaryLabel}>1. BHXH (bắt buộc 10,5%):</Text>
-                  <Text style={styles.salaryValueDeduct}>-{formatMoney(bhxh)}</Text>
-                </View>
+                {bhxh > 0 && (
+                  <View style={styles.salaryRow}>
+                    <Text style={styles.salaryLabel}>1. BHXH (bắt buộc 10,5%):</Text>
+                    <Text style={styles.salaryValueDeduct}>-{formatMoney(bhxh)}</Text>
+                  </View>
+                )}
 
                 {chiHo > 0 && (
                   <View style={styles.salaryRow}>

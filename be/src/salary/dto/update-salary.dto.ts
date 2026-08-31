@@ -46,6 +46,10 @@ export class UpdateSalaryRecordDto {
   hasOldCar?: boolean;
 
   @IsOptional()
+  @IsBoolean({ message: 'Trạng thái đóng bảo hiểm không hợp lệ' })
+  hasBhxh?: boolean;
+
+  @IsOptional()
   @Type(() => Number)
   @IsNumber({}, { message: 'Phụ cấp xe cũ không hợp lệ' })
   @Min(0)

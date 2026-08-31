@@ -67,6 +67,9 @@ export class User {
   @Column({ name: 'old_car', type: 'boolean', default: false })
   oldCar: boolean;
 
+  @Column({ name: 'pay_bhxh', type: 'boolean', default: true })
+  payBhxh: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

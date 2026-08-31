@@ -70,12 +70,14 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     allowanceOldCar: '',
     hasParkingHph2: false,
     allowanceParking: '',
+    hasBhxh: true,
     chiHo: '',
   });
 
   // Giá trị nền tài xế (sửa trong tab này)
   const [baseFarHome, setBaseFarHome] = useState('');
   const [baseOldCar, setBaseOldCar] = useState(false);
+  const [baseBhxh, setBaseBhxh] = useState(true);
   const [savingBase, setSavingBase] = useState(false);
 
   const loadData = async (silent = false) => {
@@ -116,9 +118,10 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const pickDriver = (id: number | null) => {
     setSelectedId(id);
     if (id == null) {
-      setForm({ fixedSalary: '', attendanceBonus: '', hasFarHome: false, allowanceFarHome: '', allowanceWaitLoadingRate: '', daysOff: '', hasOldCar: false, allowanceOldCar: '', hasParkingHph2: false, allowanceParking: '', chiHo: '' });
+      setForm({ fixedSalary: '', attendanceBonus: '', hasFarHome: false, allowanceFarHome: '', allowanceWaitLoadingRate: '', daysOff: '', hasOldCar: false, allowanceOldCar: '', hasParkingHph2: false, allowanceParking: '', hasBhxh: true, chiHo: '' });
       setBaseFarHome('');
       setBaseOldCar(false);
+      setBaseBhxh(true);
       return;
     }
     const rec = records.find(r => r.driverId === id);
@@ -134,10 +137,12 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       allowanceOldCar: rec?.oldCarAllowanceOverride != null ? fmtMoney(rec.oldCarAllowanceOverride) : '',
       hasParkingHph2: rec?.hasParkingHph2 || false,
       allowanceParking: rec?.parkingHph2Override != null ? fmtMoney(rec.parkingHph2Override) : '',
+      hasBhxh: rec?.hasBhxh ?? true,
       chiHo: fmtMoney(rec?.chiHo),
     });
     setBaseFarHome(fmtMoney(drv?.allowanceFarHome));
     setBaseOldCar(drv?.oldCar || false);
+    setBaseBhxh(drv?.payBhxh ?? true);
   };
 
   const saveSettings = async () => {
@@ -179,6 +184,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         oldCarAllowance: form.allowanceOldCar.trim() === '' ? null : (Number(oldCarOverrideValue) || 0),
         hasParkingHph2: form.hasParkingHph2,
         parkingHph2: form.allowanceParking.trim() === '' ? null : (Number(parkingOverrideValue) || 0),
+        hasBhxh: form.hasBhxh,
         chiHo: Number(chiHoValue) || 0,
       });
       toast(`Đã lưu cho ${selectedDriver.fullName}`, 'success');
@@ -197,6 +203,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       await usersApi.update(selectedDriver.id, {
         allowanceFarHome: Number(baseFarHome.replace(/[^\d]/g, '')) || 0,
         oldCar: baseOldCar,
+        payBhxh: baseBhxh,
       });
       toast(`Đã lưu giá trị nền cho ${selectedDriver.fullName}`, 'success');
     } catch (e: any) {
@@ -405,7 +412,9 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const parkingHph2Value = Number(parkingHph2.replace(/[^\d]/g, '')) || 0;
   const allowanceParking = form.hasParkingHph2 ? (form.allowanceParking.trim() === '' ? parkingHph2Value : parkingOverrideValue) : 0;
   const bhxhPercentValue = Number(bhxhNld.replace(',', '.')) || 0;
-  const bhxhValue = Math.round((fixedSalaryValue * bhxhPercentValue) / 100);
+  const bhxhValue = form.hasBhxh
+    ? Math.round((fixedSalaryValue * bhxhPercentValue) / 100)
+    : 0;
 
   // Khoản lương động — đọc từ selectedRecord.recordItems (đã có enabled + amount)
   const recordItems = selectedRecord?.recordItems || [];
@@ -645,6 +654,16 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                       <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceParking)} ₫</p>
                     </div>
 
+                    {/* Đóng bảo hiểm (BHXH) */}
+                    <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
+                      <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
+                        <input type="checkbox" checked={form.hasBhxh} onChange={e => setForm(f => ({ ...f, hasBhxh: e.target.checked }))}
+                          className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                        🛡️ Đóng bảo hiểm (BHXH)
+                      </label>
+                      <p className="text-[10px] text-[#64748b] mt-1">Trừ BHXH {fmtMoney(bhxhValue)} ₫ {form.hasBhxh ? '' : '(không trừ)'}</p>
+                    </div>
+
                     {/* Khoản lương động — mỗi khoản 1 tick + ô nhập số tiền */}
                     {recordItems.map(v => (
                       <div key={v.itemId} className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
@@ -687,6 +706,13 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                       <input type="checkbox" checked={baseOldCar} onChange={e => setBaseOldCar(e.target.checked)}
                         className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
                       🚚 Xe cũ mặc định
+                    </label>
+                  </div>
+                  <div className="mt-3">
+                    <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
+                      <input type="checkbox" checked={baseBhxh} onChange={e => setBaseBhxh(e.target.checked)}
+                        className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                      🛡️ Đóng bảo hiểm mặc định
                     </label>
                   </div>
                   <button onClick={saveBase} disabled={savingBase}

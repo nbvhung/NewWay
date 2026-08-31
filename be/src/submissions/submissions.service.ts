@@ -399,8 +399,11 @@ export class SubmissionsService {
       const hasParkingHph2 = rec ? rec.hasParkingHph2 : false;
       const chiHo = Number(rec?.chiHo) || 0;
 
-      // Tính BHXH
-      const bhxh = Math.round(fixedSalary * bhxhPercent / 100);
+      // Tính BHXH — chỉ trừ nếu lái xe đóng bảo hiểm
+      const hasBhxh = rec ? rec.hasBhxh : d.payBhxh ?? true;
+      const bhxh = hasBhxh
+        ? Math.round(fixedSalary * bhxhPercent / 100)
+        : 0;
 
       // Tính các khoản khấu trừ từ SalaryItems (kind='deduct')
       const riMap = rec ? (recordItemsMap.get(rec.id) || new Map()) : new Map<number, SalaryRecordItem>();
@@ -2343,7 +2346,10 @@ let sl: any;
       const fixedSalary = rec ? Number(rec.fixedSalary) || 0 : fixedSalaryDefault;
       const attendanceBonus = rec ? Number(rec.attendanceBonus) || 0 : attendanceBonusDefault;
       const chiHo = rec ? Number(rec.chiHo) || 0 : 0;
-      const bhxh = Math.round((fixedSalary * bhxhPercent) / 100);
+      const hasBhxh = rec ? rec.hasBhxh : driver.payBhxh ?? true;
+      const bhxh = hasBhxh
+        ? Math.round((fixedSalary * bhxhPercent) / 100)
+        : 0;
       const daysOff = rec?.daysOff?.length || 0;
       const ngayCong = daysInMonth - daysOff;
       const hasOldCar = rec ? rec.hasOldCar : driver.oldCar;
@@ -2763,7 +2769,11 @@ let sl: any;
       rC.getCell(7).fill = fillXanh;
       rowIdx++;
       const pctLabel = String(bhxhPercent).replace('.', ',');
-      writeChiHoRow(`BHXH -NLĐ nộp ${pctLabel}%`, bhxh, false, false);
+      if (bhxh > 0) {
+        writeChiHoRow(`BHXH -NLĐ nộp ${pctLabel}%`, bhxh, false, false);
+      } else {
+        writeChiHoRow(`BHXH -NLĐ nộp ${pctLabel}%`, '0', false, false);
+      }
       writeChiHoRow('Tạm ứng lương /Tháng', fixedSalary, false, false);
       writeChiHoRow('Các khoản chi hộ khác:', chiHo, false, false);
       for (const ri of recItemRows) {

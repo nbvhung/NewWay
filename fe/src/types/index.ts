@@ -12,6 +12,7 @@ export interface User {
   allowanceFarHome?: number;
   allowanceWaitLoading?: number;
   oldCar?: boolean;
+  payBhxh?: boolean;
   createdAt?: string;
 }
 
@@ -140,6 +141,7 @@ export interface SalaryRecordItem {
   allowanceOldCar: number;
   chiHo: number;
   bhxh: number;
+  hasBhxh: boolean;
   itemSumAdd: number;
   itemSumDeduct: number;
   recordItems: SalaryRecordItemValue[];
