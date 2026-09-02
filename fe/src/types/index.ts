@@ -145,6 +145,7 @@ export interface SalaryRecordItem {
   advanceDeduct: number;
   advanceDeductOverridden: boolean;
   totalRemainingAdvance: number;
+  advanceRemainingAfter: number;
   advances: DriverAdvance[];
   itemSumAdd: number;
   itemSumDeduct: number;

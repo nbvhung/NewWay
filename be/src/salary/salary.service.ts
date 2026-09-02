@@ -418,8 +418,25 @@ export class SalaryService {
         .reduce((s, v) => s + v.amount, 0);
 
       const advanceDeduct = Number(record.advanceDeduct) || 0;
-      const remainingAdvance = await this.computeRemainingAdvance(driver.id);
+      // Dư nợ tại tháng đang xem:
+      //   remainingBefore = tổng advance (đã tới deductStart <= tháng này) - tổng đã trừ ở CÁC THÁNG TRƯỚC (không gồm tháng này)
+      //   remainingAfter  = remainingBefore - advanceDeduct tháng này
       const driverAdvances = await this.getAdvancesByDriver(driver.id);
+      const targetYM = year * 100 + month;
+      const eligibleAmount = driverAdvances
+        .filter(a => {
+          const ds = a.deductStart || a.date;
+          const [y, m] = ds.split('-').map(Number);
+          return (y * 100 + m) <= targetYM;
+        })
+        .reduce((s, a) => s + Number(a.amount), 0);
+      const allRecords = await this.recordsRepository.find({ where: { driverId: driver.id } });
+      const deductedBefore = allRecords
+        .filter(r => r.id !== record.id && (r.year * 100 + r.month) <= targetYM)
+        .reduce((s, r) => s + (Number(r.advanceDeduct) || 0), 0);
+      const remainingBefore = Math.max(0, eligibleAmount - deductedBefore);
+      const remainingAfter = Math.max(0, remainingBefore - advanceDeduct);
+
 
       const total =
         luongKhoan +
@@ -464,8 +481,10 @@ export class SalaryService {
         hasBhxh: record.hasBhxh,
         advanceDeduct,
         advanceDeductOverridden: record.advanceDeductOverridden || false,
-        totalRemainingAdvance: remainingAdvance,
+        totalRemainingAdvance: remainingBefore,
+        advanceRemainingAfter: remainingAfter,
         advances: driverAdvances,
+
         itemSumAdd,
         itemSumDeduct,
         recordItems: driverItemValues,

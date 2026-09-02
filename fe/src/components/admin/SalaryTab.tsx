@@ -494,8 +494,9 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   // Tạm ứng
   const advanceDeductValue = selectedRecord?.advanceDeduct || 0;
   const totalRemainingAdvance = selectedRecord?.totalRemainingAdvance || 0;
-  const advanceRemainingAfter = Math.max(0, totalRemainingAdvance - advanceDeductValue);
+  const advanceRemainingAfter = selectedRecord?.advanceRemainingAfter ?? 0;
   const driverAdvances: DriverAdvance[] = selectedRecord?.advances || [];
+
 
   const total = luongKhoan + fixedSalaryValue + chuyenCan + allowanceFarHomeValue + allowanceWaitLoading + allowanceOldCar + allowanceParking + tip + itemSumAdd - itemSumDeduct - chiHoValue - bhxhValue - advanceDeductValue;
 

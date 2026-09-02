@@ -532,6 +532,8 @@ export default function MyDataPage() {
         const chiHo = c?.chiHo || 0;
         const deductions: { name: string; amount: number }[] = c?.deductions || [];
         const advanceDeduct = c?.advanceDeduct || 0;
+        const advanceRemainingAfter = c?.advanceRemainingAfter ?? 0;
+        const totalRemainingAdvance = c?.totalRemainingAdvance ?? 0;
         const totalDeduct = bhxh + chiHo + deductions.reduce((s, d) => s + (d.amount || 0), 0) + advanceDeduct;
         const grandTotal = income - totalDeduct;
         const daysOffList: number[] = c?.daysOffList || [];
@@ -672,12 +674,11 @@ export default function MyDataPage() {
                   <div className="flex items-center justify-between text-sm">
                     <div>
                       <span className="text-[#475569]">💸 Trả nợ tạm ứng:</span>
-                      {(c?.advanceRemainingAfter ?? -1) >= 0 && (
-                        <p className="text-[11px] text-amber-500 mt-0.5">
-                          Dư nợ còn lại sau tháng này: {formatMoney(c?.advanceRemainingAfter)} ₫
-                          {c?.advanceRemainingAfter === 0 && <span className="ml-1 text-green-600">✅ Đã trả hết</span>}
-                        </p>
-                      )}
+                      <p className="text-[11px] text-amber-500 mt-0.5">
+                        Dư nợ trước tháng này: {formatMoney(totalRemainingAdvance)} ₫
+                        {' → '}còn lại: <strong>{formatMoney(advanceRemainingAfter)} ₫</strong>
+                        {advanceRemainingAfter === 0 && <span className="ml-1 text-green-600">✅ Đã trả hết</span>}
+                      </p>
                     </div>
                     <span className="font-bold text-red-600">-{formatMoney(advanceDeduct)}</span>
                   </div>

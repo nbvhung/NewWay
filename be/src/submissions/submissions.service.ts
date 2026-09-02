@@ -444,21 +444,31 @@ export class SubmissionsService {
       where: { isPaidOff: false },
     });
     const allRecordsList = await this.salaryRecordsRepository.find();
+    const targetYM = year * 100 + month;
     // advanceDeduct per driver
     for (const [driverId, comp] of result.entries()) {
       const driverAdvances = allActiveAdvances.filter(a => a.driverId === driverId);
-      const totalAdvanceAmount = driverAdvances.reduce((s, a) => s + Number(a.amount), 0);
-      const totalDeducted = allRecordsList
-        .filter(r => r.driverId === driverId)
-        .reduce((s, r) => s + (Number(r.advanceDeduct) || 0), 0);
-      const remainingBefore = Math.max(0, totalAdvanceAmount - totalDeducted);
+      // Chỉ tính advance đã tới ngày bắt đầu khấu trừ
+      const eligibleAmount = driverAdvances
+        .filter(a => {
+          const ds = a.deductStart || a.date;
+          const [y, m] = ds.split('-').map(Number);
+          return (y * 100 + m) <= targetYM;
+        })
+        .reduce((s, a) => s + Number(a.amount), 0);
       const rec = recordMap.get(driverId);
       const advanceDeduct = Number(rec?.advanceDeduct) || 0;
+      // Tổng đã trừ ở các tháng TRƯỚC (không gồm tháng này)
+      const deductedBefore = allRecordsList
+        .filter(r => r.driverId === driverId && r.id !== rec?.id && (r.year * 100 + r.month) <= targetYM)
+        .reduce((s, r) => s + (Number(r.advanceDeduct) || 0), 0);
+      const remainingBefore = Math.max(0, eligibleAmount - deductedBefore);
       const advanceRemainingAfter = Math.max(0, remainingBefore - advanceDeduct);
       (comp as any).advanceDeduct = advanceDeduct;
-      (comp as any).totalRemainingAdvance = remainingBefore + advanceDeduct; // total before this month's deduct
+      (comp as any).totalRemainingAdvance = remainingBefore;
       (comp as any).advanceRemainingAfter = advanceRemainingAfter;
     }
+
 
     return { settings, standardDays, components: result };
   }
