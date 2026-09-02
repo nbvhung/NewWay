@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { salaryApi } from '@/lib/api-salary';
 import { usersApi } from '@/lib/api-users';
 import { submissionsApi } from '@/lib/api-submissions';
-import { SalaryItem, SalaryRecordItem, SalarySettings, User } from '@/types';
+import { SalaryItem, SalaryRecordItem, SalarySettings, User, DriverAdvance } from '@/types';
 
 interface Props {
   currentUser: any;
@@ -79,6 +79,12 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const [baseOldCar, setBaseOldCar] = useState(false);
   const [baseBhxh, setBaseBhxh] = useState(true);
   const [savingBase, setSavingBase] = useState(false);
+
+  // Tạm ứng state
+  const [showAdvanceForm, setShowAdvanceForm] = useState(false);
+  const [advanceDraft, setAdvanceDraft] = useState({ amount: '', monthlyDeduction: '', note: '', date: '' });
+  const [savingAdvance, setSavingAdvance] = useState(false);
+
 
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -210,6 +216,54 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       toast(e?.response?.data?.message || 'Lưu thất bại', 'error');
     } finally {
       setSavingBase(false);
+    }
+  };
+
+  const createAdvance = async () => {
+    if (!selectedDriver) return;
+    const amount = Number(advanceDraft.amount.replace(/[^\d]/g, '')) || 0;
+    const monthlyDeduction = Number(advanceDraft.monthlyDeduction.replace(/[^\d]/g, '')) || 0;
+    if (amount <= 0) { toast('Vui lòng nhập số tiền tạm ứng', 'error'); return; }
+    if (monthlyDeduction <= 0) { toast('Vui lòng nhập mức khấu trừ hàng tháng', 'error'); return; }
+    setSavingAdvance(true);
+    try {
+      await salaryApi.createAdvance({
+        driverId: selectedDriver.id,
+        amount,
+        monthlyDeduction,
+        note: advanceDraft.note.trim() || undefined,
+        date: advanceDraft.date || undefined,
+      });
+      toast(`Đã thêm tạm ứng cho ${selectedDriver.fullName}`, 'success');
+      setAdvanceDraft({ amount: '', monthlyDeduction: '', note: '', date: '' });
+      setShowAdvanceForm(false);
+      loadData(true);
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Thêm tạm ứng thất bại', 'error');
+    } finally {
+      setSavingAdvance(false);
+    }
+  };
+
+  const deleteAdvance = async (id: number) => {
+    if (!confirm('Xóa khoản tạm ứng này? (Lái xe đã trả hết)')) return;
+    try {
+      await salaryApi.deleteAdvance(id);
+      toast('Đã xóa khoản tạm ứng', 'success');
+      loadData(true);
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Xóa thất bại', 'error');
+    }
+  };
+
+  const resetAdvanceDeduct = async () => {
+    if (!selectedRecord) return;
+    try {
+      await salaryApi.resetAdvanceDeduct(selectedRecord.id);
+      toast('Đã đặt lại khấu trừ tự động', 'success');
+      loadData(true);
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Đặt lại thất bại', 'error');
     }
   };
 
@@ -421,7 +475,14 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const itemSumAdd = recordItems.filter(v => v.enabled && v.kind === 'add').reduce((s, v) => s + v.amount, 0);
   const itemSumDeduct = recordItems.filter(v => v.enabled && v.kind === 'deduct').reduce((s, v) => s + v.amount, 0);
 
-  const total = luongKhoan + fixedSalaryValue + chuyenCan + allowanceFarHomeValue + allowanceWaitLoading + allowanceOldCar + allowanceParking + tip + itemSumAdd - itemSumDeduct - chiHoValue - bhxhValue;
+  // Tạm ứng
+  const advanceDeductValue = selectedRecord?.advanceDeduct || 0;
+  const totalRemainingAdvance = selectedRecord?.totalRemainingAdvance || 0;
+  const advanceRemainingAfter = Math.max(0, totalRemainingAdvance - advanceDeductValue);
+  const driverAdvances: DriverAdvance[] = selectedRecord?.advances || [];
+
+  const total = luongKhoan + fixedSalaryValue + chuyenCan + allowanceFarHomeValue + allowanceWaitLoading + allowanceOldCar + allowanceParking + tip + itemSumAdd - itemSumDeduct - chiHoValue - bhxhValue - advanceDeductValue;
+
 
   const inputCls = "w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]";
   const labelCls = "block text-xs font-medium text-[#64748b] mb-1.5";
@@ -598,6 +659,30 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                     <input value={form.chiHo} onChange={e => setForm(f => ({ ...f, chiHo: e.target.value }))} inputMode="numeric" placeholder="0" className={inputCls} />
                     <p className="text-[10px] text-[#64748b] mt-1">Trừ vào lương: {fmtMoney(chiHoValue)} ₫</p>
                   </div>
+                  {/* Khấu trừ tạm ứng */}
+                  {advanceDeductValue > 0 || driverAdvances.length > 0 ? (
+                    <div>
+                      <label className={labelCls}>
+                        💸 Khấu trừ tạm ứng tháng này (VNĐ)
+                      </label>
+                      <div className="px-3.5 py-2.5 bg-[#fff7ed] border border-[#fed7aa] rounded-lg text-sm font-bold text-[#c2410c]">
+                        {fmtMoney(advanceDeductValue)} ₫
+                        {selectedRecord?.advanceDeductOverridden && (
+                          <span className="ml-2 text-[10px] font-medium text-[#9a3412] bg-[#fee2e2] px-1.5 py-0.5 rounded">✏️ Đã sửa tay</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-[10px] text-amber-600 flex-1">
+                          Dư nợ còn lại sau tháng này: <strong>{fmtMoney(advanceRemainingAfter)} ₫</strong>
+                          {advanceRemainingAfter === 0 && <span className="ml-1 text-green-600">✅ Đã trả hết</span>}
+                        </p>
+                        {selectedRecord?.advanceDeductOverridden && (
+                          <button onClick={resetAdvanceDeduct} className="text-[10px] text-[#1a56db] hover:underline cursor-pointer shrink-0">↩️ Đặt lại tự động</button>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+
                   <div>
                     <label className={labelCls}>BHXH - NLĐ ({String(bhxhPercentValue).replace('.', ',')}%)</label>
                     <div className="px-3.5 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a]">{fmtMoney(bhxhValue)} ₫</div>
@@ -719,6 +804,99 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                     className="mt-3 px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer disabled:opacity-50">
                     {savingBase ? 'Đang lưu...' : '💾 Lưu giá trị nền'}
                   </button>
+                </div>
+
+                {/* Quản lý tạm ứng */}
+                <div className="border-t border-[rgba(0,0,0,0.06)] pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-bold">💸 Tạm ứng — {selectedDriver.fullName}</h4>
+                    <div className="flex items-center gap-2">
+                      {totalRemainingAdvance > 0 && (
+                        <span className="text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                          Dư nợ: {fmtMoney(totalRemainingAdvance)} ₫
+                        </span>
+                      )}
+                      {totalRemainingAdvance === 0 && driverAdvances.length > 0 && (
+                        <span className="text-xs font-semibold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">✅ Đã trả hết</span>
+                      )}
+                      <button onClick={() => { setShowAdvanceForm(!showAdvanceForm); setAdvanceDraft({ amount: '', monthlyDeduction: '', note: '', date: '' }); }}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">
+                        ➕ Thêm tạm ứng
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Form thêm tạm ứng */}
+                  {showAdvanceForm && (
+                    <div className="mb-4 p-3 bg-[#fffbeb] border border-[#fde68a] rounded-lg">
+                      <p className="text-xs font-bold text-[#92400e] mb-3">➕ Thêm khoản tạm ứng mới</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className={labelCls}>Số tiền tạm ứng (VNĐ) *</label>
+                          <input value={advanceDraft.amount} onChange={e => setAdvanceDraft(d => ({ ...d, amount: e.target.value }))} inputMode="numeric" placeholder="11.000.000" className={inputCls} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Khấu trừ mỗi tháng (VNĐ) *</label>
+                          <input value={advanceDraft.monthlyDeduction} onChange={e => setAdvanceDraft(d => ({ ...d, monthlyDeduction: e.target.value }))} inputMode="numeric" placeholder="2.000.000" className={inputCls} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Ngày tạm ứng</label>
+                          <input type="date" value={advanceDraft.date} onChange={e => setAdvanceDraft(d => ({ ...d, date: e.target.value }))} className={inputCls} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Ghi chú</label>
+                          <input value={advanceDraft.note} onChange={e => setAdvanceDraft(d => ({ ...d, note: e.target.value }))} placeholder="VD: Mua xe, ứng lương..." className={inputCls} />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mt-3">
+                        <button onClick={createAdvance} disabled={savingAdvance}
+                          className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white disabled:opacity-50 cursor-pointer">
+                          {savingAdvance ? 'Đang lưu...' : '💾 Lưu tạm ứng'}
+                        </button>
+                        <button onClick={() => setShowAdvanceForm(false)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">
+                          Hủy
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Danh sách tạm ứng */}
+                  {driverAdvances.length > 0 ? (
+                    <div className="overflow-x-auto border border-[rgba(0,0,0,0.06)] rounded-lg">
+                      <table className="w-full text-xs">
+                        <thead className="bg-[#f8fafc] text-[#334155]">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-semibold">Ngày</th>
+                            <th className="px-3 py-2 text-right font-semibold">Tổng TU (₫)</th>
+                            <th className="px-3 py-2 text-right font-semibold">Khấu trừ/tháng (₫)</th>
+                            <th className="px-3 py-2 text-left font-semibold">Ghi chú</th>
+                            <th className="px-3 py-2 text-center font-semibold">Trạng thái</th>
+                            <th className="px-3 py-2"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {driverAdvances.map(adv => (
+                            <tr key={adv.id} className="border-t border-[rgba(0,0,0,0.05)]">
+                              <td className="px-3 py-2 whitespace-nowrap">{adv.date}</td>
+                              <td className="px-3 py-2 text-right font-semibold text-[#c2410c]">{fmtMoney(adv.amount)}</td>
+                              <td className="px-3 py-2 text-right">{fmtMoney(adv.monthlyDeduction)}</td>
+                              <td className="px-3 py-2 text-[#64748b]">{adv.note || '—'}</td>
+                              <td className="px-3 py-2 text-center">
+                                {adv.isPaidOff
+                                  ? <span className="text-green-600 font-semibold">✅ Hết nợ</span>
+                                  : <span className="text-amber-600 font-semibold">⏳ Còn nợ</span>}
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                <button onClick={() => deleteAdvance(adv.id)} className="text-[#b91c1c] hover:underline cursor-pointer" title="Lái xe đã trả hết">🗑</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-[#94a3b8] italic">Chưa có khoản tạm ứng nào.</p>
+                  )}
                 </div>
               </div>
             )}

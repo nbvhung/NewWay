@@ -6,6 +6,7 @@ import { SalarySettings } from '../database/entities/salary-settings.entity';
 import { SalaryRecord } from '../database/entities/salary-record.entity';
 import { SalaryItem } from '../database/entities/salary-item.entity';
 import { SalaryRecordItem } from '../database/entities/salary-record-item.entity';
+import { DriverAdvance } from '../database/entities/driver-advance.entity';
 import { User } from '../database/entities/user.entity';
 import { SubmissionsModule } from '../submissions/submissions.module';
 
@@ -16,6 +17,7 @@ import { SubmissionsModule } from '../submissions/submissions.module';
       SalaryRecord,
       SalaryItem,
       SalaryRecordItem,
+      DriverAdvance,
       User,
     ]),
     SubmissionsModule,

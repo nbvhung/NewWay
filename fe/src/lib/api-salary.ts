@@ -1,5 +1,5 @@
 import api from './axios-instance';
-import type { SalaryRecordsResponse, SalarySettings, SalaryItem } from '@/types';
+import type { SalaryRecordsResponse, SalarySettings, SalaryItem, DriverAdvance } from '@/types';
 
 export const salaryApi = {
   getSettings: () =>
@@ -25,4 +25,18 @@ export const salaryApi = {
 
   updateRecord: (id: number, data: Record<string, unknown>) =>
     api.put(`/admin/salary/records/${id}`, data),
+
+  resetAdvanceDeduct: (id: number) =>
+    api.put(`/admin/salary/records/${id}/reset-advance`),
+
+  // ── Advance (Tạm ứng) ──
+
+  getAdvances: (driverId: number) =>
+    api.get<{ data: DriverAdvance[] }>(`/admin/salary/advances/${driverId}`),
+
+  createAdvance: (data: { driverId: number; amount: number; monthlyDeduction: number; note?: string; date?: string }) =>
+    api.post<{ data: DriverAdvance }>('/admin/salary/advances', data),
+
+  deleteAdvance: (id: number) =>
+    api.delete(`/admin/salary/advances/${id}`),
 };

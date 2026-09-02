@@ -18,6 +18,7 @@ import {
   CreateSalaryItemDto,
   UpdateSalaryItemDto,
 } from './dto/update-salary-item.dto';
+import { CreateDriverAdvanceDto } from './dto/driver-advance.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -86,5 +87,33 @@ export class SalaryController {
   ) {
     const record = await this.salaryService.updateRecord(+id, dto);
     return { data: record };
+  }
+
+  @Put('records/:id/reset-advance')
+  @Roles('hr', 'admin', 'supper_admin')
+  async resetAdvanceDeduct(@Param('id') id: string) {
+    const record = await this.salaryService.resetAdvanceDeductAuto(+id);
+    return { data: record };
+  }
+
+  // ── Advance (Tạm ứng) ──
+
+  @Post('advances')
+  @Roles('hr', 'admin', 'supper_admin')
+  async createAdvance(@Body() dto: CreateDriverAdvanceDto) {
+    return { data: await this.salaryService.createAdvance(dto) };
+  }
+
+  @Get('advances/:driverId')
+  @Roles('hr', 'admin', 'supper_admin')
+  async getAdvancesByDriver(@Param('driverId') driverId: string) {
+    return { data: await this.salaryService.getAdvancesByDriver(+driverId) };
+  }
+
+  @Delete('advances/:id')
+  @Roles('hr', 'admin', 'supper_admin')
+  async deleteAdvance(@Param('id') id: string) {
+    await this.salaryService.deleteAdvance(+id);
+    return { message: 'Đã xóa khoản tạm ứng' };
   }
 }

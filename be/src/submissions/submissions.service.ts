@@ -16,6 +16,7 @@ import { SalarySettings } from '../database/entities/salary-settings.entity';
 import { SalaryRecord } from '../database/entities/salary-record.entity';
 import { SalaryItem } from '../database/entities/salary-item.entity';
 import { SalaryRecordItem } from '../database/entities/salary-record-item.entity';
+import { DriverAdvance } from '../database/entities/driver-advance.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateSubmissionDto } from './dto/update-submission.dto';
 import { SettingsService } from '../settings/settings.service';
@@ -45,6 +46,8 @@ export class SubmissionsService {
     private salaryItemsRepository: Repository<SalaryItem>,
     @InjectRepository(SalaryRecordItem)
     private salaryRecordItemsRepository: Repository<SalaryRecordItem>,
+    @InjectRepository(DriverAdvance)
+    private driverAdvancesRepository: Repository<DriverAdvance>,
     private settingsService: SettingsService,
   ) {}
 
@@ -435,6 +438,28 @@ export class SubmissionsService {
         deductions,
       });
     }
+
+    // Load advance data for all drivers
+    const allActiveAdvances = await this.driverAdvancesRepository.find({
+      where: { isPaidOff: false },
+    });
+    const allRecordsList = await this.salaryRecordsRepository.find();
+    // advanceDeduct per driver
+    for (const [driverId, comp] of result.entries()) {
+      const driverAdvances = allActiveAdvances.filter(a => a.driverId === driverId);
+      const totalAdvanceAmount = driverAdvances.reduce((s, a) => s + Number(a.amount), 0);
+      const totalDeducted = allRecordsList
+        .filter(r => r.driverId === driverId)
+        .reduce((s, r) => s + (Number(r.advanceDeduct) || 0), 0);
+      const remainingBefore = Math.max(0, totalAdvanceAmount - totalDeducted);
+      const rec = recordMap.get(driverId);
+      const advanceDeduct = Number(rec?.advanceDeduct) || 0;
+      const advanceRemainingAfter = Math.max(0, remainingBefore - advanceDeduct);
+      (comp as any).advanceDeduct = advanceDeduct;
+      (comp as any).totalRemainingAdvance = remainingBefore + advanceDeduct; // total before this month's deduct
+      (comp as any).advanceRemainingAfter = advanceRemainingAfter;
+    }
+
     return { settings, standardDays, components: result };
   }
 

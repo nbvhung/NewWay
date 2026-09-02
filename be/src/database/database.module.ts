@@ -14,6 +14,7 @@ import { SalarySettings } from './entities/salary-settings.entity';
 import { SalaryRecord } from './entities/salary-record.entity';
 import { SalaryItem } from './entities/salary-item.entity';
 import { SalaryRecordItem } from './entities/salary-record-item.entity';
+import { DriverAdvance } from './entities/driver-advance.entity';
 import { SeedService } from './seed.service';
 
 @Module({
@@ -41,6 +42,7 @@ import { SeedService } from './seed.service';
               SalaryRecord,
               SalaryItem,
               SalaryRecordItem,
+              DriverAdvance,
             ],
             synchronize: !isProd,
             logging: false,
@@ -69,6 +71,7 @@ import { SeedService } from './seed.service';
             SalaryRecord,
             SalaryItem,
             SalaryRecordItem,
+            DriverAdvance,
           ],
           synchronize: !isProd,
           logging: false,
@@ -94,6 +97,7 @@ import { SeedService } from './seed.service';
       SalaryRecord,
       SalaryItem,
       SalaryRecordItem,
+      DriverAdvance,
     ]),
   ],
   providers: [SeedService],

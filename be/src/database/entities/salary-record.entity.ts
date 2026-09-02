@@ -111,6 +111,18 @@ export class SalaryRecord {
   })
   chiHo: number;
 
+  @Column({
+    name: 'advance_deduct',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    default: 0,
+  })
+  advanceDeduct: number;
+
+  @Column({ name: 'advance_deduct_overridden', type: 'boolean', default: false })
+  advanceDeductOverridden: boolean;
+
   @Column({ name: 'days_off', type: 'jsonb', nullable: true, default: [] })
   daysOff: number[];
 

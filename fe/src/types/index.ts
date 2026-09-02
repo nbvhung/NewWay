@@ -142,6 +142,10 @@ export interface SalaryRecordItem {
   chiHo: number;
   bhxh: number;
   hasBhxh: boolean;
+  advanceDeduct: number;
+  advanceDeductOverridden: boolean;
+  totalRemainingAdvance: number;
+  advances: DriverAdvance[];
   itemSumAdd: number;
   itemSumDeduct: number;
   recordItems: SalaryRecordItemValue[];
@@ -151,6 +155,17 @@ export interface SalaryRecordItem {
   luongKhoan: number;
   tip: number;
   total: number;
+}
+
+export interface DriverAdvance {
+  id: number;
+  driverId: number;
+  amount: number;
+  monthlyDeduction: number;
+  note: string | null;
+  date: string;
+  isPaidOff: boolean;
+  createdAt: string;
 }
 
 export interface SalaryRecordsResponse {

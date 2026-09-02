@@ -94,6 +94,9 @@ export default function MyDataPage() {
       chiHo: number;
       daysOffList: number[];
       deductions: { name: string; amount: number }[];
+      advanceDeduct?: number;
+      totalRemainingAdvance?: number;
+      advanceRemainingAfter?: number;
     };
   } | null>(null);
   const [salaryMonth, setSalaryMonth] = useState(now.getMonth() + 1);
@@ -528,7 +531,8 @@ export default function MyDataPage() {
         const bhxh = c?.bhxh || 0;
         const chiHo = c?.chiHo || 0;
         const deductions: { name: string; amount: number }[] = c?.deductions || [];
-        const totalDeduct = bhxh + chiHo + deductions.reduce((s, d) => s + (d.amount || 0), 0);
+        const advanceDeduct = c?.advanceDeduct || 0;
+        const totalDeduct = bhxh + chiHo + deductions.reduce((s, d) => s + (d.amount || 0), 0) + advanceDeduct;
         const grandTotal = income - totalDeduct;
         const daysOffList: number[] = c?.daysOffList || [];
 
@@ -663,6 +667,21 @@ export default function MyDataPage() {
                     <span className="font-bold text-red-600">-{formatMoney(d.amount)}</span>
                   </div>
                 ))}
+
+                {advanceDeduct > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <div>
+                      <span className="text-[#475569]">💸 Trả nợ tạm ứng:</span>
+                      {(c?.advanceRemainingAfter ?? -1) >= 0 && (
+                        <p className="text-[11px] text-amber-500 mt-0.5">
+                          Dư nợ còn lại sau tháng này: {formatMoney(c?.advanceRemainingAfter)} ₫
+                          {c?.advanceRemainingAfter === 0 && <span className="ml-1 text-green-600">✅ Đã trả hết</span>}
+                        </p>
+                      )}
+                    </div>
+                    <span className="font-bold text-red-600">-{formatMoney(advanceDeduct)}</span>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between text-sm mt-2 pt-2 border-t border-[rgba(0,0,0,0.08)]">
                   <span className="font-bold text-[#0f172a]">Tổng thực nhận:</span>

@@ -80,6 +80,12 @@ export class UpdateSalaryRecordDto {
   daysOff?: number[];
 
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Khấu trừ tạm ứng không hợp lệ' })
+  @Min(0)
+  advanceDeduct?: number;
+
+  @IsOptional()
   @IsObject({ message: 'Khoản lương không hợp lệ' })
   recordItems?: Record<string, UpdateSalaryRecordItemDto>;
 }
