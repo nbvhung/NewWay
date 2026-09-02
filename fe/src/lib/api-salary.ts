@@ -34,8 +34,11 @@ export const salaryApi = {
   getAdvances: (driverId: number) =>
     api.get<{ data: DriverAdvance[] }>(`/admin/salary/advances/${driverId}`),
 
-  createAdvance: (data: { driverId: number; amount: number; monthlyDeduction: number; note?: string; date?: string }) =>
+  createAdvance: (data: { driverId: number; amount: number; monthlyDeduction: number; note?: string; date?: string; deductStart?: string }) =>
     api.post<{ data: DriverAdvance }>('/admin/salary/advances', data),
+
+  updateAdvance: (id: number, data: { amount?: number; monthlyDeduction?: number; note?: string; date?: string; deductStart?: string }) =>
+    api.put<{ data: DriverAdvance }>(`/admin/salary/advances/${id}`, data),
 
   deleteAdvance: (id: number) =>
     api.delete(`/admin/salary/advances/${id}`),

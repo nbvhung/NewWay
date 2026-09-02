@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS driver_advances (
     monthly_deduction NUMERIC(15,2) NOT NULL DEFAULT 0,
     note TEXT,
     date DATE NOT NULL,
+    deduct_start DATE,
     is_paid_off BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

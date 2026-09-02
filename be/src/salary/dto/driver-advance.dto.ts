@@ -33,4 +33,8 @@ export class CreateDriverAdvanceDto {
   @IsOptional()
   @IsString({ message: 'Ngày tạm ứng không hợp lệ' })
   date?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Ngày bắt đầu khấu trừ không hợp lệ' })
+  deductStart?: string;
 }

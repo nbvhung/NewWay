@@ -164,6 +164,7 @@ export interface DriverAdvance {
   monthlyDeduction: number;
   note: string | null;
   date: string;
+  deductStart: string | null;
   isPaidOff: boolean;
   createdAt: string;
 }

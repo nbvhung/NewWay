@@ -42,6 +42,9 @@ export class DriverAdvance {
   @Column({ name: 'date', type: 'date' })
   date: string;
 
+  @Column({ name: 'deduct_start', type: 'date', nullable: true })
+  deductStart: string | null;
+
   @Column({ name: 'is_paid_off', type: 'boolean', default: false })
   isPaidOff: boolean;
 

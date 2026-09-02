@@ -121,12 +121,14 @@ export class SalaryService {
     const user = await this.usersRepository.findOne({ where: { id: dto.driverId } });
     if (!user) throw new NotFoundException('Không tìm thấy lái xe');
     const now = this.nowVN();
+    const defaultDate = `${now.year}-${String(now.month).padStart(2, '0')}-01`;
     return this.advancesRepository.save({
       driverId: dto.driverId,
       amount: dto.amount,
       monthlyDeduction: dto.monthlyDeduction,
       note: dto.note || null,
-      date: dto.date || `${now.year}-${String(now.month).padStart(2, '0')}-01`,
+      date: dto.date || defaultDate,
+      deductStart: dto.deductStart || dto.date || defaultDate,
       isPaidOff: false,
     });
   }
@@ -144,34 +146,61 @@ export class SalaryService {
     await this.advancesRepository.remove(adv);
   }
 
+  async updateAdvance(id: number, dto: Partial<CreateDriverAdvanceDto>): Promise<DriverAdvance> {
+    const adv = await this.advancesRepository.findOne({ where: { id } });
+    if (!adv) throw new NotFoundException('Không tìm thấy khoản tạm ứng');
+    if (dto.amount !== undefined) adv.amount = dto.amount;
+    if (dto.monthlyDeduction !== undefined) adv.monthlyDeduction = dto.monthlyDeduction;
+    if (dto.note !== undefined) adv.note = dto.note || null;
+    if (dto.date !== undefined) adv.date = dto.date;
+    if (dto.deductStart !== undefined) adv.deductStart = dto.deductStart || null;
+    return this.advancesRepository.save(adv);
+  }
+
   /**
    * Tổng dư nợ tạm ứng còn lại = Σ amount (chưa paid_off) - Σ advanceDeduct (tất cả record đã lưu)
    */
   async computeRemainingAdvance(driverId: number): Promise<number> {
+    const now = this.nowVN();
+    const currentYM = now.year * 100 + now.month; // e.g. 202609
     const activeAdvances = await this.advancesRepository.find({
       where: { driverId, isPaidOff: false },
     });
-    const totalAdvance = activeAdvances.reduce((s, a) => s + Number(a.amount), 0);
-    const allRecords = await this.recordsRepository.find({
-      where: { driverId },
+    // Chỉ tính những advance đã bắt đầu khấu trừ
+    const startedAdvances = activeAdvances.filter(a => {
+      if (!a.deductStart) return true;
+      const [y, m] = a.deductStart.split('-').map(Number);
+      return (y * 100 + m) <= currentYM;
     });
+    const totalAdvance = startedAdvances.reduce((s, a) => s + Number(a.amount), 0);
+    const allRecords = await this.recordsRepository.find({ where: { driverId } });
     const totalDeducted = allRecords.reduce((s, r) => s + (Number(r.advanceDeduct) || 0), 0);
     return Math.max(0, totalAdvance - totalDeducted);
   }
 
   /**
-   * Khấu trừ tự động tháng này = MIN(Σ monthlyDeduction chưa paid off, dư nợ còn lại)
+   * Khấu trừ tự động tháng này = MIN(Σ monthlyDeduction chưa paid off và đã tới hạn, dư nợ còn lại)
    */
-  async computeAutoAdvanceDeduct(driverId: number, excludeRecordId?: number): Promise<number> {
+  async computeAutoAdvanceDeduct(driverId: number, excludeRecordId?: number, forMonth?: number, forYear?: number): Promise<number> {
+    const now = this.nowVN();
+    const targetMonth = forMonth ?? now.month;
+    const targetYear = forYear ?? now.year;
+    const targetYM = targetYear * 100 + targetMonth;
+
     const activeAdvances = await this.advancesRepository.find({
       where: { driverId, isPaidOff: false },
     });
-    if (activeAdvances.length === 0) return 0;
-    const totalMonthly = activeAdvances.reduce((s, a) => s + (Number(a.monthlyDeduction) || 0), 0);
-    const totalAdvance = activeAdvances.reduce((s, a) => s + Number(a.amount), 0);
-    const allRecords = await this.recordsRepository.find({
-      where: { driverId },
+    // Chỉ lấy advance đã tới ngày bắt đầu khấu trừ
+    const eligibleAdvances = activeAdvances.filter(a => {
+      if (!a.deductStart) return true;
+      const [y, m] = a.deductStart.split('-').map(Number);
+      return (y * 100 + m) <= targetYM;
     });
+    if (eligibleAdvances.length === 0) return 0;
+
+    const totalMonthly = eligibleAdvances.reduce((s, a) => s + (Number(a.monthlyDeduction) || 0), 0);
+    const totalAdvance = eligibleAdvances.reduce((s, a) => s + Number(a.amount), 0);
+    const allRecords = await this.recordsRepository.find({ where: { driverId } });
     const totalDeducted = allRecords
       .filter((r) => r.id !== excludeRecordId)
       .reduce((s, r) => s + (Number(r.advanceDeduct) || 0), 0);
@@ -209,7 +238,7 @@ export class SalaryService {
     if (existing) {
       // Nếu chưa override → cập nhật lại advanceDeduct tự động
       if (!existing.advanceDeductOverridden) {
-        const auto = await this.computeAutoAdvanceDeduct(driverId, existing.id);
+        const auto = await this.computeAutoAdvanceDeduct(driverId, existing.id, month, year);
         if (Number(existing.advanceDeduct) !== auto) {
           existing.advanceDeduct = auto;
           await this.recordsRepository.save(existing);
@@ -251,7 +280,7 @@ export class SalaryService {
     });
     const saved = await this.recordsRepository.save(record);
     // Auto-fill advanceDeduct cho record mới
-    const auto = await this.computeAutoAdvanceDeduct(driverId, saved.id);
+    const auto = await this.computeAutoAdvanceDeduct(driverId, saved.id, month, year);
     if (auto > 0) {
       saved.advanceDeduct = auto;
       await this.recordsRepository.save(saved);

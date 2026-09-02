@@ -82,7 +82,8 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
 
   // Tạm ứng state
   const [showAdvanceForm, setShowAdvanceForm] = useState(false);
-  const [advanceDraft, setAdvanceDraft] = useState({ amount: '', monthlyDeduction: '', note: '', date: '' });
+  const [editingAdvanceId, setEditingAdvanceId] = useState<number | null>(null);
+  const [advanceDraft, setAdvanceDraft] = useState({ amount: '', monthlyDeduction: '', note: '', date: '', deductStart: '' });
   const [savingAdvance, setSavingAdvance] = useState(false);
 
 
@@ -227,19 +228,34 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     if (monthlyDeduction <= 0) { toast('Vui lòng nhập mức khấu trừ hàng tháng', 'error'); return; }
     setSavingAdvance(true);
     try {
-      await salaryApi.createAdvance({
-        driverId: selectedDriver.id,
-        amount,
-        monthlyDeduction,
-        note: advanceDraft.note.trim() || undefined,
-        date: advanceDraft.date || undefined,
-      });
-      toast(`Đã thêm tạm ứng cho ${selectedDriver.fullName}`, 'success');
-      setAdvanceDraft({ amount: '', monthlyDeduction: '', note: '', date: '' });
+      if (editingAdvanceId) {
+        // Sửa
+        await salaryApi.updateAdvance(editingAdvanceId, {
+          amount,
+          monthlyDeduction,
+          note: advanceDraft.note.trim() || undefined,
+          date: advanceDraft.date || undefined,
+          deductStart: advanceDraft.deductStart || undefined,
+        });
+        toast(`Đã cập nhật tạm ứng`, 'success');
+      } else {
+        // Tạo mới
+        await salaryApi.createAdvance({
+          driverId: selectedDriver.id,
+          amount,
+          monthlyDeduction,
+          note: advanceDraft.note.trim() || undefined,
+          date: advanceDraft.date || undefined,
+          deductStart: advanceDraft.deductStart || undefined,
+        });
+        toast(`Đã thêm tạm ứng cho ${selectedDriver.fullName}`, 'success');
+      }
+      setAdvanceDraft({ amount: '', monthlyDeduction: '', note: '', date: '', deductStart: '' });
+      setEditingAdvanceId(null);
       setShowAdvanceForm(false);
       loadData(true);
     } catch (e: any) {
-      toast(e?.response?.data?.message || 'Thêm tạm ứng thất bại', 'error');
+      toast(e?.response?.data?.message || 'Lưu tạm ứng thất bại', 'error');
     } finally {
       setSavingAdvance(false);
     }
@@ -819,7 +835,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                       {totalRemainingAdvance === 0 && driverAdvances.length > 0 && (
                         <span className="text-xs font-semibold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">✅ Đã trả hết</span>
                       )}
-                      <button onClick={() => { setShowAdvanceForm(!showAdvanceForm); setAdvanceDraft({ amount: '', monthlyDeduction: '', note: '', date: '' }); }}
+                      <button onClick={() => { setShowAdvanceForm(!showAdvanceForm); setAdvanceDraft({ amount: '', monthlyDeduction: '', note: '', date: '', deductStart: '' }); setEditingAdvanceId(null); }}
                         className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">
                         ➕ Thêm tạm ứng
                       </button>
@@ -829,7 +845,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                   {/* Form thêm tạm ứng */}
                   {showAdvanceForm && (
                     <div className="mb-4 p-3 bg-[#fffbeb] border border-[#fde68a] rounded-lg">
-                      <p className="text-xs font-bold text-[#92400e] mb-3">➕ Thêm khoản tạm ứng mới</p>
+                      <p className="text-xs font-bold text-[#92400e] mb-3">{editingAdvanceId ? '✏️ Sửa khoản tạm ứng' : '➕ Thêm khoản tạm ứng mới'}</p>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className={labelCls}>Số tiền tạm ứng (VNĐ) *</label>
@@ -844,6 +860,11 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                           <input type="date" value={advanceDraft.date} onChange={e => setAdvanceDraft(d => ({ ...d, date: e.target.value }))} className={inputCls} />
                         </div>
                         <div>
+                          <label className={labelCls}>Bắt đầu khấu trừ từ tháng *</label>
+                          <input type="date" value={advanceDraft.deductStart} onChange={e => setAdvanceDraft(d => ({ ...d, deductStart: e.target.value }))} className={inputCls} />
+                          <p className="text-[10px] text-[#64748b] mt-1">Tháng đầu tiên bị trừ vào lương (để trống = tháng tạm ứng)</p>
+                        </div>
+                        <div>
                           <label className={labelCls}>Ghi chú</label>
                           <input value={advanceDraft.note} onChange={e => setAdvanceDraft(d => ({ ...d, note: e.target.value }))} placeholder="VD: Mua xe, ứng lương..." className={inputCls} />
                         </div>
@@ -851,9 +872,9 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                       <div className="flex items-center gap-2 mt-3">
                         <button onClick={createAdvance} disabled={savingAdvance}
                           className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white disabled:opacity-50 cursor-pointer">
-                          {savingAdvance ? 'Đang lưu...' : '💾 Lưu tạm ứng'}
+                          {savingAdvance ? 'Đang lưu...' : editingAdvanceId ? '💾 Cập nhật' : '💾 Lưu tạm ứng'}
                         </button>
-                        <button onClick={() => setShowAdvanceForm(false)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">
+                        <button onClick={() => { setShowAdvanceForm(false); setEditingAdvanceId(null); setAdvanceDraft({ amount: '', monthlyDeduction: '', note: '', date: '', deductStart: '' }); }} className="px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">
                           Hủy
                         </button>
                       </div>
@@ -866,9 +887,10 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                       <table className="w-full text-xs">
                         <thead className="bg-[#f8fafc] text-[#334155]">
                           <tr>
-                            <th className="px-3 py-2 text-left font-semibold">Ngày</th>
+                            <th className="px-3 py-2 text-left font-semibold">Ngày TU</th>
+                            <th className="px-3 py-2 text-left font-semibold">Bắt đầu trừ</th>
                             <th className="px-3 py-2 text-right font-semibold">Tổng TU (₫)</th>
-                            <th className="px-3 py-2 text-right font-semibold">Khấu trừ/tháng (₫)</th>
+                            <th className="px-3 py-2 text-right font-semibold">Trừ/tháng (₫)</th>
                             <th className="px-3 py-2 text-left font-semibold">Ghi chú</th>
                             <th className="px-3 py-2 text-center font-semibold">Trạng thái</th>
                             <th className="px-3 py-2"></th>
@@ -878,6 +900,11 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                           {driverAdvances.map(adv => (
                             <tr key={adv.id} className="border-t border-[rgba(0,0,0,0.05)]">
                               <td className="px-3 py-2 whitespace-nowrap">{adv.date}</td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                {adv.deductStart
+                                  ? <span className="font-medium text-[#1a56db]">{adv.deductStart}</span>
+                                  : <span className="text-[#94a3b8]">= ngày TU</span>}
+                              </td>
                               <td className="px-3 py-2 text-right font-semibold text-[#c2410c]">{fmtMoney(adv.amount)}</td>
                               <td className="px-3 py-2 text-right">{fmtMoney(adv.monthlyDeduction)}</td>
                               <td className="px-3 py-2 text-[#64748b]">{adv.note || '—'}</td>
@@ -887,7 +914,22 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                                   : <span className="text-amber-600 font-semibold">⏳ Còn nợ</span>}
                               </td>
                               <td className="px-3 py-2 text-center">
-                                <button onClick={() => deleteAdvance(adv.id)} className="text-[#b91c1c] hover:underline cursor-pointer" title="Lái xe đã trả hết">🗑</button>
+                                <div className="flex items-center justify-center gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setAdvanceDraft({
+                                        amount: String(adv.amount),
+                                        monthlyDeduction: String(adv.monthlyDeduction),
+                                        note: adv.note || '',
+                                        date: adv.date,
+                                        deductStart: adv.deductStart || '',
+                                      });
+                                      setEditingAdvanceId(adv.id);
+                                      setShowAdvanceForm(true);
+                                    }}
+                                    className="text-[#1a56db] hover:underline cursor-pointer" title="Sửa">✏️</button>
+                                  <button onClick={() => deleteAdvance(adv.id)} className="text-[#b91c1c] hover:underline cursor-pointer" title="Lái xe đã trả hết">🗑</button>
+                                </div>
                               </td>
                             </tr>
                           ))}

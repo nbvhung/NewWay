@@ -110,6 +110,12 @@ export class SalaryController {
     return { data: await this.salaryService.getAdvancesByDriver(+driverId) };
   }
 
+  @Put('advances/:id')
+  @Roles('hr', 'admin', 'supper_admin')
+  async updateAdvance(@Param('id') id: string, @Body() dto: Partial<CreateDriverAdvanceDto>) {
+    return { data: await this.salaryService.updateAdvance(+id, dto) };
+  }
+
   @Delete('advances/:id')
   @Roles('hr', 'admin', 'supper_admin')
   async deleteAdvance(@Param('id') id: string) {
