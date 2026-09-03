@@ -195,6 +195,10 @@ export class ZaloBotService {
   }
 
   async handleEvent(event: ZaloEvent): Promise<void> {
+    if (await this.zaloApi.isMaintenanceMode()) {
+      this.logger.warn('BẢO TRÌ: bỏ qua xử lý sự kiện Zalo');
+      return;
+    }
     const payload = event.result || event;
     const zaloUserId = payload.message?.from?.id || (event as any).user_id;
     if (!zaloUserId) {

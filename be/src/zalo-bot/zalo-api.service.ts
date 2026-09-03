@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
+import { RedisService } from '../redis/redis.service';
+
+export const ZALO_MAINTENANCE_KEY = 'zalo:maintenance';
 
 interface SendMessageResponse {
   ok?: boolean;
@@ -11,6 +14,19 @@ interface SendMessageResponse {
 @Injectable()
 export class ZaloApiService {
   private readonly logger = new Logger(ZaloApiService.name);
+
+  constructor(private readonly redis: RedisService) {}
+
+  /**
+   * Bot đang bảo trì (Redis key `zalo:maintenance` tồn tại) → chặn mọi tin gửi đi.
+   */
+  async isMaintenanceMode(): Promise<boolean> {
+    try {
+      return !!(await this.redis.get(ZALO_MAINTENANCE_KEY));
+    } catch {
+      return false;
+    }
+  }
 
   /**
    * Mảng token bot: index 0 = bot chính (ZALO_BOT_TOKEN), index 1+ = bot phụ
@@ -113,6 +129,10 @@ export class ZaloApiService {
       this.logger.warn(`Bot ${botIndex} chưa cấu hình token, bỏ qua gửi tin: ${text}`);
       return false;
     }
+    if (await this.isMaintenanceMode()) {
+      this.logger.warn(`BẢO TRÌ: bỏ qua gửi tin tới ${chatId}: ${text}`);
+      return false;
+    }
     try {
       const { data } = await axios.post<SendMessageResponse>(
         this.baseUrl('sendMessage', botIndex),
@@ -143,6 +163,10 @@ export class ZaloApiService {
   ): Promise<boolean> {
     if (!this.token(botIndex)) {
       this.logger.warn(`Bot ${botIndex} chưa cấu hình token, bỏ qua gửi voice`);
+      return false;
+    }
+    if (await this.isMaintenanceMode()) {
+      this.logger.warn(`BẢO TRÌ: bỏ qua gửi voice tới ${chatId}`);
       return false;
     }
     try {
