@@ -1550,6 +1550,18 @@ export class ZaloBotService {
       );
       return;
     }
+    // Vỏ 20 không được kẹp với Hàng 20 → ghi nhận làm 2 chuyến riêng
+    if (session.awaitingClamp?.mainType === 'V20' && target.type === 'H20') {
+      await this.reply(
+        chatId,
+        zaloUserId,
+        'Vỏ 20 không kẹp được với Hàng 20. Ghi nhận làm 2 chuyến riêng nhé.',
+      );
+      await this.upsertContainer(chatId, zaloUserId, target, session, {
+        fromClamp: false,
+      });
+      return;
+    }
     await this.upsertContainer(chatId, zaloUserId, target, session, {
       fromClamp: true,
     });
