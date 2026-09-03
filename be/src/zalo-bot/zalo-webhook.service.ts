@@ -27,6 +27,13 @@ export class ZaloWebhookService implements OnApplicationBootstrap {
       return;
     }
 
+    // Delay 3s để đảm bảo HTTP server đã listen trước khi Zalo verify webhook.
+    // onApplicationBootstrap được gọi TRƯỚC app.listen(), nên nếu gọi setWebhook
+    // ngay thì Zalo verify → nginx 502 → webhook.err.proxy.
+    setTimeout(() => this.registerWebhooks(), 3000);
+  }
+
+  private async registerWebhooks(): Promise<void> {
     const secret = process.env.ZALO_WEBHOOK_SECRET;
 
     // Bot 1
