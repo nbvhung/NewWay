@@ -2633,6 +2633,7 @@ let sl: any;
       r8.getCell(1).font = tnr(true, 12);
       r8.getCell(6).value = `${ngayCong} / ${standardDays}`;
       r8.getCell(6).font = tnr(true, 12);
+      r8.getCell(6).alignment = { horizontal: 'right' };
       r8.getCell(7).value = 'Ngày';
       r8.getCell(7).font = tnr(true, 12);
 
