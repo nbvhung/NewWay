@@ -2339,6 +2339,21 @@ let sl: any;
 
     const allSubmissions = await this.submissionsRepository.find({ order: { createdAt: 'DESC' } });
 
+    // Dữ liệu tháng liền trước (dòng "Lương còn lại tháng trước" — hiển thị tham khảo)
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    const prevRecords = await this.salaryRecordsRepository.find({ where: { month: prevMonth, year: prevYear } });
+    const prevRecordMap = new Map<number, SalaryRecord>();
+    for (const r of prevRecords) prevRecordMap.set(r.driverId, r);
+    const prevRecordItems = await this.salaryRecordItemsRepository.find({
+      where: { recordId: In(prevRecords.map((r) => r.id)) },
+    });
+    const prevRecordItemsByRecord = new Map<number, SalaryRecordItem[]>();
+    for (const ri of prevRecordItems) {
+      if (!prevRecordItemsByRecord.has(ri.recordId)) prevRecordItemsByRecord.set(ri.recordId, []);
+      prevRecordItemsByRecord.get(ri.recordId)!.push(ri);
+    }
+
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Hệ thống New Way';
     workbook.created = new Date();
@@ -2382,7 +2397,7 @@ let sl: any;
       const fixedSalary = rec ? Number(rec.fixedSalary) || 0 : fixedSalaryDefault;
       const attendanceBonus = rec ? Number(rec.attendanceBonus) || 0 : attendanceBonusDefault;
       const chiHo = rec ? Number(rec.chiHo) || 0 : 0;
-      const hasBhxh = rec ? rec.hasBhxh : driver.payBhxh ?? true;
+      const hasBhxh = rec ? rec.hasBhxh : (driver.payBhxh ?? true);
       const bhxh = hasBhxh
         ? Math.round((fixedSalary * bhxhPercent) / 100)
         : 0;
@@ -2400,6 +2415,64 @@ let sl: any;
         ? Number(rec.allowanceWaitLoadingRate) || 0
         : 0;
       const advanceDeduct = rec ? Number(rec.advanceDeduct) || 0 : 0;
+
+      // Lương còn lại tháng liền trước (hiển thị tham khảo, không cộng vào tổng)
+      const prevSummary = (await this.getSalarySummary(
+        driver.id,
+        prevMonth,
+        prevYear,
+      )) as {
+        totalSalary: number;
+        totalTip: number;
+        components: {
+          fixedSalary: number;
+          chuyenCan: number;
+          allowanceFarHome: number;
+          allowanceWaitLoading: number;
+          allowanceOldCar: number;
+          parkingHph2: number;
+          chiHo: number;
+          bhxh: number;
+          advanceDeduct: number;
+        };
+      };
+      const prevComp = prevSummary.components;
+      const prevRec = prevRecordMap.get(driver.id);
+      let prevItemSumAdd = 0;
+      let prevItemSumDeduct = 0;
+      if (prevRec) {
+        const pris = prevRecordItemsByRecord.get(prevRec.id) || [];
+        for (const pri of pris) {
+          const pit = itemMap.get(pri.itemId);
+          if (!pit || !pri.enabled) continue;
+          const amount =
+            pri.amount !== null && pri.amount !== undefined
+              ? Number(pri.amount)
+              : Number(pit.defaultAmount) || 0;
+          if (pit.kind === 'add') prevItemSumAdd += amount;
+          else prevItemSumDeduct += amount;
+        }
+      }
+      const prevFixedSalary = prevRec
+        ? Number(prevRec.fixedSalary) || 0
+        : fixedSalaryDefault;
+      const prevHasBhxh = prevRec ? prevRec.hasBhxh : (driver.payBhxh ?? true);
+      const prevBhxh = prevHasBhxh
+        ? Math.round((prevFixedSalary * bhxhPercent) / 100)
+        : 0;
+      const luongConLaiPrev =
+        Number(prevSummary.totalSalary) +
+        Number(prevSummary.totalTip) +
+        Number(prevComp.chuyenCan) +
+        Number(prevComp.allowanceFarHome) +
+        Number(prevComp.allowanceWaitLoading) +
+        Number(prevComp.allowanceOldCar) +
+        Number(prevComp.parkingHph2) +
+        prevItemSumAdd -
+        prevItemSumDeduct -
+        Number(prevComp.chiHo) -
+        prevBhxh -
+        Number(prevComp.advanceDeduct || 0);
 
       // --- Khoản lương động (salary_items) theo lái xe ---
       const recItemRows: { name: string; kind: string; amount: number }[] = [];
@@ -2444,8 +2517,6 @@ let sl: any;
       let totalTip = 0;
       let planTotalTrips = 0;
       let planTotalMoney = 0;
-      let leTetTotalTrips = 0;
-      let leTetTotalMoney = 0;
 
       for (const [key, group] of planGroups) {
         const sl = group.sl;
@@ -2469,7 +2540,7 @@ let sl: any;
         const effPrice = donGia * heSo;
         // Cột Tên tuyến: chỉ lấy tên tuyến đường (không lấy tên kế hoạch)
         const routeName = sl?.routeName || tenTuyen || key.split('||')[0];
-        const planName = routeName + (sl?.tangCuong ? ' (TÀU TĂNG CƯỜNG)' : '');
+        const planName = routeName + (sl?.leTet ? ' (x3)' : sl?.tangCuong ? ' (+15%)' : '');
         const mainTrips = tong + kv;
         const mainMoney = (tong + kv) * effPrice;
         const vslPrice = 40000 * heSo;
@@ -2483,13 +2554,8 @@ let sl: any;
         if (vsl > 0) {
           items.push({ price: vslPrice, name: 'Vệ sinh lại', trips: vsl, money: vslMoney, leTet, tangCuong: false });
         }
-        if (leTet) {
-          leTetTotalTrips += mainTrips + vsl;
-          leTetTotalMoney += mainMoney + vslMoney;
-        } else {
-          planTotalTrips += mainTrips + vsl;
-          planTotalMoney += mainMoney + vslMoney;
-        }
+        planTotalTrips += mainTrips + vsl;
+        planTotalMoney += mainMoney + vslMoney;
       }
 
       // Gom theo đơn giá hiệu lực (tăng dần).
@@ -2528,15 +2594,15 @@ let sl: any;
       const tong4ChiHo = hasOldCar ? oldCarAllowance : 0;
       const chuyenCan = ngayCong >= standardDays ? attendanceBonus : 0;
       const tong4GuiXe = hasParkingHph2 ? parkingHph2 : 0;
-      const tong4 =
+      const tongPhuCap =
         tong4ChiHo +
         chuyenCan +
-        totalTip +
-        tong4GuiXe +
         allowanceFarHome +
-        allowanceWaitLoading; // F44 = trống
+        allowanceWaitLoading +
+        itemSumAdd;
+      const tongChiHo = totalTip + tong4GuiXe;
       const luongCoBan = fixedSalary;
-      const tongA = luongCoBan + planTotalMoney + leTetTotalMoney + tong4 + itemSumAdd;
+      const tongA = luongCoBan + planTotalMoney + tongPhuCap + tongChiHo;
       const tongGiamTru = bhxh + fixedSalary + chiHo + itemSumDeduct + advanceDeduct; // F49 + F50 + F51 + khoản khấu trừ động + tạm ứng
       const luongConLai = tongA - tongGiamTru;
 
@@ -2633,7 +2699,7 @@ let sl: any;
       r8.height = 15.75;
       r8.getCell(1).value = 'A. TỔNG NGÀY ĐI LÀM/THÁNG:';
       r8.getCell(1).font = tnr(true, 12);
-      r8.getCell(6).value = `${daysInMonth}/${ngayCong}`;
+      r8.getCell(6).value = `${ngayCong} / ${standardDays}`;
       r8.getCell(6).font = tnr(true, 12);
       r8.getCell(7).value = 'Ngày';
       r8.getCell(7).font = tnr(true, 12);
@@ -2730,11 +2796,11 @@ let sl: any;
         gr.getCell(6).font = tnr(false, 11);
         gr.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
         gr.getCell(6).border = allBorder;
-        
+
         let note = '';
-        if (isLeTet) note = 'Lễ, Tết x3';
-        else if (group.tangCuong) note = 'Tăng cường +15%';
-        
+        if (isLeTet) note = 'Lễ/Tết';
+        else if (group.tangCuong) note = 'Tăng cường';
+
         gr.getCell(7).value = note;
         gr.getCell(7).font = tnr(false, 11);
         gr.getCell(7).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
@@ -2742,44 +2808,29 @@ let sl: any;
         rowIdx++;
       };
 
-      const normalItems = mergeByName(items.filter(it => !it.leTet));
-      for (const g of groupByPrice(normalItems)) writeGroup(g);
-
-      const leTetItems = items.filter(it => it.leTet);
-
-      // Mục 3: Tiền lương ngày lễ, Tết (nếu có)
-      if (leTetItems.length > 0 || leTetTotalMoney > 0) {
-        ws.mergeCells(rowIdx, 1, rowIdx, 4);
-        const r = ws.getRow(rowIdx);
-        r.getCell(1).value = '3. Tiền lương Ngày lễ, Tết';
-        r.getCell(1).font = tnr(false, 12);
-        r.getCell(5).value = leTetTotalTrips || '';
-        r.getCell(5).font = tnr(false, 11);
-        r.getCell(6).value = leTetTotalMoney || 0;
-        r.getCell(6).numFmt = moneyFmt;
-        r.getCell(6).font = tnr(false, 11);
-        r.getCell(7).value = 'VND';
-        r.getCell(7).font = tnr(false, 11);
-        rowIdx++;
-        const leTetItemsMerged = mergeByName(leTetItems);
-        for (const g of groupByPrice(leTetItemsMerged)) writeGroup(g, true);
+      const allItemsMerged = mergeByName(items);
+      for (const g of groupByPrice(allItemsMerged)) {
+        writeGroup(
+          g,
+          g.subs.some((it) => it.leTet),
+        );
       }
 
-      // Mục 4: Các khoản Lái xe đã chi hộ Công ty
+      // Mục 3: Các khoản phụ cấp
       ws.mergeCells(rowIdx, 1, rowIdx, 5);
-      const r4t = ws.getRow(rowIdx);
-      r4t.height = 15.75;
-      r4t.getCell(1).value = '4. Các khoản Lái xe đã chi hộ Công ty (Nếu có):';
-      r4t.getCell(1).font = tnr(true, 12);
-      r4t.getCell(1).alignment = { horizontal: 'left' };
-      r4t.getCell(1).border = allBorder;
-      r4t.getCell(6).value = tong4;
-      r4t.getCell(6).numFmt = moneyFmt;
-      r4t.getCell(6).font = tnr(true, 11);
-      r4t.getCell(6).border = allBorder;
-      r4t.getCell(7).value = 'VND';
-      r4t.getCell(7).font = tnr(true, 11);
-      r4t.getCell(7).border = allBorder;
+      const r3p = ws.getRow(rowIdx);
+      r3p.height = 15.75;
+      r3p.getCell(1).value = '3. Các khoản phụ cấp:';
+      r3p.getCell(1).font = tnr(true, 12);
+      r3p.getCell(1).alignment = { horizontal: 'left' };
+      r3p.getCell(1).border = allBorder;
+      r3p.getCell(6).value = tongPhuCap;
+      r3p.getCell(6).numFmt = moneyFmt;
+      r3p.getCell(6).font = tnr(true, 11);
+      r3p.getCell(6).border = allBorder;
+      r3p.getCell(7).value = 'VND';
+      r3p.getCell(7).font = tnr(true, 11);
+      r3p.getCell(7).border = allBorder;
       rowIdx++;
       const writeChiHoRow = (name: string, val: number | string, isTotal = false, italic = false) => {
         ws.mergeCells(rowIdx, 1, rowIdx, 5);
@@ -2798,14 +2849,31 @@ let sl: any;
       };
       writeChiHoRow('Hỗ trợ xe đời cũ', tong4ChiHo, false, true);
       writeChiHoRow('Tiền chuyên cần', chuyenCan, false, true);
-      writeChiHoRow('Chi hộ tiền tip xe nâng tại các bãi, cảng.', totalTip, false, true);
-      writeChiHoRow('Chi hộ tiền gửi xe tại bãi 2 (HPH)', tong4GuiXe, false, true);
       writeChiHoRow('Phụ cấp xa nhà', allowanceFarHome, false, true);
       writeChiHoRow('PC chờ đóng hàng', allowanceWaitLoading, false, true);
       for (const ri of recItemRows) {
         if (ri.kind === 'add') writeChiHoRow(ri.name, ri.amount, false, true);
       }
-      writeChiHoRow('Lương còn lại Tháng 6', '', false, true);
+
+      // Mục 4: Các khoản Lái xe đã chi hộ Công ty
+      ws.mergeCells(rowIdx, 1, rowIdx, 5);
+      const r4t = ws.getRow(rowIdx);
+      r4t.height = 15.75;
+      r4t.getCell(1).value = '4. Các khoản Lái xe đã chi hộ Công ty (Nếu có):';
+      r4t.getCell(1).font = tnr(true, 12);
+      r4t.getCell(1).alignment = { horizontal: 'left' };
+      r4t.getCell(1).border = allBorder;
+      r4t.getCell(6).value = tongChiHo;
+      r4t.getCell(6).numFmt = moneyFmt;
+      r4t.getCell(6).font = tnr(true, 11);
+      r4t.getCell(6).border = allBorder;
+      r4t.getCell(7).value = 'VND';
+      r4t.getCell(7).font = tnr(true, 11);
+      r4t.getCell(7).border = allBorder;
+      rowIdx++;
+      writeChiHoRow('Chi hộ tiền tip xe nâng tại các bãi, cảng.', totalTip, false, true);
+      writeChiHoRow('Chi hộ tiền gửi xe tại bãi 2 (HPH)', tong4GuiXe, false, true);
+      writeChiHoRow(`Lương còn lại tháng ${prevMonth}`, luongConLaiPrev, false, true);
 
       // Mục C: CÁC KHOẢN GIẢM TRỪ (mẫu: nền xanh FFD4ECC2)
       ws.mergeCells(rowIdx, 1, rowIdx, 5);
