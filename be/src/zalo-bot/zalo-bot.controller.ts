@@ -119,13 +119,13 @@ export class ZaloBotController {
     @Body() body: any,
     @Headers() headers: Record<string, string>,
   ) {
+    // Không verify secret — chỉ log để xem Zalo gửi gì
     this.logger.log(
       `[WEBHOOK DEBUG] headers: ${JSON.stringify({
         'content-type': headers['content-type'],
         'user-agent': headers['user-agent'],
-        'x-bot-api-secret-token': headers['x-bot-api-secret-token']
-          ? '***set***'
-          : '(none)',
+        'x-bot-api-secret-token': headers['x-bot-api-secret-token'] || '(none)',
+        // Tất cả header có prefix x-zalo
         ...Object.fromEntries(
           Object.entries(headers).filter(([k]) => k.startsWith('x-zalo')),
         ),
