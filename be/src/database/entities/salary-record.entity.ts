@@ -126,6 +126,9 @@ export class SalaryRecord {
   @Column({ name: 'days_off', type: 'jsonb', nullable: true, default: [] })
   daysOff: number[];
 
+  @Column({ name: 'days_off_note', type: 'text', nullable: true })
+  daysOffNote: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

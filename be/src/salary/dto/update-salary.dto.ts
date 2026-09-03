@@ -8,6 +8,7 @@ import {
   IsInt,
   IsBoolean,
   IsObject,
+  IsString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { UpdateSalaryRecordItemDto } from './update-salary-item.dto';
@@ -78,6 +79,10 @@ export class UpdateSalaryRecordDto {
   @Min(1, { each: true, message: 'Ngày nghỉ không hợp lệ' })
   @Max(31, { each: true, message: 'Ngày nghỉ không hợp lệ' })
   daysOff?: number[];
+
+  @IsOptional()
+  @IsString({ message: 'Ghi chú ngày nghỉ không hợp lệ' })
+  daysOffNote?: string;
 
   @IsOptional()
   @Type(() => Number)

@@ -308,7 +308,7 @@ export class SubmissionsService {
     const components = salaryComp.components.get(userId) || {
       fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0,
       allowanceOldCar: 0, parkingHph2: 0, hasParkingHph2: false, ngayCong: 0,
-      daysOffList: [], bhxh: 0, chiHo: 0, deductions: [],
+      daysOffList: [], daysOffNote: null, bhxh: 0, chiHo: 0, deductions: [],
     };
 
     return { totalSalary, totalTip, count, month, year, details, components };
@@ -362,6 +362,7 @@ export class SubmissionsService {
       hasParkingHph2: boolean;
       ngayCong: number;
       daysOffList: number[];  // mảng ngày nghỉ (vd: [3, 15, 22])
+      daysOffNote: string | null; // ghi chú ngày nghỉ (nhập tay bởi HR)
       bhxh: number;           // tiền BHXH phải đóng
       chiHo: number;          // chi hộ
       deductions: { name: string; amount: number }[]; // các khoản khấu trừ khác
@@ -433,6 +434,7 @@ export class SubmissionsService {
         hasParkingHph2,
         ngayCong,
         daysOffList,
+        daysOffNote: rec?.daysOffNote || null,
         bhxh,
         chiHo,
         deductions,
@@ -2339,20 +2341,8 @@ let sl: any;
 
     const allSubmissions = await this.submissionsRepository.find({ order: { createdAt: 'DESC' } });
 
-    // Dữ liệu tháng liền trước (dòng "Lương còn lại tháng trước" — hiển thị tham khảo)
+    // Dữ liệu tháng liền trước (dòng "Lương còn lại tháng trước" để trống, nhập tay)
     const prevMonth = month === 1 ? 12 : month - 1;
-    const prevYear = month === 1 ? year - 1 : year;
-    const prevRecords = await this.salaryRecordsRepository.find({ where: { month: prevMonth, year: prevYear } });
-    const prevRecordMap = new Map<number, SalaryRecord>();
-    for (const r of prevRecords) prevRecordMap.set(r.driverId, r);
-    const prevRecordItems = await this.salaryRecordItemsRepository.find({
-      where: { recordId: In(prevRecords.map((r) => r.id)) },
-    });
-    const prevRecordItemsByRecord = new Map<number, SalaryRecordItem[]>();
-    for (const ri of prevRecordItems) {
-      if (!prevRecordItemsByRecord.has(ri.recordId)) prevRecordItemsByRecord.set(ri.recordId, []);
-      prevRecordItemsByRecord.get(ri.recordId)!.push(ri);
-    }
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Hệ thống New Way';
@@ -2415,64 +2405,6 @@ let sl: any;
         ? Number(rec.allowanceWaitLoadingRate) || 0
         : 0;
       const advanceDeduct = rec ? Number(rec.advanceDeduct) || 0 : 0;
-
-      // Lương còn lại tháng liền trước (hiển thị tham khảo, không cộng vào tổng)
-      const prevSummary = (await this.getSalarySummary(
-        driver.id,
-        prevMonth,
-        prevYear,
-      )) as {
-        totalSalary: number;
-        totalTip: number;
-        components: {
-          fixedSalary: number;
-          chuyenCan: number;
-          allowanceFarHome: number;
-          allowanceWaitLoading: number;
-          allowanceOldCar: number;
-          parkingHph2: number;
-          chiHo: number;
-          bhxh: number;
-          advanceDeduct: number;
-        };
-      };
-      const prevComp = prevSummary.components;
-      const prevRec = prevRecordMap.get(driver.id);
-      let prevItemSumAdd = 0;
-      let prevItemSumDeduct = 0;
-      if (prevRec) {
-        const pris = prevRecordItemsByRecord.get(prevRec.id) || [];
-        for (const pri of pris) {
-          const pit = itemMap.get(pri.itemId);
-          if (!pit || !pri.enabled) continue;
-          const amount =
-            pri.amount !== null && pri.amount !== undefined
-              ? Number(pri.amount)
-              : Number(pit.defaultAmount) || 0;
-          if (pit.kind === 'add') prevItemSumAdd += amount;
-          else prevItemSumDeduct += amount;
-        }
-      }
-      const prevFixedSalary = prevRec
-        ? Number(prevRec.fixedSalary) || 0
-        : fixedSalaryDefault;
-      const prevHasBhxh = prevRec ? prevRec.hasBhxh : (driver.payBhxh ?? true);
-      const prevBhxh = prevHasBhxh
-        ? Math.round((prevFixedSalary * bhxhPercent) / 100)
-        : 0;
-      const luongConLaiPrev =
-        Number(prevSummary.totalSalary) +
-        Number(prevSummary.totalTip) +
-        Number(prevComp.chuyenCan) +
-        Number(prevComp.allowanceFarHome) +
-        Number(prevComp.allowanceWaitLoading) +
-        Number(prevComp.allowanceOldCar) +
-        Number(prevComp.parkingHph2) +
-        prevItemSumAdd -
-        prevItemSumDeduct -
-        Number(prevComp.chiHo) -
-        prevBhxh -
-        Number(prevComp.advanceDeduct || 0);
 
       // --- Khoản lương động (salary_items) theo lái xe ---
       const recItemRows: { name: string; kind: string; amount: number }[] = [];
@@ -2844,7 +2776,9 @@ let sl: any;
           r.getCell(6).font = tnr(isTotal, 12);
         } else {
           r.getCell(6).value = val;
+          r.getCell(6).numFmt = moneyFmt;
         }
+        r.getCell(6).alignment = { horizontal: 'right' };
         rowIdx++;
       };
       writeChiHoRow('Hỗ trợ xe đời cũ', tong4ChiHo, false, true);
@@ -2873,7 +2807,7 @@ let sl: any;
       rowIdx++;
       writeChiHoRow('Chi hộ tiền tip xe nâng tại các bãi, cảng.', totalTip, false, true);
       writeChiHoRow('Chi hộ tiền gửi xe tại bãi 2 (HPH)', tong4GuiXe, false, true);
-      writeChiHoRow(`Lương còn lại tháng ${prevMonth}`, luongConLaiPrev, false, true);
+      writeChiHoRow(`Lương còn lại tháng ${prevMonth}`, '', false, true);
 
       // Mục C: CÁC KHOẢN GIẢM TRỪ (mẫu: nền xanh FFD4ECC2)
       ws.mergeCells(rowIdx, 1, rowIdx, 5);

@@ -489,6 +489,7 @@ export class SalaryService {
         itemSumDeduct,
         recordItems: driverItemValues,
         daysOff: record.daysOff || [],
+        daysOffNote: record.daysOffNote || null,
         luongKhoan,
         tip,
         total,
@@ -520,6 +521,8 @@ export class SalaryService {
     if (dto.hasBhxh !== undefined) record.hasBhxh = dto.hasBhxh;
     if (dto.chiHo !== undefined) record.chiHo = dto.chiHo;
     if (dto.daysOff !== undefined) record.daysOff = dto.daysOff;
+    if (dto.daysOffNote !== undefined)
+      record.daysOffNote = dto.daysOffNote?.trim() ? dto.daysOffNote : null;
     if (dto.advanceDeduct !== undefined) {
       record.advanceDeduct = dto.advanceDeduct;
       record.advanceDeductOverridden = true;

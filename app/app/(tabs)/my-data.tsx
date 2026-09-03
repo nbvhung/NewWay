@@ -426,6 +426,9 @@ export default function MyDataScreen() {
                         Tháng này bạn đã nghỉ ngày: {daysOffList.join(', ')}
                       </Text>
                     )}
+                    {c?.daysOffNote ? (
+                      <Text style={styles.salarySubNote}>📝 Ghi chú: {c.daysOffNote}</Text>
+                    ) : null}
                   </View>
                   <Text style={styles.salaryValue}>{formatMoney(c?.fixedSalary)}</Text>
                 </View>

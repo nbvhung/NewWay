@@ -153,6 +153,7 @@ export interface SalaryRecordItem {
   hasWaitLoading: boolean;
   waitLoadingHours: number;
   daysOff: number[];
+  daysOffNote?: string | null;
   luongKhoan: number;
   tip: number;
   total: number;

@@ -93,6 +93,7 @@ export default function MyDataPage() {
       bhxh: number;
       chiHo: number;
       daysOffList: number[];
+      daysOffNote?: string | null;
       deductions: { name: string; amount: number }[];
       advanceDeduct?: number;
       totalRemainingAdvance?: number;
@@ -611,6 +612,11 @@ export default function MyDataPage() {
                     {daysOffList.length > 0 && (
                       <p className="text-[11px] font-bold text-red-600 mt-0.5">
                         Tháng này bạn đã nghỉ những ngày: {daysOffList.join(', ')}
+                      </p>
+                    )}
+                    {c?.daysOffNote && (
+                      <p className="text-[11px] text-[#64748b] mt-0.5">
+                        📝 Ghi chú: {c.daysOffNote}
                       </p>
                     )}
                   </div>

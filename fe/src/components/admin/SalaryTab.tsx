@@ -66,6 +66,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     allowanceFarHome: '',
     allowanceWaitLoadingRate: '',
     daysOff: '',
+    daysOffNote: '',
     hasOldCar: false,
     allowanceOldCar: '',
     hasParkingHph2: false,
@@ -125,7 +126,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const pickDriver = (id: number | null) => {
     setSelectedId(id);
     if (id == null) {
-      setForm({ fixedSalary: '', attendanceBonus: '', hasFarHome: false, allowanceFarHome: '', allowanceWaitLoadingRate: '', daysOff: '', hasOldCar: false, allowanceOldCar: '', hasParkingHph2: false, allowanceParking: '', hasBhxh: true, chiHo: '' });
+      setForm({ fixedSalary: '', attendanceBonus: '', hasFarHome: false, allowanceFarHome: '', allowanceWaitLoadingRate: '', daysOff: '', daysOffNote: '', hasOldCar: false, allowanceOldCar: '', hasParkingHph2: false, allowanceParking: '', hasBhxh: true, chiHo: '' });
       setBaseFarHome('');
       setBaseOldCar(false);
       setBaseBhxh(true);
@@ -140,6 +141,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       allowanceFarHome: rec?.allowanceFarHomeOverride != null ? fmtMoney(rec.allowanceFarHomeOverride) : '',
       allowanceWaitLoadingRate: fmtMoney(rec?.allowanceWaitLoadingRate),
       daysOff: (rec?.daysOff || []).join(', '),
+      daysOffNote: rec?.daysOffNote || '',
       hasOldCar: rec?.hasOldCar || false,
       allowanceOldCar: rec?.oldCarAllowanceOverride != null ? fmtMoney(rec.oldCarAllowanceOverride) : '',
       hasParkingHph2: rec?.hasParkingHph2 || false,
@@ -187,6 +189,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         hasFarHome: form.hasFarHome,
         allowanceWaitLoadingRate: Number(waitLoadingAmountValue) || 0,
         daysOff: daysOffList,
+        daysOffNote: form.daysOffNote.trim() || null,
         hasOldCar: form.hasOldCar,
         oldCarAllowance: form.allowanceOldCar.trim() === '' ? null : (Number(oldCarOverrideValue) || 0),
         hasParkingHph2: form.hasParkingHph2,
@@ -670,6 +673,8 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                   <div>
                     <label className={labelCls}>Ngày nghỉ (cách nhau dấu phẩy)</label>
                     <input value={form.daysOff} onChange={e => setForm(f => ({ ...f, daysOff: e.target.value }))} placeholder="VD: 2, 8, 15" className={inputCls} />
+                    <p className="text-[10px] text-[#64748b] mt-1">Ghi chú ngày nghỉ (hiển thị cho lái xe)</p>
+                    <input value={form.daysOffNote} onChange={e => setForm(f => ({ ...f, daysOffNote: e.target.value }))} placeholder="VD: Nghỉ lễ 2/9..." className={`${inputCls} mt-1`} />
                   </div>
                   <div>
                     <label className={labelCls}>Chi hộ (Cty chi) (VNĐ)</label>
