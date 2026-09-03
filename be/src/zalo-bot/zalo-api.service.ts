@@ -80,6 +80,30 @@ export class ZaloApiService {
     }
   }
 
+  /**
+   * Đăng ký webhook URL để Zalo Bot Platform push sự kiện về server.
+   * Bắt buộc phải gọi API này — cấu hình trên Portal không đủ.
+   * @param url   URL đầy đủ của webhook endpoint (https://...)
+   * @param secret  Secret token để Zalo gửi kèm header (tuỳ chọn)
+   */
+  async setWebhook(url: string, secret?: string, botIndex = 0): Promise<boolean> {
+    if (!this.token(botIndex)) return false;
+    try {
+      const body: Record<string, string> = { url };
+      if (secret) body.secret_token = secret;
+      const { data } = await axios.post(
+        this.baseUrl('setWebhook', botIndex),
+        body,
+        { timeout: 15000 },
+      );
+      this.logger.log(`setWebhook (bot ${botIndex}) → url=${url} result=${JSON.stringify(data)}`);
+      return !!(data && data.ok === true);
+    } catch (err: any) {
+      this.logger.error(`setWebhook (bot ${botIndex}) failed: ${err.message}`);
+      return false;
+    }
+  }
+
   async sendMessage(
     chatId: string,
     text: string,

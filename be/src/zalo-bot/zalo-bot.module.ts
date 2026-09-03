@@ -7,6 +7,7 @@ import { ZaloSttService } from './zalo-stt.service';
 import { ZaloSessionService } from './zalo-session.service';
 import { ZaloQueueService } from './zalo-queue.service';
 import { ZaloPollingService } from './zalo-polling.service';
+import { ZaloWebhookService } from './zalo-webhook.service';
 import { ZaloOpsNotifierService } from './zalo-ops-notifier.service';
 import { ZaloOpsSummaryService } from './zalo-ops-summary.service';
 import { ZaloPlanCompletedNotifierService } from './zalo-plan-completed-notifier.service';
@@ -40,6 +41,7 @@ import { Route } from '../database/entities/route.entity';
     ZaloSessionService,
     ZaloQueueService,
     ZaloPollingService,
+    ZaloWebhookService,
     ZaloOpsNotifierService,
     ZaloOpsSummaryService,
     ZaloPlanCompletedNotifierService,
