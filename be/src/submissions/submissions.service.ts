@@ -2287,6 +2287,7 @@ let sl: any;
     const oldCarAllowance = Number(settings?.oldCarAllowance) || 0;
     const bhxhPercent = Number(settings?.bhxhNld) || 0;
     const parkingHph2 = Number(settings?.parkingHph2) || 0;
+    const farHomeCommon = Number(settings?.allowanceFarHome) || 0;
 
     const records = await this.salaryRecordsRepository.find({ where: { month, year } });
     const recordMap = new Map<number, SalaryRecord>();
@@ -2360,7 +2361,7 @@ let sl: any;
 
     const COMPANY_NAME = 'CÔNG TY TNHH DỊCH VỤ & THƯƠNG MAI NEW WAY';
     const COMPANY_ADDR = 'Đ/c: Số 348 đường Đà Nẵng, P. Đông Hải, TP. Hải Phòng';
-    const COMPANY_TEL = 'Tel: 0384. 985.668/ 0334.985.668; Email: Newway.traseco@gmail.com';
+    const COMPANY_TEL = 'Tel: 0384. 985.668/ 0334.985.668; Email: info@newwaytraco.vn';
     const GIAM_DOC = 'Ngô Phương Dung';
     const NGUOI_LAP = 'Trần Anh Thư';
 
@@ -2389,6 +2390,16 @@ let sl: any;
       const ngayCong = daysInMonth - daysOff;
       const hasOldCar = rec ? rec.hasOldCar : driver.oldCar;
       const hasParkingHph2 = rec ? rec.hasParkingHph2 : false;
+      const allowanceFarHome =
+        rec && rec.hasFarHome
+          ? rec.allowanceFarHome != null
+            ? Number(rec.allowanceFarHome)
+            : farHomeCommon
+          : 0;
+      const allowanceWaitLoading = rec
+        ? Number(rec.allowanceWaitLoadingRate) || 0
+        : 0;
+      const advanceDeduct = rec ? Number(rec.advanceDeduct) || 0 : 0;
 
       // --- Khoản lương động (salary_items) theo lái xe ---
       const recItemRows: { name: string; kind: string; amount: number }[] = [];
@@ -2517,10 +2528,16 @@ let sl: any;
       const tong4ChiHo = hasOldCar ? oldCarAllowance : 0;
       const chuyenCan = ngayCong >= standardDays ? attendanceBonus : 0;
       const tong4GuiXe = hasParkingHph2 ? parkingHph2 : 0;
-      const tong4 = tong4ChiHo + chuyenCan + totalTip + tong4GuiXe; // F44 = trống
+      const tong4 =
+        tong4ChiHo +
+        chuyenCan +
+        totalTip +
+        tong4GuiXe +
+        allowanceFarHome +
+        allowanceWaitLoading; // F44 = trống
       const luongCoBan = fixedSalary;
       const tongA = luongCoBan + planTotalMoney + leTetTotalMoney + tong4 + itemSumAdd;
-      const tongGiamTru = bhxh + fixedSalary + chiHo + itemSumDeduct; // F49 + F50 + F51 + khoản khấu trừ động
+      const tongGiamTru = bhxh + fixedSalary + chiHo + itemSumDeduct + advanceDeduct; // F49 + F50 + F51 + khoản khấu trừ động + tạm ứng
       const luongConLai = tongA - tongGiamTru;
 
       // Column widths
@@ -2783,6 +2800,8 @@ let sl: any;
       writeChiHoRow('Tiền chuyên cần', chuyenCan, false, true);
       writeChiHoRow('Chi hộ tiền tip xe nâng tại các bãi, cảng.', totalTip, false, true);
       writeChiHoRow('Chi hộ tiền gửi xe tại bãi 2 (HPH)', tong4GuiXe, false, true);
+      writeChiHoRow('Phụ cấp xa nhà', allowanceFarHome, false, true);
+      writeChiHoRow('PC chờ đóng hàng', allowanceWaitLoading, false, true);
       for (const ri of recItemRows) {
         if (ri.kind === 'add') writeChiHoRow(ri.name, ri.amount, false, true);
       }
@@ -2810,6 +2829,7 @@ let sl: any;
         writeChiHoRow(`BHXH -NLĐ nộp ${pctLabel}%`, '0', false, false);
       }
       writeChiHoRow('Tạm ứng lương /Tháng', fixedSalary, false, false);
+      writeChiHoRow('Khấu trừ tạm ứng /Tháng', advanceDeduct, false, false);
       writeChiHoRow('Các khoản chi hộ khác:', chiHo, false, false);
       for (const ri of recItemRows) {
         if (ri.kind === 'deduct') writeChiHoRow(ri.name, ri.amount, false, false);
