@@ -110,6 +110,10 @@ export class PaySalaryDto {
   @Type(() => Number)
   @IsInt({ message: 'Năm không hợp lệ' })
   year: number;
+
+  @IsOptional()
+  @IsBoolean({ message: 'Trạng thái hoàn tác không hợp lệ' })
+  undo?: boolean;
 }
 
 export class UpdateSalarySettingsDto {

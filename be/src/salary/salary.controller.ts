@@ -106,8 +106,9 @@ export class SalaryController {
       dto.driverIds,
       dto.month,
       dto.year,
+      dto.undo,
     );
-    return { message: `Đã thanh toán lương cứng cho ${count} lái xe`, count };
+    return { message: `${dto.undo ? 'Đã hoàn tác thanh toán lương cứng' : 'Đã thanh toán lương cứng'} cho ${count} lái xe`, count };
   }
 
   @Post('total/pay')
@@ -117,8 +118,9 @@ export class SalaryController {
       dto.driverIds,
       dto.month,
       dto.year,
+      dto.undo,
     );
-    return { message: `Đã thanh toán tổng lương cho ${count} lái xe`, count };
+    return { message: `${dto.undo ? 'Đã hoàn tác thanh toán tổng lương' : 'Đã thanh toán tổng lương'} cho ${count} lái xe`, count };
   }
 
   // ── Advance (Tạm ứng) ──

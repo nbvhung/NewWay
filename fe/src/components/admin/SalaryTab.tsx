@@ -42,7 +42,8 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [showPayModal, setShowPayModal] = useState<'fixed' | 'total' | null>(null);
+  const [showPayModal, setShowPayModal] = useState<'pay' | 'undo' | null>(null);
+  const [payType, setPayType] = useState<'fixed' | 'total'>('fixed');
   const [payMonth, setPayMonth] = useState(vnNow.month);
   const [payYear, setPayYear] = useState(vnNow.year);
   const [paySelected, setPaySelected] = useState<Set<number>>(new Set());
@@ -313,10 +314,11 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     }
   };
 
-  const openPayModal = (mode: 'fixed' | 'total') => {
+  const openPayModal = (mode: 'pay' | 'undo', type: 'fixed' | 'total' = 'fixed') => {
     setPayMonth(month);
     setPayYear(year);
     setPaySelected(new Set());
+    setPayType(type);
     setShowPayModal(mode);
   };
 
@@ -341,19 +343,20 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     setSavingPay(true);
     try {
       const driverIds = [...paySelected];
-      const payload = { driverIds, month: payMonth, year: payYear };
-      if (showPayModal === 'fixed') {
+      const isUndo = showPayModal === 'undo';
+      const payload = { driverIds, month: payMonth, year: payYear, undo: isUndo };
+      if (payType === 'fixed') {
         const res = await salaryApi.payFixedSalary(payload);
-        toast(res.data?.message || `Đã thanh toán lương cứng cho ${driverIds.length} lái xe`, 'success');
+        toast(res.data?.message || (isUndo ? `Đã hoàn tác lương cứng cho ${driverIds.length} lái xe` : `Đã thanh toán lương cứng cho ${driverIds.length} lái xe`), 'success');
       } else {
         const res = await salaryApi.payTotalSalary(payload);
-        toast(res.data?.message || `Đã thanh toán tổng lương cho ${driverIds.length} lái xe`, 'success');
+        toast(res.data?.message || (isUndo ? `Đã hoàn tác tổng lương cho ${driverIds.length} lái xe` : `Đã thanh toán tổng lương cho ${driverIds.length} lái xe`), 'success');
       }
       setShowPayModal(null);
       setPaySelected(new Set());
       loadData(true);
     } catch (e: any) {
-      toast(e?.response?.data?.message || e?.message || 'Thanh toán thất bại', 'error');
+      toast(e?.response?.data?.message || e?.message || 'Thất bại', 'error');
     } finally {
       setSavingPay(false);
     }
@@ -682,13 +685,17 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
             </button>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button onClick={() => openPayModal('fixed')}
+            <button onClick={() => openPayModal('pay', 'fixed')}
               className="px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] cursor-pointer">
               💰 Thanh Toán Lương Cứng
             </button>
-            <button onClick={() => openPayModal('total')}
+            <button onClick={() => openPayModal('pay', 'total')}
               className="px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.35)] cursor-pointer">
               💵 Thanh Toán Tổng
+            </button>
+            <button onClick={() => openPayModal('undo')}
+              className="px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.15)] hover:text-[#0f172a] hover:border-[#94a3b8] transition-all cursor-pointer">
+              ↩️ Hoàn tác
             </button>
           </div>
         </div>
@@ -1024,9 +1031,27 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowPayModal(null)}>
           <div className="bg-[#ffffff] rounded-xl shadow-2xl w-full max-w-xl p-5 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold">{showPayModal === 'fixed' ? '💰 Thanh Toán Lương Cứng' : '💵 Thanh Toán Tổng'}</h3>
+              <h3 className="text-base font-bold">
+                {showPayModal === 'undo'
+                  ? `↩️ Hoàn tác thanh toán${payType === 'fixed' ? ' Lương Cứng' : ' Tổng'}`
+                  : payType === 'fixed' ? '💰 Thanh Toán Lương Cứng' : '💵 Thanh Toán Tổng'}
+              </h3>
               <button onClick={() => setShowPayModal(null)} className="text-xl text-[#64748b] hover:text-[#0f172a] cursor-pointer">×</button>
             </div>
+
+            {/* Nếu là hoàn tác: chọn loại cần hoàn tác */}
+            {showPayModal === 'undo' && (
+              <div className="flex items-center gap-3 mb-4">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="radio" checked={payType === 'fixed'} onChange={() => setPayType('fixed')} className="accent-[#1a56db]" />
+                  Lương Cứng
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="radio" checked={payType === 'total'} onChange={() => setPayType('total')} className="accent-[#1a56db]" />
+                  Tổng Lương
+                </label>
+              </div>
+            )}
 
             {/* Ô chọn tháng/năm */}
             <div className="flex flex-wrap gap-3 items-end mb-4">
@@ -1078,7 +1103,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
               </button>
               <button onClick={submitPay} disabled={savingPay || paySelected.size === 0}
                 className="px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-[0_4px_15px_rgba(16,185,129,0.3)] disabled:opacity-50 cursor-pointer">
-                {savingPay ? '⏳ Đang xử lý...' : `Xác nhận thanh toán (${paySelected.size})`}
+                {savingPay ? '⏳ Đang xử lý...' : showPayModal === 'undo' ? `Xác nhận hoàn tác (${paySelected.size})` : `Xác nhận thanh toán (${paySelected.size})`}
               </button>
             </div>
           </div>

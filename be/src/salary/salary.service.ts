@@ -572,12 +572,13 @@ export class SalaryService {
   }
 
   /**
-   * Đánh dấu LƯƠNG CỨNG đã thanh toán cho các lái xe trong tháng.
+   * Đánh dấu / hoàn tác LƯƠNG CỨNG đã thanh toán cho các lái xe trong tháng.
    */
   async payFixedSalary(
     driverIds: number[],
     month: number,
     year: number,
+    undo = false,
   ): Promise<number> {
     const settings = await this.getSettings();
     let count = 0;
@@ -591,10 +592,18 @@ export class SalaryService {
         settings,
         user,
       );
-      if (!record.fixedSalaryPaid) {
-        record.fixedSalaryPaid = true;
-        record.fixedSalaryPaidAt = new Date();
-        await this.recordsRepository.save(record);
+      if (undo) {
+        if (record.fixedSalaryPaid) {
+          record.fixedSalaryPaid = false;
+          record.fixedSalaryPaidAt = null;
+          await this.recordsRepository.save(record);
+        }
+      } else {
+        if (!record.fixedSalaryPaid) {
+          record.fixedSalaryPaid = true;
+          record.fixedSalaryPaidAt = new Date();
+          await this.recordsRepository.save(record);
+        }
       }
       count++;
     }
@@ -602,12 +611,13 @@ export class SalaryService {
   }
 
   /**
-   * Đánh dấu TOÀN BỘ LƯƠNG THÁNG đã thanh toán cho các lái xe.
+   * Đánh dấu / hoàn tác TOÀN BỘ LƯƠNG THÁNG đã thanh toán cho các lái xe.
    */
   async payTotalSalary(
     driverIds: number[],
     month: number,
     year: number,
+    undo = false,
   ): Promise<number> {
     const settings = await this.getSettings();
     let count = 0;
@@ -621,10 +631,18 @@ export class SalaryService {
         settings,
         user,
       );
-      if (!record.salaryPaid) {
-        record.salaryPaid = true;
-        record.salaryPaidAt = new Date();
-        await this.recordsRepository.save(record);
+      if (undo) {
+        if (record.salaryPaid) {
+          record.salaryPaid = false;
+          record.salaryPaidAt = null;
+          await this.recordsRepository.save(record);
+        }
+      } else {
+        if (!record.salaryPaid) {
+          record.salaryPaid = true;
+          record.salaryPaidAt = new Date();
+          await this.recordsRepository.save(record);
+        }
       }
       count++;
     }

@@ -31,10 +31,10 @@ export const salaryApi = {
 
   // ── Thanh toán lương ──
 
-  payFixedSalary: (data: { driverIds: number[]; month: number; year: number }) =>
+  payFixedSalary: (data: { driverIds: number[]; month: number; year: number; undo?: boolean }) =>
     api.post<{ message: string; count: number }>('/admin/salary/fixed-salary/pay', data),
 
-  payTotalSalary: (data: { driverIds: number[]; month: number; year: number }) =>
+  payTotalSalary: (data: { driverIds: number[]; month: number; year: number; undo?: boolean }) =>
     api.post<{ message: string; count: number }>('/admin/salary/total/pay', data),
 
   // ── Advance (Tạm ứng) ──
