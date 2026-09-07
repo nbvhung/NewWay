@@ -366,10 +366,12 @@ export default function MyDataScreen() {
           (c?.allowanceFarHome || 0) +
           (c?.allowanceWaitLoading || 0) +
           (c?.allowanceOldCar || 0) +
-          (c?.parkingHph2 || 0);
+          (c?.parkingHph2 || 0) +
+          (c?.allowances || []).reduce((s: number, a: any) => s + (a.amount || 0), 0);
         const bhxh = c?.bhxh || 0;
         const chiHo = c?.chiHo || 0;
         const deductions: { name: string; amount: number }[] = c?.deductions || [];
+        const allowances: { name: string; amount: number }[] = c?.allowances || [];
         const totalDeduct = bhxh + chiHo + deductions.reduce((s: number, d: any) => s + d.amount, 0);
         const grandTotal = income - totalDeduct;
         const daysOffList: number[] = c?.daysOffList || [];
@@ -462,6 +464,13 @@ export default function MyDataScreen() {
                     <Text style={styles.salaryValue}>{formatMoney(c?.parkingHph2)}</Text>
                   </View>
                 )}
+
+                {allowances.map((a: any, i: number) => (
+                  <View key={i} style={styles.salaryRow}>
+                    <Text style={styles.salaryLabel}>➕ {a.name}:</Text>
+                    <Text style={styles.salaryValue}>{formatMoney(a.amount)}</Text>
+                  </View>
+                ))}
 
                 {/* Phần II: Khấu trừ */}
                 <Text style={[styles.salarySection, { marginTop: 12 }]}>II. Khoản khấu trừ</Text>

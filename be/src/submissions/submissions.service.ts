@@ -308,7 +308,7 @@ export class SubmissionsService {
     const components = salaryComp.components.get(userId) || {
       fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0,
       allowanceOldCar: 0, parkingHph2: 0, hasParkingHph2: false, ngayCong: 0,
-      daysOffList: [], daysOffNote: null, bhxh: 0, chiHo: 0, deductions: [],
+      daysOffList: [], daysOffNote: null, bhxh: 0, chiHo: 0, deductions: [], allowances: [],
     };
 
     return { totalSalary, totalTip, count, month, year, details, components };
@@ -366,6 +366,7 @@ export class SubmissionsService {
       bhxh: number;           // tiền BHXH phải đóng
       chiHo: number;          // chi hộ
       deductions: { name: string; amount: number }[]; // các khoản khấu trừ khác
+      allowances: { name: string; amount: number }[]; // các khoản phụ cấp động (kind='add')
     }>();
 
     for (const d of drivers) {
@@ -420,6 +421,16 @@ export class SubmissionsService {
         if (amount > 0) deductions.push({ name: item.name, amount });
       }
 
+      // Các khoản phụ cấp động (SalaryItems kind='add')
+      const allowances: { name: string; amount: number }[] = [];
+      for (const item of allItems) {
+        if (item.kind !== 'add') continue;
+        const ri = riMap.get(item.id);
+        if (!ri?.enabled) continue;
+        const amount = ri.amount != null ? Number(ri.amount) : Number(item.defaultAmount) || 0;
+        if (amount > 0) allowances.push({ name: item.name, amount });
+      }
+
       result.set(d.id, {
         fixedSalary,
         chuyenCan,
@@ -438,6 +449,7 @@ export class SubmissionsService {
         bhxh,
         chiHo,
         deductions,
+        allowances,
       });
     }
 

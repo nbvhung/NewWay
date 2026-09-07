@@ -95,6 +95,7 @@ export default function MyDataPage() {
       daysOffList: number[];
       daysOffNote?: string | null;
       deductions: { name: string; amount: number }[];
+      allowances?: { name: string; amount: number }[];
       advanceDeduct?: number;
       totalRemainingAdvance?: number;
       advanceRemainingAfter?: number;
@@ -528,10 +529,12 @@ export default function MyDataPage() {
           (c?.allowanceFarHome || 0) +
           (c?.allowanceWaitLoading || 0) +
           (c?.allowanceOldCar || 0) +
-          (c?.parkingHph2 || 0);
+          (c?.parkingHph2 || 0) +
+          (c?.allowances || []).reduce((s, a) => s + (a.amount || 0), 0);
         const bhxh = c?.bhxh || 0;
         const chiHo = c?.chiHo || 0;
         const deductions: { name: string; amount: number }[] = c?.deductions || [];
+        const allowances: { name: string; amount: number }[] = c?.allowances || [];
         const advanceDeduct = c?.advanceDeduct || 0;
         const advanceRemainingAfter = c?.advanceRemainingAfter ?? 0;
         const totalRemainingAdvance = c?.totalRemainingAdvance ?? 0;
@@ -652,6 +655,13 @@ export default function MyDataPage() {
                     <span className="font-bold text-[#0f172a]">{formatMoney(c?.parkingHph2)}</span>
                   </div>
                 )}
+
+                {allowances.map((a, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <span className="text-[#475569]">➕ {a.name}:</span>
+                    <span className="font-bold text-[#0f172a]">{formatMoney(a.amount)}</span>
+                  </div>
+                ))}
 
                 <p className="text-xs font-bold text-[#0f172a] uppercase tracking-wider mt-2">II. Khoản khấu trừ</p>
 
