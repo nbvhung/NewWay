@@ -372,7 +372,10 @@ export default function MyDataScreen() {
         const chiHo = c?.chiHo || 0;
         const deductions: { name: string; amount: number }[] = c?.deductions || [];
         const allowances: { name: string; amount: number }[] = c?.allowances || [];
-        const totalDeduct = bhxh + chiHo + deductions.reduce((s: number, d: any) => s + d.amount, 0);
+        const advanceDeduct = c?.advanceDeduct || 0;
+        const totalRemainingAdvance = c?.totalRemainingAdvance ?? 0;
+        const advanceRemainingAfter = c?.advanceRemainingAfter ?? 0;
+        const totalDeduct = bhxh + chiHo + deductions.reduce((s: number, d: any) => s + d.amount, 0) + advanceDeduct;
         const grandTotal = income - totalDeduct;
         const daysOffList: number[] = c?.daysOffList || [];
 
@@ -495,6 +498,20 @@ export default function MyDataScreen() {
                     <Text style={styles.salaryValueDeduct}>-{formatMoney(d.amount)}</Text>
                   </View>
                 ))}
+
+                {advanceDeduct > 0 && (
+                  <View style={styles.salaryRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.salaryLabel}>💸 Trả nợ tạm ứng:</Text>
+                      <Text style={styles.salarySubNote}>
+                        Dư nợ trước tháng này: {formatMoney(totalRemainingAdvance)} ₫ → còn lại:{' '}
+                        {formatMoney(advanceRemainingAfter)} ₫
+                        {advanceRemainingAfter === 0 ? ' ✅ Đã trả hết' : ''}
+                      </Text>
+                    </View>
+                    <Text style={styles.salaryValueDeduct}>-{formatMoney(advanceDeduct)}</Text>
+                  </View>
+                )}
 
                 {/* Tổng cộng */}
                 <View style={styles.salaryTotalRow}>
