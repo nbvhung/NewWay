@@ -23,6 +23,7 @@ import { CreateDriverAdvanceDto } from './dto/driver-advance.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('admin/salary')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -101,26 +102,46 @@ export class SalaryController {
 
   @Post('fixed-salary/pay')
   @Roles('hr', 'admin', 'supper_admin')
-  async payFixedSalary(@Body() dto: PaySalaryDto) {
+  async payFixedSalary(
+    @Body() dto: PaySalaryDto,
+    @CurrentUser() user: any,
+  ) {
     const count = await this.salaryService.payFixedSalary(
       dto.driverIds,
       dto.month,
       dto.year,
       dto.undo,
+      { id: user?.id, name: user?.fullName || user?.username || '' },
     );
     return { message: `${dto.undo ? 'Đã hoàn tác thanh toán lương cứng' : 'Đã thanh toán lương cứng'} cho ${count} lái xe`, count };
   }
 
   @Post('total/pay')
   @Roles('hr', 'admin', 'supper_admin')
-  async payTotalSalary(@Body() dto: PaySalaryDto) {
+  async payTotalSalary(
+    @Body() dto: PaySalaryDto,
+    @CurrentUser() user: any,
+  ) {
     const count = await this.salaryService.payTotalSalary(
       dto.driverIds,
       dto.month,
       dto.year,
       dto.undo,
+      { id: user?.id, name: user?.fullName || user?.username || '' },
     );
     return { message: `${dto.undo ? 'Đã hoàn tác thanh toán tổng lương' : 'Đã thanh toán tổng lương'} cho ${count} lái xe`, count };
+  }
+
+  @Get('payment-logs')
+  @Roles('hr', 'admin', 'supper_admin')
+  async getPaymentLogs(
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+  ) {
+    const now = this.salaryService.nowVN();
+    const m = month ? parseInt(month) : now.month;
+    const y = year ? parseInt(year) : now.year;
+    return { data: await this.salaryService.getPaymentLogs(m, y) };
   }
 
   // ── Advance (Tạm ứng) ──

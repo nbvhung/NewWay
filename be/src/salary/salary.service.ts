@@ -6,6 +6,7 @@ import { SalaryRecord } from '../database/entities/salary-record.entity';
 import { SalaryItem } from '../database/entities/salary-item.entity';
 import { SalaryRecordItem } from '../database/entities/salary-record-item.entity';
 import { DriverAdvance } from '../database/entities/driver-advance.entity';
+import { SalaryPaymentLog } from '../database/entities/salary-payment-log.entity';
 import { User } from '../database/entities/user.entity';
 import { SubmissionsService } from '../submissions/submissions.service';
 import {
@@ -33,6 +34,8 @@ export class SalaryService {
     private recordItemsRepository: Repository<SalaryRecordItem>,
     @InjectRepository(DriverAdvance)
     private advancesRepository: Repository<DriverAdvance>,
+    @InjectRepository(SalaryPaymentLog)
+    private paymentLogsRepository: Repository<SalaryPaymentLog>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private submissionsService: SubmissionsService,
@@ -573,12 +576,14 @@ export class SalaryService {
 
   /**
    * Đánh dấu / hoàn tác LƯƠNG CỨNG đã thanh toán cho các lái xe trong tháng.
+   * Ghi lịch sử (ai thực hiện, cho ai, khi nào).
    */
   async payFixedSalary(
     driverIds: number[],
     month: number,
     year: number,
     undo = false,
+    performedBy?: { id: number; name: string },
   ): Promise<number> {
     const settings = await this.getSettings();
     let count = 0;
@@ -592,18 +597,31 @@ export class SalaryService {
         settings,
         user,
       );
+      let changed = false;
       if (undo) {
         if (record.fixedSalaryPaid) {
           record.fixedSalaryPaid = false;
           record.fixedSalaryPaidAt = null;
-          await this.recordsRepository.save(record);
+          changed = true;
         }
       } else {
         if (!record.fixedSalaryPaid) {
           record.fixedSalaryPaid = true;
           record.fixedSalaryPaidAt = new Date();
-          await this.recordsRepository.save(record);
+          changed = true;
         }
+      }
+      if (changed) {
+        await this.recordsRepository.save(record);
+        await this.paymentLogsRepository.save({
+          driverId,
+          driverName: user.fullName || user.username,
+          month,
+          year,
+          action: undo ? 'FIXED_UNDO' : 'FIXED_PAID',
+          performedById: performedBy?.id ?? null,
+          performedByName: performedBy?.name ?? '',
+        });
       }
       count++;
     }
@@ -612,12 +630,14 @@ export class SalaryService {
 
   /**
    * Đánh dấu / hoàn tác TOÀN BỘ LƯƠNG THÁNG đã thanh toán cho các lái xe.
+   * Ghi lịch sử (ai thực hiện, cho ai, khi nào).
    */
   async payTotalSalary(
     driverIds: number[],
     month: number,
     year: number,
     undo = false,
+    performedBy?: { id: number; name: string },
   ): Promise<number> {
     const settings = await this.getSettings();
     let count = 0;
@@ -631,21 +651,44 @@ export class SalaryService {
         settings,
         user,
       );
+      let changed = false;
       if (undo) {
         if (record.salaryPaid) {
           record.salaryPaid = false;
           record.salaryPaidAt = null;
-          await this.recordsRepository.save(record);
+          changed = true;
         }
       } else {
         if (!record.salaryPaid) {
           record.salaryPaid = true;
           record.salaryPaidAt = new Date();
-          await this.recordsRepository.save(record);
+          changed = true;
         }
+      }
+      if (changed) {
+        await this.recordsRepository.save(record);
+        await this.paymentLogsRepository.save({
+          driverId,
+          driverName: user.fullName || user.username,
+          month,
+          year,
+          action: undo ? 'TOTAL_UNDO' : 'TOTAL_PAID',
+          performedById: performedBy?.id ?? null,
+          performedByName: performedBy?.name ?? '',
+        });
       }
       count++;
     }
     return count;
+  }
+
+  /**
+   * Lịch sử thanh toán theo tháng/năm (mới nhất trước).
+   */
+  async getPaymentLogs(month: number, year: number): Promise<SalaryPaymentLog[]> {
+    return this.paymentLogsRepository.find({
+      where: { month, year },
+      order: { createdAt: 'DESC', id: 'DESC' },
+    });
   }
 }

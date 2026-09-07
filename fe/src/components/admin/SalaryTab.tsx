@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { salaryApi } from '@/lib/api-salary';
 import { usersApi } from '@/lib/api-users';
 import { submissionsApi } from '@/lib/api-submissions';
-import { SalaryItem, SalaryRecordItem, SalarySettings, User, DriverAdvance } from '@/types';
+import { SalaryItem, SalaryRecordItem, SalarySettings, User, DriverAdvance, SalaryPaymentLog } from '@/types';
 
 interface Props {
   currentUser: any;
@@ -31,6 +31,19 @@ function fmtMoney(v: number | undefined | null): string {
   return Math.floor(v).toLocaleString('vi-VN');
 }
 
+function fmtDT(v: string): string {
+  if (!v) return '—';
+  const d = new Date(v);
+  return d.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+const PAY_ACTION_LABEL: Record<string, { label: string; color: string }> = {
+  FIXED_PAID: { label: '✅ Thanh toán lương cứng', color: 'text-green-600' },
+  FIXED_UNDO: { label: '↩️ Hoàn tác lương cứng', color: 'text-red-600' },
+  TOTAL_PAID: { label: '✅ Thanh toán tổng', color: 'text-green-600' },
+  TOTAL_UNDO: { label: '↩️ Hoàn tác tổng', color: 'text-red-600' },
+};
+
 export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const vnNow = useMemo(nowVN, []);
   const [month, setMonth] = useState(vnNow.month);
@@ -48,6 +61,10 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const [payYear, setPayYear] = useState(vnNow.year);
   const [paySelected, setPaySelected] = useState<Set<number>>(new Set());
   const [savingPay, setSavingPay] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyLogs, setHistoryLogs] = useState<SalaryPaymentLog[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [payRecords, setPayRecords] = useState<SalaryRecordItem[]>([]);
 
   // Modal thêm/sửa khoản lương
   const [showItemModal, setShowItemModal] = useState(false);
@@ -320,6 +337,30 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     setPaySelected(new Set());
     setPayType(type);
     setShowPayModal(mode);
+    loadPayRecords(month, year);
+  };
+
+  const loadPayRecords = async (m: number, y: number) => {
+    try {
+      const res = await salaryApi.getRecords(m, y);
+      setPayRecords(res.data?.data?.records || []);
+    } catch {
+      setPayRecords([]);
+    }
+  };
+
+  const openHistoryModal = async () => {
+    setShowHistoryModal(true);
+    setLoadingHistory(true);
+    try {
+      const res = await salaryApi.getPaymentLogs(month, year);
+      setHistoryLogs(res.data?.data || []);
+    } catch (e: any) {
+      setHistoryLogs([]);
+      toast(e?.response?.data?.message || 'Không tải được lịch sử', 'error');
+    } finally {
+      setLoadingHistory(false);
+    }
   };
 
   const toggleAllPay = (checked: boolean) => {
@@ -697,6 +738,10 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
               className="px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.15)] hover:text-[#0f172a] hover:border-[#94a3b8] transition-all cursor-pointer">
               ↩️ Hoàn tác
             </button>
+            <button onClick={openHistoryModal}
+              className="px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#7c3aed] to-[#6d28d9] text-white shadow-[0_4px_15px_rgba(124,58,237,0.3)] cursor-pointer">
+              📜 Lịch sử
+            </button>
           </div>
         </div>
 
@@ -1026,6 +1071,49 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         )}
       </div>
 
+      {/* Modal Lịch sử thanh toán */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowHistoryModal(false)}>
+          <div className="bg-[#ffffff] rounded-xl shadow-2xl w-full max-w-2xl p-5 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold">📜 Lịch sử thanh toán — {MONTHS_VI[month]} {year}</h3>
+              <button onClick={() => setShowHistoryModal(false)} className="text-xl text-[#64748b] hover:text-[#0f172a] cursor-pointer">×</button>
+            </div>
+            {loadingHistory ? (
+              <p className="text-sm text-[#64748b] py-6 text-center">Đang tải...</p>
+            ) : historyLogs.length === 0 ? (
+              <p className="text-xs text-[#94a3b8] italic py-6 text-center">Chưa có lịch sử thanh toán cho tháng này.</p>
+            ) : (
+              <div className="max-h-[55vh] overflow-y-auto border border-[rgba(0,0,0,0.06)] rounded-lg">
+                <table className="w-full text-xs">
+                  <thead className="bg-[#f8fafc] text-[#334155] sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-semibold">Thời gian</th>
+                      <th className="px-3 py-2 text-left font-semibold">Lái xe</th>
+                      <th className="px-3 py-2 text-left font-semibold">Hành động</th>
+                      <th className="px-3 py-2 text-left font-semibold">Người thực hiện</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[rgba(0,0,0,0.04)]">
+                    {historyLogs.map(log => {
+                      const meta = PAY_ACTION_LABEL[log.action] || { label: log.action, color: 'text-[#0f172a]' };
+                      return (
+                        <tr key={log.id}>
+                          <td className="px-3 py-2 whitespace-nowrap">{fmtDT(log.createdAt)}</td>
+                          <td className="px-3 py-2 font-medium text-[#0f172a]">{log.driverName}</td>
+                          <td className={`px-3 py-2 font-semibold ${meta.color}`}>{meta.label}</td>
+                          <td className="px-3 py-2">{log.performedByName || '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Modal Thanh Toán Lương Cứng / Thanh Toán Tổng */}
       {showPayModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowPayModal(null)}>
@@ -1057,7 +1145,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
             <div className="flex flex-wrap gap-3 items-end mb-4">
               <div>
                 <label className={labelCls}>Tháng</label>
-                <select value={payMonth} onChange={e => setPayMonth(Number(e.target.value))}
+                <select value={payMonth} onChange={e => { const m = Number(e.target.value); setPayMonth(m); loadPayRecords(m, payYear); }}
                   className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
                   {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                     <option key={m} value={m}>{MONTHS_VI[m]}</option>
@@ -1066,7 +1154,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
               </div>
               <div>
                 <label className={labelCls}>Năm</label>
-                <select value={payYear} onChange={e => setPayYear(Number(e.target.value))}
+                <select value={payYear} onChange={e => { const y = Number(e.target.value); setPayYear(y); loadPayRecords(payMonth, y); }}
                   className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
                   {Array.from({ length: 5 }, (_, i) => vnNow.year - 2 + i).map(y => (
                     <option key={y} value={y}>{y}</option>
@@ -1086,13 +1174,20 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
 
             {/* Danh sách lái xe */}
             <div className="max-h-[40vh] overflow-y-auto border border-[rgba(0,0,0,0.06)] rounded-lg divide-y divide-[rgba(0,0,0,0.04)]">
-              {drivers.map(d => (
-                <label key={d.id} className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-[#f8fafc] text-sm">
-                  <input type="checkbox" checked={paySelected.has(d.id)} onChange={() => togglePay(d.id)} className="w-4 h-4 accent-[#1a56db]" />
-                  <span className="text-[#0f172a] font-medium">{d.fullName}</span>
-                  {d.soXe && <span className="text-[11px] text-[#94a3b8]">{d.soXe}</span>}
-                </label>
-              ))}
+              {drivers.map(d => {
+                const rec = payRecords.find(r => r.driverId === d.id);
+                const paid = payType === 'fixed' ? !!rec?.fixedSalaryPaid : !!rec?.salaryPaid;
+                return (
+                  <label key={d.id} className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-[#f8fafc] text-sm">
+                    <input type="checkbox" checked={paySelected.has(d.id)} onChange={() => togglePay(d.id)} className="w-4 h-4 accent-[#1a56db]" />
+                    <span className="text-[#0f172a] font-medium">{d.fullName}</span>
+                    {d.soXe && <span className="text-[11px] text-[#94a3b8]">{d.soXe}</span>}
+                    <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded ${paid ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {paid ? '✅ Đã' : 'Chưa'}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
 
             {/* Nút xác nhận */}

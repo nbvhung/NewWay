@@ -1,5 +1,5 @@
 import api from './axios-instance';
-import type { SalaryRecordsResponse, SalarySettings, SalaryItem, DriverAdvance } from '@/types';
+import type { SalaryRecordsResponse, SalarySettings, SalaryItem, DriverAdvance, SalaryPaymentLog } from '@/types';
 
 export const salaryApi = {
   getSettings: () =>
@@ -36,6 +36,9 @@ export const salaryApi = {
 
   payTotalSalary: (data: { driverIds: number[]; month: number; year: number; undo?: boolean }) =>
     api.post<{ message: string; count: number }>('/admin/salary/total/pay', data),
+
+  getPaymentLogs: (month: number, year: number) =>
+    api.get<{ data: SalaryPaymentLog[] }>('/admin/salary/payment-logs', { params: { month, year } }),
 
   // ── Advance (Tạm ứng) ──
 

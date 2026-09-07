@@ -154,6 +154,8 @@ export interface SalaryRecordItem {
   waitLoadingHours: number;
   daysOff: number[];
   daysOffNote?: string | null;
+  fixedSalaryPaid?: boolean;
+  salaryPaid?: boolean;
   luongKhoan: number;
   tip: number;
   total: number;
@@ -168,6 +170,18 @@ export interface DriverAdvance {
   date: string;
   deductStart: string | null;
   isPaidOff: boolean;
+  createdAt: string;
+}
+
+export interface SalaryPaymentLog {
+  id: number;
+  driverId: number;
+  driverName: string;
+  month: number;
+  year: number;
+  action: 'FIXED_PAID' | 'FIXED_UNDO' | 'TOTAL_PAID' | 'TOTAL_UNDO';
+  performedById: number | null;
+  performedByName: string;
   createdAt: string;
 }
 
