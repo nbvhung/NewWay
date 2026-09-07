@@ -42,6 +42,11 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [showPayModal, setShowPayModal] = useState<'fixed' | 'total' | null>(null);
+  const [payMonth, setPayMonth] = useState(vnNow.month);
+  const [payYear, setPayYear] = useState(vnNow.year);
+  const [paySelected, setPaySelected] = useState<Set<number>>(new Set());
+  const [savingPay, setSavingPay] = useState(false);
 
   // Modal thêm/sửa khoản lương
   const [showItemModal, setShowItemModal] = useState(false);
@@ -305,6 +310,52 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       toast(e?.response?.data?.message || e?.message || 'Xuất Excel thất bại', 'error');
     } finally {
       setExporting(false);
+    }
+  };
+
+  const openPayModal = (mode: 'fixed' | 'total') => {
+    setPayMonth(month);
+    setPayYear(year);
+    setPaySelected(new Set());
+    setShowPayModal(mode);
+  };
+
+  const toggleAllPay = (checked: boolean) => {
+    setPaySelected(checked ? new Set(drivers.map(d => d.id)) : new Set());
+  };
+
+  const togglePay = (id: number) => {
+    setPaySelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const submitPay = async () => {
+    if (!showPayModal || paySelected.size === 0) {
+      toast('Vui lòng chọn ít nhất 1 lái xe', 'error');
+      return;
+    }
+    setSavingPay(true);
+    try {
+      const driverIds = [...paySelected];
+      const payload = { driverIds, month: payMonth, year: payYear };
+      if (showPayModal === 'fixed') {
+        const res = await salaryApi.payFixedSalary(payload);
+        toast(res.data?.message || `Đã thanh toán lương cứng cho ${driverIds.length} lái xe`, 'success');
+      } else {
+        const res = await salaryApi.payTotalSalary(payload);
+        toast(res.data?.message || `Đã thanh toán tổng lương cho ${driverIds.length} lái xe`, 'success');
+      }
+      setShowPayModal(null);
+      setPaySelected(new Set());
+      loadData(true);
+    } catch (e: any) {
+      toast(e?.response?.data?.message || e?.message || 'Thanh toán thất bại', 'error');
+    } finally {
+      setSavingPay(false);
     }
   };
 
@@ -620,10 +671,26 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
             className="px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">
             🔄 Làm mới
           </button>
-          <button onClick={exportExcel} disabled={exporting}
-            className="px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-[0_4px_15px_rgba(16,185,129,0.3)] disabled:opacity-50 cursor-pointer">
-            {exporting ? '⏳ Đang xuất...' : '📥 Xuất Excel'}
-          </button>
+        </div>
+
+        {/* 2 nửa: nửa trái = Xuất Excel, nửa phải = 2 nút thanh toán */}
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-[rgba(0,0,0,0.06)] pt-4">
+          <div className="flex items-center gap-2">
+            <button onClick={exportExcel} disabled={exporting}
+              className="px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-[0_4px_15px_rgba(16,185,129,0.3)] disabled:opacity-50 cursor-pointer">
+              {exporting ? '⏳ Đang xuất...' : '📥 Xuất Excel'}
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => openPayModal('fixed')}
+              className="px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] cursor-pointer">
+              💰 Thanh Toán Lương Cứng
+            </button>
+            <button onClick={() => openPayModal('total')}
+              className="px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.35)] cursor-pointer">
+              💵 Thanh Toán Tổng
+            </button>
+          </div>
         </div>
 
         {/* Chọn lái xe + nhập liệu */}
@@ -951,6 +1018,72 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           </div>
         )}
       </div>
+
+      {/* Modal Thanh Toán Lương Cứng / Thanh Toán Tổng */}
+      {showPayModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowPayModal(null)}>
+          <div className="bg-[#ffffff] rounded-xl shadow-2xl w-full max-w-xl p-5 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold">{showPayModal === 'fixed' ? '💰 Thanh Toán Lương Cứng' : '💵 Thanh Toán Tổng'}</h3>
+              <button onClick={() => setShowPayModal(null)} className="text-xl text-[#64748b] hover:text-[#0f172a] cursor-pointer">×</button>
+            </div>
+
+            {/* Ô chọn tháng/năm */}
+            <div className="flex flex-wrap gap-3 items-end mb-4">
+              <div>
+                <label className={labelCls}>Tháng</label>
+                <select value={payMonth} onChange={e => setPayMonth(Number(e.target.value))}
+                  className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                    <option key={m} value={m}>{MONTHS_VI[m]}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Năm</label>
+                <select value={payYear} onChange={e => setPayYear(Number(e.target.value))}
+                  className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
+                  {Array.from({ length: 5 }, (_, i) => vnNow.year - 2 + i).map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Chọn tất cả */}
+            <div className="mb-3 flex items-center justify-between">
+              <label className="flex items-center gap-2 text-sm font-medium text-[#0f172a] cursor-pointer">
+                <input type="checkbox" checked={drivers.length > 0 && paySelected.size === drivers.length} onChange={e => toggleAllPay(e.target.checked)} className="w-4 h-4 accent-[#1a56db]" />
+                Chọn tất cả ({drivers.length})
+              </label>
+              <button onClick={() => setPaySelected(new Set())} className="text-[11px] text-[#1a56db] hover:underline cursor-pointer">Bỏ chọn</button>
+            </div>
+
+            {/* Danh sách lái xe */}
+            <div className="max-h-[40vh] overflow-y-auto border border-[rgba(0,0,0,0.06)] rounded-lg divide-y divide-[rgba(0,0,0,0.04)]">
+              {drivers.map(d => (
+                <label key={d.id} className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-[#f8fafc] text-sm">
+                  <input type="checkbox" checked={paySelected.has(d.id)} onChange={() => togglePay(d.id)} className="w-4 h-4 accent-[#1a56db]" />
+                  <span className="text-[#0f172a] font-medium">{d.fullName}</span>
+                  {d.soXe && <span className="text-[11px] text-[#94a3b8]">{d.soXe}</span>}
+                </label>
+              ))}
+            </div>
+
+            {/* Nút xác nhận */}
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setShowPayModal(null)}
+                className="px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">
+                Hủy
+              </button>
+              <button onClick={submitPay} disabled={savingPay || paySelected.size === 0}
+                className="px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white shadow-[0_4px_15px_rgba(16,185,129,0.3)] disabled:opacity-50 cursor-pointer">
+                {savingPay ? '⏳ Đang xử lý...' : `Xác nhận thanh toán (${paySelected.size})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal thêm/sửa khoản lương */}
       {showItemModal && (

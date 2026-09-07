@@ -425,7 +425,13 @@ export default function MyDataScreen() {
                 <View style={styles.salaryRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.salaryLabel}>💵 Lương cứng:</Text>
-                    <Text style={styles.salarySubNote}>Ứng trước từ 1-6 {MONTHS_VI[salaryMonth]}/{salaryYear}</Text>
+                    {c?.fixedSalaryPaid ? (
+                      <Text style={[styles.salarySubNote, { color: '#16a34a', fontWeight: '700' }]}>
+                        ✅ Đã thanh toán
+                      </Text>
+                    ) : (
+                      <Text style={styles.salarySubNote}>Ứng trước từ 1-6 {MONTHS_VI[salaryMonth]}/{salaryYear}</Text>
+                    )}
                     {daysOffList.length > 0 && (
                       <Text style={styles.salarySubNote}>
                         Tháng này bạn đã nghỉ ngày: {daysOffList.join(', ')}
@@ -518,6 +524,12 @@ export default function MyDataScreen() {
                   <Text style={styles.salaryTotalLabel}>= Tổng cộng:</Text>
                   <Text style={styles.salaryTotalValue}>{formatMoney(grandTotal)}</Text>
                 </View>
+
+                {c?.salaryPaid ? (
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#16a34a', textAlign: 'center', marginTop: 8 }}>
+                    ✅ Đã Thanh Toán
+                  </Text>
+                ) : null}
               </View>
             )}
           </View>

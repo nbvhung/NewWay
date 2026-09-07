@@ -95,6 +95,23 @@ export class UpdateSalaryRecordDto {
   recordItems?: Record<string, UpdateSalaryRecordItemDto>;
 }
 
+export class PaySalaryDto {
+  @IsArray({ message: 'Danh sách lái xe không hợp lệ' })
+  @ArrayUnique({ message: 'Danh sách lái xe bị trùng' })
+  @IsInt({ each: true, message: 'Mã lái xe phải là số nguyên' })
+  driverIds: number[];
+
+  @Type(() => Number)
+  @IsInt({ message: 'Tháng không hợp lệ' })
+  @Min(1, { message: 'Tháng không hợp lệ' })
+  @Max(12, { message: 'Tháng không hợp lệ' })
+  month: number;
+
+  @Type(() => Number)
+  @IsInt({ message: 'Năm không hợp lệ' })
+  year: number;
+}
+
 export class UpdateSalarySettingsDto {
   @IsOptional()
   @Type(() => Number)

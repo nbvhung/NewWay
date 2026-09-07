@@ -96,6 +96,8 @@ export default function MyDataPage() {
       daysOffNote?: string | null;
       deductions: { name: string; amount: number }[];
       allowances?: { name: string; amount: number }[];
+      fixedSalaryPaid?: boolean;
+      salaryPaid?: boolean;
       advanceDeduct?: number;
       totalRemainingAdvance?: number;
       advanceRemainingAfter?: number;
@@ -609,8 +611,12 @@ export default function MyDataPage() {
                 <div className="flex items-center justify-between text-sm">
                   <div>
                     <span className="text-[#475569]">💵 Lương cứng:</span>
-                    <p className="text-[11px] text-[#94a3b8] mt-0.5">
-                      Ứng trước từ 1-6 tháng {MONTHS_VI[salaryMonth]}/{salaryYear}
+                    <p className="text-[11px] mt-0.5">
+                      {c?.fixedSalaryPaid ? (
+                        <span className="font-bold text-green-600">✅ Đã thanh toán</span>
+                      ) : (
+                        <span className="text-[#94a3b8]">Ứng trước từ 1-6 tháng {MONTHS_VI[salaryMonth]}/{salaryYear}</span>
+                      )}
                     </p>
                     {daysOffList.length > 0 && (
                       <p className="text-[11px] font-bold text-red-600 mt-0.5">
@@ -707,10 +713,14 @@ export default function MyDataPage() {
               </div>
             )}
 
-            <p className="text-xs text-[#64748b] mt-1">
-              📌 Vui lòng kiểm tra số liệu và báo lại cho Huy ( 0985124650 ) trước ngày 5/ {viewMonth === 12 ? 1 : viewMonth + 1}.{' '}
-              Quá thời hạn trên, công ty mặc định số liệu đúng và tiến hành chi trả lương.
-            </p>
+            {c?.salaryPaid ? (
+              <p className="text-xs font-bold text-green-600 mt-1">✅ Đã Thanh Toán</p>
+            ) : (
+              <p className="text-xs text-[#64748b] mt-1">
+                📌 Vui lòng kiểm tra số liệu và báo lại cho Huy ( 0985124650 ) trước ngày 5/ {viewMonth === 12 ? 1 : viewMonth + 1}.{' '}
+                Quá thời hạn trên, công ty mặc định số liệu đúng và tiến hành chi trả lương.
+              </p>
+            )}
           </div>
         </div>
         );

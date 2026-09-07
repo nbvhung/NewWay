@@ -129,6 +129,18 @@ export class SalaryRecord {
   @Column({ name: 'days_off_note', type: 'text', nullable: true })
   daysOffNote: string | null;
 
+  @Column({ name: 'fixed_salary_paid', type: 'boolean', default: false })
+  fixedSalaryPaid: boolean;
+
+  @Column({ name: 'fixed_salary_paid_at', type: 'timestamp', nullable: true })
+  fixedSalaryPaidAt: Date | null;
+
+  @Column({ name: 'salary_paid', type: 'boolean', default: false })
+  salaryPaid: boolean;
+
+  @Column({ name: 'salary_paid_at', type: 'timestamp', nullable: true })
+  salaryPaidAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

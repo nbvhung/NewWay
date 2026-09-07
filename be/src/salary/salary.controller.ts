@@ -13,6 +13,7 @@ import { SalaryService } from './salary.service';
 import {
   UpdateSalaryRecordDto,
   UpdateSalarySettingsDto,
+  PaySalaryDto,
 } from './dto/update-salary.dto';
 import {
   CreateSalaryItemDto,
@@ -94,6 +95,30 @@ export class SalaryController {
   async resetAdvanceDeduct(@Param('id') id: string) {
     const record = await this.salaryService.resetAdvanceDeductAuto(+id);
     return { data: record };
+  }
+
+  // ── Thanh toán lương ──
+
+  @Post('fixed-salary/pay')
+  @Roles('hr', 'admin', 'supper_admin')
+  async payFixedSalary(@Body() dto: PaySalaryDto) {
+    const count = await this.salaryService.payFixedSalary(
+      dto.driverIds,
+      dto.month,
+      dto.year,
+    );
+    return { message: `Đã thanh toán lương cứng cho ${count} lái xe`, count };
+  }
+
+  @Post('total/pay')
+  @Roles('hr', 'admin', 'supper_admin')
+  async payTotalSalary(@Body() dto: PaySalaryDto) {
+    const count = await this.salaryService.payTotalSalary(
+      dto.driverIds,
+      dto.month,
+      dto.year,
+    );
+    return { message: `Đã thanh toán tổng lương cho ${count} lái xe`, count };
   }
 
   // ── Advance (Tạm ứng) ──

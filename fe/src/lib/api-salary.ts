@@ -29,6 +29,14 @@ export const salaryApi = {
   resetAdvanceDeduct: (id: number) =>
     api.put(`/admin/salary/records/${id}/reset-advance`),
 
+  // ── Thanh toán lương ──
+
+  payFixedSalary: (data: { driverIds: number[]; month: number; year: number }) =>
+    api.post<{ message: string; count: number }>('/admin/salary/fixed-salary/pay', data),
+
+  payTotalSalary: (data: { driverIds: number[]; month: number; year: number }) =>
+    api.post<{ message: string; count: number }>('/admin/salary/total/pay', data),
+
   // ── Advance (Tạm ứng) ──
 
   getAdvances: (driverId: number) =>

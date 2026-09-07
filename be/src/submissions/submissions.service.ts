@@ -308,7 +308,7 @@ export class SubmissionsService {
     const components = salaryComp.components.get(userId) || {
       fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0,
       allowanceOldCar: 0, parkingHph2: 0, hasParkingHph2: false, ngayCong: 0,
-      daysOffList: [], daysOffNote: null, bhxh: 0, chiHo: 0, deductions: [], allowances: [],
+      daysOffList: [], daysOffNote: null, bhxh: 0, chiHo: 0, deductions: [], allowances: [], fixedSalaryPaid: false, salaryPaid: false,
     };
 
     return { totalSalary, totalTip, count, month, year, details, components };
@@ -365,6 +365,8 @@ export class SubmissionsService {
       daysOffNote: string | null; // ghi chú ngày nghỉ (nhập tay bởi HR)
       bhxh: number;           // tiền BHXH phải đóng
       chiHo: number;          // chi hộ
+      fixedSalaryPaid: boolean; // lương cứng đã thanh toán chưa
+      salaryPaid: boolean;      // toàn bộ lương tháng đã thanh toán chưa
       deductions: { name: string; amount: number }[]; // các khoản khấu trừ khác
       allowances: { name: string; amount: number }[]; // các khoản phụ cấp động (kind='add')
     }>();
@@ -450,6 +452,8 @@ export class SubmissionsService {
         chiHo,
         deductions,
         allowances,
+        fixedSalaryPaid: rec?.fixedSalaryPaid || false,
+        salaryPaid: rec?.salaryPaid || false,
       });
     }
 

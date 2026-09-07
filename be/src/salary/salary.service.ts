@@ -490,6 +490,8 @@ export class SalaryService {
         recordItems: driverItemValues,
         daysOff: record.daysOff || [],
         daysOffNote: record.daysOffNote || null,
+        fixedSalaryPaid: record.fixedSalaryPaid || false,
+        salaryPaid: record.salaryPaid || false,
         luongKhoan,
         tip,
         total,
@@ -567,5 +569,65 @@ export class SalaryService {
     record.advanceDeduct = auto;
     record.advanceDeductOverridden = false;
     return this.recordsRepository.save(record);
+  }
+
+  /**
+   * Đánh dấu LƯƠNG CỨNG đã thanh toán cho các lái xe trong tháng.
+   */
+  async payFixedSalary(
+    driverIds: number[],
+    month: number,
+    year: number,
+  ): Promise<number> {
+    const settings = await this.getSettings();
+    let count = 0;
+    for (const driverId of driverIds) {
+      const user = await this.usersRepository.findOne({ where: { id: driverId } });
+      if (!user || user.role !== 'laixe') continue;
+      const record = await this.getOrCreateRecord(
+        driverId,
+        month,
+        year,
+        settings,
+        user,
+      );
+      if (!record.fixedSalaryPaid) {
+        record.fixedSalaryPaid = true;
+        record.fixedSalaryPaidAt = new Date();
+        await this.recordsRepository.save(record);
+      }
+      count++;
+    }
+    return count;
+  }
+
+  /**
+   * Đánh dấu TOÀN BỘ LƯƠNG THÁNG đã thanh toán cho các lái xe.
+   */
+  async payTotalSalary(
+    driverIds: number[],
+    month: number,
+    year: number,
+  ): Promise<number> {
+    const settings = await this.getSettings();
+    let count = 0;
+    for (const driverId of driverIds) {
+      const user = await this.usersRepository.findOne({ where: { id: driverId } });
+      if (!user || user.role !== 'laixe') continue;
+      const record = await this.getOrCreateRecord(
+        driverId,
+        month,
+        year,
+        settings,
+        user,
+      );
+      if (!record.salaryPaid) {
+        record.salaryPaid = true;
+        record.salaryPaidAt = new Date();
+        await this.recordsRepository.save(record);
+      }
+      count++;
+    }
+    return count;
   }
 }
