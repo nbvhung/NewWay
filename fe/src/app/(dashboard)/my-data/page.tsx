@@ -715,12 +715,22 @@ export default function MyDataPage() {
 
             {c?.salaryPaid ? (
               <p className="text-xs font-bold text-green-600 mt-1">✅ Đã Thanh Toán</p>
-            ) : (
-              <p className="text-xs text-[#64748b] mt-1">
-                📌 Vui lòng kiểm tra số liệu và báo lại cho Huy ( 0985124650 ) trước ngày 5/ {viewMonth === 12 ? 1 : viewMonth + 1}.{' '}
-                Quá thời hạn trên, công ty mặc định số liệu đúng và tiến hành chi trả lương.
-              </p>
-            )}
+            ) : (() => {
+              const confirmMonth = salaryMonth === 12 ? 1 : salaryMonth + 1;
+              const confirmYear = salaryMonth === 12 ? salaryYear + 1 : salaryYear;
+              const closed =
+                now.getTime() >= new Date(confirmYear, confirmMonth - 1, 6).getTime();
+              return closed ? (
+                <p className="text-xs text-[#64748b] mt-1">
+                  Dữ liệu đã được chốt. Lương sẽ được chi trả theo số liệu trên.
+                </p>
+              ) : (
+                <p className="text-xs text-[#64748b] mt-1">
+                  📌 Vui lòng kiểm tra số liệu và báo lại cho Huy ( 0985124650 ) trước ngày 5/ {confirmMonth}.{' '}
+                  Quá thời hạn trên, công ty mặc định số liệu đúng và tiến hành chi trả lương.
+                </p>
+              );
+            })()}
           </div>
         </div>
         );
