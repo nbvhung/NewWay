@@ -5,8 +5,10 @@ dist/
 .env.local
 .env.development
 .env.production
+.env.aitest
 *.log
 *.out
+*.err
 .DS_Store
 Thumbs.db
 package-lock.json

@@ -6,6 +6,7 @@ import { ZaloApiService } from './zalo-api.service';
 import { ZaloSttService } from './zalo-stt.service';
 import { ZaloSessionService } from './zalo-session.service';
 import { ZaloQueueService } from './zalo-queue.service';
+import { ZaloAiService } from './zalo-ai.service';
 import { ZaloPollingService } from './zalo-polling.service';
 import { ZaloWebhookService } from './zalo-webhook.service';
 import { ZaloOpsNotifierService } from './zalo-ops-notifier.service';
@@ -37,6 +38,7 @@ import { Route } from '../database/entities/route.entity';
   providers: [
     ZaloBotService,
     ZaloApiService,
+    ZaloAiService,
     ZaloSttService,
     ZaloSessionService,
     ZaloQueueService,

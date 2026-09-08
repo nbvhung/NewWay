@@ -149,6 +149,9 @@ export class ZaloBotController {
       botConfigured: !!process.env.ZALO_BOT_TOKEN,
       bot2Configured: !!process.env.ZALO_BOT_TOKEN_2,
       sttConfigured: !!process.env.OPENAI_API_KEY,
+      aiEnabled: process.env.ZALO_AI_ENABLED === 'true',
+      aiConfigured: !!process.env.GEMINI_API_KEY,
+      aiModel: process.env.GEMINI_MODEL || 'gemini-2.5-pro',
     };
   }
 }

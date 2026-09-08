@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ZaloApiService } from './zalo-api.service';
+import { ZaloAiService } from './zalo-ai.service';
 import { ZaloSttService } from './zalo-stt.service';
 import { ZaloSessionService } from './zalo-session.service';
 import { RedisService } from '../redis/redis.service';
@@ -65,6 +66,7 @@ export class ZaloBotService {
 
   constructor(
     private zaloApi: ZaloApiService,
+    private zaloAi: ZaloAiService,
     private zaloStt: ZaloSttService,
     private sessionService: ZaloSessionService,
     private redis: RedisService,
@@ -266,6 +268,19 @@ export class ZaloBotService {
   ): Promise<void> {
     const text = (rawText || '').trim();
     if (!text) return;
+
+    // Chế độ AI-first (chỉ bật ở instance test: ZALO_AI_ENABLED=true + GEMINI_API_KEY):
+    // mọi tin nhắn tự do đều do Gemini trả lời, lệnh bắt đầu bằng "/" giữ nguyên.
+    if (this.zaloAi.enabled && !text.startsWith('/')) {
+      const aiText = await this.zaloAi.ask(text);
+      await this.reply(
+        chatId,
+        zaloUserId,
+        aiText ||
+          'Em chưa trả lời được lúc này, Sếp thử lại sau giúp em nhé. 😅',
+      );
+      return;
+    }
 
     const lower = text.toLowerCase();
     const normalized = lower
