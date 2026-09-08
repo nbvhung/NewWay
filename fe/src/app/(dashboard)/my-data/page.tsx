@@ -697,8 +697,8 @@ export default function MyDataPage() {
                     <div>
                       <span className="text-[#475569]">💸 Trả nợ tạm ứng:</span>
                       <p className="text-[11px] text-amber-500 mt-0.5">
-                        Dư nợ trước tháng này: {formatMoney(totalRemainingAdvance)} ₫
-                        {' → '}còn lại: <strong>{formatMoney(advanceRemainingAfter)} ₫</strong>
+                        Dư nợ trước tháng này: {formatMoney(totalRemainingAdvance)}
+                        {' → '}còn lại: <strong>{formatMoney(advanceRemainingAfter)}</strong>
                         {advanceRemainingAfter === 0 && <span className="ml-1 text-green-600">✅ Đã trả hết</span>}
                       </p>
                     </div>
@@ -722,7 +722,7 @@ export default function MyDataPage() {
                 now.getTime() >= new Date(confirmYear, confirmMonth - 1, 6).getTime();
               return closed ? (
                 <p className="text-xs text-[#64748b] mt-1">
-                  Dữ liệu đã được chốt. Lương sẽ được chi trả theo số liệu trên.
+                  Cám ơn Sếp, Công Ty sẽ tiến hành chi lương như số liệu đã chốt bên trên.
                 </p>
               ) : (
                 <p className="text-xs text-[#64748b] mt-1">
