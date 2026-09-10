@@ -18,6 +18,7 @@ import { ContainerImportService } from './container-import.service';
 import { ImportContainerDto } from './dto/import-container.dto';
 import { ClassifyContainerDto } from './dto/classify-container.dto';
 import { SingleContainerDto } from './dto/single-container.dto';
+import { ClaimRemainingDto } from './dto/claim-remaining.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -76,6 +77,15 @@ export class ContainerImportController {
   @Get()
   findAll(@Query('planId') planId?: string) {
     return this.containerImportService.findAll(planId ? +planId : undefined);
+  }
+
+  @Post('claim-remaining')
+  @Roles('admin', 'supper_admin')
+  claimRemaining(@Body() body: ClaimRemainingDto) {
+    return this.containerImportService.claimRemainingForDriver(
+      body.planId,
+      body.driverId,
+    );
   }
 
   @Patch(':id/classify')

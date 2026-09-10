@@ -686,6 +686,163 @@ export class ContainerImportService {
   }
 
   /**
+   * Ghi nhận toàn bộ container chưa có người chạy (submission_id IS NULL) của 1 kế hoạch
+   * cho 1 lái xe — kết quả giống hệt như lái xe tự nhắn bot ghi nhận từng container
+   * (upsert submission + claim + container_claims). Bỏ qua container phát sinh chưa phân loại.
+   */
+  async claimRemainingForDriver(
+    planId: number,
+    driverId: number,
+  ): Promise<{
+    message: string;
+    claimed: number;
+    containers: string[];
+    totals: Record<string, string>;
+    submissionId: number | null;
+  }> {
+    const plan = await this.shippingLinesRepository.findOne({
+      where: { id: planId },
+    });
+    if (!plan) {
+      throw new NotFoundException('Không tìm thấy kế hoạch');
+    }
+    if (plan.completed) {
+      throw new BadRequestException(
+        'Kế hoạch đã hoàn thành, không thể ghi nhận thêm.',
+      );
+    }
+
+    const driver = await this.usersRepository.findOne({
+      where: { id: driverId },
+    });
+    if (!driver || driver.role !== 'laixe') {
+      throw new BadRequestException('Lái xe không hợp lệ');
+    }
+
+    const unclaimed = await this.containerImportsRepository.find({
+      where: { shippingLineId: planId, submissionId: IsNull() },
+      order: { id: 'ASC' },
+    });
+    const pending = unclaimed.filter((c) => !c.phatSinh);
+
+    if (pending.length === 0) {
+      return {
+        message: 'Kế hoạch này không còn container nào chưa ghi nhận.',
+        claimed: 0,
+        containers: [],
+        totals: {},
+        submissionId: null,
+      };
+    }
+
+    // Gom thành đơn vị ghi nhận: bó FR (V20FR/V40FR) = 1 bó, container lẻ = 1 cái.
+    const FR_BUNDLE_TYPES = new Set(['V20FR', 'V40FR']);
+    const bundleGroups = new Map<string, ContainerImport[]>();
+    const singles: ContainerImport[] = [];
+    for (const c of pending) {
+      if (c.bundleId && FR_BUNDLE_TYPES.has(c.type)) {
+        if (!bundleGroups.has(c.bundleId)) bundleGroups.set(c.bundleId, []);
+        bundleGroups.get(c.bundleId)!.push(c);
+      } else {
+        singles.push(c);
+      }
+    }
+
+    const totalsMap = new Map<string, number>();
+    const claimedIds: number[] = [];
+    const claimedCodes: string[] = [];
+    const addTotal = (type: string, count: number) => {
+      const field = TYPE_FIELD_MAP[type];
+      if (!field) return;
+      totalsMap.set(field, (totalsMap.get(field) || 0) + count);
+    };
+
+    for (const c of singles) {
+      addTotal(c.type, 1);
+      claimedCodes.push(c.containerCode);
+      claimedIds.push(c.id);
+    }
+    for (const members of bundleGroups.values()) {
+      addTotal(members[0].type, members.length);
+      for (const m of members) {
+        claimedCodes.push(m.containerCode);
+        claimedIds.push(m.id);
+      }
+    }
+
+    let submission = await this.submissionsRepository.findOne({
+      where: { userId: driverId, shippingLineId: planId },
+    });
+
+    const changes: Record<string, { old: string; new: string }> = {};
+    if (!submission) {
+      submission = this.submissionsRepository.create({
+        userId: driverId,
+        shippingLine: plan.name,
+        shippingLineId: planId,
+        route: plan.routeName || '',
+        driverName: driver.fullName,
+      });
+      for (const [field, total] of totalsMap) {
+        (submission as any)[field] = String(total);
+      }
+      await this.submissionsRepository.save(submission);
+    } else {
+      for (const [field, total] of totalsMap) {
+        const oldVal = String((submission as any)[field] || '');
+        const newVal = String((parseInt(oldVal, 10) || 0) + total);
+        (submission as any)[field] = newVal;
+        changes[field] = { old: oldVal, new: newVal };
+      }
+      if (Object.keys(changes).length > 0) {
+        submission.editCount += 1;
+        submission.lastEditedAt = new Date();
+        await this.submissionsRepository.save(submission);
+        const history = this.editHistoryRepository.create({
+          submissionId: submission.id,
+          editedById: driverId,
+          editedByName: driver.fullName,
+          changes: JSON.stringify(changes),
+        });
+        await this.editHistoryRepository.save(history);
+      }
+    }
+
+    // Claim container + ghi container_claims (CLAIM) — không ghi đè container đã có người chạy
+    for (const id of singles.map((c) => c.id)) {
+      await this.claim(id, submission.id);
+    }
+    for (const bundleId of bundleGroups.keys()) {
+      await this.claimBundle(bundleId, planId, submission.id);
+    }
+    await this.recordClaims(claimedIds, submission.id, 'CLAIM');
+
+    const LABEL_MAP: Record<string, string> = {
+      hang20: 'Hàng 20',
+      hang40: 'Hàng 40',
+      vo20: 'Vỏ 20',
+      vo40: 'Vỏ 40',
+      vo20fr: 'Vỏ 20FR',
+      vo40fr: 'Vỏ 40FR',
+      veSinhLai: 'Vệ sinh lại',
+      keoVe: 'Kéo Về',
+      tip: 'TIP',
+    };
+    const totals: Record<string, string> = {};
+    for (const [field, total] of totalsMap) {
+      totals[LABEL_MAP[field] || field] = String(total);
+    }
+
+    return {
+      message: `Đã ghi nhận ${claimedIds.length} container cho ${driver.fullName}.`,
+      claimed: claimedIds.length,
+      containers: claimedCodes,
+      totals,
+      submissionId: submission.id,
+    };
+  }
+
+  /**
    * Lấy danh sách xác nhận (container_claims) cho danh sách container.
    */
   async findClaimsByContainerIds(

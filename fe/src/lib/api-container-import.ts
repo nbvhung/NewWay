@@ -90,4 +90,13 @@ export const containerImportApi = {
       `/admin/container-import/${id}/classify`,
       { type },
     ),
+
+  claimRemaining: (planId: number, driverId: number) =>
+    api.post<{
+      message: string;
+      claimed: number;
+      containers: string[];
+      totals: Record<string, string>;
+      submissionId: number | null;
+    }>('/admin/container-import/claim-remaining', { planId, driverId }),
 };
