@@ -141,7 +141,7 @@ export default function AdminPage() {
         <MonthlyPlansTab user={user} />
       )}
       {activeTab === 'container-codes' && (
-        <ContainerCodesTab allShippingLines={allShippingLines} toast={toast} />
+        <ContainerCodesTab user={user} allUsers={allUsers} allShippingLines={allShippingLines} toast={toast} />
       )}
       {activeTab === 'completed-plans' && (
         <CompletedPlansTab user={user} onRefresh={loadShippingLines} />

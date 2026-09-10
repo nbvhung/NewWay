@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { ShippingLine, Route, User } from '@/types';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { submissionsApi } from '@/lib/api-submissions';
-import { containerImportApi } from '@/lib/api-container-import';
 import { fmtNgay } from '@/lib/utils';
 import { Modal } from '@/components/ui/modal';
 import { Pagination } from '@/components/ui/pagination';
@@ -53,11 +52,6 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
   const [editLeTet, setEditLeTet] = useState(false);
   const [editDriverIds, setEditDriverIds] = useState<number[]>([]);
   const [editAllDrivers, setEditAllDrivers] = useState(true);
-  const [claimOpen, setClaimOpen] = useState(false);
-  const [claimPlan, setClaimPlan] = useState<ShippingLine | null>(null);
-  const [claimDriverId, setClaimDriverId] = useState('');
-  const [claiming, setClaiming] = useState(false);
-  const [claimResult, setClaimResult] = useState<{ message: string; claimed: number; containers: string[]; totals: Record<string, string> } | null>(null);
   const [saving, setSaving] = useState(false);
   const [routeTypeFilter, setRouteTypeFilter] = useState('Tất cả');
   const [editRouteTypeFilter, setEditRouteTypeFilter] = useState('Tất cả');
@@ -200,36 +194,6 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
     } catch (err: any) { toast(err.message, 'error'); }
   };
 
-  const openClaim = (p: ShippingLine) => {
-    setClaimPlan(p);
-    setClaimDriverId('');
-    setClaimResult(null);
-    setClaimOpen(true);
-  };
-
-  const runClaim = async () => {
-    if (!claimPlan) return;
-    if (!claimDriverId) { toast('Vui lòng chọn lái xe', 'error'); return; }
-    if (!confirm(`Ghi nhận toàn bộ container chưa có người chạy của "${planDisplayName(claimPlan)}" cho lái xe đã chọn?`)) return;
-    setClaiming(true);
-    setClaimResult(null);
-    try {
-      const res = await containerImportApi.claimRemaining(claimPlan.id, Number(claimDriverId));
-      setClaimResult({
-        message: res.data.message,
-        claimed: res.data.claimed,
-        containers: res.data.containers,
-        totals: res.data.totals,
-      });
-      toast(res.data.message, 'success');
-      onRefresh();
-    } catch (err: any) {
-      toast(err?.response?.data?.message || err?.message || 'Ghi nhận thất bại', 'error');
-    } finally {
-      setClaiming(false);
-    }
-  };
-
   const planDisplayName = (p: ShippingLine) => {
     return [p.name, p.soChuyen, p.routeName, fmtNgay(p.ngay)].filter(Boolean).join(' / ');
   };
@@ -280,11 +244,6 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => openEdit(p)}
                     className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️</button>
-                  {user?.role === 'admin' || user?.role === 'supper_admin' ? (
-                    <button onClick={() => openClaim(p)}
-                      title="Ghi container còn lại cho lái xe (chỉ admin)"
-                      className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#06b6d4] to-[#0891b2] text-white cursor-pointer">📥</button>
-                  ) : null}
                   {user?.role === 'ops' || user?.role === 'admin' || user?.role === 'supper_admin' ? (
                     <button onClick={() => completePlan(p.id, display)}
                       className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white cursor-pointer">✅</button>
@@ -482,59 +441,6 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
             <input type="number" min="0" value={totalShipForm.tip} onChange={e => setTotalShipForm(f => ({ ...f, tip: e.target.value }))} placeholder="0"
               className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
           </div>
-        </div>
-      </Modal>
-
-      <Modal
-        open={claimOpen}
-        onClose={() => setClaimOpen(false)}
-        title="📥 Ghi container còn lại cho lái xe"
-        footer={
-          <div className="flex gap-2 w-full">
-            <button onClick={() => setClaimOpen(false)}
-              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">
-              Đóng
-            </button>
-            <button onClick={runClaim} disabled={claiming || !claimDriverId}
-              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#06b6d4] to-[#0891b2] text-white shadow-[0_4px_15px_rgba(6,182,212,0.3)] disabled:opacity-50 cursor-pointer">
-              {claiming ? 'Đang ghi...' : '📥 Ghi nhận'}
-            </button>
-          </div>
-        }
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Kế hoạch</label>
-            <div className="px-3.5 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a]">
-              {claimPlan ? planDisplayName(claimPlan) : '—'}
-            </div>
-            <p className="text-[10px] text-[#64748b] mt-1">Hệ thống sẽ ghi toàn bộ container chưa có người chạy của kế hoạch này, giống hệt lái xe tự nhắn bot ghi nhận.</p>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Lái xe <span className="text-[#ef4444]">*</span></label>
-            <select value={claimDriverId} onChange={e => setClaimDriverId(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
-              <option value="">-- Chọn lái xe --</option>
-              {drivers.map(d => (
-                <option key={d.id} value={d.id}>{d.fullName || d.username}{d.soXe ? ` - ${d.soXe}` : ''}{d.stt ? ` (STT ${d.stt})` : ''}</option>
-              ))}
-            </select>
-          </div>
-          {claimResult && (
-            <div className="px-4 py-3 rounded-lg bg-[rgba(6,182,212,0.1)] border border-[rgba(6,182,212,0.3)]">
-              <div className="text-sm font-bold text-[#0e7490]">{claimResult.message}</div>
-              {claimResult.claimed > 0 && (
-                <>
-                  <div className="text-xs text-[#155e75] mt-1.5 font-medium">
-                    {Object.entries(claimResult.totals).map(([k, v]) => `${k}: ${v}`).join(' · ')}
-                  </div>
-                  <div className="text-[10px] text-[#155e75] mt-1 break-all">
-                    {claimResult.containers.join(', ')}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
         </div>
       </Modal>
 

@@ -19,6 +19,7 @@ import { ImportContainerDto } from './dto/import-container.dto';
 import { ClassifyContainerDto } from './dto/classify-container.dto';
 import { SingleContainerDto } from './dto/single-container.dto';
 import { ClaimRemainingDto } from './dto/claim-remaining.dto';
+import { ClaimOneDto } from './dto/claim-one.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -84,6 +85,15 @@ export class ContainerImportController {
   claimRemaining(@Body() body: ClaimRemainingDto) {
     return this.containerImportService.claimRemainingForDriver(
       body.planId,
+      body.driverId,
+    );
+  }
+
+  @Post('claim-one')
+  @Roles('admin', 'supper_admin')
+  claimOne(@Body() body: ClaimOneDto) {
+    return this.containerImportService.claimContainerForDriver(
+      body.containerImportId,
       body.driverId,
     );
   }

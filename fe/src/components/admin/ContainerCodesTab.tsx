@@ -1,12 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ShippingLine } from '@/types';
+import { ShippingLine, User } from '@/types';
 import { fmtNgay, fmtDateTime } from '@/lib/utils';
 import { containerImportApi, ContainerImport, ContainerSearchResult } from '@/lib/api-container-import';
 
 interface Props {
   allShippingLines: ShippingLine[];
+  user?: any;
+  allUsers?: User[];
   toast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
@@ -40,12 +42,14 @@ const renderClaimTags = (r: { hasVsl?: boolean; hasKv?: boolean; hasKd2?: boolea
   </>
 );
 
-export function ContainerCodesTab({ allShippingLines, toast }: Props) {
+export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ContainerSearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [classifyingId, setClassifyingId] = useState<number | null>(null);
   const [classifyTypes, setClassifyTypes] = useState<Record<number, string>>({});
+  const [claimDriverId, setClaimDriverId] = useState('');
+  const [claimingId, setClaimingId] = useState<number | null>(null);
 
   const [planId, setPlanId] = useState<number | ''>('');
   const [items, setItems] = useState<ContainerImport[]>([]);
@@ -210,6 +214,31 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
     });
     return ['Tất cả', ...Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'))];
   }, [items]);
+
+  const laixeDrivers = useMemo(
+    () => (allUsers || [])
+      .filter(u => u.role === 'laixe')
+      .sort((a, b) => (parseInt(a.stt) || 999999) - (parseInt(b.stt) || 999999)),
+    [allUsers],
+  );
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'supper_admin';
+
+  const claimOne = async (item: ContainerImport) => {
+    if (!claimDriverId) { toast('Vui lòng chọn lái xe để ghi nhận', 'error'); return; }
+    const driverName = laixeDrivers.find(d => d.id === Number(claimDriverId))?.fullName || '';
+    if (!confirm(`Ghi nhận container ${item.containerCode} (${item.type})${item.bundleId ? ` - bó ${item.bundleId}` : ''} cho lái xe ${driverName}?\nGiống như lái xe tự nhắn bot ghi nhận.`)) return;
+    setClaimingId(item.id);
+    try {
+      const res = await containerImportApi.claimOne(item.id, Number(claimDriverId));
+      toast(res.data.message, 'success');
+      if (selectedPlan) await load(selectedPlan.id);
+    } catch (err: any) {
+      toast(err?.response?.data?.message || err?.message || 'Ghi nhận thất bại', 'error');
+    } finally {
+      setClaimingId(null);
+    }
+  };
 
   const filtered = useMemo(() => {
     let list = items;
@@ -392,9 +421,23 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
                   className="px-2 py-2 rounded-lg text-xs border border-[rgba(0,0,0,0.1)] text-[#0f172a] outline-none cursor-pointer">
                   {drivers.map(d => <option key={d} value={d}>{d === 'Tất cả' ? '🚚 Tất cả lái xe' : d}</option>)}
                 </select>
+                {isAdmin && (
+                  <select value={claimDriverId} onChange={e => setClaimDriverId(e.target.value)}
+                    className="px-2 py-2 rounded-lg text-xs border border-[rgba(6,182,212,0.4)] text-[#0f172a] outline-none cursor-pointer bg-[rgba(6,182,212,0.05)]">
+                    <option value="">📝 Ghi nhận cho lái xe...</option>
+                    {laixeDrivers.map(d => (
+                      <option key={d.id} value={d.id}>{d.fullName || d.username}{d.soXe ? ` - ${d.soXe}` : ''}{d.stt ? ` (STT ${d.stt})` : ''}</option>
+                    ))}
+                  </select>
+                )}
                 <input type="text" value={listSearch} onChange={e => setListSearch(e.target.value)}
                   placeholder="🔍 Tìm trong danh sách..." className={`${inputCls} flex-1`} />
               </div>
+              {isAdmin && (
+                <p className="text-[10px] text-[#64748b] mb-2">
+                  Chọn lái xe ở trên rồi bấm <span className="font-bold text-[#0891b2]">📝 Ghi</span> ở từng mã container chưa ghi để ghi nhận cho lái xe đó (chỉ admin).
+                </p>
+              )}
               <div className="border border-[rgba(0,0,0,0.08)] rounded-lg overflow-hidden">
                 <table className="w-full text-xs border-collapse">
                   <thead>
@@ -447,6 +490,12 @@ export function ContainerCodesTab({ allShippingLines, toast }: Props) {
                               <button onClick={() => approveItem(item)} disabled={classifyingId === item.id || isLocked}
                                 className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#059669] to-[#10b981] text-white disabled:opacity-40 cursor-pointer">
                                 {classifyingId === item.id ? 'Đang...' : '✅ Phê duyệt'}
+                              </button>
+                            )}
+                            {!item.submissionId && !item.phatSinh && !isLocked && isAdmin && (
+                              <button onClick={() => claimOne(item)} disabled={claimingId === item.id || !claimDriverId}
+                                className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#06b6d4] to-[#0891b2] text-white disabled:opacity-40 cursor-pointer">
+                                {claimingId === item.id ? 'Đang ghi...' : '📝 Ghi'}
                               </button>
                             )}
                             <button onClick={() => removeOne(item)} disabled={isLocked}

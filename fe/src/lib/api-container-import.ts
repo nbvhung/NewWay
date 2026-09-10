@@ -99,4 +99,13 @@ export const containerImportApi = {
       totals: Record<string, string>;
       submissionId: number | null;
     }>('/admin/container-import/claim-remaining', { planId, driverId }),
+
+  claimOne: (containerImportId: number, driverId: number) =>
+    api.post<{
+      message: string;
+      claimed: number;
+      containers: string[];
+      totals: Record<string, string>;
+      submissionId: number | null;
+    }>('/admin/container-import/claim-one', { containerImportId, driverId }),
 };

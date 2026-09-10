@@ -26,6 +26,13 @@ export interface ImportResult {
   skipped: number;
 }
 
+interface ClaimUnit {
+  type: string;
+  count: number;
+  ids: number[];
+  bundleId?: string;
+}
+
 @Injectable()
 export class ContainerImportService {
   constructor(
@@ -735,51 +742,139 @@ export class ContainerImportService {
       };
     }
 
-    // Gom thành đơn vị ghi nhận: bó FR (V20FR/V40FR) = 1 bó, container lẻ = 1 cái.
-    const FR_BUNDLE_TYPES = new Set(['V20FR', 'V40FR']);
-    const bundleGroups = new Map<string, ContainerImport[]>();
-    const singles: ContainerImport[] = [];
-    for (const c of pending) {
-      if (c.bundleId && FR_BUNDLE_TYPES.has(c.type)) {
-        if (!bundleGroups.has(c.bundleId)) bundleGroups.set(c.bundleId, []);
-        bundleGroups.get(c.bundleId)!.push(c);
-      } else {
-        singles.push(c);
-      }
+    const units = this.buildClaimUnits(pending);
+    const result = await this.applyClaimForDriver(plan, driver, units);
+
+    return {
+      message: `Đã ghi nhận ${result.claimed} container cho ${driver.fullName}.`,
+      claimed: result.claimed,
+      containers: result.containers,
+      totals: result.totals,
+      submissionId: result.submissionId,
+    };
+  }
+
+  /**
+   * Ghi nhận 1 container (hoặc cả bó FR nếu container thuộc bó) cho 1 lái xe —
+   * giống hệt lái xe tự nhắn bot ghi nhận container đó.
+   */
+  async claimContainerForDriver(
+    containerImportId: number,
+    driverId: number,
+  ): Promise<{
+    message: string;
+    claimed: number;
+    containers: string[];
+    totals: Record<string, string>;
+    submissionId: number | null;
+  }> {
+    const container = await this.containerImportsRepository.findOne({
+      where: { id: containerImportId },
+    });
+    if (!container) {
+      throw new NotFoundException('Không tìm thấy container');
+    }
+    if (container.phatSinh) {
+      throw new BadRequestException(
+        'Container phát sinh chưa phân loại, không thể ghi nhận.',
+      );
+    }
+    if (container.submissionId) {
+      throw new BadRequestException(
+        `Container ${container.containerCode} đã được ghi nhận trước đó rồi.`,
+      );
+    }
+    if (!container.shippingLineId) {
+      throw new BadRequestException('Container chưa gắn kế hoạch.');
     }
 
+    const plan = await this.shippingLinesRepository.findOne({
+      where: { id: container.shippingLineId },
+    });
+    if (!plan) {
+      throw new NotFoundException('Không tìm thấy kế hoạch');
+    }
+    if (plan.completed) {
+      throw new BadRequestException(
+        'Kế hoạch đã hoàn thành, không thể ghi nhận thêm.',
+      );
+    }
+
+    const driver = await this.usersRepository.findOne({
+      where: { id: driverId },
+    });
+    if (!driver || driver.role !== 'laixe') {
+      throw new BadRequestException('Lái xe không hợp lệ');
+    }
+
+    const FR_BUNDLE_TYPES = new Set(['V20FR', 'V40FR']);
+    let units: ClaimUnit[];
+    let codes: string[];
+    if (container.bundleId && FR_BUNDLE_TYPES.has(container.type)) {
+      const members = await this.findBundleMembers(
+        container.bundleId,
+        container.shippingLineId,
+      );
+      const pending = members.filter(
+        (m) => !m.submissionId && !m.phatSinh,
+      );
+      if (pending.length === 0) {
+        throw new BadRequestException(
+          `Bó ${container.bundleId} đã được ghi nhận trước đó rồi.`,
+        );
+      }
+      units = [
+        {
+          type: container.type,
+          count: pending.length,
+          ids: pending.map((m) => m.id),
+          bundleId: container.bundleId,
+        },
+      ];
+      codes = pending.map((m) => m.containerCode);
+    } else {
+      units = [{ type: container.type, count: 1, ids: [container.id] }];
+      codes = [container.containerCode];
+    }
+
+    const result = await this.applyClaimForDriver(plan, driver, units);
+    return {
+      message: `Đã ghi nhận ${result.claimed} container cho ${driver.fullName}.`,
+      claimed: result.claimed,
+      containers: result.containers.length > 0 ? result.containers : codes,
+      totals: result.totals,
+      submissionId: result.submissionId,
+    };
+  }
+
+  private async applyClaimForDriver(
+    plan: ShippingLine,
+    driver: User,
+    units: ClaimUnit[],
+  ): Promise<{
+    claimed: number;
+    containers: string[];
+    totals: Record<string, string>;
+    submissionId: number;
+  }> {
     const totalsMap = new Map<string, number>();
     const claimedIds: number[] = [];
-    const claimedCodes: string[] = [];
-    const addTotal = (type: string, count: number) => {
-      const field = TYPE_FIELD_MAP[type];
-      if (!field) return;
-      totalsMap.set(field, (totalsMap.get(field) || 0) + count);
-    };
-
-    for (const c of singles) {
-      addTotal(c.type, 1);
-      claimedCodes.push(c.containerCode);
-      claimedIds.push(c.id);
-    }
-    for (const members of bundleGroups.values()) {
-      addTotal(members[0].type, members.length);
-      for (const m of members) {
-        claimedCodes.push(m.containerCode);
-        claimedIds.push(m.id);
-      }
+    for (const u of units) {
+      const field = TYPE_FIELD_MAP[u.type];
+      if (field) totalsMap.set(field, (totalsMap.get(field) || 0) + u.count);
+      claimedIds.push(...u.ids);
     }
 
     let submission = await this.submissionsRepository.findOne({
-      where: { userId: driverId, shippingLineId: planId },
+      where: { userId: driver.id, shippingLineId: plan.id },
     });
 
     const changes: Record<string, { old: string; new: string }> = {};
     if (!submission) {
       submission = this.submissionsRepository.create({
-        userId: driverId,
+        userId: driver.id,
         shippingLine: plan.name,
-        shippingLineId: planId,
+        shippingLineId: plan.id,
         route: plan.routeName || '',
         driverName: driver.fullName,
       });
@@ -800,7 +895,7 @@ export class ContainerImportService {
         await this.submissionsRepository.save(submission);
         const history = this.editHistoryRepository.create({
           submissionId: submission.id,
-          editedById: driverId,
+          editedById: driver.id,
           editedByName: driver.fullName,
           changes: JSON.stringify(changes),
         });
@@ -809,11 +904,14 @@ export class ContainerImportService {
     }
 
     // Claim container + ghi container_claims (CLAIM) — không ghi đè container đã có người chạy
-    for (const id of singles.map((c) => c.id)) {
-      await this.claim(id, submission.id);
-    }
-    for (const bundleId of bundleGroups.keys()) {
-      await this.claimBundle(bundleId, planId, submission.id);
+    for (const u of units) {
+      if (u.bundleId) {
+        await this.claimBundle(u.bundleId, plan.id, submission.id);
+      } else {
+        for (const id of u.ids) {
+          await this.claim(id, submission.id);
+        }
+      }
     }
     await this.recordClaims(claimedIds, submission.id, 'CLAIM');
 
@@ -834,12 +932,43 @@ export class ContainerImportService {
     }
 
     return {
-      message: `Đã ghi nhận ${claimedIds.length} container cho ${driver.fullName}.`,
       claimed: claimedIds.length,
-      containers: claimedCodes,
+      containers: claimedIds.length > 0
+        ? (await this.containerImportsRepository.find({
+            where: { id: In(claimedIds) },
+          })).map((c) => c.containerCode)
+        : [],
       totals,
       submissionId: submission.id,
     };
+  }
+
+  private buildClaimUnits(pending: ContainerImport[]): ClaimUnit[] {
+    const FR_BUNDLE_TYPES = new Set(['V20FR', 'V40FR']);
+    const bundleGroups = new Map<string, ContainerImport[]>();
+    const singles: ContainerImport[] = [];
+    for (const c of pending) {
+      if (c.bundleId && FR_BUNDLE_TYPES.has(c.type)) {
+        if (!bundleGroups.has(c.bundleId)) bundleGroups.set(c.bundleId, []);
+        bundleGroups.get(c.bundleId)!.push(c);
+      } else {
+        singles.push(c);
+      }
+    }
+
+    const units: ClaimUnit[] = [];
+    for (const c of singles) {
+      units.push({ type: c.type, count: 1, ids: [c.id] });
+    }
+    for (const [bundleId, members] of bundleGroups) {
+      units.push({
+        type: members[0].type,
+        count: members.length,
+        ids: members.map((m) => m.id),
+        bundleId,
+      });
+    }
+    return units;
   }
 
   /**
