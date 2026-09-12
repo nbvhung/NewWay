@@ -45,10 +45,10 @@ export function LockNoticePopup({ open, onClose }: LockNoticePopupProps) {
         </div>
         <div className="px-6 py-6 text-center">
           <div className="text-4xl mb-3">🔒</div>
-          <p className="text-sm font-medium text-[#0f172a] leading-relaxed">
+          <p className="text-sm font-medium text-[#1c1917] leading-relaxed">
             Bạn chỉ có thể nhập liệu qua ZALO, và liên hệ HƯNG để sửa.
           </p>
-          <p className="text-sm font-bold text-[#0f172a] mt-1">SĐT: 082 558 7779</p>
+          <p className="text-sm font-bold text-[#1c1917] mt-1">SĐT: 082 558 7779</p>
         </div>
         <div className="px-6 pb-5">
           <button

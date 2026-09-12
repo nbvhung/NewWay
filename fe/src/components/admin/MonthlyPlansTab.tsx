@@ -89,20 +89,20 @@ export function MonthlyPlansTab({ user }: Props) {
         <StatsCard icon="🚢" value={drivers.length} label="Lái xe" />
       </div>
 
-      <div className="flex flex-wrap gap-2.5 items-end mb-4 p-4 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl">
+      <div className="flex flex-wrap gap-2.5 items-end mb-4 p-4 bg-[#ffffff] border border-[#e7e5e4] rounded-xl">
         <div>
-          <label className="block text-[10px] font-medium text-[#64748b] mb-1">Tháng</label>
+          <label className="block text-[10px] font-medium text-[#78716c] mb-1">Tháng</label>
           <select value={month} onChange={e => setMonth(Number(e.target.value))}
-            className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
+            className="px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]">
             {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
               <option key={m} value={m}>Tháng {m}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="block text-[10px] font-medium text-[#64748b] mb-1">Năm</label>
+          <label className="block text-[10px] font-medium text-[#78716c] mb-1">Năm</label>
           <select value={year} onChange={e => setYear(Number(e.target.value))}
-            className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
+            className="px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]">
             {Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i).map(y => (
               <option key={y} value={y}>{y}</option>
             ))}
@@ -113,7 +113,7 @@ export function MonthlyPlansTab({ user }: Props) {
           📥 Xuất Excel
         </button>
         <button onClick={loadData}
-          className="px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">
+          className="px-4 py-2 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] transition-all cursor-pointer">
           🔄 Làm mới
         </button>
       </div>
@@ -124,27 +124,27 @@ export function MonthlyPlansTab({ user }: Props) {
         </div>
       )}
 
-      <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl overflow-x-auto">
+      <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl overflow-x-auto">
         {loading ? (
-          <div className="text-center py-16 text-[#64748b] text-sm">Đang tải...</div>
+          <div className="text-center py-16 text-[#78716c] text-sm">Đang tải...</div>
         ) : driverDataMap.size === 0 ? (
-          <div className="text-center py-16 text-[#64748b] text-sm">📭 Không có dữ liệu tháng {month}/{year}</div>
+          <div className="text-center py-16 text-[#78716c] text-sm">📭 Không có dữ liệu tháng {month}/{year}</div>
         ) : (
           <table className="w-full text-xs border-collapse">
             <thead>
-              <tr className="bg-[#f8fafc]">
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">Xe</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">BKS</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">Lái xe NW</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">H20</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">H40</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">V20</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">V40</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">V20FR</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">V40FR</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">VSL</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">KV</th>
-                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">TIP</th>
+              <tr className="bg-[#f5f5f4]">
+                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">Xe</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">BKS</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">Lái xe NW</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">H20</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">H40</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">V20</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">V40</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">V20FR</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">V40FR</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">VSL</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">KV</th>
+                <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">TIP</th>
               </tr>
             </thead>
             <tbody>

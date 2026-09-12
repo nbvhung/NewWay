@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Route } from './route.entity';
+import { Customer } from './customer.entity';
 
 @Entity('shipping_lines')
 export class ShippingLine {
@@ -17,6 +18,13 @@ export class ShippingLine {
 
   @Column({ name: 'ngay', type: 'date', nullable: true })
   ngay: string;
+
+  @Column({ name: 'customer_id', type: 'int', nullable: true, default: null })
+  customerId: number | null;
+
+  @ManyToOne(() => Customer, { nullable: true })
+  @JoinColumn({ name: 'customer_id' })
+  customer: Customer | null;
 
   @Column({ name: 'vendor', length: 255, default: '' })
   vendor: string;

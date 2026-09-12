@@ -195,7 +195,7 @@ export default function FormPage() {
         {/* ── Sticky blue header ── */}
         <div style={{
           position: 'sticky', top: 0, zIndex: 20,
-          background: 'linear-gradient(135deg,#1155cc,#1976d2)',
+          background: 'linear-gradient(135deg,#d97706,#b45309)',
           borderRadius: 12,
           marginBottom: 18,
           overflow: 'hidden',
@@ -231,7 +231,7 @@ export default function FormPage() {
 
           {/* ── 1. Chọn kế hoạch ── */}
           <section>
-            <p style={{ fontSize: 15, fontWeight: 800, color: '#1155cc', marginBottom: 8 }}>1. Chọn kế hoạch</p>
+            <p style={{ fontSize: 15, fontWeight: 800, color: '#d97706', marginBottom: 8 }}>1. Chọn kế hoạch</p>
             {loading ? (
               <div style={{
                 padding: 14, background: '#fff', borderRadius: 10,
@@ -290,12 +290,12 @@ export default function FormPage() {
           <>
           {/* ── 2. Lái xe NW ── */}
           <section>
-            <p style={{ fontSize: 15, fontWeight: 800, color: '#1155cc', marginBottom: 8 }}>2. Lái Xe NW</p>
+            <p style={{ fontSize: 15, fontWeight: 800, color: '#d97706', marginBottom: 8 }}>2. Lái Xe NW</p>
             <div style={{
-              background: '#e8f0fe', border: '2px solid #1976d2',
+              background: '#e8f0fe', border: '2px solid #b45309',
               borderRadius: 10, padding: '14px 16px', textAlign: 'center',
             }}>
-              <span style={{ fontSize: 22, fontWeight: 900, color: '#1976d2', letterSpacing: 1 }}>
+              <span style={{ fontSize: 22, fontWeight: 900, color: '#b45309', letterSpacing: 1 }}>
                 {user?.fullName || user?.username || '—'}
               </span>
             </div>
@@ -306,7 +306,7 @@ export default function FormPage() {
 
           {/* ── 3. Nhập Sản Lượng Đã Chạy ── */}
           <section>
-            <p style={{ fontSize: 15, fontWeight: 800, color: '#1155cc', marginBottom: 10 }}>3. Nhập Sản Lượng Đã Chạy</p>
+            <p style={{ fontSize: 15, fontWeight: 800, color: '#d97706', marginBottom: 10 }}>3. Nhập Sản Lượng Đã Chạy</p>
 
             {/* Green box – Standard containers */}
             <div style={{
@@ -367,7 +367,7 @@ export default function FormPage() {
               width: '100%', padding: '16px',
               background: submitting || entryLocked
                 ? '#93c5fd'
-                : 'linear-gradient(135deg,#1155cc,#1976d2)',
+                : 'linear-gradient(135deg,#d97706,#b45309)',
               color: '#fff', border: 'none', borderRadius: 12,
               fontSize: 16, fontWeight: 900, letterSpacing: 0.5,
               cursor: submitting || entryLocked ? 'not-allowed' : 'pointer',
@@ -382,8 +382,8 @@ export default function FormPage() {
             onClick={() => router.push('/my-data')}
             style={{
               width: '100%', padding: '13px',
-              background: 'transparent', color: '#1155cc',
-              border: '2px solid #1155cc', borderRadius: 12,
+              background: 'transparent', color: '#d97706',
+              border: '2px solid #d97706', borderRadius: 12,
               fontSize: 14, fontWeight: 700, cursor: 'pointer',
               marginBottom: 24,
             }}
@@ -406,14 +406,14 @@ export default function FormPage() {
             <button onClick={() => setDuplicatePlan(null)}
               style={{
                 position: 'absolute', top: 12, right: 14, background: 'none', border: 'none',
-                fontSize: 20, color: '#94a3b8', cursor: 'pointer', lineHeight: 1, padding: 0,
+                fontSize: 20, color: '#a8a29e', cursor: 'pointer', lineHeight: 1, padding: 0,
               }}>✕</button>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 36, marginBottom: 8 }}>⚠️</div>
-              <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#1c1917', margin: '0 0 4px' }}>
                 Kế hoạch này bạn đã điền rồi
               </p>
-              <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 16px' }}>
+              <p style={{ fontSize: 12, color: '#78716c', margin: '0 0 16px' }}>
                 {planDisplayName(duplicatePlan)}
               </p>
               <button onClick={() => {
@@ -435,7 +435,7 @@ export default function FormPage() {
               <button onClick={() => setDuplicatePlan(null)}
                 style={{
                   width: '100%', padding: '10px', borderRadius: 10, border: '2px solid #e2e8f0',
-                  background: '#fff', color: '#64748b', fontSize: 13, fontWeight: 600,
+                  background: '#fff', color: '#78716c', fontSize: 13, fontWeight: 600,
                   cursor: 'pointer', marginTop: 8,
                 }}>
                 Chọn tàu khác

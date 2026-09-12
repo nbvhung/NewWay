@@ -43,24 +43,24 @@ export function Pagination({
   const btnBase =
     'min-w-[30px] h-[30px] px-1 rounded-lg text-xs font-medium transition-all flex items-center justify-center';
   const btnActive =
-    'bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_2px_8px_rgba(26,86,219,0.4)]';
+    'bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_2px_8px_rgba(245,158,11,0.4)]';
   const btnIdle =
-    'text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] hover:border-[rgba(26,86,219,0.4)] hover:bg-[rgba(26,86,219,0.08)]';
+    'text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] hover:border-[rgba(245,158,11,0.4)] hover:bg-[rgba(26,86,219,0.08)]';
   const btnDisabled =
-    'text-[#334155] border border-[rgba(0,0,0,0.04)] cursor-not-allowed';
+    'text-[#44403c] border border-[rgba(0,0,0,0.04)] cursor-not-allowed';
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-[rgba(0,0,0,0.06)]">
       {/* Left: summary + page size */}
       <div className="flex items-center gap-3">
-        <span className="text-[11px] text-[#64748b]">
-          {from}–{to} / <span className="text-[#64748b] font-medium">{totalItems}</span> bản ghi
+        <span className="text-[11px] text-[#78716c]">
+          {from}–{to} / <span className="text-[#78716c] font-medium">{totalItems}</span> bản ghi
         </span>
         {onPageSizeChange && (
           <select
             value={pageSize}
             onChange={(e) => { onPageSizeChange(Number(e.target.value)); onPageChange(1); }}
-            className="px-2 py-1 rounded-md bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] text-[11px] text-[#64748b] outline-none cursor-pointer hover:border-[rgba(26,86,219,0.4)] transition-colors"
+            className="px-2 py-1 rounded-md bg-[#f5f5f4] border border-[#e7e5e4] text-[11px] text-[#78716c] outline-none cursor-pointer hover:border-[rgba(245,158,11,0.4)] transition-colors"
           >
             {pageSizeOptions.map((s) => (
               <option key={s} value={s}>{s} / trang</option>
@@ -84,7 +84,7 @@ export function Pagination({
 
           {pages.map((p, i) =>
             p === '...' ? (
-              <span key={`ellipsis-${i}`} className="min-w-[30px] h-[30px] flex items-center justify-center text-[#64748b] text-xs">
+              <span key={`ellipsis-${i}`} className="min-w-[30px] h-[30px] flex items-center justify-center text-[#78716c] text-xs">
                 …
               </span>
             ) : (

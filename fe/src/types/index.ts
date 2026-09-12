@@ -24,6 +24,8 @@ export interface ShippingLine {
   soChuyen: string;
   routeName: string;
   ngay: string;
+  customerId?: number | null;
+  customer?: Customer | null;
   vendor: string;
   tangCuong: boolean;
   leTet: boolean;
@@ -36,6 +38,72 @@ export interface ShippingLine {
   createdAt: string;
   routeId?: number;
   route?: Route;
+}
+
+export interface Customer {
+  id: number;
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  contactName: string;
+  mst: string;
+  bankName: string;
+  bankAccount: string;
+  status: 'active' | 'inactive';
+  note: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CustomerStats {
+  customerId: number;
+  month: number;
+  year: number;
+  plans: number;
+  soChuyen: number;
+  containers: number;
+}
+
+export interface CustomerPrice {
+  id: number;
+  customerId: number;
+  month: number;
+  year: number;
+  fromDay: number;
+  toDay: number;
+  containerType: string;
+  unitPrice: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CustomerSurcharge {
+  id: number;
+  customerId: number;
+  name: string;
+  calcType: 'add' | 'percent';
+  value: number;
+  month: number;
+  year: number;
+  fromDay: number;
+  toDay: number;
+  active: boolean;
+  note: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CustomerAuditLog {
+  id: number;
+  customerId: number;
+  entity: string;
+  entityId: number | null;
+  action: string;
+  performedById: number | null;
+  performedByName: string;
+  changes: string;
+  createdAt: string;
 }
 
 export interface Route {

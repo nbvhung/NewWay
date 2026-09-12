@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { EditUserModal } from './EditUserModal';
 import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/use-pagination';
@@ -21,7 +21,7 @@ function roleBadge(role: string) {
     supper_admin: 'bg-red-500/20 text-red-600',
     admin: 'bg-amber-500/20 text-amber-600',
     ops: 'bg-purple-500/20 text-purple-600',
-    laixe: 'bg-blue-500/20 text-blue-600',
+    laixe: 'bg-sky-500/20 text-sky-600',
     disabled: 'bg-slate-400/20 text-slate-500',
   };
   return `px-2 py-0.5 rounded-full text-[10px] font-semibold ${colors[role] || 'bg-gray-500/20 text-gray-600'}`;
@@ -47,7 +47,41 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
   const [pendingDelete, setPendingDelete] = useState<{ user: User; counts: { submissions: number; containers: number; history: number } } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const { page, pageSize, totalPages, totalItems, paged: pagedUsers, setPage, setPageSize } = usePagination(allUsers, 10);
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+
+  const normalize = (s: string) =>
+    s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+
+  const ROLE_ORDER = ['laixe', 'ops', 'hr', 'admin', 'supper_admin', 'disabled'];
+
+  const roleOptions = useMemo(() => {
+    const roles = Array.from(new Set(allUsers.map((u) => u.role)));
+    return roles.sort((a, b) => {
+      const ia = ROLE_ORDER.indexOf(a);
+      const ib = ROLE_ORDER.indexOf(b);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
+  }, [allUsers]);
+
+  const filtered = useMemo(() => {
+    let list = roleFilter === 'all' ? allUsers : allUsers.filter((u) => u.role === roleFilter);
+    const q = normalize(search.trim());
+    if (q) {
+      list = list.filter((u) =>
+        normalize(u.fullName).includes(q) ||
+        normalize(u.username).includes(q) ||
+        normalize(u.soXe || '').includes(q) ||
+        normalize(u.stt || '').includes(q) ||
+        normalize(u.sdt || '').includes(q),
+      );
+    }
+    return list;
+  }, [allUsers, search, roleFilter]);
+
+  const { page, pageSize, totalPages, totalItems, paged: pagedUsers, setPage, setPageSize } = usePagination(filtered, 10);
+
+  const setRoleFilterSafe = (r: string) => { setRoleFilter(r); setPage(1); };
 
   const addUser = async () => {
     if (!newUser.username || !newUser.fullName || !newUser.password) {
@@ -128,33 +162,83 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
-      <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-bold">👥 Danh sách tài khoản</h3>
-          <button onClick={onRefresh} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">🔄 Làm mới</button>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+      {/* ── Danh sách tài khoản ── */}
+      <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-bold">👥 Danh sách tài khoản
+            <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(245,158,11,0.15)] text-[#d97706]">
+              {allUsers.length} người
+            </span>
+          </h3>
+          <button onClick={onRefresh} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] hover:border-[#d4d4d0] transition-all cursor-pointer">🔄 Làm mới</button>
+        </div>
+        <div className="mb-3 space-y-2">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="🔍 Tìm tên, tài khoản, biển số, STT, SĐT..."
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]"
+          />
+          <div className="flex gap-1.5 flex-wrap">
+            {[{ key: 'all', label: 'Tất cả' }, ...roleOptions.map((r) => ({ key: r, label: ROLE_LABELS[r] || r }))].map((s) => (
+              <button
+                key={s.key}
+                onClick={() => setRoleFilterSafe(s.key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                  roleFilter === s.key
+                    ? 'bg-[#fef3c7] text-[#92400e] border-[#f59e0b]'
+                    : 'bg-[#ffffff] text-[#78716c] border-[#e7e5e4] hover:text-[#1c1917] hover:border-[#d4d4d0]'
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex flex-col gap-2">
-          {pagedUsers.map(u => (
-            <div key={u.id} className="flex items-center gap-3.5 p-3.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg hover:border-[rgba(26,86,219,0.3)] transition-all">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1a56db] to-[#06b6d4] flex items-center justify-center font-bold text-sm text-white shrink-0">
-                {(u.fullName || '?')[0].toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold">{u.fullName} <span className={roleBadge(u.role)}>{ROLE_LABELS[u.role] || u.role}</span></div>
-                <div className="text-[10px] text-[#64748b] mt-0.5">@{u.username}</div>
-                {u.zaloId ? <div className="text-[9px] text-[#1a56db] mt-0.5">💬 Zalo đã liên kết</div> : null}
-                {u.zaloId && u.zaloBot === 1 ? <div className="text-[9px] text-[#d97706] mt-0.5">🤖 Bot 2</div> : null}
-              </div>
-              {canManageUser(currentUser.role, u.role) && (
-                <div className="flex gap-1.5 shrink-0">
-                  <button onClick={() => openEditUser(u)} className="px-2 py-1 rounded text-[10px] font-medium border border-[rgba(0,0,0,0.08)] text-[#64748b] hover:text-[#0f172a] cursor-pointer">✏️</button>
-                  <button onClick={() => deleteUser(u.id)} className="px-2 py-1 rounded text-[10px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">🗑️</button>
+          {pagedUsers.map(u => {
+            const avatarColors: Record<string, string> = {
+              supper_admin: 'from-[#ef4444] to-[#dc2626]',
+              admin: 'from-[#f59e0b] to-[#d97706]',
+              ops: 'from-[#8b5cf6] to-[#7c3aed]',
+              laixe: 'from-[#0891b2] to-[#0e7490]',
+              hr: 'from-[#10b981] to-[#059669]',
+              disabled: 'from-[#a8a29e] to-[#78716c]',
+            };
+            return (
+              <div key={u.id} className="flex items-center gap-3 p-3.5 bg-[#f9f9f8] border border-[#e7e5e4] rounded-xl hover:border-[#f59e0b] hover:bg-[rgba(245,158,11,0.04)] transition-all">
+                <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${avatarColors[u.role] || 'from-[#a8a29e] to-[#78716c]'} flex items-center justify-center font-bold text-sm text-white shrink-0`}>
+                  {(u.fullName || '?')[0].toUpperCase()}
                 </div>
-              )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-sm font-bold text-[#1c1917]">{u.fullName}</span>
+                    <span className={roleBadge(u.role)}>{ROLE_LABELS[u.role] || u.role}</span>
+                    {u.zaloId && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(245,158,11,0.15)] text-[#d97706]">💬 Zalo{u.zaloBot === 1 ? ' Bot2' : ''}</span>}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className="text-[10px] text-[#a8a29e]">@{u.username}</span>
+                    {u.stt && <span className="text-[10px] text-[#78716c] font-medium">#{u.stt}</span>}
+                    {u.soXe && <span className="px-1.5 py-0.5 rounded text-[9px] bg-[#f0f0ee] text-[#78716c]">🚛 {u.soXe}</span>}
+                    {u.sdt && <span className="text-[9px] text-[#a8a29e]">📞 {u.sdt}</span>}
+                  </div>
+                </div>
+                {canManageUser(currentUser.role, u.role) && (
+                  <div className="flex gap-1.5 shrink-0">
+                    <button onClick={() => openEditUser(u)} className="px-2 py-1 rounded-lg text-[10px] font-medium border border-[#e7e5e4] text-[#78716c] hover:text-[#1c1917] hover:border-[#d4d4d0] cursor-pointer">✏️</button>
+                    <button onClick={() => deleteUser(u.id)} className="px-2 py-1 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">🗑️</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {filtered.length === 0 && (
+            <div className="text-center py-10 text-[#78716c] text-sm">
+              {search.trim() || roleFilter !== 'all' ? 'Không tìm thấy tài khoản phù hợp' : 'Chưa có người dùng'}
             </div>
-          ))}
-          {allUsers.length === 0 && <div className="text-center py-8 text-[#64748b] text-sm">Chưa có người dùng</div>}
+          )}
         </div>
         <Pagination
           page={page}
@@ -167,67 +251,102 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         />
       </div>
 
-      <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5 sticky top-20">
-        <h3 className="text-base font-bold mb-4">➕ Thêm tài khoản</h3>
-        <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tên đăng nhập <span className="text-red-500">*</span></label>
-          <input type="text" value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} placeholder="vd: driver01"
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+      {/* ── Form thêm tài khoản ── */}
+      <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl overflow-hidden sticky top-20">
+        <div className="bg-gradient-to-r from-[#f59e0b] to-[#d97706] px-5 py-3.5">
+          <h3 className="text-sm font-bold text-white">➕ Thêm tài khoản mới</h3>
+          <p className="text-white/70 text-[10px] mt-0.5">Điền thông tin để tạo tài khoản</p>
         </div>
-        <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Họ tên <span className="text-red-500">*</span></label>
-          <input type="text" value={newUser.fullName} onChange={e => setNewUser({ ...newUser, fullName: e.target.value })} placeholder="vd: Nguyễn Văn A"
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+        <div className="p-5 space-y-3">
+          {/* Nhóm bắt buộc */}
+          <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
+            <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
+              <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">Thông tin đăng nhập <span className="text-red-400">*</span></span>
+            </div>
+            <div className="p-3 space-y-2">
+              <div>
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Tên đăng nhập</label>
+                <input type="text" value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} placeholder="vd: driver01"
+                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
+              </div>
+              <div>
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Họ tên</label>
+                <input type="text" value={newUser.fullName} onChange={e => setNewUser({ ...newUser, fullName: e.target.value })} placeholder="vd: Nguyễn Văn A"
+                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
+              </div>
+              <div>
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Mật khẩu</label>
+                <input type="password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} placeholder="Tối thiểu 6 ký tự"
+                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
+              </div>
+            </div>
+          </div>
+
+          {/* Nhóm xe */}
+          <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
+            <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
+              <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">Thông tin xe</span>
+            </div>
+            <div className="p-3 grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Biển số xe</label>
+                <input type="text" value={newUser.soXe} onChange={e => setNewUser({ ...newUser, soXe: e.target.value })} placeholder="15H 07883"
+                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
+              </div>
+              <div>
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Số mooc</label>
+                <input type="text" value={newUser.soMooc} onChange={e => setNewUser({ ...newUser, soMooc: e.target.value })} placeholder="15RM 08266"
+                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
+              </div>
+              <div>
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">STT</label>
+                <input type="text" value={newUser.stt} onChange={e => setNewUser({ ...newUser, stt: e.target.value })} placeholder="NW001"
+                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
+              </div>
+              <div>
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Số điện thoại</label>
+                <input type="text" value={newUser.sdt} onChange={e => setNewUser({ ...newUser, sdt: e.target.value })} placeholder="0912237755"
+                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
+              </div>
+            </div>
+          </div>
+
+          {/* Nhóm vai trò */}
+          <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
+            <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
+              <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">Phân quyền & Zalo</span>
+            </div>
+            <div className="p-3 space-y-2">
+              <div>
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Zalo ID (tùy chọn)</label>
+                <input type="text" value={newUser.zaloId} onChange={e => setNewUser({ ...newUser, zaloId: e.target.value })} placeholder="5f9c8e1a2b3c4d5e6f7a8b9c"
+                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Vai trò</label>
+                  <select value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer">
+                    {roleOptionsFor(currentUser.role).map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Bot Zalo</label>
+                  <select value={newUser.zaloBot} onChange={e => setNewUser({ ...newUser, zaloBot: Number(e.target.value) })}
+                    className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer">
+                    <option value={0}>Bot 1</option>
+                    <option value={1}>Bot 2</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button onClick={addUser}
+            className="w-full py-2.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.4)] cursor-pointer">
+            ➕ Thêm tài khoản
+          </button>
         </div>
-        <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Mật khẩu <span className="text-red-500">*</span></label>
-          <input type="password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} placeholder="Tối thiểu 6 ký tự"
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
-        </div>
-        <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Biển số xe</label>
-          <input type="text" value={newUser.soXe} onChange={e => setNewUser({ ...newUser, soXe: e.target.value })} placeholder="vd: 15H 07883"
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
-        </div>
-        <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Số mooc</label>
-          <input type="text" value={newUser.soMooc} onChange={e => setNewUser({ ...newUser, soMooc: e.target.value })} placeholder="vd: 15RM 08266"
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
-        </div>
-        <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">STT</label>
-          <input type="text" value={newUser.stt} onChange={e => setNewUser({ ...newUser, stt: e.target.value })} placeholder="vd: NW001"
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
-        </div>
-        <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Số điện thoại</label>
-          <input type="text" value={newUser.sdt} onChange={e => setNewUser({ ...newUser, sdt: e.target.value })} placeholder="vd: 0912237755"
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
-        </div>
-        <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Zalo ID (tùy chọn)</label>
-          <input type="text" value={newUser.zaloId} onChange={e => setNewUser({ ...newUser, zaloId: e.target.value })} placeholder="vd: 5f9c8e1a2b3c4d5e6f7a8b9c"
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
-        </div>
-        <div className="mb-4">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Vai trò</label>
-          <select value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })}
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]">
-            {roleOptionsFor(currentUser.role).map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-          </select>
-        </div>
-        <div className="mb-4">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Bot Zalo</label>
-          <select value={newUser.zaloBot} onChange={e => setNewUser({ ...newUser, zaloBot: Number(e.target.value) })}
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]">
-            <option value={0}>Bot 1</option>
-            <option value={1}>Bot 2</option>
-          </select>
-        </div>
-        <button onClick={addUser}
-          className="w-full py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] cursor-pointer">
-          ➕ Thêm tài khoản
-        </button>
       </div>
 
       <EditUserModal
@@ -247,7 +366,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         title="⚠️ Tài khoản có dữ liệu"
         footer={
           <>
-            <button onClick={() => setPendingDelete(null)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">Hủy</button>
+            <button onClick={() => setPendingDelete(null)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] cursor-pointer">Hủy</button>
             <button onClick={() => runDeleteWithData('block')} disabled={deleting} className="px-4 py-2 rounded-lg text-xs font-medium text-[#d97706] border border-amber-300 hover:bg-amber-50 disabled:opacity-40 cursor-pointer">🔒 Chỉ khóa tài khoản</button>
             <button onClick={() => runDeleteWithData('force')} disabled={deleting} className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white disabled:opacity-40 cursor-pointer">🗑️ Xóa toàn bộ kèm dữ liệu</button>
           </>
@@ -261,7 +380,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
             <li>{pendingDelete?.counts.submissions ?? 0} bản ghi sản lượng</li>
             <li>{pendingDelete?.counts.containers ?? 0} container</li>
           </ul>
-          <p className="text-xs text-[#94a3b8]">
+          <p className="text-xs text-[#a8a29e]">
             • <b>Xóa toàn bộ kèm dữ liệu</b>: mất luôn bản ghi + container của lái xe, không thể khôi phục.<br />
             • <b>Chỉ khóa tài khoản</b>: lái xe không đăng nhập được, giữ nguyên lịch sử.
           </p>

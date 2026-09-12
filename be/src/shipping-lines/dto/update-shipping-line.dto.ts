@@ -1,6 +1,12 @@
-import { IsString, IsOptional, IsBoolean, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsArray, IsInt } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class UpdateShippingLineDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Khách hàng không hợp lệ' })
+  customerId?: number;
+
   @IsOptional()
   @IsString()
   name?: string;

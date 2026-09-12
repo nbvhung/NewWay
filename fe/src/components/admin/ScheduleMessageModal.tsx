@@ -15,7 +15,7 @@ interface Props {
 
 const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   pending: { text: 'Đang chờ', cls: 'bg-amber-100 text-amber-700' },
-  processing: { text: 'Đang gửi', cls: 'bg-blue-100 text-blue-700' },
+  processing: { text: 'Đang gửi', cls: 'bg-sky-100 text-sky-700' },
   sent: { text: 'Đã gửi', cls: 'bg-emerald-100 text-emerald-700' },
   failed: { text: 'Lỗi', cls: 'bg-red-100 text-red-700' },
   cancelled: { text: 'Đã hủy', cls: 'bg-slate-200 text-slate-600' },
@@ -136,24 +136,24 @@ export function ScheduleMessageModal({ open, onClose, allUsers, toast }: Props) 
         {/* Chọn người nhận */}
         <div>
           <div className="text-sm font-bold mb-2">Người nhận ({selectedIds.length} đã chọn)</div>
-          <div className="max-h-44 overflow-y-auto border border-[rgba(0,0,0,0.1)] rounded-lg divide-y divide-[rgba(0,0,0,0.06)]">
+          <div className="max-h-44 overflow-y-auto border border-[#e7e5e4] rounded-lg divide-y divide-[rgba(0,0,0,0.06)]">
             {linkedUsers.length === 0 && (
-              <div className="p-4 text-sm text-[#64748b] text-center">
+              <div className="p-4 text-sm text-[#78716c] text-center">
                 Chưa có lái xe nào liên kết Zalo
               </div>
             )}
             {linkedUsers.map((u) => (
               <label
                 key={u.id}
-                className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-[#f8fafc]"
+                className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-[#f5f5f4]"
               >
                 <input
                   type="checkbox"
                   checked={selectedIds.includes(u.id)}
                   onChange={() => toggle(u.id)}
-                  className="w-4 h-4 accent-[#1a56db] cursor-pointer"
+                  className="w-4 h-4 accent-[#f59e0b] cursor-pointer"
                 />
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#1a56db] to-[#06b6d4] flex items-center justify-center font-bold text-xs text-white shrink-0">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#f59e0b] to-[#06b6d4] flex items-center justify-center font-bold text-xs text-white shrink-0">
                   {(u.fullName || '?')[0].toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -174,9 +174,9 @@ export function ScheduleMessageModal({ open, onClose, allUsers, toast }: Props) 
             rows={4}
             maxLength={2000}
             placeholder="Nhập nội dung gửi cho lái xe..."
-            className="w-full resize-none px-3 py-2 rounded-lg border border-[rgba(0,0,0,0.12)] text-sm focus:outline-none focus:border-[#1a56db]"
+            className="w-full resize-none px-3 py-2 rounded-lg border border-[rgba(0,0,0,0.12)] text-sm focus:outline-none focus:border-[#f59e0b]"
           />
-          <div className="text-right text-[10px] text-[#64748b]">{text.length}/2000</div>
+          <div className="text-right text-[10px] text-[#78716c]">{text.length}/2000</div>
         </div>
 
         {/* Thời gian gửi (giờ Việt Nam) */}
@@ -187,14 +187,14 @@ export function ScheduleMessageModal({ open, onClose, allUsers, toast }: Props) 
             value={sendAt}
             min={toVnLocalInput(new Date().toISOString())}
             onChange={(e) => setSendAt(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-[rgba(0,0,0,0.12)] text-sm focus:outline-none focus:border-[#1a56db]"
+            className="w-full px-3 py-2 rounded-lg border border-[rgba(0,0,0,0.12)] text-sm focus:outline-none focus:border-[#f59e0b]"
           />
         </div>
 
         <button
           onClick={submit}
           disabled={saving}
-          className="w-full px-4 py-2.5 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-[#1a56db] to-[#2563eb] disabled:opacity-40 transition-all cursor-pointer"
+          className="w-full px-4 py-2.5 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-[#f59e0b] to-[#d97706] disabled:opacity-40 transition-all cursor-pointer"
         >
           {saving ? 'Đang lên lịch...' : 'Lên lịch gửi'}
         </button>
@@ -203,23 +203,23 @@ export function ScheduleMessageModal({ open, onClose, allUsers, toast }: Props) 
         <div>
           <div className="text-sm font-bold mb-2">Tin đã hẹn giờ</div>
           {loadingBatches ? (
-            <div className="text-center py-6 text-[#64748b] text-sm">Đang tải...</div>
+            <div className="text-center py-6 text-[#78716c] text-sm">Đang tải...</div>
           ) : batches.length === 0 ? (
-            <div className="text-center py-6 text-[#64748b] text-sm">Chưa có tin hẹn giờ nào</div>
+            <div className="text-center py-6 text-[#78716c] text-sm">Chưa có tin hẹn giờ nào</div>
           ) : (
             <div className="flex flex-col gap-2 max-h-56 overflow-y-auto">
               {batches.map((b) => {
                 const hasFail = b.counts.failed > 0;
                 return (
-                  <div key={b.batchId} className="border border-[rgba(0,0,0,0.1)] rounded-lg p-3">
+                  <div key={b.batchId} className="border border-[#e7e5e4] rounded-lg p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs text-[#64748b] mb-1">
+                        <div className="text-xs text-[#78716c] mb-1">
                           ⏰ {fmtDateTime(b.sendAt)}
                         </div>
                         <div className="text-sm leading-snug break-words whitespace-pre-wrap mb-1">{b.content}</div>
                         <div className="flex flex-wrap gap-1.5 mt-1">
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#f1f5f9] text-[#475569]">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#fafaf9] text-[#475569]">
                             {b.recipients.length} người
                           </span>
                           {Object.entries(b.counts).filter(([, n]) => n > 0).map(([k, n]) => (
@@ -228,7 +228,7 @@ export function ScheduleMessageModal({ open, onClose, allUsers, toast }: Props) 
                             </span>
                           ))}
                           {hasFail && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium text-[#64748b] bg-[#f8fafc]">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium text-[#78716c] bg-[#f5f5f4]">
                               {b.recipients.filter((r) => r.status === 'failed').map((r) => r.fullName).join(', ')}
                             </span>
                           )}

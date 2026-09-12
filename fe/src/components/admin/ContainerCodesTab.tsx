@@ -13,8 +13,8 @@ interface Props {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  H20: 'bg-[rgba(26,86,219,0.15)] text-[#1a56db]',
-  H40: 'bg-[rgba(26,86,219,0.25)] text-[#1a56db]',
+  H20: 'bg-[rgba(245,158,11,0.15)] text-[#f59e0b]',
+  H40: 'bg-[rgba(245,158,11,0.25)] text-[#f59e0b]',
   V20: 'bg-[rgba(16,185,129,0.15)] text-emerald-700',
   V40: 'bg-[rgba(16,185,129,0.25)] text-emerald-700',
   V20FR: 'bg-[rgba(245,158,11,0.15)] text-amber-700',
@@ -263,13 +263,13 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
   const claimedCount = items.filter(i => i.submissionId).length;
   const isLocked = !!selectedPlan?.completed;
 
-  const inputCls = "w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]";
-  const btnPrimary = "px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] disabled:opacity-50 cursor-pointer";
+  const inputCls = "w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]";
+  const btnPrimary = "px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.4)] disabled:opacity-50 cursor-pointer";
 
   return (
     <div className="flex flex-col gap-5">
       {/* Tra cứu mã container */}
-      <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
+      <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl p-5">
         <h3 className="text-base font-bold mb-3">🔍 Tra cứu mã container</h3>
         <div className="flex gap-2 mb-3">
           <input
@@ -285,20 +285,20 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
           </button>
         </div>
         {searchQuery.trim() && searchQuery.trim().length <= 7 && searchQuery.trim().match(/^\d+$/) && (
-          <p className="text-[10px] text-[#64748b] mb-2">Nhập 7 số cuối → hiện ra danh sách mã đầy đủ để chọn.</p>
+          <p className="text-[10px] text-[#78716c] mb-2">Nhập 7 số cuối → hiện ra danh sách mã đầy đủ để chọn.</p>
         )}
 
         {searchResults && (
           <div className="flex flex-col gap-1.5 max-h-[320px] overflow-y-auto">
             {searchResults.length === 0 && (
-              <div className="text-center py-6 text-[#64748b] text-sm">Không tìm thấy container nào khớp.</div>
+              <div className="text-center py-6 text-[#78716c] text-sm">Không tìm thấy container nào khớp.</div>
             )}
             {searchResults.map(r => (
-              <div key={r.id} className="px-3.5 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs">
+              <div key={r.id} className="px-3.5 py-2.5 bg-[#f5f5f4] border border-[#e7e5e4] rounded-lg text-xs">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-[#0f172a]">{r.containerCode}</span>
-                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${TYPE_COLORS[r.type] || 'bg-[rgba(0,0,0,0.05)] text-[#64748b]'}`}>{r.type}</span>
+                    <span className="font-mono font-bold text-[#1c1917]">{r.containerCode}</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${TYPE_COLORS[r.type] || 'bg-[#e7e5e4] text-[#78716c]'}`}>{r.type}</span>
                     {renderClaimTags(r)}
                     {r.bundleId && (
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(14,165,233,0.15)] text-sky-700">🎁 {r.bundleId}</span>
@@ -318,11 +318,11 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
                     {r.phatSinh && !r.recorded && (
                       <>
                         <select value={classifyTypes[r.id] ?? (r.type && VALID_TYPES.includes(r.type) ? r.type : 'H20')} onChange={e => setClassifyTypes(prev => ({ ...prev, [r.id]: e.target.value }))}
-                          className="px-1.5 py-0.5 rounded text-[9px] border border-[rgba(0,0,0,0.1)] text-[#0f172a] outline-none cursor-pointer">
+                          className="px-1.5 py-0.5 rounded text-[9px] border border-[#e7e5e4] text-[#1c1917] outline-none cursor-pointer">
                           {VALID_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                         <button onClick={() => classify(r, classifyTypes[r.id] ?? (r.type && VALID_TYPES.includes(r.type) ? r.type : 'H20'))} disabled={classifyingId === r.id}
-                          className="px-2 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white disabled:opacity-50 cursor-pointer">
+                          className="px-2 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white disabled:opacity-50 cursor-pointer">
                           {classifyingId === r.id ? 'Đang...' : 'Phân loại'}
                         </button>
                       </>
@@ -331,7 +331,7 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
                       className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">✕</button>
                   </div>
                 </div>
-                <div className="text-[10px] text-[#64748b] mt-1">
+                <div className="text-[10px] text-[#78716c] mt-1">
                   Kế hoạch: {r.plan ? `${r.plan.name}${r.plan.completed ? ' (đã hoàn thành)' : ''}` : '—'}
                   {r.phatSinh && r.importedByName && <span> · Tài xế: {r.importedByName}</span>}
                   {r.recorded && <span> · Người ghi: {r.recordedBy || '—'}</span>}
@@ -344,10 +344,10 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
       </div>
 
       {/* Quản lý danh sách container theo kế hoạch */}
-      <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
+      <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl p-5">
         <h3 className="text-base font-bold mb-3">🗃️ Danh sách container theo kế hoạch</h3>
         <div className="mb-4">
-          <label className="block text-[10px] font-medium text-[#64748b] mb-1.5">Chọn kế hoạch</label>
+          <label className="block text-[10px] font-medium text-[#78716c] mb-1.5">Chọn kế hoạch</label>
           <select value={planId} onChange={e => { setPlanId(e.target.value === '' ? '' : Number(e.target.value)); setListSearch(''); setTypeFilter('Tất cả'); setDriverFilter('Tất cả'); }}
             className={inputCls}>
             <option value="">-- Chọn kế hoạch --</option>
@@ -365,27 +365,27 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
               </div>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-              <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
-                <label className="block text-[10px] font-medium text-[#64748b] mb-1.5">📥 Import file (xlsx/txt — mỗi dòng: mã + loại)</label>
+              <div className="border border-[#e7e5e4] rounded-lg p-3">
+                <label className="block text-[10px] font-medium text-[#78716c] mb-1.5">📥 Import file (xlsx/txt — mỗi dòng: mã + loại)</label>
                 <input type="file" accept=".xlsx,.xls,.txt,.csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                   onChange={e => setFile(e.target.files?.[0] || null)} disabled={isLocked}
-                  className="w-full text-xs file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-[rgba(26,86,219,0.1)] file:text-[#1a56db] file:cursor-pointer disabled:opacity-40" />
+                  className="w-full text-xs file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-[rgba(26,86,219,0.1)] file:text-[#f59e0b] file:cursor-pointer disabled:opacity-40" />
                 <button onClick={upload} disabled={uploading || !file || isLocked} className={`${btnPrimary} w-full mt-2`}>
                   {uploading ? 'Đang import...' : '⬆️ Import'}
                 </button>
-                <button onClick={downloadTemplate} className="w-full mt-1.5 px-4 py-2 rounded-lg text-xs font-medium bg-[#f8fafc] border border-[rgba(0,0,0,0.1)] text-[#64748b] hover:text-[#1a56db] hover:border-[#1a56db] cursor-pointer">
+                <button onClick={downloadTemplate} className="w-full mt-1.5 px-4 py-2 rounded-lg text-xs font-medium bg-[#f5f5f4] border border-[#e7e5e4] text-[#78716c] hover:text-[#f59e0b] hover:border-[#f59e0b] cursor-pointer">
                   📄 Xuất file mẫu
                 </button>
               </div>
-              <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
-                <label className="block text-[10px] font-medium text-[#64748b] mb-1.5">➕ Thêm mã container lẻ</label>
+              <div className="border border-[#e7e5e4] rounded-lg p-3">
+                <label className="block text-[10px] font-medium text-[#78716c] mb-1.5">➕ Thêm mã container lẻ</label>
                 <input type="text" value={singleCode} onChange={e => setSingleCode(e.target.value)}
                   placeholder="Mã container (vd: BMOU6823203)" disabled={isLocked}
                   onKeyDown={e => { if (e.key === 'Enter' && !isLocked) addSingle(); }}
                   className={`${inputCls} mb-1.5`} />
                 <div className="flex gap-1.5">
                   <select value={singleType} onChange={e => setSingleType(e.target.value)} disabled={isLocked}
-                    className="px-2 py-2 rounded-lg text-xs border border-[rgba(0,0,0,0.1)] text-[#0f172a] outline-none cursor-pointer flex-1">
+                    className="px-2 py-2 rounded-lg text-xs border border-[#e7e5e4] text-[#1c1917] outline-none cursor-pointer flex-1">
                     {VALID_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                   <button onClick={addSingle} disabled={adding || isLocked} className={`${btnPrimary} disabled:opacity-50`}>
@@ -395,11 +395,11 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
               </div>
             </div>
 
-            <div className="border-t border-[rgba(0,0,0,0.08)] pt-4">
+            <div className="border-t border-[#e7e5e4] pt-4">
               <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                 <span className="text-xs font-bold">Đã import: {items.length} container{claimedCount > 0 ? ` (${claimedCount} đã ghi nhận)` : ''}</span>
                 <div className="flex gap-2">
-                  <span className="text-[10px] text-[#64748b]">Chưa ghi nhận: {items.length - claimedCount}</span>
+                  <span className="text-[10px] text-[#78716c]">Chưa ghi nhận: {items.length - claimedCount}</span>
                   <button onClick={removeAll} disabled={items.length === 0 || isLocked}
                     className="px-2 py-1 rounded text-[10px] font-medium text-red-600 border border-red-200 hover:bg-red-50 disabled:opacity-40 cursor-pointer">
                     🗑️ Xóa tất cả ({items.length})
@@ -411,19 +411,19 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
                   <button key={t} onClick={() => setTypeFilter(t)}
                     className={`px-2 py-0.5 rounded text-[10px] font-bold border cursor-pointer ${
                       typeFilter === t
-                        ? 'border-[#1a56db] bg-[rgba(26,86,219,0.15)] text-[#1a56db]'
-                        : 'border-[rgba(0,0,0,0.08)] text-[#64748b] hover:border-[#1a56db]'
+                        ? 'border-[#f59e0b] bg-[rgba(245,158,11,0.15)] text-[#f59e0b]'
+                        : 'border-[#e7e5e4] text-[#78716c] hover:border-[#f59e0b]'
                     }`}>{t}</button>
                 ))}
               </div>
               <div className="flex gap-2 mb-2 flex-wrap">
                 <select value={driverFilter} onChange={e => setDriverFilter(e.target.value)}
-                  className="px-2 py-2 rounded-lg text-xs border border-[rgba(0,0,0,0.1)] text-[#0f172a] outline-none cursor-pointer">
+                  className="px-2 py-2 rounded-lg text-xs border border-[#e7e5e4] text-[#1c1917] outline-none cursor-pointer">
                   {drivers.map(d => <option key={d} value={d}>{d === 'Tất cả' ? '🚚 Tất cả lái xe' : d}</option>)}
                 </select>
                 {isAdmin && (
                   <select value={claimDriverId} onChange={e => setClaimDriverId(e.target.value)}
-                    className="px-2 py-2 rounded-lg text-xs border border-[rgba(6,182,212,0.4)] text-[#0f172a] outline-none cursor-pointer bg-[rgba(6,182,212,0.05)]">
+                    className="px-2 py-2 rounded-lg text-xs border border-[rgba(6,182,212,0.4)] text-[#1c1917] outline-none cursor-pointer bg-[rgba(6,182,212,0.05)]">
                     <option value="">📝 Ghi nhận cho lái xe...</option>
                     {laixeDrivers.map(d => (
                       <option key={d.id} value={d.id}>{d.fullName || d.username}{d.soXe ? ` - ${d.soXe}` : ''}{d.stt ? ` (STT ${d.stt})` : ''}</option>
@@ -434,31 +434,31 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
                   placeholder="🔍 Tìm trong danh sách..." className={`${inputCls} flex-1`} />
               </div>
               {isAdmin && (
-                <p className="text-[10px] text-[#64748b] mb-2">
+                <p className="text-[10px] text-[#78716c] mb-2">
                   Chọn lái xe ở trên rồi bấm <span className="font-bold text-[#0891b2]">📝 Ghi</span> ở từng mã container chưa ghi để ghi nhận cho lái xe đó (chỉ admin).
                 </p>
               )}
-              <div className="border border-[rgba(0,0,0,0.08)] rounded-lg overflow-hidden">
+              <div className="border border-[#e7e5e4] rounded-lg overflow-hidden">
                 <table className="w-full text-xs border-collapse">
                   <thead>
-                    <tr className="bg-[#f8fafc]">
-                      <th className="px-3 py-2 text-left font-semibold text-[10px] uppercase text-[#334155]">Container</th>
-                      <th className="px-3 py-2 text-left font-semibold text-[10px] uppercase text-[#334155]">Trạng thái</th>
-                      <th className="px-3 py-2 text-left font-semibold text-[10px] uppercase text-[#334155]">Người chạy</th>
-                      <th className="px-3 py-2 text-left font-semibold text-[10px] uppercase text-[#334155]">Ghi nhận</th>
-                      <th className="px-3 py-2 text-right font-semibold text-[10px] uppercase text-[#334155]">Thao tác</th>
+                    <tr className="bg-[#f5f5f4]">
+                      <th className="px-3 py-2 text-left font-semibold text-[10px] uppercase text-[#44403c]">Container</th>
+                      <th className="px-3 py-2 text-left font-semibold text-[10px] uppercase text-[#44403c]">Trạng thái</th>
+                      <th className="px-3 py-2 text-left font-semibold text-[10px] uppercase text-[#44403c]">Người chạy</th>
+                      <th className="px-3 py-2 text-left font-semibold text-[10px] uppercase text-[#44403c]">Ghi nhận</th>
+                      <th className="px-3 py-2 text-right font-semibold text-[10px] uppercase text-[#44403c]">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filtered.length === 0 && (
-                      <tr><td colSpan={5} className="text-center py-6 text-[#64748b] text-xs">Chưa có container</td></tr>
+                      <tr><td colSpan={5} className="text-center py-6 text-[#78716c] text-xs">Chưa có container</td></tr>
                     )}
                     {filtered.map(item => (
-                      <tr key={item.id} className="border-t border-[rgba(0,0,0,0.05)] bg-[#f8fafc] hover:bg-[#f1f5f9]">
+                      <tr key={item.id} className="border-t border-[#e7e5e4] bg-[#f5f5f4] hover:bg-[#fafaf9]">
                         <td className="px-3 py-2 align-middle">
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-xs font-mono text-[#0f172a] truncate">{item.containerCode}</span>
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${TYPE_COLORS[item.type] || 'bg-[rgba(0,0,0,0.05)] text-[#64748b]'}`}>{item.type}</span>
+                            <span className="text-xs font-mono text-[#1c1917] truncate">{item.containerCode}</span>
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${TYPE_COLORS[item.type] || 'bg-[#e7e5e4] text-[#78716c]'}`}>{item.type}</span>
                             {item.bundleId && (
                               <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(14,165,233,0.15)] text-sky-700">🎁 {item.bundleId}</span>
                             )}
@@ -474,7 +474,7 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
                             <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.15)] text-amber-700">⏳ Chờ ghi</span>
                           )}
                         </td>
-                        <td className="px-3 py-2 align-middle text-[#0f172a]">
+                        <td className="px-3 py-2 align-middle text-[#1c1917]">
                           {item.submissionId
                             ? (item.recordedBy || '—')
                             : item.phatSinh && item.importedByName

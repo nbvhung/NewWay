@@ -83,18 +83,23 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
 
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 items-start">
-        <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+        {/* ── Danh sách tuyến đường ── */}
+        <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold">🛤️ Danh sách tuyến đường</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-base font-bold">🛤️ Danh sách tuyến đường
+                <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(245,158,11,0.15)] text-[#d97706]">
+                  {filteredRoutes.length}/{allRoutes.length}
+                </span>
+              </h3>
               <div className="flex gap-1">
                 {['Tất cả', ...TYPES].map(t => (
                   <label key={t}
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold border cursor-pointer ${
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border cursor-pointer transition-all ${
                       typeFilter === t
-                        ? 'border-[#1a56db] bg-[rgba(26,86,219,0.15)] text-[#1a56db]'
-                        : 'border-[rgba(0,0,0,0.08)] text-[#64748b] hover:border-[#1a56db]'
+                        ? 'border-[#f59e0b] bg-[rgba(245,158,11,0.15)] text-[#f59e0b]'
+                        : 'border-[#e7e5e4] text-[#78716c] hover:border-[#f59e0b]'
                     }`}
                     onClick={() => setTypeFilter(t)}>
                     {t}
@@ -102,70 +107,91 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
                 ))}
               </div>
             </div>
-            <button onClick={onRefresh} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">🔄 Làm mới</button>
+            <button onClick={onRefresh} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] hover:border-[#d4d4d0] transition-all cursor-pointer">🔄</button>
           </div>
           <div className="flex flex-col gap-1.5">
             {filteredRoutes.map(r => (
-              <div key={r.id} className="flex items-center justify-between gap-2 px-3 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="truncate">🛤️ {r.name}</span>
-                  <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                    r.type === 'XT' ? 'bg-[rgba(239,68,68,0.2)] text-red-600' :
-                    r.type === 'ĐH' ? 'bg-[rgba(139,92,246,0.2)] text-violet-600' :
-                    'bg-[rgba(59,130,246,0.2)] text-blue-600'
+              <div key={r.id} className="flex items-center justify-between gap-2 px-3.5 py-3 bg-[#f9f9f8] border border-[#e7e5e4] rounded-xl hover:border-[#f59e0b] hover:bg-[rgba(245,158,11,0.04)] transition-all text-xs">
+                <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                  <span className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center font-extrabold text-[11px] ${
+                    r.type === 'XT' ? 'bg-[rgba(239,68,68,0.12)] text-red-600' :
+                    r.type === 'ĐH' ? 'bg-[rgba(139,92,246,0.12)] text-violet-600' :
+                    'bg-[rgba(245,158,11,0.12)] text-amber-700'
                   }`}>{r.type || 'CB'}</span>
-                  {r.money > 0 && <span className="shrink-0 px-1.5 py-0.5 rounded bg-[rgba(16,185,129,0.2)] text-emerald-600 text-[10px]">{fmtMoney(r.money)}</span>}
-                  {r.effectiveDate && <span className="shrink-0 px-1.5 py-0.5 rounded bg-[rgba(59,130,246,0.2)] text-blue-600 text-[10px]">📅 {r.effectiveDate}</span>}
+                  <span className="font-semibold text-[#1c1917] truncate">{r.name}</span>
+                  {r.money > 0 && <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-[rgba(16,185,129,0.12)] text-emerald-600 text-[10px] font-medium">{fmtMoney(r.money)}</span>}
+                  {r.effectiveDate && <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-[rgba(245,158,11,0.12)] text-amber-700 text-[10px]">📅 {r.effectiveDate}</span>}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => openEdit(r)}
-                    className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️</button>
+                    className="px-2 py-1 rounded-lg text-[10px] font-medium border border-[#e7e5e4] text-[#78716c] hover:text-[#1c1917] hover:border-[#d4d4d0] cursor-pointer">✏️</button>
                   <button onClick={() => deleteRoute(r.id, r.name)}
-                    className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">✕</button>
+                    className="px-2 py-1 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">✕</button>
                 </div>
               </div>
             ))}
-            {filteredRoutes.length === 0 && <div className="text-center w-full py-8 text-[#64748b] text-sm">Chưa có tuyến đường</div>}
+            {filteredRoutes.length === 0 && <div className="text-center w-full py-10 text-[#78716c] text-sm">Chưa có tuyến đường</div>}
           </div>
         </div>
 
-        <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5 sticky top-20">
-          <h3 className="text-base font-bold mb-4">➕ Thêm tuyến đường</h3>
-          <div className="mb-3">
-            <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tên tuyến đường <span className="text-red-500">*</span></label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="vd: TU1"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+        {/* ── Form thêm tuyến đường ── */}
+        <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl overflow-hidden sticky top-20">
+          <div className="bg-gradient-to-r from-[#f59e0b] to-[#d97706] px-5 py-3.5">
+            <h3 className="text-sm font-bold text-white">➕ Thêm tuyến đường mới</h3>
+            <p className="text-white/70 text-[10px] mt-0.5">Cấu hình tên, tiền và hình thức</p>
           </div>
-          <div className="mb-3">
-            <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tiền</label>
-            <input type="number" value={money} onChange={e => setMoney(e.target.value)} placeholder="vd: 500000"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
-          </div>
-          <div className="mb-3">
-            <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Ngày hiệu lực</label>
-            <input type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)}
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" />
-          </div>
-          <div className="mb-3">
-            <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Hình thức</label>
-            <div className="flex gap-1.5">
-              {TYPES.map(t => (
-                <label key={t}
-                  className={`flex-1 px-2 py-1.5 rounded text-[11px] font-bold border text-center cursor-pointer ${
-                    type === t
-                      ? 'border-[#1a56db] bg-[rgba(26,86,219,0.15)] text-[#1a56db]'
-                      : 'border-[rgba(0,0,0,0.08)] text-[#64748b] hover:border-[#1a56db]'
-                  }`}
-                  onClick={() => setType(t)}>
-                  {t}
-                </label>
-              ))}
+          <div className="p-5 space-y-3">
+            <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
+              <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
+                <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">Thông tin tuyến <span className="text-red-400">*</span></span>
+              </div>
+              <div className="p-3 space-y-2">
+                <div>
+                  <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Tên tuyến đường</label>
+                  <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="vd: TU1"
+                    className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Tiền (đ)</label>
+                    <input type="number" value={money} onChange={e => setMoney(e.target.value)} placeholder="500000"
+                      className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Ngày hiệu lực</label>
+                    <input type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
+                  </div>
+                </div>
+              </div>
             </div>
+
+            <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
+              <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
+                <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">Hình thức</span>
+              </div>
+              <div className="p-3">
+                <div className="flex gap-2">
+                  {TYPES.map(t => (
+                    <label key={t}
+                      className={`flex-1 px-2 py-2.5 rounded-lg text-[11px] font-bold border text-center cursor-pointer transition-all ${
+                        type === t
+                          ? 'border-[#f59e0b] bg-[rgba(245,158,11,0.12)] text-[#f59e0b]'
+                          : 'border-[#e7e5e4] text-[#78716c] hover:border-[#f59e0b]'
+                      }`}
+                      onClick={() => setType(t)}>
+                      {t === 'XT' ? '🔴' : t === 'ĐH' ? '🟣' : '🟡'} {t}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <button onClick={addRoute}
+              className="w-full py-2.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.4)] cursor-pointer">
+              ➕ Thêm tuyến đường
+            </button>
           </div>
-          <button onClick={addRoute}
-            className="w-full py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] cursor-pointer">
-            ➕ Thêm tuyến đường
-          </button>
         </div>
       </div>
 
@@ -175,38 +201,38 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
         title="✏️ Sửa tuyến đường"
         footer={
           <>
-            <button onClick={() => setEditRoute(null)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">Hủy</button>
+            <button onClick={() => setEditRoute(null)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] cursor-pointer">Hủy</button>
             <button onClick={saveEdit} disabled={saving}
-              className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] disabled:opacity-50 cursor-pointer">
+              className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.4)] disabled:opacity-50 cursor-pointer">
               {saving ? 'Đang lưu...' : '💾 Lưu thay đổi'}
             </button>
           </>
         }
       >
         <div className="mb-4">
-          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Tên tuyến đường <span className="text-red-500">*</span></label>
+          <label className="text-xs font-medium text-[#78716c] mb-1.5 block">Tên tuyến đường <span className="text-red-500">*</span></label>
           <input type="text" value={editName} onChange={e => setEditName(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]" />
         </div>
         <div className="mb-4">
-          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Tiền</label>
+          <label className="text-xs font-medium text-[#78716c] mb-1.5 block">Tiền</label>
           <input type="number" value={editMoney} onChange={e => setEditMoney(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]" />
         </div>
         <div className="mb-4">
-          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Ngày hiệu lực</label>
+          <label className="text-xs font-medium text-[#78716c] mb-1.5 block">Ngày hiệu lực</label>
           <input type="date" value={editEffectiveDate} onChange={e => setEditEffectiveDate(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]" />
         </div>
         <div className="mb-4">
-          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Hình thức</label>
+          <label className="text-xs font-medium text-[#78716c] mb-1.5 block">Hình thức</label>
           <div className="flex gap-2">
             {TYPES.map(t => (
               <label key={t}
                 className={`flex-1 px-3 py-2 rounded text-sm font-bold border text-center cursor-pointer ${
                   editType === t
-                    ? 'border-[#1a56db] bg-[rgba(26,86,219,0.15)] text-[#1a56db]'
-                    : 'border-[rgba(0,0,0,0.08)] text-[#64748b] hover:border-[#1a56db]'
+                    ? 'border-[#f59e0b] bg-[rgba(245,158,11,0.15)] text-[#f59e0b]'
+                    : 'border-[#e7e5e4] text-[#78716c] hover:border-[#f59e0b]'
                 }`}
                 onClick={() => setEditType(t)}>
                 {t}

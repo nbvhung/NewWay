@@ -251,22 +251,22 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
       </div>
       )}
 
-      <div className="flex flex-wrap gap-2.5 items-end mb-4 p-4 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl">
+      <div className="flex flex-wrap gap-2.5 items-end mb-4 p-4 bg-[#ffffff] border border-[#e7e5e4] rounded-xl">
         {user?.role === 'hr' ? (
           <>
             <div>
-              <label className="block text-[10px] font-medium text-[#64748b] mb-1">Tháng</label>
+              <label className="block text-[10px] font-medium text-[#78716c] mb-1">Tháng</label>
               <select value={hrMonth} onChange={e => setHrMonth(Number(e.target.value))}
-                className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]">
+                className="px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]">
                 {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                   <option key={m} value={m}>Tháng {m}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-medium text-[#64748b] mb-1">Năm</label>
+              <label className="block text-[10px] font-medium text-[#78716c] mb-1">Năm</label>
               <select value={hrYear} onChange={e => setHrYear(Number(e.target.value))}
-                className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]">
+                className="px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]">
                 {Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i).map(y => (
                   <option key={y} value={y}>{y}</option>
                 ))}
@@ -280,33 +280,33 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         ) : (
           <>
             <div>
-              <label className="block text-[10px] font-medium text-[#64748b] mb-1">Người nhập</label>
+              <label className="block text-[10px] font-medium text-[#78716c] mb-1">Người nhập</label>
               <select value={filterUser} onChange={e => setFilterUser(e.target.value)}
-                className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]">
+                className="px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]">
                 <option value="">Tất cả</option>
                 {allUsers.map(u => <option key={u.id} value={u.id}>{u.fullName} ({u.username})</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-medium text-[#64748b] mb-1">Kế hoạch</label>
+              <label className="block text-[10px] font-medium text-[#78716c] mb-1">Kế hoạch</label>
               <select value={filterSl} onChange={e => { setFilterSl(e.target.value); setPage(1); }}
-                className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
+                className="px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]">
                 <option value="">Tất cả</option>
                 {(user?.role === 'ops' ? allShippingLines.filter(p => !p.completed) : allShippingLines).map(sl => <option key={sl.id} value={sl.id}>{[sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ')}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-medium text-[#64748b] mb-1">Từ ngày</label>
+              <label className="block text-[10px] font-medium text-[#78716c] mb-1">Từ ngày</label>
               <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)}
-                className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                className="px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
             </div>
             <div>
-              <label className="block text-[10px] font-medium text-[#64748b] mb-1">Đến ngày</label>
+              <label className="block text-[10px] font-medium text-[#78716c] mb-1">Đến ngày</label>
               <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)}
-                className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                className="px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
             </div>
             <button onClick={loadSubmissions}
-              className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] cursor-pointer">
+              className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.4)] cursor-pointer">
               🔍 Lọc
             </button>
             <button onClick={handleExportClick}
@@ -327,10 +327,10 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
       )}
 
       {user?.role !== 'hr' && (
-      <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl overflow-x-auto">
+      <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl overflow-x-auto">
         <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-[rgba(0,0,0,0.06)]">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-sm font-bold text-[#0f172a]">📋 Bảng sản lượng lái xe</span>
+            <span className="text-sm font-bold text-[#1c1917]">📋 Bảng sản lượng lái xe</span>
             {entryLocked && (
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[rgba(239,68,68,0.15)] text-red-600">🔒 Đang khóa nhập liệu</span>
             )}
@@ -351,37 +351,37 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
           </div>
         )}
         {submissions.length === 0 ? (
-          <div className="text-center py-16 text-[#64748b] text-sm">📭 Không có bản ghi nào</div>
+          <div className="text-center py-16 text-[#78716c] text-sm">📭 Không có bản ghi nào</div>
         ) : (
           <>
             <table className="w-full text-xs border-collapse">
               <thead>
-                <tr className="bg-[#f8fafc]">
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">#</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">Người nhập / Role</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">Lái xe NW</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">KH</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">H20</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">H40</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">V20</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">V40</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">V20FR</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">V40FR</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">VSL</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">KV</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">TIP (x 1.000đ)</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">Sửa</th>
-                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#334155]">Thao tác</th>
+                <tr className="bg-[#f5f5f4]">
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">#</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">Người nhập / Role</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">Lái xe NW</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">KH</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">H20</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">H40</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">V20</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">V40</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">V20FR</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">V40FR</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">VSL</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">KV</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">TIP (x 1.000đ)</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">Sửa</th>
+                  <th className="px-3 py-2.5 text-left font-semibold text-[10px] uppercase text-[#44403c]">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {pagedSubmissions.map((s, i) => (
                   <tr key={s.id} className="border-b border-[rgba(0,0,0,0.04)] hover:bg-[rgba(0,0,0,0.03)]">
-                    <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(100,116,139,0.15)] text-[#64748b]">{(page - 1) * pageSize + i + 1}</span></td>
+                    <td className="px-3 py-2.5"><span className="px-1.5 py-0.5 rounded-full bg-[rgba(100,116,139,0.15)] text-[#78716c]">{(page - 1) * pageSize + i + 1}</span></td>
                     <td className="px-3 py-2.5">
-                      <span className="px-1.5 py-0.5 rounded-full bg-[rgba(26,86,219,0.2)] text-blue-700">{(s as any).user?.username || '—'}</span>
+                      <span className="px-1.5 py-0.5 rounded-full bg-[rgba(245,158,11,0.2)] text-amber-700">{(s as any).user?.username || '—'}</span>
                       {(s as any).user?.role && (
-                        <span className="ml-1 px-1 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(100,116,139,0.15)] text-[#64748b]">{ROLE_LABELS[(s as any).user.role] || (s as any).user.role}</span>
+                        <span className="ml-1 px-1 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(100,116,139,0.15)] text-[#78716c]">{ROLE_LABELS[(s as any).user.role] || (s as any).user.role}</span>
                       )}
                     </td>
                     <td className="px-3 py-2.5 font-medium">{s.driverName}</td>
@@ -398,7 +398,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
                     <td className="px-3 py-2.5">
                       {s.editCount > 0
                         ? <span className="px-1.5 py-0.5 rounded-full bg-[rgba(245,158,11,0.2)] text-amber-700">✏️ {s.editCount}</span>
-                        : <span className="px-1.5 py-0.5 rounded-full bg-[rgba(100,116,139,0.15)] text-[#64748b]">0</span>}
+                        : <span className="px-1.5 py-0.5 rounded-full bg-[rgba(100,116,139,0.15)] text-[#78716c]">0</span>}
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap flex gap-1">
                       {isCompleted(s) ? (
@@ -460,14 +460,14 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         }
       >
         <div className="mb-4">
-          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Vendor khác (nếu có)</label>
+          <label className="text-xs font-medium text-[#78716c] mb-1.5 block">Vendor khác (nếu có)</label>
           <input type="text" value={exportVendorKhac} onChange={e => setExportVendorKhac(e.target.value)} placeholder="Nhập vendor khác..."
-            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
         </div>
         <div className="mb-2">
-          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Tên người nhập</label>
+          <label className="text-xs font-medium text-[#78716c] mb-1.5 block">Tên người nhập</label>
           <input type="text" value={exportTenNguoiNhap} onChange={e => setExportTenNguoiNhap(e.target.value)} placeholder="Nhập tên người nhập..."
-            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
         </div>
       </Modal>
 
@@ -478,7 +478,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         footer={
           <div className="flex gap-2 w-full">
             <button onClick={() => setTotalShipOpen(false)}
-              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">
+              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] cursor-pointer">
               Đóng
             </button>
             <button onClick={saveTotalShip}
@@ -489,8 +489,8 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         }
       >
         <div className="mb-4">
-          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Kế hoạch</label>
-          <div className="px-3.5 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a]">
+          <label className="text-xs font-medium text-[#78716c] mb-1.5 block">Kế hoạch</label>
+          <div className="px-3.5 py-2.5 bg-[#f5f5f4] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917]">
             {allShippingLines.find(sl => sl.id === totalShipSlId)
               ? [allShippingLines.find(sl => sl.id === totalShipSlId)?.name, allShippingLines.find(sl => sl.id === totalShipSlId)?.soChuyen, allShippingLines.find(sl => sl.id === totalShipSlId)?.routeName, fmtNgay(allShippingLines.find(sl => sl.id === totalShipSlId)?.ngay)].filter(Boolean).join(' / ')
               : '—'}
@@ -498,49 +498,49 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         </div>
         <div className="grid grid-cols-2 gap-3 mb-2">
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số hàng 20</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số hàng 20</label>
             <input type="number" min="0" value={totalShipForm.hang20} onChange={e => setTotalShipForm(f => ({ ...f, hang20: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số hàng 40</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số hàng 40</label>
             <input type="number" min="0" value={totalShipForm.hang40} onChange={e => setTotalShipForm(f => ({ ...f, hang40: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số vỏ 20</label>
             <input type="number" min="0" value={totalShipForm.vo20} onChange={e => setTotalShipForm(f => ({ ...f, vo20: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số vỏ 40</label>
             <input type="number" min="0" value={totalShipForm.vo40} onChange={e => setTotalShipForm(f => ({ ...f, vo40: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số vỏ 20FR <span className="text-[10px] text-[#a8a29e] font-normal">(1 bó = 4 cái)</span></label>
             <input type="number" min="0" value={totalShipForm.vo20fr} onChange={e => setTotalShipForm(f => ({ ...f, vo20fr: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số vỏ 40FR <span className="text-[10px] text-[#a8a29e] font-normal">(1 bó = 4 cái)</span></label>
             <input type="number" min="0" value={totalShipForm.vo40fr} onChange={e => setTotalShipForm(f => ({ ...f, vo40fr: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Vệ sinh lại <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Vệ sinh lại <span className="text-[10px] text-[#a8a29e] font-normal">(Chuyến)</span></label>
             <input type="number" min="0" value={totalShipForm.veSinhLai} onChange={e => setTotalShipForm(f => ({ ...f, veSinhLai: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Kéo về <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Kéo về <span className="text-[10px] text-[#a8a29e] font-normal">(Chuyến)</span></label>
             <input type="number" min="0" value={totalShipForm.keoVe} onChange={e => setTotalShipForm(f => ({ ...f, keoVe: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">TIP (x 1.000đ)</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">TIP (x 1.000đ)</label>
             <input type="number" min="0" value={totalShipForm.tip} onChange={e => setTotalShipForm(f => ({ ...f, tip: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
         </div>
       </Modal>
@@ -552,7 +552,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         footer={
           <div className="flex gap-2 w-full">
             <button onClick={() => { setDeleteAllOpen(false); setDeletePassword(''); }}
-              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">
+              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] cursor-pointer">
               Hủy
             </button>
             <button onClick={async () => {
@@ -570,11 +570,11 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
           </div>
         }
       >
-        <p className="text-sm text-[#64748b] mb-4">Bạn có chắc chắn muốn <strong>xóa tất cả</strong> dữ liệu nhập liệu? Hành động này không thể hoàn tác.</p>
+        <p className="text-sm text-[#78716c] mb-4">Bạn có chắc chắn muốn <strong>xóa tất cả</strong> dữ liệu nhập liệu? Hành động này không thể hoàn tác.</p>
         <div>
-          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Nhập mật khẩu xác nhận</label>
+          <label className="text-xs font-medium text-[#78716c] mb-1.5 block">Nhập mật khẩu xác nhận</label>
           <input type="password" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} placeholder="Nhập mật khẩu..."
-            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
         </div>
       </Modal>
     </div>

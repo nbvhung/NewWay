@@ -70,7 +70,7 @@ export function DienHoModal({ open, onClose }: Props) {
       footer={
         <div className="flex gap-2 w-full">
           <button onClick={onClose}
-            className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">
+            className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] cursor-pointer">
             Đóng
           </button>
           <button onClick={handleSubmit} disabled={saving}
@@ -87,9 +87,9 @@ export function DienHoModal({ open, onClose }: Props) {
         )}
 
         <div>
-          <label className="block text-xs font-medium text-[#64748b] mb-1.5">Lái xe <span className="text-[#ef4444]">*</span></label>
+          <label className="block text-xs font-medium text-[#78716c] mb-1.5">Lái xe <span className="text-[#ef4444]">*</span></label>
           <select value={selectedDriver} onChange={e => setSelectedDriver(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]">
             <option value="">-- Chọn lái xe --</option>
             {drivers.map(d => (
               <option key={d.id} value={d.id}>{d.fullName} ({d.username}){d.soXe ? ` - ${d.soXe}` : ''}</option>
@@ -98,9 +98,9 @@ export function DienHoModal({ open, onClose }: Props) {
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-[#64748b] mb-1.5">Kế hoạch <span className="text-[#ef4444]">*</span></label>
+          <label className="block text-xs font-medium text-[#78716c] mb-1.5">Kế hoạch <span className="text-[#ef4444]">*</span></label>
           <select value={selectedPlan} onChange={e => setSelectedPlan(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]">
             <option value="">-- Chọn kế hoạch --</option>
             {plans.map(sl => (
               <option key={sl.id} value={sl.id}>
@@ -112,49 +112,49 @@ export function DienHoModal({ open, onClose }: Props) {
 
         <div className="grid grid-cols-2 gap-3 mb-2">
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số hàng 20</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số hàng 20</label>
             <input type="number" min="0" value={form.hang20} onChange={e => setForm(f => ({ ...f, hang20: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số hàng 40</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số hàng 40</label>
             <input type="number" min="0" value={form.hang40} onChange={e => setForm(f => ({ ...f, hang40: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số vỏ 20</label>
             <input type="number" min="0" value={form.vo20} onChange={e => setForm(f => ({ ...f, vo20: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số vỏ 40</label>
             <input type="number" min="0" value={form.vo40} onChange={e => setForm(f => ({ ...f, vo40: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số vỏ 20FR <span className="text-[10px] text-[#a8a29e] font-normal">(1 bó = 4 cái)</span></label>
             <input type="number" min="0" value={form.vo20fr} onChange={e => setForm(f => ({ ...f, vo20fr: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số vỏ 40FR <span className="text-[10px] text-[#a8a29e] font-normal">(1 bó = 4 cái)</span></label>
             <input type="number" min="0" value={form.vo40fr} onChange={e => setForm(f => ({ ...f, vo40fr: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Vệ sinh lại <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Vệ sinh lại <span className="text-[10px] text-[#a8a29e] font-normal">(Chuyến)</span></label>
             <input type="number" min="0" value={form.veSinhLai} onChange={e => setForm(f => ({ ...f, veSinhLai: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Kéo về <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Kéo về <span className="text-[10px] text-[#a8a29e] font-normal">(Chuyến)</span></label>
             <input type="number" min="0" value={form.keoVe} onChange={e => setForm(f => ({ ...f, keoVe: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">TIP (x 1.000đ)</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">TIP (x 1.000đ)</label>
             <input type="number" min="0" value={form.tip} onChange={e => setForm(f => ({ ...f, tip: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
         </div>
       </div>

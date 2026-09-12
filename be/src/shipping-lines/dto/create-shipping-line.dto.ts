@@ -1,4 +1,5 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsArray } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsArray, IsInt } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateShippingLineDto {
   @IsString()
@@ -23,6 +24,11 @@ export class CreateShippingLineDto {
 
   @IsOptional()
   routeId?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Khách hàng không hợp lệ' })
+  customerId?: number;
 
   @IsOptional()
   @IsBoolean()

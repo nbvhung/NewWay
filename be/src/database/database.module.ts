@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { ShippingLine } from './entities/shipping-line.entity';
@@ -16,6 +16,11 @@ import { SalaryItem } from './entities/salary-item.entity';
 import { SalaryRecordItem } from './entities/salary-record-item.entity';
 import { DriverAdvance } from './entities/driver-advance.entity';
 import { SalaryPaymentLog } from './entities/salary-payment-log.entity';
+import { Customer } from './entities/customer.entity';
+import { PaymentDossier } from './entities/payment-dossier.entity';
+import { CustomerPrice } from './entities/customer-price.entity';
+import { CustomerSurcharge } from './entities/customer-surcharge.entity';
+import { CustomerAuditLog } from './entities/customer-audit-log.entity';
 import { SeedService } from './seed.service';
 
 @Module({
@@ -45,6 +50,11 @@ import { SeedService } from './seed.service';
               SalaryRecordItem,
               DriverAdvance,
               SalaryPaymentLog,
+              Customer,
+              PaymentDossier,
+              CustomerPrice,
+              CustomerSurcharge,
+              CustomerAuditLog,
             ],
             synchronize: !isProd,
             logging: false,
@@ -75,6 +85,11 @@ import { SeedService } from './seed.service';
             SalaryRecordItem,
             DriverAdvance,
             SalaryPaymentLog,
+            Customer,
+            PaymentDossier,
+            CustomerPrice,
+            CustomerSurcharge,
+            CustomerAuditLog,
           ],
           synchronize: !isProd,
           logging: false,
@@ -102,6 +117,11 @@ import { SeedService } from './seed.service';
       SalaryRecordItem,
       DriverAdvance,
       SalaryPaymentLog,
+      Customer,
+      PaymentDossier,
+      CustomerPrice,
+      CustomerSurcharge,
+      CustomerAuditLog,
     ]),
   ],
   providers: [SeedService],

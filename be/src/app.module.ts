@@ -14,6 +14,7 @@ import { ZaloBotModule } from './zalo-bot/zalo-bot.module';
 import { ZaloMessagesModule } from './zalo-messages/zalo-messages.module';
 import { SettingsModule } from './settings/settings.module';
 import { SalaryModule } from './salary/salary.module';
+import { CustomersModule } from './customers/customers.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 @Module({
@@ -32,6 +33,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     ZaloMessagesModule,
     SettingsModule,
     SalaryModule,
+    CustomersModule,
   ],
   providers: [
     {

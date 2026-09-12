@@ -16,22 +16,31 @@ export function Navbar() {
 
   if (!user) return null;
 
-  const isActive = (path: string) => pathname.startsWith(path);
+  const links: { href: string; label: string; roles: string[] }[] = [
+    { href: '/form', label: '📝 Nhập liệu', roles: ['laixe'] },
+    { href: '/dien-ho', label: '📝 Điền hộ', roles: ['ops'] },
+    {
+      href: '/my-data',
+      label: user.role === 'ops' ? '📊 SL TỔNG TÀU' : '📊 Sản lượng của tôi',
+      roles: ['laixe', 'ops'],
+    },
+    { href: '/admin', label: '⚙️ Quản lý', roles: ['ops', 'admin', 'supper_admin', 'hr'] },
+  ];
+  const visibleLinks = links.filter((l) => l.roles.includes(user.role));
 
-  const roleClass =
-    user.role === 'supper_admin'
-      ? 'bg-red-500/20 text-red-600'
-      : user.role === 'admin'
-      ? 'bg-amber-500/20 text-amber-600'
-      : user.role === 'ops'
-      ? 'bg-purple-500/20 text-purple-600'
-      : user.role === 'hr'
-      ? 'bg-green-500/20 text-green-600'
-      : 'bg-blue-500/20 text-blue-600';
+  const isActive = (path: string) =>
+    path === '/admin' ? pathname.startsWith('/admin') : pathname.startsWith(path);
+
+  const linkCls = (path: string) =>
+    `px-3 py-1.5 rounded-lg text-[15px] font-medium transition-all ${
+      isActive(path)
+        ? 'bg-[#fef3c7] text-[#92400e]'
+        : 'text-[#78716c] hover:bg-[#f5f5f4] hover:text-[#1c1917]'
+    }`;
 
   return (
-    <nav className="bg-[rgba(241,245,249,0.95)] backdrop-blur-xl border-b border-[rgba(0,0,0,0.08)] sticky top-0 z-[100]">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+    <nav className="bg-[rgba(250,250,249,0.95)] backdrop-blur-xl border-b border-[#e7e5e4] sticky top-0 z-[100]">
+      <div className="w-full px-4 sm:px-5 h-14 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2.5 font-bold text-base">
             <Image
@@ -46,52 +55,11 @@ export function Navbar() {
           </Link>
 
           <div className="hidden md:flex items-center gap-1">
-            {user.role === 'ops' && (
-            <Link href="/dien-ho"
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                isActive('/dien-ho')
-                  ? 'bg-[#ffffff] text-[#0f172a]'
-                  : 'text-[#64748b] hover:text-[#0f172a]'
-              }`}>
-              📝 Điền hộ
-            </Link>
-            )}
-            {user.role !== 'hr' && user.role !== 'admin' && user.role !== 'ops' && (
-            <Link
-              href="/form"
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                isActive('/form')
-                  ? 'bg-[#ffffff] text-[#0f172a]'
-                  : 'text-[#64748b] hover:text-[#0f172a]'
-              }`}
-            >
-              📝 Nhập liệu
-            </Link>
-            )}
-            {user.role !== 'admin' && user.role !== 'hr' && (
-            <Link
-              href="/my-data"
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                isActive('/my-data')
-                  ? 'bg-[#ffffff] text-[#0f172a]'
-                  : 'text-[#64748b] hover:text-[#0f172a]'
-              }`}
-            >
-              📊 {user.role === 'ops' ? 'SL TỔNG TÀU' : 'Sản lượng của tôi'}
-            </Link>
-            )}
-            {(user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || user.role === 'hr') && (
-              <Link
-                href="/admin"
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  isActive('/admin')
-                    ? 'bg-[#ffffff] text-amber-600'
-                    : 'text-[#64748b] hover:text-amber-600'
-                }`}
-              >
-                ⚙️ Quản lý
+            {visibleLinks.map((l) => (
+              <Link key={l.href} href={l.href} className={linkCls(l.href)}>
+                {l.label}
               </Link>
-            )}
+            ))}
           </div>
         </div>
 
@@ -100,49 +68,41 @@ export function Navbar() {
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Menu"
         >
-          <span className={`block w-5 h-0.5 bg-[#0f172a] rounded transition-all ${menuOpen ? 'rotate-45 translate-y-[6px]' : ''}`} />
-          <span className={`block w-5 h-0.5 bg-[#0f172a] rounded transition-all ${menuOpen ? 'opacity-0' : ''}`} />
-          <span className={`block w-5 h-0.5 bg-[#0f172a] rounded transition-all ${menuOpen ? '-rotate-45 -translate-y-[6px]' : ''}`} />
+          <span className={`block w-5 h-0.5 bg-[#1c1917] rounded transition-all ${menuOpen ? 'rotate-45 translate-y-[6px]' : ''}`} />
+          <span className={`block w-5 h-0.5 bg-[#1c1917] rounded transition-all ${menuOpen ? 'opacity-0' : ''}`} />
+          <span className={`block w-5 h-0.5 bg-[#1c1917] rounded transition-all ${menuOpen ? '-rotate-45 -translate-y-[6px]' : ''}`} />
         </button>
 
         <div className="flex items-center gap-3">
-          <div className="hidden sm:block text-sm font-medium text-[#0f172a] px-3 py-1.5 bg-[#ffffff] rounded-lg border border-[rgba(0,0,0,0.08)]">
+          <div className="hidden sm:block text-sm font-medium text-[#1c1917] px-3 py-1.5 bg-[#ffffff] rounded-lg border border-[#e7e5e4]">
             {user.fullName}
           </div>
 
           <button
             onClick={() => setShowLogoutConfirm(true)}
-            className="text-xs font-medium text-[#64748b] px-3 py-1.5 rounded-lg border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer"
+            className="text-xs font-medium text-[#78716c] px-3 py-1.5 rounded-lg border border-[#e7e5e4] hover:text-[#1c1917] transition-all cursor-pointer"
           >
             🚪 Đăng xuất
           </button>
         </div>
       </div>
 
-          {menuOpen && (
-        <div className="md:hidden border-t border-[rgba(0,0,0,0.08)] bg-[rgba(241,245,249,0.98)] px-4 pb-4 pt-2 flex flex-col gap-1">
-          {user.role === 'ops' && (
-          <Link href="/dien-ho" className="px-3 py-2 rounded-lg text-sm" onClick={() => setMenuOpen(false)}>
-            📝 Điền hộ
-          </Link>
-          )}
-          {user.role !== 'hr' && user.role !== 'admin' && user.role !== 'ops' && (
-          <Link href="/form" className="px-3 py-2 rounded-lg text-sm" onClick={() => setMenuOpen(false)}>
-            📝 Nhập liệu
-          </Link>
-          )}
-          {user.role !== 'admin' && user.role !== 'hr' && (
-          <Link href="/my-data" className="px-3 py-2 rounded-lg text-sm" onClick={() => setMenuOpen(false)}>
-            📊 {user.role === 'ops' ? 'SL TỔNG TÀU' : 'Sản lượng của tôi'}
-          </Link>
-          )}
-          {(user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || user.role === 'hr') && (
-            <Link href="/admin" className="px-3 py-2 rounded-lg text-sm text-amber-600" onClick={() => setMenuOpen(false)}>
-              ⚙️ Quản lý
+      {menuOpen && (
+        <div className="md:hidden border-t border-[#e7e5e4] bg-[rgba(250,250,249,0.98)] px-4 pb-4 pt-2 flex flex-col gap-1">
+          {visibleLinks.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              onClick={() => setMenuOpen(false)}
+              className={`px-3 py-2 rounded-lg text-[15px] ${
+                isActive(l.href) ? 'bg-[#fef3c7] text-[#92400e]' : 'text-[#78716c]'
+              }`}
+            >
+              {l.label}
             </Link>
-          )}
-          <div className="flex items-center gap-2 px-3 py-2 mt-2 border-t border-[rgba(0,0,0,0.08)] pt-3 text-xs text-[#64748b]">
-            {user.fullName} — {ROLE_LABELS[user.role] || user.role}
+          ))}
+          <div className="flex items-center justify-between px-3 py-2 mt-2 border-t border-[#e7e5e4] pt-3 text-xs text-[#78716c]">
+            <span>{user.fullName} — {ROLE_LABELS[user.role] || user.role}</span>
           </div>
         </div>
       )}
@@ -152,16 +112,16 @@ export function Navbar() {
         title="🚪 Xác nhận đăng xuất"
         footer={
           <>
-            <button onClick={() => setShowLogoutConfirm(false)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">
+            <button onClick={() => setShowLogoutConfirm(false)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] transition-all cursor-pointer">
               Hủy
             </button>
-            <button onClick={() => { setShowLogoutConfirm(false); logout(); }} className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white shadow-[0_4px_15px_rgba(239,68,68,0.4)] hover:shadow-[0_6px_20px_rgba(239,68,68,0.5)] transition-all cursor-pointer">
+            <button onClick={() => { setShowLogoutConfirm(false); logout(); }} className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white shadow-[0_4px_15px_rgba(239,68,68,0.4)] transition-all cursor-pointer">
               ✅ Đăng xuất
             </button>
           </>
         }
       >
-        <p className="text-sm text-[#64748b]">Bạn có chắc chắn muốn đăng xuất không?</p>
+        <p className="text-sm text-[#78716c]">Bạn có chắc chắn muốn đăng xuất không?</p>
       </Modal>
     </nav>
   );

@@ -311,10 +311,10 @@ export default function MyDataPage() {
         return (
         <div key={s.id}
           onClick={editable ? () => openEdit(s) : undefined}
-          className={`bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-3 ${editable ? 'cursor-pointer active:scale-[0.99] transition-transform' : ''}`}>
+          className={`bg-[#ffffff] border border-[#e7e5e4] rounded-xl p-3 ${editable ? 'cursor-pointer active:scale-[0.99] transition-transform' : ''}`}>
           {/* Row 1: Plan name + Edit button */}
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-sm font-bold text-blue-700 leading-tight">
+            <span className="text-sm font-bold text-amber-700 leading-tight">
                 {s.planDisplayName || s.shippingLine}
                 {s.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-600">x3</span> : s.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-700">+15%</span> : null}
               </span>
@@ -329,7 +329,7 @@ export default function MyDataPage() {
               const v = s[key];
               const display = typeof v === 'string' || typeof v === 'number' ? String(v) : '';
               return (
-                <span key={key} className="flex-1 text-center text-[13px] font-bold text-[#0f172a] tracking-tight">
+                <span key={key} className="flex-1 text-center text-[13px] font-bold text-[#1c1917] tracking-tight">
                   {label}: {display}
                 </span>
               );
@@ -343,7 +343,7 @@ export default function MyDataPage() {
                 const v = s[key];
                 const display = typeof v === 'string' || typeof v === 'number' ? String(v) : '';
                 return (
-                  <span key={key} className="text-[13px] font-bold text-[#0f172a] tracking-tight">{label}: {display}</span>
+                  <span key={key} className="text-[13px] font-bold text-[#1c1917] tracking-tight">{label}: {display}</span>
                 );
               })}
             </div>
@@ -360,50 +360,50 @@ export default function MyDataPage() {
   const RenderTable = ({ data, showEdit }: { data: Submission[]; showEdit?: boolean }) => (
     <table className="w-full text-xs border-collapse">
       <thead>
-        <tr className="bg-[#f8fafc]">
-          {user?.role !== 'laixe' && <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">#</th>}
-          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Kế hoạch</th>
-          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">H20</th>
-          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">H40</th>
-          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">V20</th>
-          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">V40</th>
-          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">V20FR</th>
-          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">V40FR</th>
-          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">VSL</th>
-          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">KV</th>
-          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10 border-r border-[rgba(0,0,0,0.08)]">TIP (x 1.000đ)</th>
-          {user?.role !== 'ops' && <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Lương</th>}
-          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#334155] whitespace-nowrap sticky top-0 bg-[#f8fafc] z-10">Sửa</th>
+        <tr className="bg-[#f5f5f4]">
+          {user?.role !== 'laixe' && <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#44403c] whitespace-nowrap sticky top-0 bg-[#f5f5f4] z-10">#</th>}
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#44403c] whitespace-nowrap sticky top-0 bg-[#f5f5f4] z-10">Kế hoạch</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#44403c] whitespace-nowrap sticky top-0 bg-[#f5f5f4] z-10 border-r border-[#e7e5e4]">H20</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#44403c] whitespace-nowrap sticky top-0 bg-[#f5f5f4] z-10 border-r border-[#e7e5e4]">H40</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#44403c] whitespace-nowrap sticky top-0 bg-[#f5f5f4] z-10 border-r border-[#e7e5e4]">V20</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#44403c] whitespace-nowrap sticky top-0 bg-[#f5f5f4] z-10 border-r border-[#e7e5e4]">V40</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#44403c] whitespace-nowrap sticky top-0 bg-[#f5f5f4] z-10 border-r border-[#e7e5e4]">V20FR</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#44403c] whitespace-nowrap sticky top-0 bg-[#f5f5f4] z-10 border-r border-[#e7e5e4]">V40FR</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#44403c] whitespace-nowrap sticky top-0 bg-[#f5f5f4] z-10 border-r border-[#e7e5e4]">VSL</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#44403c] whitespace-nowrap sticky top-0 bg-[#f5f5f4] z-10 border-r border-[#e7e5e4]">KV</th>
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#44403c] whitespace-nowrap sticky top-0 bg-[#f5f5f4] z-10 border-r border-[#e7e5e4]">TIP (x 1.000đ)</th>
+          {user?.role !== 'ops' && <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#44403c] whitespace-nowrap sticky top-0 bg-[#f5f5f4] z-10">Lương</th>}
+          <th className="px-3.5 py-3 text-left font-semibold text-[10px] uppercase tracking-wider text-[#44403c] whitespace-nowrap sticky top-0 bg-[#f5f5f4] z-10">Sửa</th>
         </tr>
       </thead>
       <tbody>
         {data.map((s, i) => (
           <tr key={s.id} className="border-b border-[rgba(0,0,0,0.04)] hover:bg-[rgba(0,0,0,0.03)]">
-            {user?.role !== 'laixe' && <td className="px-3.5 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#64748b]">{i + 1}</span></td>}
+            {user?.role !== 'laixe' && <td className="px-3.5 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#78716c]">{i + 1}</span></td>}
             <td className="px-3.5 py-3">
               <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-blue-700">{s.planDisplayName || s.shippingLine}{s.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-600">x3</span> : s.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-700">+15%</span> : null}</span>
+              <span className="text-sm font-semibold text-amber-700">{s.planDisplayName || s.shippingLine}{s.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-600">x3</span> : s.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-700">+15%</span> : null}</span>
               {showEdit && !s.completed && (
                 <button onClick={() => openEdit(s)} className="px-2 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️ Sửa</button>
               )}
               </div>
             </td>
-            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.hang20 || '—'}</td>
-            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.hang40 || '—'}</td>
-            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.vo20 || '—'}</td>
-            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.vo40 || '—'}</td>
-            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.vo20fr || '—'}</td>
-            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.vo40fr || '—'}</td>
-            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.veSinhLai || '—'}</td>
-            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.keoVe || '—'}</td>
-            <td className="px-3.5 py-3 border-r border-[rgba(0,0,0,0.08)]">{s.tip || '—'}</td>
+            <td className="px-3.5 py-3 border-r border-[#e7e5e4]">{s.hang20 || '—'}</td>
+            <td className="px-3.5 py-3 border-r border-[#e7e5e4]">{s.hang40 || '—'}</td>
+            <td className="px-3.5 py-3 border-r border-[#e7e5e4]">{s.vo20 || '—'}</td>
+            <td className="px-3.5 py-3 border-r border-[#e7e5e4]">{s.vo40 || '—'}</td>
+            <td className="px-3.5 py-3 border-r border-[#e7e5e4]">{s.vo20fr || '—'}</td>
+            <td className="px-3.5 py-3 border-r border-[#e7e5e4]">{s.vo40fr || '—'}</td>
+            <td className="px-3.5 py-3 border-r border-[#e7e5e4]">{s.veSinhLai || '—'}</td>
+            <td className="px-3.5 py-3 border-r border-[#e7e5e4]">{s.keoVe || '—'}</td>
+            <td className="px-3.5 py-3 border-r border-[#e7e5e4]">{s.tip || '—'}</td>
             {user?.role !== 'ops' && <td className="px-3.5 py-3">{formatMoney(s.salary)}</td>}
             <td className="px-3.5 py-3">
               <div className="flex items-center gap-2">
                 {s.editCount > 0 ? (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(245,158,11,0.2)] text-amber-700">✏️ {s.editCount}</span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#64748b]">0</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#78716c]">0</span>
                 )}
                 {!s.completed && (
                   <button onClick={() => openEdit(s)} className="px-2 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️ Sửa</button>
@@ -423,9 +423,9 @@ export default function MyDataPage() {
       <div className="flex items-center justify-between flex-wrap gap-3 mb-6">
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold">📊 Sản lượng của tôi</h1>
-          <p className="text-xs text-[#64748b] mt-1">Xem và chỉnh sửa các bản ghi bạn đã nhập</p>
+          <p className="text-xs text-[#78716c] mt-1">Xem và chỉnh sửa các bản ghi bạn đã nhập</p>
         </div>
-        <Link href="/form" className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white font-semibold text-xs shadow-[0_4px_15px_rgba(26,86,219,0.4)] hover:shadow-[0_6px_20px_rgba(26,86,219,0.5)] hover:-translate-y-px transition-all">
+        <Link href="/form" className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white font-semibold text-xs shadow-[0_4px_15px_rgba(245,158,11,0.4)] hover:shadow-[0_6px_20px_rgba(26,86,219,0.5)] hover:-translate-y-px transition-all">
           ➕ Nhập sản lượng mới
         </Link>
       </div>
@@ -438,7 +438,7 @@ export default function MyDataPage() {
       </div>
       )}
 
-      <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl">
+      <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl">
         {entryLocked && (
           <div className="mx-5 mt-5 px-4 py-3 rounded-xl bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.25)] flex items-center gap-3">
             <span className="text-xl">🔒</span>
@@ -452,11 +452,11 @@ export default function MyDataPage() {
         <div className="flex items-center justify-between flex-wrap gap-3 px-5 pt-5 pb-3">
           <div>
             <h3 className="text-base font-bold">📋 Danh sách nhập sản lượng</h3>
-            <p className="text-[10px] text-[#64748b] mt-0.5">Hiển thị bản ghi của {MONTHS_VI[viewMonth]}/{viewYear}</p>
+            <p className="text-[10px] text-[#78716c] mt-0.5">Hiển thị bản ghi của {MONTHS_VI[viewMonth]}/{viewYear}</p>
           </div>
           <div className="flex items-center gap-2">
             {/* Month navigator */}
-            <div className="flex items-center gap-1 bg-[#f8fafc] border border-[rgba(0,0,0,0.06)] rounded-lg px-2 py-1">
+            <div className="flex items-center gap-1 bg-[#f5f5f4] border border-[rgba(0,0,0,0.06)] rounded-lg px-2 py-1">
               <button
                 onClick={() => {
                   const newM = viewMonth === 1 ? 12 : viewMonth - 1;
@@ -464,9 +464,9 @@ export default function MyDataPage() {
                   setViewMonth(newM);
                   setViewYear(newY);
                 }}
-                className="p-0.5 rounded text-[#64748b] hover:text-[#0f172a] hover:bg-[rgba(0,0,0,0.06)] transition-all cursor-pointer text-xs"
+                className="p-0.5 rounded text-[#78716c] hover:text-[#1c1917] hover:bg-[rgba(0,0,0,0.06)] transition-all cursor-pointer text-xs"
               >◀</button>
-              <span className="text-xs font-semibold text-[#0f172a] px-1 min-w-[80px] text-center">
+              <span className="text-xs font-semibold text-[#1c1917] px-1 min-w-[80px] text-center">
                 {MONTHS_VI[viewMonth]}/{viewYear}
               </span>
               <button
@@ -477,20 +477,20 @@ export default function MyDataPage() {
                   setViewMonth(newM);
                   setViewYear(newY);
                 }}
-                className="p-0.5 rounded text-[#64748b] hover:text-[#0f172a] hover:bg-[rgba(0,0,0,0.06)] transition-all cursor-pointer text-xs"
+                className="p-0.5 rounded text-[#78716c] hover:text-[#1c1917] hover:bg-[rgba(0,0,0,0.06)] transition-all cursor-pointer text-xs"
               >▶</button>
             </div>
-            <button onClick={loadData} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">
+            <button onClick={loadData} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] transition-all cursor-pointer">
               🔄 Làm mới
             </button>
           </div>
         </div>
 
         {filteredData.length === 0 ? (
-          <div className="text-center py-16 text-[#64748b]">
+          <div className="text-center py-16 text-[#78716c]">
             <div className="text-5xl mb-3">📭</div>
             <p className="text-sm">Chưa có bản ghi nào trong {MONTHS_VI[viewMonth]}/{viewYear}.</p>
-            <Link href="/form" className="text-[#1a56db] text-sm hover:underline">Nhập liệu ngay →</Link>
+            <Link href="/form" className="text-[#f59e0b] text-sm hover:underline">Nhập liệu ngay →</Link>
           </div>
         ) : user?.role === 'laixe' ? (
           <>
@@ -505,11 +505,11 @@ export default function MyDataPage() {
             {/* ── Đã hoàn thành ── */}
             <div className="mt-6">
               <button onClick={() => setShowCompleted(!showCompleted)}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-[rgba(0,0,0,0.08)] hover:bg-[#f8fafc] transition-all cursor-pointer">
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-[#e7e5e4] hover:bg-[#f5f5f4] transition-all cursor-pointer">
                 <span className={`w-2 h-2 rounded-full bg-emerald-500 shrink-0 ${showCompleted ? '' : 'animate-pulse'}`} />
                 <span className="text-xs font-bold text-[#475569] uppercase tracking-wider flex-1 text-left">Đã hoàn thành</span>
-                <span className="text-[#94a3b8] text-xs font-medium">{filteredData.filter(s => s.completed).length} bản ghi</span>
-                <span className="text-[#94a3b8] text-sm">{showCompleted ? '▲' : '▼'}</span>
+                <span className="text-[#a8a29e] text-xs font-medium">{filteredData.filter(s => s.completed).length} bản ghi</span>
+                <span className="text-[#a8a29e] text-sm">{showCompleted ? '▲' : '▼'}</span>
               </button>
               {showCompleted && <RenderCard data={filteredData.filter(s => s.completed)} />}
             </div>
@@ -546,7 +546,7 @@ export default function MyDataPage() {
 
         return (
         <div className="mt-6">
-          <div className="bg-gradient-to-br from-[#ffffff] to-[#f1f5f9] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
+          <div className="bg-gradient-to-br from-[#ffffff] to-[#fafaf9] border border-[#e7e5e4] rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold">💰 Tổng thu nhập dự kiến:</h3>
@@ -560,9 +560,9 @@ export default function MyDataPage() {
                       setSalaryMonth(newM);
                       setSalaryYear(newY);
                     }}
-                    className="p-0.5 rounded text-[#64748b] hover:text-[#0f172a] hover:bg-[rgba(0,0,0,0.06)] transition-all cursor-pointer text-xs"
+                    className="p-0.5 rounded text-[#78716c] hover:text-[#1c1917] hover:bg-[rgba(0,0,0,0.06)] transition-all cursor-pointer text-xs"
                   >◀</button>
-                  <span className="text-xs font-semibold text-[#0f172a] px-1 min-w-[80px] text-center">
+                  <span className="text-xs font-semibold text-[#1c1917] px-1 min-w-[80px] text-center">
                     {MONTHS_VI[salaryMonth]}/{salaryYear}
                   </span>
                   <button
@@ -573,10 +573,10 @@ export default function MyDataPage() {
                       setSalaryMonth(newM);
                       setSalaryYear(newY);
                     }}
-                    className="p-0.5 rounded text-[#64748b] hover:text-[#0f172a] hover:bg-[rgba(0,0,0,0.06)] transition-all cursor-pointer text-xs"
+                    className="p-0.5 rounded text-[#78716c] hover:text-[#1c1917] hover:bg-[rgba(0,0,0,0.06)] transition-all cursor-pointer text-xs"
                   >▶</button>
                 </div>
-                <span className="text-xs text-[#64748b]">{salarySummary?.count ?? 0} bản ghi</span>
+                <span className="text-xs text-[#78716c]">{salarySummary?.count ?? 0} bản ghi</span>
               </div>
             </div>
 
@@ -587,24 +587,24 @@ export default function MyDataPage() {
               <span className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] to-[#34d399]">
                 {formatMoney(grandTotal)}
               </span>
-              <span className="text-xs font-semibold text-[#64748b] shrink-0 group-hover:text-[#0f172a] transition-all">
+              <span className="text-xs font-semibold text-[#78716c] shrink-0 group-hover:text-[#1c1917] transition-all">
                 {showSalaryDetails ? 'Thu gọn ▲' : 'Xem chi tiết ▼'}
               </span>
             </button>
 
             {showSalaryDetails && (
-              <div className="mt-3 pt-3 border-t border-[rgba(0,0,0,0.08)] flex flex-col gap-2">
-                <p className="text-xs font-bold text-[#0f172a] uppercase tracking-wider">I. Thu nhập</p>
+              <div className="mt-3 pt-3 border-t border-[#e7e5e4] flex flex-col gap-2">
+                <p className="text-xs font-bold text-[#1c1917] uppercase tracking-wider">I. Thu nhập</p>
 
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-[#475569]">🚛 Lương chuyến:</span>
-                  <span className="font-bold text-[#0f172a]">{formatMoney(salarySummary?.totalSalary)}</span>
+                  <span className="font-bold text-[#1c1917]">{formatMoney(salarySummary?.totalSalary)}</span>
                 </div>
 
                 {(salarySummary?.totalTip || 0) > 0 && (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-[#475569]">💰 TIP:</span>
-                    <span className="font-bold text-[#0f172a]">{formatMoney(salarySummary?.totalTip)}</span>
+                    <span className="font-bold text-[#1c1917]">{formatMoney(salarySummary?.totalTip)}</span>
                   </div>
                 )}
 
@@ -615,7 +615,7 @@ export default function MyDataPage() {
                       {c?.fixedSalaryPaid ? (
                         <span className="font-bold text-green-600">✅ Đã thanh toán</span>
                       ) : (
-                        <span className="text-[#94a3b8]">Ứng trước từ 1-6 tháng {MONTHS_VI[salaryMonth]}/{salaryYear}</span>
+                        <span className="text-[#a8a29e]">Ứng trước từ 1-6 tháng {MONTHS_VI[salaryMonth]}/{salaryYear}</span>
                       )}
                     </p>
                     {daysOffList.length > 0 && (
@@ -624,52 +624,52 @@ export default function MyDataPage() {
                       </p>
                     )}
                     {c?.daysOffNote && (
-                      <p className="text-[11px] text-[#64748b] mt-0.5">
+                      <p className="text-[11px] text-[#78716c] mt-0.5">
                         📝 Ghi chú: {c.daysOffNote}
                       </p>
                     )}
                   </div>
-                  <span className="font-bold text-[#0f172a]">{formatMoney(c?.fixedSalary)}</span>
+                  <span className="font-bold text-[#1c1917]">{formatMoney(c?.fixedSalary)}</span>
                 </div>
 
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-[#475569]">🌟 Chuyên cần:</span>
-                  <span className="font-bold text-[#0f172a]">{formatMoney(c?.chuyenCan)}</span>
+                  <span className="font-bold text-[#1c1917]">{formatMoney(c?.chuyenCan)}</span>
                 </div>
 
                 {(c?.allowanceFarHome || 0) > 0 && (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-[#475569]">🏠 Phụ cấp xa nhà:</span>
-                    <span className="font-bold text-[#0f172a]">{formatMoney(c?.allowanceFarHome)}</span>
+                    <span className="font-bold text-[#1c1917]">{formatMoney(c?.allowanceFarHome)}</span>
                   </div>
                 )}
                 {(c?.allowanceWaitLoading || 0) > 0 && (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-[#475569]">⏳ Phụ cấp chờ đóng hàng:</span>
-                    <span className="font-bold text-[#0f172a]">{formatMoney(c?.allowanceWaitLoading)}</span>
+                    <span className="font-bold text-[#1c1917]">{formatMoney(c?.allowanceWaitLoading)}</span>
                   </div>
                 )}
                 {(c?.allowanceOldCar || 0) > 0 && (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-[#475569]">🚙 Phụ cấp xe cũ:</span>
-                    <span className="font-bold text-[#0f172a]">{formatMoney(c?.allowanceOldCar)}</span>
+                    <span className="font-bold text-[#1c1917]">{formatMoney(c?.allowanceOldCar)}</span>
                   </div>
                 )}
                 {(c?.parkingHph2 || 0) > 0 && (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-[#475569]">🅿️ Gửi bãi HPH2:</span>
-                    <span className="font-bold text-[#0f172a]">{formatMoney(c?.parkingHph2)}</span>
+                    <span className="font-bold text-[#1c1917]">{formatMoney(c?.parkingHph2)}</span>
                   </div>
                 )}
 
                 {allowances.map((a, i) => (
                   <div key={i} className="flex items-center justify-between text-sm">
                     <span className="text-[#475569]">➕ {a.name}:</span>
-                    <span className="font-bold text-[#0f172a]">{formatMoney(a.amount)}</span>
+                    <span className="font-bold text-[#1c1917]">{formatMoney(a.amount)}</span>
                   </div>
                 ))}
 
-                <p className="text-xs font-bold text-[#0f172a] uppercase tracking-wider mt-2">II. Khoản khấu trừ</p>
+                <p className="text-xs font-bold text-[#1c1917] uppercase tracking-wider mt-2">II. Khoản khấu trừ</p>
 
                 {bhxh > 0 && (
                   <div className="flex items-center justify-between text-sm">
@@ -706,8 +706,8 @@ export default function MyDataPage() {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between text-sm mt-2 pt-2 border-t border-[rgba(0,0,0,0.08)]">
-                  <span className="font-bold text-[#0f172a]">Tổng thực nhận:</span>
+                <div className="flex items-center justify-between text-sm mt-2 pt-2 border-t border-[#e7e5e4]">
+                  <span className="font-bold text-[#1c1917]">Tổng thực nhận:</span>
                   <span className="font-extrabold text-[#10b981]">{formatMoney(grandTotal)}</span>
                 </div>
               </div>
@@ -721,11 +721,11 @@ export default function MyDataPage() {
               const closed =
                 now.getTime() >= new Date(confirmYear, confirmMonth - 1, 6).getTime();
               return closed ? (
-                <p className="text-xs text-[#64748b] mt-1">
+                <p className="text-xs text-[#78716c] mt-1">
                   Cám ơn Sếp, Công Ty sẽ tiến hành chi lương như số liệu đã chốt bên trên.
                 </p>
               ) : (
-                <p className="text-xs text-[#64748b] mt-1">
+                <p className="text-xs text-[#78716c] mt-1">
                   📌 Vui lòng kiểm tra số liệu và báo lại cho Huy ( 0985124650 ) trước ngày 5/ {confirmMonth}.{' '}
                   Quá thời hạn trên, công ty mặc định số liệu đúng và tiến hành chi trả lương.
                 </p>
@@ -742,16 +742,16 @@ export default function MyDataPage() {
         title="✏️ Chỉnh sửa bản ghi"
         footer={
           <>
-            <button onClick={() => setEditModal(false)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">
+            <button onClick={() => setEditModal(false)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] transition-all cursor-pointer">
               Hủy
             </button>
-            <button onClick={saveEdit} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] disabled:opacity-50 transition-all cursor-pointer">
+            <button onClick={saveEdit} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.4)] disabled:opacity-50 transition-all cursor-pointer">
               {saving ? 'Đang lưu...' : '💾 Lưu thay đổi'}
             </button>
           </>
         }
       >
-        <p style={{ fontSize: 13, fontWeight: 800, color: '#1155cc', marginBottom: 6 }}>1. Kế hoạch</p>
+        <p style={{ fontSize: 13, fontWeight: 800, color: '#d97706', marginBottom: 6 }}>1. Kế hoạch</p>
           {user?.role === 'laixe' ? (
             <div style={{
               background: '#fffbeb', border: '2px solid #f59e0b',
@@ -768,17 +768,17 @@ export default function MyDataPage() {
                 key={sl.id}
                 className={`flex items-center gap-2.5 px-3 py-2 bg-[#ffffff] border rounded-lg cursor-pointer transition-all text-xs ${
                   editForm.shippingLineId === sl.id
-                    ? 'border-[#1a56db] bg-[rgba(26,86,219,0.12)]'
-                    : 'border-[rgba(0,0,0,0.08)]'
+                    ? 'border-[#f59e0b] bg-[rgba(26,86,219,0.12)]'
+                    : 'border-[#e7e5e4]'
                 }`}
                 onClick={() => {
                   setEditForm(prev => ({ ...prev, shippingLine: sl.name, shippingLineId: sl.id, route: sl.routeName || '' }));
                 }}
               >
                 <div className={`w-4 h-4 border-2 rounded-full flex items-center justify-center shrink-0 ${
-                  editForm.shippingLineId === sl.id ? 'border-[#1a56db]' : 'border-[rgba(0,0,0,0.08)]'
+                  editForm.shippingLineId === sl.id ? 'border-[#f59e0b]' : 'border-[#e7e5e4]'
                 }`}>
-                  {editForm.shippingLineId === sl.id && <div className="w-1.5 h-1.5 rounded-full bg-[#1a56db]" />}
+                  {editForm.shippingLineId === sl.id && <div className="w-1.5 h-1.5 rounded-full bg-[#f59e0b]" />}
                 </div>
                 <span className="text-sm">{planDisplayName(sl)}{sl.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-400">x3</span> : sl.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-700">+15%</span> : null}</span>
               </label>
@@ -786,23 +786,23 @@ export default function MyDataPage() {
           </div>
           )}
         
-        <div className="h-px bg-[rgba(0,0,0,0.08)] my-4" />
+        <div className="h-px bg-[#e7e5e4] my-4" />
 
         {user?.role === 'laixe' ? (
         <>
         <div style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: 13, fontWeight: 800, color: '#1155cc', marginBottom: 6 }}>2. Lái Xe NW</p>
+          <p style={{ fontSize: 13, fontWeight: 800, color: '#d97706', marginBottom: 6 }}>2. Lái Xe NW</p>
           <div style={{
-            background: '#e8f0fe', border: '2px solid #1976d2',
+            background: '#e8f0fe', border: '2px solid #b45309',
             borderRadius: 10, padding: '10px 16px', textAlign: 'center',
           }}>
-            <span style={{ fontSize: 18, fontWeight: 900, color: '#1976d2', letterSpacing: 1 }}>
+            <span style={{ fontSize: 18, fontWeight: 900, color: '#b45309', letterSpacing: 1 }}>
               {editSub?.driverName || user?.fullName || user?.username || '—'}
             </span>
           </div>
         </div>
 
-        <p style={{ fontSize: 13, fontWeight: 800, color: '#1155cc', marginBottom: 8 }}>3. Nhập Sản Lượng Đã Chạy</p>
+        <p style={{ fontSize: 13, fontWeight: 800, color: '#d97706', marginBottom: 8 }}>3. Nhập Sản Lượng Đã Chạy</p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {/* Green box – Standard containers */}
@@ -854,57 +854,57 @@ export default function MyDataPage() {
         ) : (
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Hàng 20</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1">Hàng 20</label>
             <input type="number" min="0" value={editForm.hang20} onChange={(e) => updateField('hang20', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Hàng 40</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1">Hàng 40</label>
             <input type="number" min="0" value={editForm.hang40} onChange={(e) => updateField('hang40', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Vỏ 20</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1">Vỏ 20</label>
             <input type="number" min="0" value={editForm.vo20} onChange={(e) => updateField('vo20', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Vỏ 40</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1">Vỏ 40</label>
             <input type="number" min="0" value={editForm.vo40} onChange={(e) => updateField('vo40', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Vỏ 20FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1">Vỏ 20FR <span className="text-[10px] text-[#a8a29e] font-normal">(1 bó = 4 cái)</span></label>
             <input type="number" min="0" value={editForm.vo20fr} onChange={(e) => updateField('vo20fr', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Vỏ 40FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1">Vỏ 40FR <span className="text-[10px] text-[#a8a29e] font-normal">(1 bó = 4 cái)</span></label>
             <input type="number" min="0" value={editForm.vo40fr} onChange={(e) => updateField('vo40fr', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Vệ sinh lại <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1">Vệ sinh lại <span className="text-[10px] text-[#a8a29e] font-normal">(Chuyến)</span></label>
             <input type="number" min="0" value={editForm.veSinhLai} onChange={(e) => updateField('veSinhLai', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">Kéo về <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1">Kéo về <span className="text-[10px] text-[#a8a29e] font-normal">(Chuyến)</span></label>
             <input type="number" min="0" value={editForm.keoVe} onChange={(e) => updateField('keoVe', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1">TIP (x 1.000đ)</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1">TIP (x 1.000đ)</label>
             <input type="number" min="0" value={editForm.tip} onChange={(e) => updateField('tip', e.target.value)} placeholder="0"
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
         </div>
         )}
 
         {editSub && editSub.history && editSub.history.length > 0 && (user?.role === 'admin' || user?.role === 'supper_admin') && (
           <>
-            <div className="h-px bg-[rgba(0,0,0,0.08)] my-4" />
-            <div className="text-xs font-semibold text-[#64748b] mb-2.5">
+            <div className="h-px bg-[#e7e5e4] my-4" />
+            <div className="text-xs font-semibold text-[#78716c] mb-2.5">
               📜 Lịch sử chỉnh sửa ({editSub.history.length} lần)
             </div>
             <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto">
@@ -917,8 +917,8 @@ export default function MyDataPage() {
                   rawFallback = h.changes;
                 }
                 return (
-                  <div key={h.id} className="px-3.5 py-2.5 bg-[#f8fafc] rounded-lg border-l-3 border-l-[#f59e0b] text-[11px]">
-                    <div className="text-[#64748b] mb-1">🕐 {fmtDate(h.editedAt)} — bởi {h.editedByName}</div>
+                  <div key={h.id} className="px-3.5 py-2.5 bg-[#f5f5f4] rounded-lg border-l-3 border-l-[#f59e0b] text-[11px]">
+                    <div className="text-[#78716c] mb-1">🕐 {fmtDate(h.editedAt)} — bởi {h.editedByName}</div>
                     {rawFallback != null ? (
                       <div>{rawFallback}</div>
                     ) : (

@@ -94,10 +94,10 @@ export function ChatHistoryTab({ allUsers, currentUser, toast }: Props) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5 items-start">
-      <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
+      <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-bold">💬 Cuộc trò chuyện</h3>
-          <button onClick={loadConversations} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">🔄</button>
+          <button onClick={loadConversations} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] transition-all cursor-pointer">🔄</button>
         </div>
         {loadingConv ? (
           <LoadingSpinner className="py-10" />
@@ -110,27 +110,27 @@ export function ChatHistoryTab({ allUsers, currentUser, toast }: Props) {
                   onClick={() => loadMessages(c.userId)}
                   className={`flex items-center gap-3 p-3 rounded-lg text-left transition-all cursor-pointer ${
                     selectedUserId === c.userId
-                      ? 'bg-[#1a56db]/10 border border-[rgba(26,86,219,0.3)]'
-                      : 'bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] hover:border-[rgba(26,86,219,0.3)]'
+                      ? 'bg-[#f59e0b]/10 border border-[rgba(26,86,219,0.3)]'
+                      : 'bg-[#f5f5f4] border border-[#e7e5e4] hover:border-[rgba(26,86,219,0.3)]'
                   }`}>
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1a56db] to-[#06b6d4] flex items-center justify-center font-bold text-sm text-white shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#06b6d4] flex items-center justify-center font-bold text-sm text-white shrink-0">
                     {(u?.fullName || '?')[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold truncate">{u?.fullName || `User #${c.userId}`}</div>
-                    <div className="text-[10px] text-[#64748b]">{fmtDateTime(c.lastAt)}</div>
+                    <div className="text-[10px] text-[#78716c]">{fmtDateTime(c.lastAt)}</div>
                   </div>
                 </button>
               );
             })}
             {conversations.length === 0 && (
-              <div className="text-center py-8 text-[#64748b] text-sm">Chưa có cuộc trò chuyện nào</div>
+              <div className="text-center py-8 text-[#78716c] text-sm">Chưa có cuộc trò chuyện nào</div>
             )}
           </div>
         )}
       </div>
 
-      <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5 flex flex-col">
+      <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl p-5 flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-bold">
             💬 Lịch sử chat {selectedUserId ? `— ${userMap(selectedUserId)?.fullName || `User #${selectedUserId}`}` : ''}
@@ -153,8 +153,8 @@ export function ChatHistoryTab({ allUsers, currentUser, toast }: Props) {
                 <div key={m.id} className={`flex ${isBot ? 'justify-start' : 'justify-end'}`}>
                   <div className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap ${
                     isBot
-                      ? 'bg-[#f1f5f9] text-[#0f172a] rounded-tl-sm'
-                      : 'bg-gradient-to-br from-[#1a56db] to-[#2563eb] text-white rounded-tr-sm'
+                      ? 'bg-[#fafaf9] text-[#1c1917] rounded-tl-sm'
+                      : 'bg-gradient-to-br from-[#f59e0b] to-[#d97706] text-white rounded-tr-sm'
                   }`}>
                     <div className={`text-[9px] font-semibold opacity-60 mb-1 ${isAdminSent ? 'text-[#d97706]' : ''}`}>
                       {isBot ? (isAdminSent ? '🤖 Admin gửi' : '🤖 Bot') : '🚚 Lái xe'}
@@ -166,11 +166,11 @@ export function ChatHistoryTab({ allUsers, currentUser, toast }: Props) {
               );
             })}
             {messages.length === 0 && (
-              <div className="text-center py-16 text-[#64748b] text-sm">Chưa có tin nhắn nào trong cuộc trò chuyện này</div>
+              <div className="text-center py-16 text-[#78716c] text-sm">Chưa có tin nhắn nào trong cuộc trò chuyện này</div>
             )}
           </div>
         )}
-        <div className="flex gap-2 mt-4 border-t border-[rgba(0,0,0,0.08)] pt-3">
+        <div className="flex gap-2 mt-4 border-t border-[#e7e5e4] pt-3">
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -183,12 +183,12 @@ export function ChatHistoryTab({ allUsers, currentUser, toast }: Props) {
             disabled={!selectedUserId || sending}
             placeholder={selectedUserId ? 'Nhập tin nhắn gửi cho lái xe...' : 'Chọn một lái xe ở danh sách để gửi tin'}
             rows={2}
-            className="flex-1 resize-none px-3 py-2 rounded-lg border border-[rgba(0,0,0,0.12)] text-sm focus:outline-none focus:border-[#1a56db] disabled:opacity-50"
+            className="flex-1 resize-none px-3 py-2 rounded-lg border border-[rgba(0,0,0,0.12)] text-sm focus:outline-none focus:border-[#f59e0b] disabled:opacity-50"
           />
           <button
             onClick={sendMessage}
             disabled={!selectedUserId || !draft.trim() || sending}
-            className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-[#1a56db] to-[#2563eb] shrink-0 disabled:opacity-40 transition-all cursor-pointer"
+            className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-[#f59e0b] to-[#d97706] shrink-0 disabled:opacity-40 transition-all cursor-pointer"
           >
             {sending ? 'Đang gửi...' : 'Gửi'}
           </button>

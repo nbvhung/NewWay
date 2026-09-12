@@ -41,10 +41,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f1f5f9] relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_50%,rgba(26,86,219,0.15)_0%,transparent_60%),radial-gradient(ellipse_at_80%_20%,rgba(6,182,212,0.1)_0%,transparent_50%)]" />
+    <div className="min-h-screen flex items-center justify-center bg-[#fafaf9] relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_50%,rgba(245,158,11,0.15)_0%,transparent_60%),radial-gradient(ellipse_at_80%_20%,rgba(6,182,212,0.1)_0%,transparent_50%)]" />
 
-      <div className="relative z-10 w-full max-w-[420px] bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-2xl p-10 sm:p-12 shadow-lg">
+      <div className="relative z-10 w-full max-w-[420px] bg-[#ffffff] border border-[#e7e5e4] rounded-2xl p-10 sm:p-12 shadow-lg">
         <div className="text-center mb-8">
           <div className="w-28 h-28 mx-auto mb-4 flex items-center justify-center">
             <Image
@@ -52,12 +52,12 @@ export default function LoginPage() {
               alt="New Way Logo"
               width={112}
               height={112}
-              className="rounded-2xl object-contain shadow-[0_8px_32px_rgba(26,86,219,0.4)]"
+              className="rounded-2xl object-contain shadow-[0_8px_32px_rgba(245,158,11,0.4)]"
               priority
             />
           </div>
           <h1 className="text-xl font-bold leading-tight">NEW WAY</h1>
-          <p className="text-xs text-[#64748b] mt-1">Developed by AI Application & Digital Transformation Department</p>
+          <p className="text-xs text-[#78716c] mt-1">Developed by AI Application & Digital Transformation Department</p>
         </div>
 
         {error && (
@@ -68,7 +68,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5 tracking-wide">
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5 tracking-wide">
               Tên đăng nhập <span className="text-[#ef4444] ml-0.5">*</span>
             </label>
             <input
@@ -76,13 +76,13 @@ export default function LoginPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Nhập tên đăng nhập..."
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none transition-all focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none transition-all focus:border-[#f59e0b] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#78716c]"
               required
             />
           </div>
 
           <div className="mb-6">
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5 tracking-wide">
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5 tracking-wide">
               Mật khẩu <span className="text-[#ef4444] ml-0.5">*</span>
             </label>
             <input
@@ -90,7 +90,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Nhập mật khẩu..."
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none transition-all focus:border-[#1a56db] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#64748b]"
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none transition-all focus:border-[#f59e0b] focus:shadow-[0_0_0_3px_rgba(26,86,219,0.2)] placeholder:text-[#78716c]"
               required
             />
           </div>
@@ -98,7 +98,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-lg bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white font-semibold text-sm shadow-[0_4px_15px_rgba(26,86,219,0.4)] transition-all hover:shadow-[0_6px_20px_rgba(26,86,219,0.5)] hover:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 rounded-lg bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white font-semibold text-sm shadow-[0_4px_15px_rgba(245,158,11,0.4)] transition-all hover:shadow-[0_6px_20px_rgba(26,86,219,0.5)] hover:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="inline-flex items-center gap-2">

@@ -40,6 +40,7 @@ export class ShippingLinesService {
     const qb = this.shippingLinesRepository
       .createQueryBuilder('sl')
       .leftJoinAndSelect('sl.route', 'route')
+      .leftJoinAndSelect('sl.customer', 'customer')
       .orderBy('sl.ngay', 'DESC');
     if (completed !== undefined) {
       qb.andWhere('sl.completed = :completed', { completed });
@@ -64,6 +65,7 @@ export class ShippingLinesService {
       soChuyen: dto.soChuyen?.trim() || '',
       routeName: dto.routeName?.trim() || '',
       ngay: dto.ngay || undefined,
+      customerId: dto.customerId ?? null,
       vendor: dto.vendor?.trim() || '',
       tangCuong: dto.tangCuong || false,
       leTet: dto.leTet || false,
@@ -99,6 +101,7 @@ export class ShippingLinesService {
       await this.submissionsRepository.update({ shippingLineId: id }, { route: dto.routeName.trim() });
     }
     if (dto.ngay !== undefined) plan.ngay = dto.ngay;
+    if (dto.customerId !== undefined) plan.customerId = dto.customerId ?? null;
     if (dto.vendor !== undefined) plan.vendor = dto.vendor.trim();
     if (dto.tangCuong !== undefined) plan.tangCuong = dto.tangCuong;
     if (dto.leTet !== undefined) plan.leTet = dto.leTet;

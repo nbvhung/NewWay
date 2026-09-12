@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ShippingLine, Route, User } from '@/types';
+import { ShippingLine, Route, User, Customer } from '@/types';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { submissionsApi } from '@/lib/api-submissions';
 import { fmtNgay } from '@/lib/utils';
@@ -14,16 +14,18 @@ interface Props {
   allShippingLines: ShippingLine[];
   allRoutes: Route[];
   allUsers: User[];
+  allCustomers?: Customer[];
   onRefresh: () => void;
   toast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, onRefresh, toast }: Props) {
+export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, allCustomers, onRefresh, toast }: Props) {
   const drivers = allUsers.filter(u => u.role === 'laixe').sort((a, b) => {
     const aStt = a.stt ? parseInt(String(a.stt), 10) : 999999;
     const bStt = b.stt ? parseInt(String(b.stt), 10) : 999999;
     return aStt - bStt;
   });
+  const activeCustomers = (allCustomers || []).filter(c => c.status === 'active');
   const [name, setName] = useState('');
   const [soChuyen, setSoChuyen] = useState('');
   const [routeName, setRouteName] = useState('');
@@ -32,6 +34,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
   const [leTet, setLeTet] = useState(false);
   const [driverIds, setDriverIds] = useState<number[]>([]);
   const [allDrivers, setAllDrivers] = useState(true);
+  const [customerId, setCustomerId] = useState('');
 
   const [editOpen, setEditOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -52,6 +55,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
   const [editLeTet, setEditLeTet] = useState(false);
   const [editDriverIds, setEditDriverIds] = useState<number[]>([]);
   const [editAllDrivers, setEditAllDrivers] = useState(true);
+  const [editCustomerId, setEditCustomerId] = useState('');
   const [saving, setSaving] = useState(false);
   const [routeTypeFilter, setRouteTypeFilter] = useState('Tất cả');
   const [editRouteTypeFilter, setEditRouteTypeFilter] = useState('Tất cả');
@@ -70,6 +74,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
     setLeTet(false);
     setDriverIds([]);
     setAllDrivers(true);
+    setCustomerId('');
   };
 
   const createPlan = async (): Promise<ShippingLine | null> => {
@@ -79,6 +84,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
       soChuyen: soChuyen.trim(),
       routeName: routeName.trim(),
       ngay: ngay || undefined,
+      customerId: customerId ? Number(customerId) : undefined,
       tangCuong,
       leTet,
       vendorKhac: addVendorKhac.trim(),
@@ -151,6 +157,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
     setEditLeTet(p.leTet);
     try { setEditDriverIds(JSON.parse(p.driverIds || '[]')); } catch { setEditDriverIds([]); }
     setEditAllDrivers(p.allDrivers);
+    setEditCustomerId(p.customerId ? String(p.customerId) : '');
     setEditOpen(true);
   };
 
@@ -164,6 +171,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
         soChuyen: editSoChuyen.trim(),
         routeName: editRouteName.trim(),
         ngay: editNgay || undefined,
+        customerId: editCustomerId ? Number(editCustomerId) : null,
         tangCuong: editTangCuong,
         leTet: editLeTet,
         driverIds: editAllDrivers ? [] : editDriverIds,
@@ -207,56 +215,68 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
   };
 
   const renderDriverChips = (selected: number[], onChange: (ids: number[]) => void) => (
-    <div className="flex flex-wrap gap-1 p-2 border border-[rgba(0,0,0,0.08)] rounded-lg max-h-[140px] overflow-y-auto">
+    <div className="flex flex-wrap gap-1 p-2 border border-[#e7e5e4] rounded-lg max-h-[140px] overflow-y-auto">
       {drivers.length > 0 ? drivers.map(d => {
         const sel = selected.includes(d.id);
         return (
           <label key={d.id}
             className={`px-2 py-1 rounded text-[10px] border cursor-pointer ${
               sel
-                ? 'border-[#1a56db] bg-[rgba(26,86,219,0.15)]'
-                : 'border-[rgba(0,0,0,0.08)] hover:border-[#1a56db]'
+                ? 'border-[#f59e0b] bg-[rgba(245,158,11,0.15)]'
+                : 'border-[#e7e5e4] hover:border-[#f59e0b]'
             }`}
             onClick={() => onChange(sel ? selected.filter(id => id !== d.id) : [...selected, d.id])}>
             {d.stt || d.fullName || d.username}
           </label>
         );
-      }) : <span className="text-[10px] text-[#64748b]">Chưa có tài khoản lái xe</span>}
+      }) : <span className="text-[10px] text-[#78716c]">Chưa có tài khoản lái xe</span>}
     </div>
   );
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 items-start">
-      <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+      {/* ── Danh sách kế hoạch ── */}
+      <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-bold">🚢 Danh sách kế hoạch</h3>
-          <button onClick={onRefresh} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">🔄 Làm mới</button>
+          <h3 className="text-base font-bold">🚢 Danh sách kế hoạch
+            <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(245,158,11,0.15)] text-[#d97706]">
+              {activePlans.length} đang mở
+            </span>
+          </h3>
+          <button onClick={onRefresh} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] hover:border-[#d4d4d0] transition-all cursor-pointer">🔄</button>
         </div>
         <div className="flex flex-col gap-1.5">
           {pagedLines.map(p => {
             const display = planDisplayName(p);
             return (
-              <div key={p.id} className="flex items-center justify-between gap-2 px-3 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs">
+              <div key={p.id} className="flex items-center justify-between gap-2 px-3.5 py-3 bg-[#f9f9f8] border border-[#e7e5e4] rounded-xl hover:border-[#f59e0b] hover:bg-[rgba(245,158,11,0.04)] transition-all">
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm">{display}{p.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-600">x3</span> : p.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-600">+15%</span> : null}</span>
-                  <div className="text-[9px] text-[#64748b] mt-0.5">Lái xe: {driversText(p)}</div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-sm font-bold text-[#1c1917]">{display}</span>
+                    {p.leTet
+                      ? <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[rgba(239,68,68,0.12)] text-red-600">🎉 x3 Lễ/Tết</span>
+                      : p.tangCuong
+                        ? <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[rgba(245,158,11,0.12)] text-amber-600">⚡ +15%</span>
+                        : null}
+                  </div>
+                  <div className="text-[10px] text-[#a8a29e] mt-0.5">👷 {driversText(p)}</div>
                 </div>
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => openEdit(p)}
-                    className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️</button>
+                    className="px-2 py-1 rounded-lg text-[10px] font-medium border border-[#e7e5e4] text-[#78716c] hover:text-[#1c1917] hover:border-[#d4d4d0] cursor-pointer">✏️</button>
                   {user?.role === 'ops' || user?.role === 'admin' || user?.role === 'supper_admin' ? (
                     <button onClick={() => completePlan(p.id, display)}
-                      className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white cursor-pointer">✅</button>
+                      className="px-2 py-1 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white cursor-pointer">✅</button>
                   ) : null}
                   {(user?.role === 'admin' || user?.role === 'supper_admin') ? (
                     <button onClick={() => deletePlan(p.id, display)}
-                      className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">✕</button>
+                      className="px-2 py-1 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">✕</button>
                   ) : null}
                 </div>
               </div>
             );
           })}
-          {allShippingLines.length === 0 && <div className="text-center w-full py-8 text-[#64748b] text-sm">Chưa có kế hoạch</div>}
+          {allShippingLines.length === 0 && <div className="text-center w-full py-10 text-[#78716c] text-sm">Chưa có kế hoạch</div>}
         </div>
         <Pagination
           page={page}
@@ -269,76 +289,119 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
         />
       </div>
 
-      <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5 sticky top-20">
-        <h3 className="text-base font-bold mb-4">➕ Thêm kế hoạch</h3>
-        <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tên kế hoạch/Tên Tàu <span className="text-red-500">*</span></label>
-          <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="vd: Kế hoạch A"
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+      {/* ── Form thêm kế hoạch ── */}
+      <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl overflow-hidden sticky top-20">
+        <div className="bg-gradient-to-r from-[#f59e0b] to-[#d97706] px-5 py-3.5">
+          <h3 className="text-sm font-bold text-white">➕ Thêm kế hoạch mới</h3>
+          <p className="text-white/70 text-[10px] mt-0.5">Tàu, tuyến đường và phân công lái xe</p>
         </div>
-        <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Số chuyến</label>
-          <input type="text" value={soChuyen} onChange={e => setSoChuyen(e.target.value)} placeholder="vd: CH01"
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
-        </div>
-        <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tuyến đường</label>
-          <div className="flex gap-1 mb-2">
-            {ROUTE_TYPES.map(t => (
-              <label key={t}
-                className={`px-2 py-0.5 rounded text-[10px] font-bold border cursor-pointer ${
-                  routeTypeFilter === t
-                    ? 'border-[#1a56db] bg-[rgba(26,86,219,0.15)] text-[#1a56db]'
-                    : 'border-[rgba(0,0,0,0.08)] text-[#64748b] hover:border-[#1a56db]'
-                }`}
-                onClick={() => setRouteTypeFilter(t)}>
-                {t}
-              </label>
-            ))}
+        <div className="p-5 space-y-3">
+          {/* Thông tin cơ bản */}
+          <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
+            <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
+              <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">Thông tin kế hoạch <span className="text-red-400">*</span></span>
+            </div>
+            <div className="p-3 space-y-2">
+              <div>
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Tên kế hoạch / Tên Tàu</label>
+                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="vd: Kế hoạch A"
+                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Số chuyến</label>
+                  <input type="text" value={soChuyen} onChange={e => setSoChuyen(e.target.value)} placeholder="CH01"
+                    className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Ngày</label>
+                  <input type="date" value={ngay} onChange={e => setNgay(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Khách hàng</label>
+                <select value={customerId} onChange={e => setCustomerId(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer">
+                  <option value="">-- Chọn khách hàng --</option>
+                  {activeCustomers.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}{c.mst ? ` (MST: ${c.mst})` : ''}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-1 p-2 border border-[rgba(0,0,0,0.08)] rounded-lg max-h-[140px] overflow-y-auto">
-            {(routeTypeFilter === 'Tất cả' ? allRoutes : allRoutes.filter(r => r.type === routeTypeFilter)).length > 0
-              ? (routeTypeFilter === 'Tất cả' ? allRoutes : allRoutes.filter(r => r.type === routeTypeFilter)).map(r => (
-              <label key={r.id}
-                className={`px-2 py-1 rounded text-[10px] border cursor-pointer ${
-                  routeName === r.name
-                    ? 'border-[#1a56db] bg-[rgba(26,86,219,0.15)]'
-                    : 'border-[rgba(0,0,0,0.08)] hover:border-[#1a56db]'
-                }`}
-                onClick={() => setRouteName(routeName === r.name ? '' : r.name)}>
-                🛤️ {r.name}
-              </label>
-            )) : <span className="text-[10px] text-[#64748b]">Chưa có tuyến đường</span>}
+
+          {/* Tuyến đường */}
+          <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
+            <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
+              <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">Tuyến đường</span>
+            </div>
+            <div className="p-3">
+              <div className="flex gap-1 mb-2">
+                {ROUTE_TYPES.map(t => (
+                  <label key={t}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border cursor-pointer transition-all ${
+                      routeTypeFilter === t
+                        ? 'border-[#f59e0b] bg-[rgba(245,158,11,0.15)] text-[#f59e0b]'
+                        : 'border-[#e7e5e4] text-[#78716c] hover:border-[#f59e0b]'
+                    }`}
+                    onClick={() => setRouteTypeFilter(t)}>
+                    {t}
+                  </label>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-1 p-2 border border-[#e7e5e4] rounded-lg max-h-[120px] overflow-y-auto bg-[#f9f9f8]">
+                {(routeTypeFilter === 'Tất cả' ? allRoutes : allRoutes.filter(r => r.type === routeTypeFilter)).length > 0
+                  ? (routeTypeFilter === 'Tất cả' ? allRoutes : allRoutes.filter(r => r.type === routeTypeFilter)).map(r => (
+                  <label key={r.id}
+                    className={`px-2 py-1 rounded-lg text-[10px] border cursor-pointer transition-all ${
+                      routeName === r.name
+                        ? 'border-[#f59e0b] bg-[rgba(245,158,11,0.15)] font-semibold text-[#d97706]'
+                        : 'border-[#e7e5e4] hover:border-[#f59e0b] text-[#78716c]'
+                    }`}
+                    onClick={() => setRouteName(routeName === r.name ? '' : r.name)}>
+                    🛤️ {r.name}
+                  </label>
+                )) : <span className="text-[10px] text-[#a8a29e]">Chưa có tuyến đường</span>}
+              </div>
+            </div>
           </div>
+
+          {/* Lái xe */}
+          <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
+            <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
+              <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">Phân công lái xe</span>
+            </div>
+            <div className="p-3">
+              <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
+                <input type="checkbox" checked={allDrivers} onChange={e => setAllDrivers(e.target.checked)}
+                  className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
+                <span className="text-xs font-medium text-[#78716c]">Tất cả lái xe</span>
+              </label>
+              {!allDrivers && renderDriverChips(driverIds, setDriverIds)}
+            </div>
+          </div>
+
+          {/* Loại tàu */}
+          <div className="flex gap-3">
+            <label className="flex items-center gap-2 cursor-pointer select-none flex-1 px-3 py-2 border border-[#e7e5e4] rounded-lg hover:border-[#f59e0b] transition-all">
+              <input type="checkbox" checked={tangCuong} onChange={e => setTangCuong(e.target.checked)}
+                className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
+              <span className="text-xs font-medium text-[#78716c]">⚡ Tăng Cường <span className="text-amber-600 font-bold">+15%</span></span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer select-none flex-1 px-3 py-2 border border-[#e7e5e4] rounded-lg hover:border-[#f59e0b] transition-all">
+              <input type="checkbox" checked={leTet} onChange={e => setLeTet(e.target.checked)}
+                className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
+              <span className="text-xs font-medium text-[#78716c]">🎉 Lễ / Tết <span className="text-red-600 font-bold">x3</span></span>
+            </label>
+          </div>
+
+          <button onClick={() => { setAddVendorKhac(''); setAddTenNguoiNhap(''); setAddOpen(true); }}
+            className="w-full py-2.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.4)] cursor-pointer">
+            ➕ Thêm kế hoạch
+          </button>
         </div>
-        <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Phân công lái xe</label>
-          <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
-            <input type="checkbox" checked={allDrivers} onChange={e => setAllDrivers(e.target.checked)}
-              className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
-            <span className="text-xs font-medium text-[#64748b]">Tất cả lái xe</span>
-          </label>
-          {!allDrivers && renderDriverChips(driverIds, setDriverIds)}
-        </div>
-        <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Ngày</label>
-          <input type="date" value={ngay} onChange={e => setNgay(e.target.value)}
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" />
-        </div>
-        <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
-          <input type="checkbox" checked={tangCuong} onChange={e => setTangCuong(e.target.checked)}
-            className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
-          <span className="text-xs font-medium text-[#64748b]">🚢 Tàu Tăng Cường <span className="text-amber-600 font-bold">+15%</span></span>
-        </label>
-        <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
-          <input type="checkbox" checked={leTet} onChange={e => setLeTet(e.target.checked)}
-            className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
-          <span className="text-xs font-medium text-[#64748b]">🎉 Tàu Lễ, Tết <span className="text-red-600 font-bold">x3</span></span>
-        </label>
-        <button onClick={() => { setAddVendorKhac(''); setAddTenNguoiNhap(''); setAddOpen(true); }}
-          className="w-full py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] cursor-pointer">
-          ➕ Thêm kế hoạch
-        </button>
       </div>
 
       <Modal
@@ -359,14 +422,14 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
         }
       >
         <div className="mb-4">
-          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Vendor khác (nếu có)</label>
+          <label className="text-xs font-medium text-[#78716c] mb-1.5 block">Vendor khác (nếu có)</label>
           <input type="text" value={addVendorKhac} onChange={e => setAddVendorKhac(e.target.value)} placeholder="Nhập vendor khác..."
-            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
         </div>
         <div className="mb-2">
-          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Tên người nhập</label>
+          <label className="text-xs font-medium text-[#78716c] mb-1.5 block">Tên người nhập</label>
           <input type="text" value={addTenNguoiNhap} onChange={e => setAddTenNguoiNhap(e.target.value)} placeholder="Nhập tên người nhập..."
-            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
         </div>
       </Modal>
 
@@ -377,7 +440,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
         footer={
           <div className="flex gap-2 w-full">
             <button onClick={() => setTotalShipOpen(false)}
-              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">
+              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] cursor-pointer">
               Đóng
             </button>
             <button onClick={saveTotalShip} disabled={saving}
@@ -388,8 +451,8 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
         }
       >
         <div className="mb-4">
-          <label className="text-xs font-medium text-[#64748b] mb-1.5 block">Kế hoạch</label>
-          <div className="px-3.5 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a]">
+          <label className="text-xs font-medium text-[#78716c] mb-1.5 block">Kế hoạch</label>
+          <div className="px-3.5 py-2.5 bg-[#f5f5f4] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917]">
             {totalShipPlan
               ? [totalShipPlan.name, totalShipPlan.soChuyen, totalShipPlan.routeName, fmtNgay(totalShipPlan.ngay)].filter(Boolean).join(' / ')
               : '—'}
@@ -397,49 +460,49 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
         </div>
         <div className="grid grid-cols-2 gap-3 mb-2">
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số hàng 20</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số hàng 20</label>
             <input type="number" min="0" value={totalShipForm.hang20} onChange={e => setTotalShipForm(f => ({ ...f, hang20: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số hàng 40</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số hàng 40</label>
             <input type="number" min="0" value={totalShipForm.hang40} onChange={e => setTotalShipForm(f => ({ ...f, hang40: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số vỏ 20</label>
             <input type="number" min="0" value={totalShipForm.vo20} onChange={e => setTotalShipForm(f => ({ ...f, vo20: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số vỏ 40</label>
             <input type="number" min="0" value={totalShipForm.vo40} onChange={e => setTotalShipForm(f => ({ ...f, vo40: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 20FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số vỏ 20FR <span className="text-[10px] text-[#a8a29e] font-normal">(1 bó = 4 cái)</span></label>
             <input type="number" min="0" value={totalShipForm.vo20fr} onChange={e => setTotalShipForm(f => ({ ...f, vo20fr: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Tổng số vỏ 40FR <span className="text-[10px] text-[#94a3b8] font-normal">(1 bó = 4 cái)</span></label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tổng số vỏ 40FR <span className="text-[10px] text-[#a8a29e] font-normal">(1 bó = 4 cái)</span></label>
             <input type="number" min="0" value={totalShipForm.vo40fr} onChange={e => setTotalShipForm(f => ({ ...f, vo40fr: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Vệ sinh lại <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Vệ sinh lại <span className="text-[10px] text-[#a8a29e] font-normal">(Chuyến)</span></label>
             <input type="number" min="0" value={totalShipForm.veSinhLai} onChange={e => setTotalShipForm(f => ({ ...f, veSinhLai: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">Kéo về <span className="text-[10px] text-[#94a3b8] font-normal">(Chuyến)</span></label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Kéo về <span className="text-[10px] text-[#a8a29e] font-normal">(Chuyến)</span></label>
             <input type="number" min="0" value={totalShipForm.keoVe} onChange={e => setTotalShipForm(f => ({ ...f, keoVe: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#64748b] mb-1.5">TIP (x 1.000đ)</label>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">TIP (x 1.000đ)</label>
             <input type="number" min="0" value={totalShipForm.tip} onChange={e => setTotalShipForm(f => ({ ...f, tip: e.target.value }))} placeholder="0"
-              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+              className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
           </div>
         </div>
       </Modal>
@@ -450,76 +513,86 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
         title="✏️ Sửa kế hoạch"
         footer={
           <>
-            <button onClick={() => setEditOpen(false)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">Hủy</button>
-            <button onClick={saveEdit} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] disabled:opacity-50 cursor-pointer">
+            <button onClick={() => setEditOpen(false)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] cursor-pointer">Hủy</button>
+            <button onClick={saveEdit} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.4)] disabled:opacity-50 cursor-pointer">
               {saving ? 'Đang lưu...' : '💾 Lưu thay đổi'}
             </button>
           </>
         }
       >
         <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tên kế hoạch/Tên Tàu <span className="text-red-500">*</span></label>
+          <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Tên kế hoạch/Tên Tàu <span className="text-red-500">*</span></label>
           <input type="text" value={editName} onChange={e => setEditName(e.target.value)}
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]" />
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
         </div>
         <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Số chuyến</label>
+          <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Số chuyến</label>
           <input type="text" value={editSoChuyen} onChange={e => setEditSoChuyen(e.target.value)}
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" />
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
         </div>
         <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Tuyến đường</label>
+          <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Tuyến đường</label>
           <div className="flex gap-1 mb-2">
             {ROUTE_TYPES.map(t => (
               <label key={t}
                 className={`px-2 py-0.5 rounded text-[10px] font-bold border cursor-pointer ${
                   editRouteTypeFilter === t
-                    ? 'border-[#1a56db] bg-[rgba(26,86,219,0.15)] text-[#1a56db]'
-                    : 'border-[rgba(0,0,0,0.08)] text-[#64748b] hover:border-[#1a56db]'
+                    ? 'border-[#f59e0b] bg-[rgba(245,158,11,0.15)] text-[#f59e0b]'
+                    : 'border-[#e7e5e4] text-[#78716c] hover:border-[#f59e0b]'
                 }`}
                 onClick={() => setEditRouteTypeFilter(t)}>
                 {t}
               </label>
             ))}
           </div>
-          <div className="flex flex-wrap gap-1 p-2 border border-[rgba(0,0,0,0.08)] rounded-lg max-h-[140px] overflow-y-auto">
+          <div className="flex flex-wrap gap-1 p-2 border border-[#e7e5e4] rounded-lg max-h-[140px] overflow-y-auto">
             {(editRouteTypeFilter === 'Tất cả' ? allRoutes : allRoutes.filter(r => r.type === editRouteTypeFilter)).length > 0
               ? (editRouteTypeFilter === 'Tất cả' ? allRoutes : allRoutes.filter(r => r.type === editRouteTypeFilter)).map(r => (
               <label key={r.id}
                 className={`px-2 py-1 rounded text-[10px] border cursor-pointer ${
                   editRouteName === r.name
-                    ? 'border-[#1a56db] bg-[rgba(26,86,219,0.15)]'
-                    : 'border-[rgba(0,0,0,0.08)] hover:border-[#1a56db]'
+                    ? 'border-[#f59e0b] bg-[rgba(245,158,11,0.15)]'
+                    : 'border-[#e7e5e4] hover:border-[#f59e0b]'
                 }`}
                 onClick={() => setEditRouteName(editRouteName === r.name ? '' : r.name)}>
                 🛤️ {r.name}
               </label>
-            )) : <span className="text-[10px] text-[#64748b]">Chưa có tuyến đường</span>}
+            )) : <span className="text-[10px] text-[#78716c]">Chưa có tuyến đường</span>}
           </div>
         </div>
         <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Phân công lái xe</label>
+          <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Phân công lái xe</label>
           <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
             <input type="checkbox" checked={editAllDrivers} onChange={e => setEditAllDrivers(e.target.checked)}
-              className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
-            <span className="text-xs font-medium text-[#64748b]">Tất cả lái xe</span>
+              className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
+            <span className="text-xs font-medium text-[#78716c]">Tất cả lái xe</span>
           </label>
           {!editAllDrivers && renderDriverChips(editDriverIds, setEditDriverIds)}
         </div>
         <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Ngày</label>
+          <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Ngày</label>
           <input type="date" value={editNgay} onChange={e => setEditNgay(e.target.value)}
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]" />
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
+        </div>
+        <div className="mb-3">
+          <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Khách hàng</label>
+          <select value={editCustomerId} onChange={e => setEditCustomerId(e.target.value)}
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer">
+            <option value="">-- Chọn khách hàng --</option>
+            {activeCustomers.map(c => (
+              <option key={c.id} value={c.id}>{c.name}{c.mst ? ` (MST: ${c.mst})` : ''}</option>
+            ))}
+          </select>
         </div>
         <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
           <input type="checkbox" checked={editTangCuong} onChange={e => setEditTangCuong(e.target.checked)}
-            className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
-          <span className="text-xs font-medium text-[#64748b]">🚢 Tàu Tăng Cường <span className="text-amber-600 font-bold">+15%</span></span>
+            className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
+          <span className="text-xs font-medium text-[#78716c]">🚢 Tàu Tăng Cường <span className="text-amber-600 font-bold">+15%</span></span>
         </label>
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input type="checkbox" checked={editLeTet} onChange={e => setEditLeTet(e.target.checked)}
-            className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
-          <span className="text-xs font-medium text-[#64748b]">🎉 Tàu Lễ, Tết <span className="text-red-600 font-bold">x3</span></span>
+            className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
+          <span className="text-xs font-medium text-[#78716c]">🎉 Tàu Lễ, Tết <span className="text-red-600 font-bold">x3</span></span>
         </label>
       </Modal>
 

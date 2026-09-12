@@ -14,8 +14,8 @@ interface Props {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  H20: 'bg-[rgba(26,86,219,0.15)] text-[#1a56db]',
-  H40: 'bg-[rgba(26,86,219,0.25)] text-[#1a56db]',
+  H20: 'bg-[rgba(245,158,11,0.15)] text-[#f59e0b]',
+  H40: 'bg-[rgba(245,158,11,0.25)] text-[#f59e0b]',
   V20: 'bg-[rgba(16,185,129,0.15)] text-emerald-700',
   V40: 'bg-[rgba(16,185,129,0.25)] text-emerald-700',
   V20FR: 'bg-[rgba(245,158,11,0.15)] text-amber-700',
@@ -117,7 +117,7 @@ export function ContainerImportModal({ open, onClose, plan, toast }: Props) {
       title={`📥 Import container — ${plan ? planDisplayName(plan) : ''}`}
       footer={
         <>
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">Đóng</button>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] cursor-pointer">Đóng</button>
           <button onClick={removeAll} disabled={items.length === 0} className="px-4 py-2 rounded-lg text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 disabled:opacity-40 cursor-pointer">
             🗑️ Xóa tất cả ({items.length})
           </button>
@@ -125,34 +125,34 @@ export function ContainerImportModal({ open, onClose, plan, toast }: Props) {
       }
     >
       <div className="mb-4">
-        <label className="text-[10px] font-medium text-[#64748b] mb-1 block">Chọn file Excel (.xlsx/.xls — mỗi cột là 1 loại container, dòng 1 ghi loại)</label>
+        <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Chọn file Excel (.xlsx/.xls — mỗi cột là 1 loại container, dòng 1 ghi loại)</label>
         <input
           type="file"
           accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           onChange={e => setFile(e.target.files?.[0] || null)}
-          className="w-full text-xs file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-[rgba(26,86,219,0.1)] file:text-[#1a56db] file:cursor-pointer"
+          className="w-full text-xs file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-[rgba(26,86,219,0.1)] file:text-[#f59e0b] file:cursor-pointer"
         />
-        {file && <div className="mt-1.5 text-[10px] text-[#64748b]">📎 {file.name} ({file.size} bytes)</div>}
+        {file && <div className="mt-1.5 text-[10px] text-[#78716c]">📎 {file.name} ({file.size} bytes)</div>}
         <button
           onClick={upload}
           disabled={uploading || !file}
-          className="mt-2.5 w-full py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] disabled:opacity-50 cursor-pointer"
+          className="mt-2.5 w-full py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.4)] disabled:opacity-50 cursor-pointer"
         >
           {uploading ? 'Đang import...' : '⬆️ Import'}
         </button>
-        <p className="mt-2 text-[10px] leading-relaxed text-[#64748b]">
+        <p className="mt-2 text-[10px] leading-relaxed text-[#78716c]">
           Định dạng ví dụ (dòng 1 = loại, mã gõ dưới đúng cột):
-          <code className="block mt-1 px-2 py-1.5 rounded bg-[#f8fafc] border border-[rgba(0,0,0,0.08)]">
+          <code className="block mt-1 px-2 py-1.5 rounded bg-[#f5f5f4] border border-[#e7e5e4]">
             H20{'\t'}H40{'\t'}V20{'\t'}V40{'\t'}V20FR{'\t'}V40FR{'\n'}BMOU6823203{'\t'}{'\t'}{'\t'}{'\t'}TAHK4561321
           </code>
           Loại hợp lệ: H20, H40, V20, V40, V20FR, V40FR. Muốn gộp bó: thêm cột "Bó" ngay phải cột loại, gõ "Bó" và merge xuống các mã cùng bó.
         </p>
       </div>
 
-      <div className="border-t border-[rgba(0,0,0,0.08)] pt-4">
+      <div className="border-t border-[#e7e5e4] pt-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-bold">Đã import: {items.length} container{claimedCount > 0 ? ` (${claimedCount} đã ghi nhận)` : ''}</span>
-          <span className="text-[10px] text-[#64748b]">Chưa ghi nhận: {items.length - claimedCount}</span>
+          <span className="text-[10px] text-[#78716c]">Chưa ghi nhận: {items.length - claimedCount}</span>
         </div>
         <div className="flex flex-wrap gap-1 mb-2">
           {types.map(t => (
@@ -160,8 +160,8 @@ export function ContainerImportModal({ open, onClose, plan, toast }: Props) {
               onClick={() => setTypeFilter(t)}
               className={`px-2 py-0.5 rounded text-[10px] font-bold border cursor-pointer ${
                 typeFilter === t
-                  ? 'border-[#1a56db] bg-[rgba(26,86,219,0.15)] text-[#1a56db]'
-                  : 'border-[rgba(0,0,0,0.08)] text-[#64748b] hover:border-[#1a56db]'
+                  ? 'border-[#f59e0b] bg-[rgba(245,158,11,0.15)] text-[#f59e0b]'
+                  : 'border-[#e7e5e4] text-[#78716c] hover:border-[#f59e0b]'
               }`}>
               {t}
             </button>
@@ -172,15 +172,15 @@ export function ContainerImportModal({ open, onClose, plan, toast }: Props) {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="🔍 Tìm theo mã container..."
-          className="w-full mb-2 px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]"
+          className="w-full mb-2 px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]"
         />
         <div className="flex flex-col gap-1 max-h-[260px] overflow-y-auto">
-          {filtered.length === 0 && <div className="text-center py-6 text-[#64748b] text-xs">Chưa có container</div>}
+          {filtered.length === 0 && <div className="text-center py-6 text-[#78716c] text-xs">Chưa có container</div>}
           {filtered.map(item => (
-            <div key={item.id} className="flex items-center justify-between gap-2 px-3 py-2 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg">
+            <div key={item.id} className="flex items-center justify-between gap-2 px-3 py-2 bg-[#f5f5f4] border border-[#e7e5e4] rounded-lg">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="text-xs font-mono text-[#0f172a] truncate">{item.containerCode}</span>
-                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${TYPE_COLORS[item.type] || 'bg-[rgba(0,0,0,0.05)] text-[#64748b]'}`}>{item.type}</span>
+                <span className="text-xs font-mono text-[#1c1917] truncate">{item.containerCode}</span>
+                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${TYPE_COLORS[item.type] || 'bg-[#e7e5e4] text-[#78716c]'}`}>{item.type}</span>
                 {item.bundleId && (
                   <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(14,165,233,0.15)] text-sky-700">🎁 {item.bundleId}</span>
                 )}

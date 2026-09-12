@@ -599,16 +599,16 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const total = luongKhoan + fixedSalaryValue + chuyenCan + allowanceFarHomeValue + allowanceWaitLoading + allowanceOldCar + allowanceParking + tip + itemSumAdd - itemSumDeduct - chiHoValue - bhxhValue - advanceDeductValue;
 
 
-  const inputCls = "w-full px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db] placeholder:text-[#64748b]";
-  const labelCls = "block text-xs font-medium text-[#64748b] mb-1.5";
+  const inputCls = "w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]";
+  const labelCls = "block text-xs font-medium text-[#78716c] mb-1.5";
 
   return (
     <div className="space-y-5">
       {/* Giá trị chung */}
-      <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
+      <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl p-5">
         <h3 className="text-base font-bold mb-4 flex items-center gap-2">💰 Lương và Phụ cấp
           <button onClick={openAddItemModal}
-            className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] cursor-pointer">
+            className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.4)] cursor-pointer">
             ➕ Thêm khoản lương
           </button>
         </h3>
@@ -617,11 +617,11 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         {items.length > 0 && (
           <div className="mb-4">
             <div className="mb-1.5">
-              <span className="text-xs font-medium text-[#64748b]">Khoản lương cộng/khấu trừ</span>
+              <span className="text-xs font-medium text-[#78716c]">Khoản lương cộng/khấu trừ</span>
             </div>
             <div className="overflow-x-auto border border-[rgba(0,0,0,0.06)] rounded-lg">
               <table className="w-full text-xs">
-                <thead className="bg-[#f8fafc] text-[#334155]">
+                <thead className="bg-[#f5f5f4] text-[#44403c]">
                   <tr>
                     <th className="px-3 py-2 text-left font-semibold">Tên khoản</th>
                     <th className="px-3 py-2 text-left font-semibold">Loại</th>
@@ -631,7 +631,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                 </thead>
                 <tbody>
                   {items.map(it => (
-                    <tr key={it.id} className="border-t border-[rgba(0,0,0,0.05)]">
+                    <tr key={it.id} className="border-t border-[#e7e5e4]">
                       <td className="px-3 py-2">{it.name}</td>
                       <td className="px-3 py-2">
                         {it.kind === 'add'
@@ -640,7 +640,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                       </td>
                       <td className="px-3 py-2 text-right">
                         <input defaultValue={fmtMoney(it.defaultAmount)} onBlur={e => updateItemDefaultAmount(it.id, e.target.value)}
-                          inputMode="numeric" className="w-32 px-2 py-1.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-right text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                          inputMode="numeric" className="w-32 px-2 py-1.5 bg-[#ffffff] border border-[#e7e5e4] rounded-md text-sm text-right text-[#1c1917] outline-none focus:border-[#f59e0b]" />
                       </td>
                       <td className="px-3 py-2 text-center">
                         <button onClick={() => deleteItem(it.id)} className="text-[#b91c1c] hover:underline cursor-pointer">🗑</button>
@@ -672,7 +672,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           <div>
             <label className={labelCls}>BHXH - NLĐ (%)</label>
             <input value={bhxhNld} onChange={e => setBhxhNld(e.target.value)} inputMode="decimal" placeholder="10,5" className={inputCls} />
-            <p className="text-[10px] text-[#64748b] mt-1">Tính theo lương cứng của từng lái xe (VD lương 7.000.000 × 10,5% = 735.000 ₫)</p>
+            <p className="text-[10px] text-[#78716c] mt-1">Tính theo lương cứng của từng lái xe (VD lương 7.000.000 × 10,5% = 735.000 ₫)</p>
           </div>
           <div>
             <label className={labelCls}>Tiền gửi xe HPH 2 (VNĐ/tháng)</label>
@@ -684,19 +684,19 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           </div>
         </div>
         <button onClick={saveSettings} disabled={savingSettings}
-          className="mt-4 px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] disabled:opacity-50 cursor-pointer">
+          className="mt-4 px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.4)] disabled:opacity-50 cursor-pointer">
           {savingSettings ? 'Đang lưu...' : '💾 Lưu giá trị chung'}
         </button>
       </div>
 
       {/* Chọn tháng/năm */}
-      <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
+      <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl p-5">
         <h3 className="text-base font-bold mb-4">📅 Chọn tháng</h3>
         <div className="flex flex-wrap gap-3 items-end">
           <div>
             <label className={labelCls}>Tháng</label>
             <select value={month} onChange={e => setMonth(Number(e.target.value))}
-              className="px-3 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
+              className="px-3 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]">
               {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                 <option key={m} value={m}>{MONTHS_VI[m]}</option>
               ))}
@@ -705,14 +705,14 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           <div>
             <label className={labelCls}>Năm</label>
             <select value={year} onChange={e => setYear(Number(e.target.value))}
-              className="px-3 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
+              className="px-3 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]">
               {Array.from({ length: 5 }, (_, i) => vnNow.year - 2 + i).map(y => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
           </div>
           <button onClick={() => loadData()}
-            className="px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">
+            className="px-4 py-2.5 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] transition-all cursor-pointer">
             🔄 Làm mới
           </button>
         </div>
@@ -727,7 +727,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button onClick={() => openPayModal('pay', 'fixed')}
-              className="px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white shadow-[0_4px_15px_rgba(26,86,219,0.4)] cursor-pointer">
+              className="px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.4)] cursor-pointer">
               💰 Thanh Toán Lương Cứng
             </button>
             <button onClick={() => openPayModal('pay', 'total')}
@@ -735,7 +735,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
               💵 Thanh Toán Tổng
             </button>
             <button onClick={() => openPayModal('undo')}
-              className="px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.15)] hover:text-[#0f172a] hover:border-[#94a3b8] transition-all cursor-pointer">
+              className="px-4 py-2.5 rounded-lg text-xs font-medium text-[#78716c] border border-[rgba(0,0,0,0.15)] hover:text-[#1c1917] hover:border-[#a8a29e] transition-all cursor-pointer">
               ↩️ Hoàn tác
             </button>
             <button onClick={openHistoryModal}
@@ -750,7 +750,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           <div className="mt-5 border-t border-[rgba(0,0,0,0.06)] pt-5">
             <label className={labelCls}>Lái xe</label>
             <select value={selectedId ?? ''} onChange={e => pickDriver(e.target.value ? Number(e.target.value) : null)}
-              className="w-full max-w-[520px] px-3.5 py-2.5 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
+              className="w-full max-w-[520px] px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]">
               <option value="">-- Chọn lái xe --</option>
               {drivers.map(d => (
                 <option key={d.id} value={d.id}>{d.stt || ''} {d.fullName} ({d.username}){d.soXe ? ` - ${d.soXe}` : ''}</option>
@@ -787,18 +787,18 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                   <div>
                     <label className={labelCls}>Chuyên cần (VNĐ)</label>
                     <input value={form.attendanceBonus} onChange={e => setForm(f => ({ ...f, attendanceBonus: e.target.value }))} inputMode="numeric" className={inputCls} />
-                    <p className="text-[10px] text-[#64748b] mt-1">Chuyên cần tháng này: {chuyenCan >= 0 ? `${fmtMoney(chuyenCan)} ₫` : ''} ({selectedRecord.ngayCong >= selectedRecord.standardDays ? 'Đủ ngày' : 'Thiếu ngày'})</p>
+                    <p className="text-[10px] text-[#78716c] mt-1">Chuyên cần tháng này: {chuyenCan >= 0 ? `${fmtMoney(chuyenCan)} ₫` : ''} ({selectedRecord.ngayCong >= selectedRecord.standardDays ? 'Đủ ngày' : 'Thiếu ngày'})</p>
                   </div>
                   <div>
                     <label className={labelCls}>Ngày nghỉ (cách nhau dấu phẩy)</label>
                     <input value={form.daysOff} onChange={e => setForm(f => ({ ...f, daysOff: e.target.value }))} placeholder="VD: 2, 8, 15" className={inputCls} />
-                    <p className="text-[10px] text-[#64748b] mt-1">Ghi chú ngày nghỉ (hiển thị cho lái xe)</p>
+                    <p className="text-[10px] text-[#78716c] mt-1">Ghi chú ngày nghỉ (hiển thị cho lái xe)</p>
                     <input value={form.daysOffNote} onChange={e => setForm(f => ({ ...f, daysOffNote: e.target.value }))} placeholder="VD: Nghỉ lễ 2/9..." className={`${inputCls} mt-1`} />
                   </div>
                   <div>
                     <label className={labelCls}>Chi hộ (Cty chi) (VNĐ)</label>
                     <input value={form.chiHo} onChange={e => setForm(f => ({ ...f, chiHo: e.target.value }))} inputMode="numeric" placeholder="0" className={inputCls} />
-                    <p className="text-[10px] text-[#64748b] mt-1">Trừ vào lương: {fmtMoney(chiHoValue)} ₫</p>
+                    <p className="text-[10px] text-[#78716c] mt-1">Trừ vào lương: {fmtMoney(chiHoValue)} ₫</p>
                   </div>
                   {/* Khấu trừ tạm ứng */}
                   {advanceDeductValue > 0 || driverAdvances.length > 0 ? (
@@ -818,7 +818,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                           {advanceRemainingAfter === 0 && <span className="ml-1 text-green-600">✅ Đã trả hết</span>}
                         </p>
                         {selectedRecord?.advanceDeductOverridden && (
-                          <button onClick={resetAdvanceDeduct} className="text-[10px] text-[#1a56db] hover:underline cursor-pointer shrink-0">↩️ Đặt lại tự động</button>
+                          <button onClick={resetAdvanceDeduct} className="text-[10px] text-[#f59e0b] hover:underline cursor-pointer shrink-0">↩️ Đặt lại tự động</button>
                         )}
                       </div>
                     </div>
@@ -826,13 +826,13 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
 
                   <div>
                     <label className={labelCls}>BHXH - NLĐ ({String(bhxhPercentValue).replace('.', ',')}%)</label>
-                    <div className="px-3.5 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a]">{fmtMoney(bhxhValue)} ₫</div>
-                    <p className="text-[10px] text-[#64748b] mt-1">Trừ vào lương: {fmtMoney(bhxhValue)} ₫</p>
+                    <div className="px-3.5 py-2.5 bg-[#f5f5f4] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917]">{fmtMoney(bhxhValue)} ₫</div>
+                    <p className="text-[10px] text-[#78716c] mt-1">Trừ vào lương: {fmtMoney(bhxhValue)} ₫</p>
                   </div>
                   <div>
                     <label className={labelCls}>Chờ đóng hàng (VNĐ)</label>
                     <input value={form.allowanceWaitLoadingRate} onChange={e => setForm(f => ({ ...f, allowanceWaitLoadingRate: e.target.value }))} inputMode="numeric" placeholder="0" className={inputCls} />
-                    <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceWaitLoading)} ₫</p>
+                    <p className="text-[10px] text-[#78716c] mt-1">Thành tiền: {fmtMoney(allowanceWaitLoading)} ₫</p>
                   </div>
                 </div>
 
@@ -841,71 +841,71 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                   <h4 className="text-sm font-bold mb-3">✅ Phụ cấp — {selectedDriver.fullName}</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {/* Phụ cấp nhà xa */}
-                    <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
+                    <div className="border border-[#e7e5e4] rounded-lg p-3">
                       <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
                         <input type="checkbox" checked={form.hasFarHome}
                           onChange={e => toggleFarHome(e.target.checked)}
-                          className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                          className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
                         🏠 Phụ cấp nhà xa
                       </label>
                       {form.hasFarHome && (
-                        <input value={form.allowanceFarHome} onChange={e => setForm(f => ({ ...f, allowanceFarHome: e.target.value }))} onBlur={e => updateFarHomeAmount(e.target.value)} inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                        <input value={form.allowanceFarHome} onChange={e => setForm(f => ({ ...f, allowanceFarHome: e.target.value }))} onBlur={e => updateFarHomeAmount(e.target.value)} inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-md text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]" />
                       )}
-                      <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceFarHomeValue)} ₫</p>
+                      <p className="text-[10px] text-[#78716c] mt-1">Thành tiền: {fmtMoney(allowanceFarHomeValue)} ₫</p>
                     </div>
 
                     {/* Xe cũ */}
-                    <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
+                    <div className="border border-[#e7e5e4] rounded-lg p-3">
                       <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
                         <input type="checkbox" checked={form.hasOldCar} onChange={e => setForm(f => ({ ...f, hasOldCar: e.target.checked }))}
-                          className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                          className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
                         🚚 Xe cũ
                       </label>
                       {form.hasOldCar && (
-                        <input value={form.allowanceOldCar} onChange={e => setForm(f => ({ ...f, allowanceOldCar: e.target.value }))} onBlur={e => updateOldCarAmount(e.target.value)} inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                        <input value={form.allowanceOldCar} onChange={e => setForm(f => ({ ...f, allowanceOldCar: e.target.value }))} onBlur={e => updateOldCarAmount(e.target.value)} inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-md text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]" />
                       )}
-                      <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceOldCar)} ₫</p>
+                      <p className="text-[10px] text-[#78716c] mt-1">Thành tiền: {fmtMoney(allowanceOldCar)} ₫</p>
                     </div>
 
                     {/* Gửi xe HPH 2 */}
-                    <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
+                    <div className="border border-[#e7e5e4] rounded-lg p-3">
                       <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
                         <input type="checkbox" checked={form.hasParkingHph2} onChange={e => setForm(f => ({ ...f, hasParkingHph2: e.target.checked }))}
-                          className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                          className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
                         🅿️ Gửi xe HPH 2
                       </label>
                       {form.hasParkingHph2 && (
-                        <input value={form.allowanceParking} onChange={e => setForm(f => ({ ...f, allowanceParking: e.target.value }))} onBlur={e => updateParkingAmount(e.target.value)} inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                        <input value={form.allowanceParking} onChange={e => setForm(f => ({ ...f, allowanceParking: e.target.value }))} onBlur={e => updateParkingAmount(e.target.value)} inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-md text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]" />
                       )}
-                      <p className="text-[10px] text-[#64748b] mt-1">Thành tiền: {fmtMoney(allowanceParking)} ₫</p>
+                      <p className="text-[10px] text-[#78716c] mt-1">Thành tiền: {fmtMoney(allowanceParking)} ₫</p>
                     </div>
 
                     {/* Đóng bảo hiểm (BHXH) */}
-                    <div className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
+                    <div className="border border-[#e7e5e4] rounded-lg p-3">
                       <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
                         <input type="checkbox" checked={form.hasBhxh} onChange={e => setForm(f => ({ ...f, hasBhxh: e.target.checked }))}
-                          className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                          className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
                         🛡️ Đóng bảo hiểm (BHXH)
                       </label>
-                      <p className="text-[10px] text-[#64748b] mt-1">Trừ BHXH {fmtMoney(bhxhValue)} ₫ {form.hasBhxh ? '' : '(không trừ)'}</p>
+                      <p className="text-[10px] text-[#78716c] mt-1">Trừ BHXH {fmtMoney(bhxhValue)} ₫ {form.hasBhxh ? '' : '(không trừ)'}</p>
                     </div>
 
                     {/* Khoản lương động — mỗi khoản 1 tick + ô nhập số tiền */}
                     {recordItems.map(v => (
-                      <div key={v.itemId} className="border border-[rgba(0,0,0,0.08)] rounded-lg p-3">
+                      <div key={v.itemId} className="border border-[#e7e5e4] rounded-lg p-3">
                         <div className="flex items-center gap-2">
                           <input type="checkbox" checked={v.enabled}
                             onChange={e => toggleRecordItem(v.itemId, e.target.checked)}
-                            className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
-                          <span className="text-xs font-medium text-[#64748b] cursor-pointer" onClick={() => toggleRecordItem(v.itemId, !v.enabled)}>
+                            className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
+                          <span className="text-xs font-medium text-[#78716c] cursor-pointer" onClick={() => toggleRecordItem(v.itemId, !v.enabled)}>
                             {v.kind === 'add' ? '➕' : '➖'} {v.name}
                           </span>
                         </div>
                         {v.enabled && (
                           <input defaultValue={v.overrideAmount != null ? fmtMoney(v.overrideAmount) : ''} onBlur={e => updateRecordItemAmount(v.itemId, e.target.value)}
-                            inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-md text-sm text-[#0f172a] outline-none focus:border-[#1a56db]" />
+                            inputMode="numeric" placeholder="Dùng giá trị chung" className="mt-2 w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-md text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]" />
                         )}
-                        <p className="text-[10px] text-[#64748b] mt-1">
+                        <p className="text-[10px] text-[#78716c] mt-1">
                           {v.kind === 'add' ? 'Cộng thêm' : 'Khấu trừ'}: {fmtMoney(v.amount)} ₫
                         </p>
                       </div>
@@ -930,19 +930,19 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                   <div className="mt-3">
                     <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
                       <input type="checkbox" checked={baseOldCar} onChange={e => setBaseOldCar(e.target.checked)}
-                        className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                        className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
                       🚚 Xe cũ mặc định
                     </label>
                   </div>
                   <div className="mt-3">
                     <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
                       <input type="checkbox" checked={baseBhxh} onChange={e => setBaseBhxh(e.target.checked)}
-                        className="w-4 h-4 accent-[#1a56db] cursor-pointer" />
+                        className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
                       🛡️ Đóng bảo hiểm mặc định
                     </label>
                   </div>
                   <button onClick={saveBase} disabled={savingBase}
-                    className="mt-3 px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer disabled:opacity-50">
+                    className="mt-3 px-4 py-2 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] transition-all cursor-pointer disabled:opacity-50">
                     {savingBase ? 'Đang lưu...' : '💾 Lưu giá trị nền'}
                   </button>
                 </div>
@@ -987,7 +987,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                         <div>
                           <label className={labelCls}>Bắt đầu khấu trừ từ tháng *</label>
                           <input type="date" value={advanceDraft.deductStart} onChange={e => setAdvanceDraft(d => ({ ...d, deductStart: e.target.value }))} className={inputCls} />
-                          <p className="text-[10px] text-[#64748b] mt-1">Tháng đầu tiên bị trừ vào lương (để trống = tháng tạm ứng)</p>
+                          <p className="text-[10px] text-[#78716c] mt-1">Tháng đầu tiên bị trừ vào lương (để trống = tháng tạm ứng)</p>
                         </div>
                         <div>
                           <label className={labelCls}>Ghi chú</label>
@@ -999,7 +999,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                           className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white disabled:opacity-50 cursor-pointer">
                           {savingAdvance ? 'Đang lưu...' : editingAdvanceId ? '💾 Cập nhật' : '💾 Lưu tạm ứng'}
                         </button>
-                        <button onClick={() => { setShowAdvanceForm(false); setEditingAdvanceId(null); setAdvanceDraft({ amount: '', monthlyDeduction: '', note: '', date: '', deductStart: '' }); }} className="px-4 py-2 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">
+                        <button onClick={() => { setShowAdvanceForm(false); setEditingAdvanceId(null); setAdvanceDraft({ amount: '', monthlyDeduction: '', note: '', date: '', deductStart: '' }); }} className="px-4 py-2 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] cursor-pointer">
                           Hủy
                         </button>
                       </div>
@@ -1010,7 +1010,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                   {driverAdvances.length > 0 ? (
                     <div className="overflow-x-auto border border-[rgba(0,0,0,0.06)] rounded-lg">
                       <table className="w-full text-xs">
-                        <thead className="bg-[#f8fafc] text-[#334155]">
+                        <thead className="bg-[#f5f5f4] text-[#44403c]">
                           <tr>
                             <th className="px-3 py-2 text-left font-semibold">Ngày TU</th>
                             <th className="px-3 py-2 text-left font-semibold">Bắt đầu trừ</th>
@@ -1023,16 +1023,16 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                         </thead>
                         <tbody>
                           {driverAdvances.map(adv => (
-                            <tr key={adv.id} className="border-t border-[rgba(0,0,0,0.05)]">
+                            <tr key={adv.id} className="border-t border-[#e7e5e4]">
                               <td className="px-3 py-2 whitespace-nowrap">{adv.date}</td>
                               <td className="px-3 py-2 whitespace-nowrap">
                                 {adv.deductStart
-                                  ? <span className="font-medium text-[#1a56db]">{adv.deductStart}</span>
-                                  : <span className="text-[#94a3b8]">= ngày TU</span>}
+                                  ? <span className="font-medium text-[#f59e0b]">{adv.deductStart}</span>
+                                  : <span className="text-[#a8a29e]">= ngày TU</span>}
                               </td>
                               <td className="px-3 py-2 text-right font-semibold text-[#c2410c]">{fmtMoney(adv.amount)}</td>
                               <td className="px-3 py-2 text-right">{fmtMoney(adv.monthlyDeduction)}</td>
-                              <td className="px-3 py-2 text-[#64748b]">{adv.note || '—'}</td>
+                              <td className="px-3 py-2 text-[#78716c]">{adv.note || '—'}</td>
                               <td className="px-3 py-2 text-center">
                                 {adv.isPaidOff
                                   ? <span className="text-green-600 font-semibold">✅ Hết nợ</span>
@@ -1052,7 +1052,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                                       setEditingAdvanceId(adv.id);
                                       setShowAdvanceForm(true);
                                     }}
-                                    className="text-[#1a56db] hover:underline cursor-pointer" title="Sửa">✏️</button>
+                                    className="text-[#f59e0b] hover:underline cursor-pointer" title="Sửa">✏️</button>
                                   <button onClick={() => deleteAdvance(adv.id)} className="text-[#b91c1c] hover:underline cursor-pointer" title="Lái xe đã trả hết">🗑</button>
                                 </div>
                               </td>
@@ -1062,7 +1062,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                       </table>
                     </div>
                   ) : (
-                    <p className="text-xs text-[#94a3b8] italic">Chưa có khoản tạm ứng nào.</p>
+                    <p className="text-xs text-[#a8a29e] italic">Chưa có khoản tạm ứng nào.</p>
                   )}
                 </div>
               </div>
@@ -1077,16 +1077,16 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           <div className="bg-[#ffffff] rounded-xl shadow-2xl w-full max-w-2xl p-5 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-bold">📜 Lịch sử thanh toán — {MONTHS_VI[month]} {year}</h3>
-              <button onClick={() => setShowHistoryModal(false)} className="text-xl text-[#64748b] hover:text-[#0f172a] cursor-pointer">×</button>
+              <button onClick={() => setShowHistoryModal(false)} className="text-xl text-[#78716c] hover:text-[#1c1917] cursor-pointer">×</button>
             </div>
             {loadingHistory ? (
-              <p className="text-sm text-[#64748b] py-6 text-center">Đang tải...</p>
+              <p className="text-sm text-[#78716c] py-6 text-center">Đang tải...</p>
             ) : historyLogs.length === 0 ? (
-              <p className="text-xs text-[#94a3b8] italic py-6 text-center">Chưa có lịch sử thanh toán cho tháng này.</p>
+              <p className="text-xs text-[#a8a29e] italic py-6 text-center">Chưa có lịch sử thanh toán cho tháng này.</p>
             ) : (
               <div className="max-h-[55vh] overflow-y-auto border border-[rgba(0,0,0,0.06)] rounded-lg">
                 <table className="w-full text-xs">
-                  <thead className="bg-[#f8fafc] text-[#334155] sticky top-0">
+                  <thead className="bg-[#f5f5f4] text-[#44403c] sticky top-0">
                     <tr>
                       <th className="px-3 py-2 text-left font-semibold">Thời gian</th>
                       <th className="px-3 py-2 text-left font-semibold">Lái xe</th>
@@ -1096,11 +1096,11 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                   </thead>
                   <tbody className="divide-y divide-[rgba(0,0,0,0.04)]">
                     {historyLogs.map(log => {
-                      const meta = PAY_ACTION_LABEL[log.action] || { label: log.action, color: 'text-[#0f172a]' };
+                      const meta = PAY_ACTION_LABEL[log.action] || { label: log.action, color: 'text-[#1c1917]' };
                       return (
                         <tr key={log.id}>
                           <td className="px-3 py-2 whitespace-nowrap">{fmtDT(log.createdAt)}</td>
-                          <td className="px-3 py-2 font-medium text-[#0f172a]">{log.driverName}</td>
+                          <td className="px-3 py-2 font-medium text-[#1c1917]">{log.driverName}</td>
                           <td className={`px-3 py-2 font-semibold ${meta.color}`}>{meta.label}</td>
                           <td className="px-3 py-2">{log.performedByName || '—'}</td>
                         </tr>
@@ -1124,18 +1124,18 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                   ? `↩️ Hoàn tác thanh toán${payType === 'fixed' ? ' Lương Cứng' : ' Tổng'}`
                   : payType === 'fixed' ? '💰 Thanh Toán Lương Cứng' : '💵 Thanh Toán Tổng'}
               </h3>
-              <button onClick={() => setShowPayModal(null)} className="text-xl text-[#64748b] hover:text-[#0f172a] cursor-pointer">×</button>
+              <button onClick={() => setShowPayModal(null)} className="text-xl text-[#78716c] hover:text-[#1c1917] cursor-pointer">×</button>
             </div>
 
             {/* Nếu là hoàn tác: chọn loại cần hoàn tác */}
             {showPayModal === 'undo' && (
               <div className="flex items-center gap-3 mb-4">
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="radio" checked={payType === 'fixed'} onChange={() => setPayType('fixed')} className="accent-[#1a56db]" />
+                  <input type="radio" checked={payType === 'fixed'} onChange={() => setPayType('fixed')} className="accent-[#f59e0b]" />
                   Lương Cứng
                 </label>
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="radio" checked={payType === 'total'} onChange={() => setPayType('total')} className="accent-[#1a56db]" />
+                  <input type="radio" checked={payType === 'total'} onChange={() => setPayType('total')} className="accent-[#f59e0b]" />
                   Tổng Lương
                 </label>
               </div>
@@ -1146,7 +1146,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
               <div>
                 <label className={labelCls}>Tháng</label>
                 <select value={payMonth} onChange={e => { const m = Number(e.target.value); setPayMonth(m); loadPayRecords(m, payYear); }}
-                  className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
+                  className="px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]">
                   {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                     <option key={m} value={m}>{MONTHS_VI[m]}</option>
                   ))}
@@ -1155,7 +1155,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
               <div>
                 <label className={labelCls}>Năm</label>
                 <select value={payYear} onChange={e => { const y = Number(e.target.value); setPayYear(y); loadPayRecords(payMonth, y); }}
-                  className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
+                  className="px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]">
                   {Array.from({ length: 5 }, (_, i) => vnNow.year - 2 + i).map(y => (
                     <option key={y} value={y}>{y}</option>
                   ))}
@@ -1165,11 +1165,11 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
 
             {/* Chọn tất cả */}
             <div className="mb-3 flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm font-medium text-[#0f172a] cursor-pointer">
-                <input type="checkbox" checked={drivers.length > 0 && paySelected.size === drivers.length} onChange={e => toggleAllPay(e.target.checked)} className="w-4 h-4 accent-[#1a56db]" />
+              <label className="flex items-center gap-2 text-sm font-medium text-[#1c1917] cursor-pointer">
+                <input type="checkbox" checked={drivers.length > 0 && paySelected.size === drivers.length} onChange={e => toggleAllPay(e.target.checked)} className="w-4 h-4 accent-[#f59e0b]" />
                 Chọn tất cả ({drivers.length})
               </label>
-              <button onClick={() => setPaySelected(new Set())} className="text-[11px] text-[#1a56db] hover:underline cursor-pointer">Bỏ chọn</button>
+              <button onClick={() => setPaySelected(new Set())} className="text-[11px] text-[#f59e0b] hover:underline cursor-pointer">Bỏ chọn</button>
             </div>
 
             {/* Danh sách lái xe */}
@@ -1178,10 +1178,10 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                 const rec = payRecords.find(r => r.driverId === d.id);
                 const paid = payType === 'fixed' ? !!rec?.fixedSalaryPaid : !!rec?.salaryPaid;
                 return (
-                  <label key={d.id} className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-[#f8fafc] text-sm">
-                    <input type="checkbox" checked={paySelected.has(d.id)} onChange={() => togglePay(d.id)} className="w-4 h-4 accent-[#1a56db]" />
-                    <span className="text-[#0f172a] font-medium">{d.fullName}</span>
-                    {d.soXe && <span className="text-[11px] text-[#94a3b8]">{d.soXe}</span>}
+                  <label key={d.id} className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-[#f5f5f4] text-sm">
+                    <input type="checkbox" checked={paySelected.has(d.id)} onChange={() => togglePay(d.id)} className="w-4 h-4 accent-[#f59e0b]" />
+                    <span className="text-[#1c1917] font-medium">{d.fullName}</span>
+                    {d.soXe && <span className="text-[11px] text-[#a8a29e]">{d.soXe}</span>}
                     <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded ${paid ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       {paid ? '✅ Đã' : 'Chưa'}
                     </span>
@@ -1193,7 +1193,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
             {/* Nút xác nhận */}
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => setShowPayModal(null)}
-                className="px-4 py-2.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] cursor-pointer">
+                className="px-4 py-2.5 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] cursor-pointer">
                 Hủy
               </button>
               <button onClick={submitPay} disabled={savingPay || paySelected.size === 0}
@@ -1211,11 +1211,11 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           <div className="bg-[#ffffff] rounded-xl shadow-2xl w-full max-w-2xl p-5 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-bold">➕ Khoản lương (cộng thêm / khấu trừ)</h3>
-              <button onClick={() => setShowItemModal(false)} className="text-xl text-[#64748b] hover:text-[#0f172a] cursor-pointer">×</button>
+              <button onClick={() => setShowItemModal(false)} className="text-xl text-[#78716c] hover:text-[#1c1917] cursor-pointer">×</button>
             </div>
             <div className="overflow-x-auto border border-[rgba(0,0,0,0.06)] rounded-lg">
               <table className="w-full text-xs">
-                <thead className="bg-[#f8fafc] text-[#334155]">
+                <thead className="bg-[#f5f5f4] text-[#44403c]">
                   <tr>
                     <th className="px-3 py-2 text-left font-semibold">Tên phụ cấp</th>
                     <th className="px-3 py-2 text-left font-semibold">Loại</th>
@@ -1225,7 +1225,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                 </thead>
                 <tbody>
                   {itemDraft.map((row, idx) => (
-                    <tr key={idx} className="border-t border-[rgba(0,0,0,0.05)]">
+                    <tr key={idx} className="border-t border-[#e7e5e4]">
                       <td className="px-2 py-2">
                         <input value={row.name} onChange={e => {
                           const next = [...itemDraft];
@@ -1238,7 +1238,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                           const next = [...itemDraft];
                           next[idx] = { ...next[idx], kind: e.target.value as 'add' | 'deduct' };
                           setItemDraft(next);
-                        }} className="px-2 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-sm text-[#0f172a] outline-none focus:border-[#1a56db]">
+                        }} className="px-2 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b]">
                           <option value="add">➕ Cộng thêm</option>
                           <option value="deduct">➖ Khấu trừ</option>
                         </select>
@@ -1266,7 +1266,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
             </div>
             <div className="mt-3 flex items-center gap-2">
               <button onClick={() => setItemDraft([...itemDraft, { id: null, name: '', kind: 'add', defaultAmount: '' }])}
-                className="px-3 py-2 rounded-lg text-xs font-medium text-[#1a56db] border border-[#1a56db]/30 hover:bg-[#1a56db]/5 cursor-pointer">
+                className="px-3 py-2 rounded-lg text-xs font-medium text-[#f59e0b] border border-[#f59e0b]/30 hover:bg-[#f59e0b]/5 cursor-pointer">
                 ➕ Thêm dòng
               </button>
               <button onClick={saveItems} disabled={savingItems}

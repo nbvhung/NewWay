@@ -84,26 +84,26 @@ export function CompletedPlansTab({ user, onRefresh }: Props) {
   });
 
   return (
-    <div className="bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-xl p-5">
+    <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-bold">✅ Kế hoạch đã hoàn thành</h3>
-        <button onClick={loadCompleted} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#64748b] border border-[rgba(0,0,0,0.08)] hover:text-[#0f172a] transition-all cursor-pointer">🔄 Làm mới</button>
+        <button onClick={loadCompleted} className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] transition-all cursor-pointer">🔄 Làm mới</button>
       </div>
 
       <div className="flex gap-2.5 mb-4">
         <div>
-          <label className="block text-[10px] font-medium text-[#64748b] mb-1">Tháng</label>
+          <label className="block text-[10px] font-medium text-[#78716c] mb-1">Tháng</label>
           <select value={filterMonth} onChange={e => setFilterMonth(Number(e.target.value))}
-            className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]">
+            className="px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]">
             {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
               <option key={m} value={m}>Tháng {m}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="block text-[10px] font-medium text-[#64748b] mb-1">Năm</label>
+          <label className="block text-[10px] font-medium text-[#78716c] mb-1">Năm</label>
           <select value={filterYear} onChange={e => setFilterYear(Number(e.target.value))}
-            className="px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]">
+            className="px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]">
             {Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i).map(y => (
               <option key={y} value={y}>{y}</option>
             ))}
@@ -113,12 +113,12 @@ export function CompletedPlansTab({ user, onRefresh }: Props) {
 
       <div className="flex flex-col gap-1.5">
         {loading ? (
-          <div className="text-center w-full py-8 text-[#64748b] text-sm">Đang tải...</div>
+          <div className="text-center w-full py-8 text-[#78716c] text-sm">Đang tải...</div>
         ) : (
           filteredPlans.map(p => {
             const display = planDisplayName(p);
             return (
-              <div key={p.id} className="flex items-center justify-between gap-2 px-3 py-2.5 bg-[#f8fafc] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs">
+              <div key={p.id} className="flex items-center justify-between gap-2 px-3 py-2.5 bg-[#f5f5f4] border border-[#e7e5e4] rounded-lg text-xs">
                 <div className="flex items-center gap-2">
                   <span className="text-emerald-400 shrink-0">✅</span>
                   <span className="text-sm">{display}</span>
@@ -139,7 +139,7 @@ export function CompletedPlansTab({ user, onRefresh }: Props) {
             );
           })
         )}
-        {!loading && filteredPlans.length === 0 && <div className="text-center w-full py-8 text-[#64748b] text-sm">Không có kế hoạch hoàn thành trong tháng này</div>}
+        {!loading && filteredPlans.length === 0 && <div className="text-center w-full py-8 text-[#78716c] text-sm">Không có kế hoạch hoàn thành trong tháng này</div>}
       </div>
     </div>
   );
