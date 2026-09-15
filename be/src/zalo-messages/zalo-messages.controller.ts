@@ -1,10 +1,10 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ZaloMessagesService } from './zalo-messages.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { SendZaloMessageDto } from './dto/send-zalo-message.dto';
-import { ScheduleZaloMessageDto } from './dto/schedule-zalo-message.dto';
+import { RenameZaloGroupDto, ScheduleZaloMessageDto } from './dto/schedule-zalo-message.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('admin/zalo-messages')
@@ -45,13 +45,41 @@ export class ZaloMessagesController {
         data: { ok: false, error: 'Thời gian gửi phải ở tương lai' },
       };
     }
-    const result = await this.zaloMessagesService.schedule(
-      dto.userIds,
-      dto.text,
+    const userTargets = dto.userTargets || [];
+    const groupTargets = dto.groupTargets || [];
+    if (userTargets.length === 0 && groupTargets.length === 0) {
+      return {
+        data: { ok: false, error: 'Vui lòng chọn ít nhất một người hoặc nhóm nhận' },
+      };
+    }
+    const result = await this.zaloMessagesService.scheduleMulti(
+      userTargets,
+      groupTargets,
       dto.sendAt,
       user?.id,
+      !!dto.repeatDaily,
     );
     return { data: { ok: true, ...result } };
+  }
+
+  @Get('groups')
+  @Roles('admin', 'supper_admin', 'ops')
+  async groups() {
+    const data = await this.zaloMessagesService.listGroups();
+    return { data };
+  }
+
+  @Put('groups/:chatId')
+  @Roles('admin', 'supper_admin', 'ops')
+  async renameGroup(
+    @Param('chatId') chatId: string,
+    @Body() dto: RenameZaloGroupDto,
+  ) {
+    const group = await this.zaloMessagesService.renameGroup(chatId, dto.name);
+    if (!group) {
+      return { data: { ok: false, error: 'Không tìm thấy nhóm' } };
+    }
+    return { data: { ok: true, group } };
   }
 
   @Get('scheduled')

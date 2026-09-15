@@ -145,6 +145,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
                 <div className="text-[10px] text-[#64748b] mt-0.5">@{u.username}</div>
                 {u.zaloId ? <div className="text-[9px] text-[#1a56db] mt-0.5">💬 Zalo đã liên kết</div> : null}
                 {u.zaloId && u.zaloBot === 1 ? <div className="text-[9px] text-[#d97706] mt-0.5">🤖 Bot 2</div> : null}
+                {u.zaloId && u.zaloBot === 2 ? <div className="text-[9px] text-[#7c3aed] mt-0.5">🤖 Bot 3</div> : null}
               </div>
               {canManageUser(currentUser.role, u.role) && (
                 <div className="flex gap-1.5 shrink-0">
@@ -222,6 +223,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
             className="w-full px-3 py-2 bg-[#ffffff] border border-[rgba(0,0,0,0.08)] rounded-lg text-xs text-[#0f172a] outline-none focus:border-[#1a56db]">
             <option value={0}>Bot 1</option>
             <option value={1}>Bot 2</option>
+            <option value={2}>Bot 3</option>
           </select>
         </div>
         <button onClick={addUser}

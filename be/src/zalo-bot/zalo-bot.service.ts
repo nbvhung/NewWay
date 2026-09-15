@@ -554,7 +554,10 @@ export class ZaloBotService {
       }))?.fullName ||
       zaloUserId;
     if (!(await this.isQuiet(zaloUserId))) {
-      void this.opsNotifier.notifyUnknown(driverName, text);
+      // Bot 3 (index 2): không báo linh tinh — chỉ gửi tin theo lịch.
+      if (this.botOf(zaloUserId) !== 2) {
+        void this.opsNotifier.notifyUnknown(driverName, text);
+      }
       await this.reply(
         chatId,
         zaloUserId,
@@ -1001,9 +1004,12 @@ export class ZaloBotService {
         );
       }
 
-      void this.opsNotifier.notifyOps(
-        `${user.fullName} - ${re.containerCode} - ${this.planDisplayName(plan)} - ${label}`,
-      );
+      // Bot 3 (index 2): không báo linh tinh — chỉ gửi tin theo lịch.
+      if (this.botOf(zaloUserId) !== 2) {
+        void this.opsNotifier.notifyOps(
+          `${user.fullName} - ${re.containerCode} - ${this.planDisplayName(plan)} - ${label}`,
+        );
+      }
 
       await this.replySilent(
         zaloUserId,
@@ -1164,11 +1170,14 @@ export class ZaloBotService {
         session.pendingCandidates = undefined;
         session.pendingDigits = undefined;
         await this.sessionService.save(zaloUserId, session);
-        void this.opsNotifier.notifyOps(
-          `${user.fullName} - ${ps.pendingCode} - ${
-            plan ? this.planDisplayName(plan) : ''
-          } - Phát sinh`,
-        );
+        // Bot 3 (index 2): không báo linh tinh — chỉ gửi tin theo lịch.
+        if (this.botOf(zaloUserId) !== 2) {
+          void this.opsNotifier.notifyOps(
+            `${user.fullName} - ${ps.pendingCode} - ${
+              plan ? this.planDisplayName(plan) : ''
+            } - Phát sinh`,
+          );
+        }
         await this.replySilent(
           zaloUserId,
           `✅ Phát sinh ${ps.pendingCode} (${type}) - ${

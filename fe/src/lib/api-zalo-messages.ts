@@ -10,13 +10,29 @@ export interface ZaloMessage {
   createdAt: string;
 }
 
+export interface ZaloGroup {
+  id: number;
+  chatId: string;
+  botIndex: number;
+  name: string | null;
+  lastSeenAt: string | null;
+  createdAt: string;
+}
+
 export interface ZaloScheduledBatch {
   batchId: string;
   content: string;
   sendAt: string;
   createdAt: string;
-  recipients: Array<{ userId: number; fullName: string; status: string; error?: string | null; sentAt?: string | null }>;
+  repeatDaily?: boolean;
+  recipients: Array<{ userId: number | null; fullName: string; targetType?: string; status: string; error?: string | null; sentAt?: string | null }>;
   counts: { pending: number; processing: number; sent: number; failed: number; cancelled: number };
+}
+
+export interface ScheduleTargetPayload {
+  userId?: number;
+  chatId?: string;
+  text: string;
 }
 
 export const zaloMessagesApi = {
@@ -29,11 +45,17 @@ export const zaloMessagesApi = {
   send: (userId: number, text: string) =>
     api.post<{ data: { ok: boolean; error?: string } }>('/admin/zalo-messages/send', { userId, text }),
 
-  schedule: (userIds: number[], text: string, sendAt: string) =>
+  schedule: (userTargets: ScheduleTargetPayload[], groupTargets: ScheduleTargetPayload[], sendAt: string, repeatDaily: boolean) =>
     api.post<{ data: { ok: boolean; error?: string; scheduled?: number; skipped?: string[] } }>(
       '/admin/zalo-messages/schedule',
-      { userIds, text, sendAt },
+      { userTargets, groupTargets, sendAt, repeatDaily },
     ),
+
+  getGroups: () =>
+    api.get<{ data: ZaloGroup[] }>('/admin/zalo-messages/groups'),
+
+  renameGroup: (chatId: string, name: string) =>
+    api.put<{ data: { ok: boolean; error?: string } }>(`/admin/zalo-messages/groups/${encodeURIComponent(chatId)}`, { name }),
 
   getScheduled: () =>
     api.get<{ data: ZaloScheduledBatch[] }>('/admin/zalo-messages/scheduled'),

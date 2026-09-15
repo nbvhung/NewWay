@@ -83,11 +83,27 @@ export class ZaloSchedulerService
       >();
       for (const item of due) {
         try {
-          if (!users.has(item.userId)) {
-            const u = await this.zaloMessages.resolveUser(item.userId);
-            users.set(item.userId, u);
+          if (item.targetType === 'group') {
+            // Gửi vào nhóm bằng token bot 3 (botIndex của nhóm đã lưu).
+            const sent = await this.zaloApi.sendMessage(
+              item.chatId || '',
+              item.content,
+              item.botIndex ?? 2,
+            );
+            if (sent) {
+              await this.zaloMessages.markResult(item.id, true);
+              await this.zaloMessages.createNextDaily(item);
+            } else {
+              await this.zaloMessages.markResult(item.id, false);
+            }
+            continue;
           }
-          const u = users.get(item.userId)!;
+
+          if (!users.has(item.userId!)) {
+            const u = await this.zaloMessages.resolveUser(item.userId!);
+            users.set(item.userId!, u);
+          }
+          const u = users.get(item.userId!)!;
           if (!u.zaloId) {
             await this.zaloMessages.markResult(
               item.id,
@@ -110,6 +126,7 @@ export class ZaloSchedulerService
               true,
             );
             await this.zaloMessages.markResult(item.id, true);
+            await this.zaloMessages.createNextDaily(item);
           } else {
             await this.zaloMessages.markResult(item.id, false);
           }
