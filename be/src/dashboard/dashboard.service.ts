@@ -52,7 +52,8 @@ export interface DriverRevenue {
   luongKhoan: number;   // lương khoán theo chuyến (tính đúng từ submissions)
   planCount: number;
   totalPlanCount: number;
-  routes: { routeName: string; revenue: number; planCount: number }[];
+  totalCont: number;    // tổng sản lượng (container đã ghi nhận) của lái xe trong tháng
+  routes: { routeName: string; revenue: number; planCount: number; contCount: number }[];
 }
 
 export interface CustomerRevenue {
@@ -61,6 +62,7 @@ export interface CustomerRevenue {
   revenue: number;
   planCount: number;
   totalCont: number;
+  contByType: Record<string, number>;  // sản lượng theo loại container
 }
 
 export interface DailyRevenue {
@@ -222,8 +224,8 @@ export class DashboardService {
     }
 
     // ─── Accumulation maps ───────────────────────────────────────
-    const customerRevenueMap = new Map<number, { name: string; revenue: number; planCount: number; totalCont: number }>();
-    const driverRevenueMap   = new Map<number, { revenue: number; luongKhoan: number; planCount: number; routes: Map<string, { revenue: number; planCount: number }> }>();
+    const customerRevenueMap = new Map<number, { name: string; revenue: number; planCount: number; totalCont: number; contByType: Record<string, number> }>();
+    const driverRevenueMap   = new Map<number, { revenue: number; luongKhoan: number; planCount: number; totalCont: number; routes: Map<string, { revenue: number; planCount: number; contCount: number }> }>();
     const dailyRevenueMap    = new Map<number, { revenue: number; planCount: number }>(); // day → revenue
 
     let totalRevenue   = 0;
@@ -273,10 +275,13 @@ export class DashboardService {
       if (plan.customerId) {
         const cust  = customerMap.get(plan.customerId);
         const entry = customerRevenueMap.get(plan.customerId)
-          ?? { name: cust?.name ?? `KH#${plan.customerId}`, revenue: 0, planCount: 0, totalCont: 0 };
+          ?? { name: cust?.name ?? `KH#${plan.customerId}`, revenue: 0, planCount: 0, totalCont: 0, contByType: {} };
         entry.revenue   += revenue;
         entry.planCount += 1;
         entry.totalCont += conts.length;
+        for (const [t, n] of Object.entries(contByType)) {
+          entry.contByType[t] = (entry.contByType[t] ?? 0) + n;
+        }
         customerRevenueMap.set(plan.customerId, entry);
       }
 
@@ -291,7 +296,7 @@ export class DashboardService {
       // Driver accumulation (revenue chia đều, luong khoán riêng từng người)
       const perDriverRevenue = driverIds.size ? revenue / driverIds.size : 0;
       for (const dId of driverIds) {
-        const entry = driverRevenueMap.get(dId) ?? { revenue: 0, luongKhoan: 0, planCount: 0, routes: new Map() };
+        const entry = driverRevenueMap.get(dId) ?? { revenue: 0, luongKhoan: 0, planCount: 0, totalCont: 0, routes: new Map() };
         entry.revenue   += perDriverRevenue;
         entry.planCount += 1;
 
@@ -299,9 +304,14 @@ export class DashboardService {
         const driverSub = subs.find(s => s.userId === dId);
         if (driverSub) entry.luongKhoan += calcSubSalary(driverSub, plan);
 
-        const routeEntry = entry.routes.get(plan.routeName) ?? { revenue: 0, planCount: 0 };
-        routeEntry.revenue   += perDriverRevenue;
-        routeEntry.planCount += 1;
+        // Sản lượng (container đã ghi nhận) của driver này trong plan
+        const driverConts = conts.filter(ci => ci.submissionRef?.userId === dId);
+        entry.totalCont += driverConts.length;
+
+        const routeEntry = entry.routes.get(plan.routeName) ?? { revenue: 0, planCount: 0, contCount: 0 };
+        routeEntry.revenue    += perDriverRevenue;
+        routeEntry.planCount  += 1;
+        routeEntry.contCount  += driverConts.length;
         entry.routes.set(plan.routeName, routeEntry);
         driverRevenueMap.set(dId, entry);
       }
@@ -317,9 +327,9 @@ export class DashboardService {
         vendorKhac: plan.vendorKhac,
         completed: plan.completed,
         totalCont: conts.length,
-        revenue:       Math.round(revenue),
-        subvendorCost: Math.round(subvendorCost),
-        luongChuyen:   Math.round(luongChuyen),
+        revenue:       revenue,
+        subvendorCost: subvendorCost,
+        luongChuyen:   luongChuyen,
         driverCount: driverIds.size,
         contByType,
       });
@@ -337,12 +347,13 @@ export class DashboardService {
         soMooc:    u?.soMooc ?? '',
         stt:       u?.stt ?? '',
         sdt:       u?.sdt ?? '',
-        revenue:   Math.round(entry.revenue),
-        luongKhoan: Math.round(entry.luongKhoan),
+        revenue:   entry.revenue,
+        luongKhoan: entry.luongKhoan,
         planCount:  entry.planCount,
         totalPlanCount: plans.length,
+        totalCont:  entry.totalCont,
         routes: Array.from(entry.routes.entries())
-          .map(([routeName, r]) => ({ routeName, revenue: Math.round(r.revenue), planCount: r.planCount }))
+          .map(([routeName, r]) => ({ routeName, revenue: r.revenue, planCount: r.planCount, contCount: r.contCount }))
           .sort((a, b) => b.revenue - a.revenue),
       });
     }
@@ -354,15 +365,16 @@ export class DashboardService {
       .map(([customerId, e]) => ({
         customerId,
         customerName: e.name,
-        revenue:    Math.round(e.revenue),
+        revenue:    e.revenue,
         planCount:  e.planCount,
         totalCont:  e.totalCont,
+        contByType: e.contByType,
       }))
       .sort((a, b) => b.revenue - a.revenue);
 
     // ─── Build byDay ─────────────────────────────────────────────
     const byDay: DailyRevenue[] = Array.from(dailyRevenueMap.entries())
-      .map(([day, d]) => ({ day, revenue: Math.round(d.revenue), planCount: d.planCount }))
+      .map(([day, d]) => ({ day, revenue: d.revenue, planCount: d.planCount }))
       .sort((a, b) => a.day - b.day);
 
     return {
@@ -375,15 +387,15 @@ export class DashboardService {
         list: planSummaries,
       },
       revenue: {
-        total: Math.round(totalRevenue),
+        total: totalRevenue,
         byCustomer,
         byDriver,
         byDay,
       },
       cost: {
-        subvendor:    Math.round(totalSubvendor),
-        luongChuyen:  Math.round(totalLuongChuyen),
-        profit:       Math.round(totalRevenue - totalSubvendor - totalLuongChuyen),
+        subvendor:    totalSubvendor,
+        luongChuyen:  totalLuongChuyen,
+        profit:       totalRevenue - totalSubvendor - totalLuongChuyen,
       },
     };
   }

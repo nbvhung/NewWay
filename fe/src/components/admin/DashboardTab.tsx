@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import {
-  dashboardApi, DashboardOverview, PlanSummary, DriverRevenue,
+  dashboardApi, DashboardOverview, PlanSummary, DriverRevenue, CustomerRevenue,
 } from '@/lib/api-dashboard';
 
 /* ═══════════════════════════════════════════════════════════════
@@ -36,13 +36,6 @@ const C = {
 
 /* ─── Helpers ─────────────────────────────────────────────────── */
 const fmt = (n: number) => n.toLocaleString('vi-VN');
-const sv = (n: number) => {
-  const a = Math.abs(n), s = n < 0 ? '-' : '';
-  if (a >= 1e9)  return `${s}${(a/1e9).toFixed(2)} tỷ`;
-  if (a >= 1e6)  return `${s}${(a/1e6).toFixed(0)}tr`;
-  if (a >= 1e3)  return `${s}${(a/1e3).toFixed(0)}k`;
-  return `${s}${a}`;
-};
 const pc = (p: number, t: number) => (t ? Math.round(p/t*100) : 0);
 type PFilter = 'all'|'done'|'todo';
 type Seg     = 'month'|'week'|'day';
@@ -213,8 +206,8 @@ function FlowRing({ revenue, subvendor, luongChuyen, profit }: {
       {/* Center text */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <p className="text-[11px]" style={{ color: C.muted }}>Doanh thu</p>
-        <p className="text-[22px] font-extrabold leading-none mt-0.5" style={{ color: C.ink }}>{sv(revenue)}</p>
-        <p className="text-[9px] mt-0.5" style={{ color: C.muted }}>{fmt(revenue)} ₫</p>
+        <p className="text-[22px] font-extrabold leading-none mt-0.5" style={{ color: C.ink }}>{fmt(revenue)}</p>
+        <p className="text-[9px] mt-0.5" style={{ color: C.muted }}>₫</p>
       </div>
     </div>
   );
@@ -280,7 +273,7 @@ function PlanSheet({ plan, onClose }: { plan: PlanSummary; onClose: () => void }
                 <tr key={i} className={i < 3 ? 'border-b' : ''} style={{ borderColor: C.faint }}>
                   <td className="px-4 py-2.5" style={{ color: C.muted }}>{label}</td>
                   <td className="px-4 py-2.5 text-right font-semibold" style={{ color: c }}>
-                    {sv(val)} <span className="font-light text-[9px]" style={{ color: C.muted }}>{fmt(val)} ₫</span>
+                    {fmt(val)} <span className="font-light text-[9px]" style={{ color: C.muted }}>{fmt(val)} ₫</span>
                   </td>
                 </tr>
               ))}
@@ -313,7 +306,6 @@ function PlanSheet({ plan, onClose }: { plan: PlanSummary; onClose: () => void }
 function DriverSheet({ d, totalP, onClose }: { d: DriverRevenue; totalP: number; onClose: () => void }) {
   const ini = d.fullName.split(' ').map(w => w[0]??'').slice(-2).join('').toUpperCase();
   const pp  = pc(d.planCount, totalP);
-  const top = d.routes[0]?.revenue || 1;
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/25" onClick={onClose}>
       <div className="dsh bg-white w-full sm:max-w-[420px] sm:rounded-xl rounded-t-xl overflow-hidden shadow-xl"
@@ -332,14 +324,19 @@ function DriverSheet({ d, totalP, onClose }: { d: DriverRevenue; totalP: number;
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded hover:bg-white/60 cursor-pointer text-stone-400 flex-shrink-0">✕</button>
         </div>
-        <div className="grid grid-cols-2 border-b" style={{ borderColor: C.faint }}>
+        <div className="grid grid-cols-3 border-b" style={{ borderColor: C.faint }}>
+          <div className="px-5 py-4 border-r" style={{ borderColor: C.faint }}>
+            <p className="text-[10px] mb-1" style={{ color: C.muted }}>Sản lượng tháng</p>
+            <p className="text-[20px] font-bold">{fmt(d.totalCont)}</p>
+            <p className="text-[9px] mt-0.5" style={{ color: C.muted }}>container</p>
+          </div>
           <div className="px-5 py-4 border-r" style={{ borderColor: C.faint }}>
             <p className="text-[10px] mb-1" style={{ color: C.muted }}>Doanh thu mang lại</p>
-            <p className="text-[22px] font-bold" style={{ color: C.amber }}>{sv(d.revenue)}</p>
+            <p className="text-[20px] font-bold" style={{ color: C.amber }}>{fmt(d.revenue)}</p>
           </div>
           <div className="px-5 py-4">
             <p className="text-[10px] mb-1" style={{ color: C.muted }}>Lương khoán</p>
-            <p className="text-[22px] font-bold" style={{ color: C.red }}>{sv(d.luongKhoan)}</p>
+            <p className="text-[20px] font-bold" style={{ color: C.red }}>{fmt(d.luongKhoan)}</p>
           </div>
         </div>
         <div className="px-5 py-4 border-b" style={{ borderColor: C.faint }}>
@@ -353,18 +350,64 @@ function DriverSheet({ d, totalP, onClose }: { d: DriverRevenue; totalP: number;
         </div>
         {d.routes.length > 0 && (
           <div className="px-5 py-4">
-            <p className="text-[12px] font-semibold mb-3">Tuyến đường theo doanh thu</p>
+            <p className="text-[12px] font-semibold mb-3">Sản lượng theo tuyến đường</p>
             <div className="space-y-3">
-              {d.routes.slice(0, 6).map((r, i) => (
+              {d.routes.slice(0, 8).map((r, i) => (
                 <div key={i}>
                   <div className="flex justify-between mb-1">
                     <span className="text-[11px] truncate flex-1 mr-2">{r.routeName || '—'}</span>
-                    <span className="text-[11px] font-semibold flex-shrink-0" style={{ color: C.amber }}>{sv(r.revenue)}</span>
+                    <span className="text-[11px] font-semibold flex-shrink-0" style={{ color: C.amber }}>{fmt(r.contCount)} cont · {fmt(r.revenue)} ₫</span>
                   </div>
                   <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: '#f5f5f4' }}>
-                    <div className="h-full rounded-full" style={{ width: `${pc(r.revenue, top)}%`, background: i===0?C.amber:'#fcd34d' }}/>
+                    <div className="h-full rounded-full" style={{ width: `${pc(r.contCount, d.totalCont || 1)}%`, background: i===0?C.amber:'#fcd34d' }}/>
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CUSTOMER SHEET
+   ═══════════════════════════════════════════════════════════════ */
+function CustomerSheet({ c, onClose }: { c: CustomerRevenue; onClose: () => void }) {
+  const types = Object.entries(c.contByType).sort((a, b) => b[1] - a[1]);
+  const total = types.reduce((s, [, n]) => s + n, 0);
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/25" onClick={onClose}>
+      <div className="dsh bg-white w-full sm:max-w-[420px] sm:rounded-xl rounded-t-xl overflow-hidden shadow-xl"
+        onClick={e => e.stopPropagation()} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+        <div className="px-5 pt-5 pb-3 flex justify-between gap-3" style={{ background: C.surface }}>
+          <div className="min-w-0">
+            <p className="text-[11px]" style={{ color: C.muted }}>Khách hàng</p>
+            <h3 className="text-[16px] font-bold mt-0.5 leading-snug">{c.customerName}</h3>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded hover:bg-white/60 cursor-pointer text-stone-400 flex-shrink-0">✕</button>
+        </div>
+        <div className="grid grid-cols-2 border-b" style={{ borderColor: C.faint }}>
+          <div className="px-5 py-4 border-r" style={{ borderColor: C.faint }}>
+            <p className="text-[10px] mb-1" style={{ color: C.muted }}>Sản lượng tháng</p>
+            <p className="text-[22px] font-bold">{fmt(total)}</p>
+            <p className="text-[10px] mt-0.5" style={{ color: C.muted }}>container · {c.planCount} kế hoạch</p>
+          </div>
+          <div className="px-5 py-4">
+            <p className="text-[10px] mb-1" style={{ color: C.muted }}>Thu từ khách hàng</p>
+            <p className="text-[22px] font-bold" style={{ color: C.amber }}>{fmt(c.revenue)}</p>
+            <p className="text-[10px] mt-0.5" style={{ color: C.muted }}>{fmt(c.revenue)} ₫</p>
+          </div>
+        </div>
+        {types.length > 0 && (
+          <div className="px-5 py-4">
+            <p className="text-[12px] font-semibold mb-3">Sản lượng theo loại container</p>
+            <div className="flex flex-wrap gap-1.5">
+              {types.map(([t, n]) => (
+                <span key={t} className="px-2.5 py-1.5 text-[12px] font-bold rounded" style={{ background: C.amberLt, color: C.amberDk }}>
+                  {t} × {fmt(n)}
+                </span>
               ))}
             </div>
           </div>
@@ -388,6 +431,7 @@ export function DashboardTab() {
   const [seg, setSeg] = useState<Seg>('month');
   const [selP, setSelP] = useState<PlanSummary|null>(null);
   const [selD, setSelD] = useState<DriverRevenue|null>(null);
+  const [selC, setSelC] = useState<CustomerRevenue|null>(null);
 
   const load = async () => {
     setLoading(true); setError('');
@@ -484,7 +528,7 @@ export function DashboardTab() {
                 <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: c, opacity: 0.85 }}/>
                 <div>
                   <p className="text-[9px] leading-tight" style={{ color: C.muted }}>{label}</p>
-                  <p className="text-[12px] font-bold leading-none" style={{ color: c }}>{sv(val)}</p>
+                  <p className="text-[12px] font-bold leading-none" style={{ color: c }}>{fmt(val)}</p>
                 </div>
               </div>
             ))}
@@ -494,19 +538,19 @@ export function DashboardTab() {
         {/* Card 2: Chi phí */}
         <div className="rounded-xl p-5 flex flex-col justify-center anim-up anim-up-1" style={{ border: `1px solid ${C.faint}` }}>
           <p className="text-[12px] mb-2" style={{ color: C.muted }}>Chi phí tổng</p>
-          <p className="text-[30px] font-extrabold leading-none" style={{ color: C.red }}>{sv(totalCost)}</p>
+          <p className="text-[30px] font-extrabold leading-none" style={{ color: C.red }}>{fmt(totalCost)}</p>
           <p className="text-[10px] mt-1 mb-4" style={{ color: C.muted }}>{fmt(totalCost)} ₫</p>
           <div className="space-y-2">
             <div className="flex justify-between text-[12px]">
               <span style={{ color: C.muted }}>Subvendor</span>
-              <span className="font-bold">{sv(data.cost.subvendor)}</span>
+              <span className="font-bold">{fmt(data.cost.subvendor)}</span>
             </div>
             <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: '#f5f5f4' }}>
               <div className="h-full rounded-full" style={{ background: C.red, width: `${pc(data.cost.subvendor, totalCost || 1)}%`, transition: 'width 0.6s ease' }}/>
             </div>
             <div className="flex justify-between text-[12px]">
               <span style={{ color: C.muted }}>Lương chuyến</span>
-              <span className="font-bold">{sv(data.cost.luongChuyen)}</span>
+              <span className="font-bold">{fmt(data.cost.luongChuyen)}</span>
             </div>
             <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: '#f5f5f4' }}>
               <div className="h-full rounded-full" style={{ background: C.amber, width: `${pc(data.cost.luongChuyen, totalCost || 1)}%`, transition: 'width 0.6s ease' }}/>
@@ -579,7 +623,7 @@ export function DashboardTab() {
                   {seg!=='month' && (
                     <div className="flex justify-between px-4 py-1.5" style={{ background: C.surface, borderBottom: `1px solid ${C.faint}` }}>
                       <span className="text-[10px] font-semibold" style={{ color: C.muted }}>{key}</span>
-                      <span className="text-[10px]" style={{ color: C.muted }}>{gDone}/{items.length} xong, {sv(gRev)}</span>
+                      <span className="text-[10px]" style={{ color: C.muted }}>{gDone}/{items.length} xong, {fmt(gRev)}</span>
                     </div>
                   )}
                   {items.map(p => (
@@ -594,8 +638,8 @@ export function DashboardTab() {
                         </p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-[13px] font-bold" style={{ color: C.amber }}>{sv(p.revenue)}</p>
-                        {p.subvendorCost>0 && <p className="text-[9px]" style={{ color: C.red }}>-{sv(p.subvendorCost)}</p>}
+                        <p className="text-[13px] font-bold" style={{ color: C.amber }}>{fmt(p.revenue)}</p>
+                        {p.subvendorCost>0 && <p className="text-[9px]" style={{ color: C.red }}>-{fmt(p.subvendorCost)}</p>}
                       </div>
                     </div>
                   ))}
@@ -622,7 +666,8 @@ export function DashboardTab() {
                   const w = pc(c.revenue, data.revenue.byCustomer[0]?.revenue||1);
                   const rc = i===0?C.amber:i===1?'#9ca3af':i===2?'#b45309':C.muted;
                   return (
-                    <div key={c.customerId} className="flex items-center gap-3 px-4 py-2.5 hover:bg-stone-50 transition-colors"
+                    <div key={c.customerId} onClick={()=>setSelC(c)}
+                      className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-stone-50 transition-colors"
                       style={{ borderBottom: '1px solid #f5f5f4' }}>
                       <span className="w-4 text-right text-[11px] font-bold flex-shrink-0" style={{ color: rc }}>{i+1}</span>
                       <div className="flex-1 min-w-0">
@@ -634,7 +679,7 @@ export function DashboardTab() {
                           <span className="text-[9px] flex-shrink-0" style={{ color: C.muted }}>{c.planCount} KH, {c.totalCont} cont</span>
                         </div>
                       </div>
-                      <span className="text-[13px] font-bold flex-shrink-0" style={{ color: C.amber }}>{sv(c.revenue)}</span>
+                      <span className="text-[13px] font-bold flex-shrink-0" style={{ color: C.amber }}>{fmt(c.revenue)}</span>
                     </div>
                   );
                 })}
@@ -673,7 +718,7 @@ export function DashboardTab() {
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-[13px] font-bold" style={{ color: C.amber }}>{sv(d.revenue)}</p>
+                        <p className="text-[13px] font-bold" style={{ color: C.amber }}>{fmt(d.revenue)}</p>
                         <p className="text-[9px]" style={{ color: C.muted }}>{pc(d.revenue,data.revenue.total)}%</p>
                       </div>
                     </div>
@@ -687,6 +732,7 @@ export function DashboardTab() {
 
       {selP && <PlanSheet plan={selP} onClose={()=>setSelP(null)}/>}
       {selD && <DriverSheet d={selD} totalP={data.plans.total} onClose={()=>setSelD(null)}/>}
+      {selC && <CustomerSheet c={selC} onClose={()=>setSelC(null)}/>}
     </div>
   );
 }
