@@ -108,15 +108,15 @@ export const customersApi = {
 
   batchUpsertPrices: (
     id: number,
-    data: { month: number; year: number; fromDay: number; toDay: number; prices: Record<string, number> },
+    data: { month: number; year: number; fromDay: number; toDay: number; routeName?: string; prices: Record<string, number> },
   ) => api.post<{ message: string; created: number; updated: number }>(
     `/admin/customers/${id}/prices/batch`,
     data,
   ),
 
-  deletePricesPeriod: (id: number, month: number, year: number, fromDay: number, toDay: number) =>
+  deletePricesPeriod: (id: number, month: number, year: number, fromDay: number, toDay: number, routeName?: string) =>
     api.delete<{ message: string }>(`/admin/customers/${id}/prices/period`, {
-      params: { month, year, fromDay, toDay },
+      params: { month, year, fromDay, toDay, ...(routeName !== undefined ? { routeName } : {}) },
     }),
 
   getSurcharges: (id: number, month?: number, year?: number) =>

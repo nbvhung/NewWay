@@ -1,4 +1,4 @@
-import { IsInt, IsIn, IsNumber, Min, Max } from 'class-validator';
+import { IsInt, IsIn, IsNumber, IsOptional, IsString, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export const PRICE_CONTAINER_TYPES = [
@@ -38,6 +38,10 @@ export class CreateCustomerPriceDto {
 
   @IsIn(PRICE_CONTAINER_TYPES, { message: 'Loại container không hợp lệ' })
   containerType: string;
+
+  @IsOptional()
+  @IsString()
+  routeName?: string;
 
   @Type(() => Number)
   @IsNumber({}, { message: 'Đơn giá không hợp lệ' })

@@ -28,6 +28,9 @@ export class CustomerPrice {
   @Column({ name: 'container_type', length: 20, nullable: false })
   containerType: string;
 
+  @Column({ name: 'route_name', length: 255, default: '' })
+  routeName: string;
+
   @Column({ name: 'unit_price', type: 'decimal', precision: 15, scale: 2, default: 0 })
   unitPrice: number;
 

@@ -1,4 +1,4 @@
-import { IsInt, IsIn, IsNumber, Min, Max, IsOptional } from 'class-validator';
+import { IsInt, IsIn, IsNumber, IsOptional, IsString, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PRICE_CONTAINER_TYPES } from './create-customer-price.dto';
 
@@ -20,6 +20,10 @@ export class UpdateCustomerPriceDto {
   @IsOptional()
   @IsIn(PRICE_CONTAINER_TYPES, { message: 'Loại container không hợp lệ' })
   containerType?: string;
+
+  @IsOptional()
+  @IsString()
+  routeName?: string;
 
   @IsOptional()
   @Type(() => Number)

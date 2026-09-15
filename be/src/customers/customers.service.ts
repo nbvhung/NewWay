@@ -345,7 +345,7 @@ export class CustomersService {
   async getPrices(customerId: number, month: number, year: number): Promise<CustomerPrice[]> {
     return this.pricesRepository.find({
       where: { customerId, month, year },
-      order: { fromDay: 'ASC', containerType: 'ASC' },
+      order: { routeName: 'ASC', fromDay: 'ASC', containerType: 'ASC' },
     });
   }
 
@@ -357,6 +357,7 @@ export class CustomersService {
     if (dto.fromDay > dto.toDay) {
       throw new BadRequestException('"Từ ngày" không được lớn hơn "Đến ngày"');
     }
+    const routeName = (dto.routeName || '').trim();
     const dup = await this.pricesRepository.findOne({
       where: {
         customerId,
@@ -365,11 +366,13 @@ export class CustomersService {
         fromDay: dto.fromDay,
         toDay: dto.toDay,
         containerType: dto.containerType,
+        routeName,
       },
     });
     if (dup) {
+      const rnLabel = routeName ? `tuyến "${routeName}"` : 'mọi tuyến';
       throw new BadRequestException(
-        `Đã có đơn giá cho ${dto.containerType} (${dto.fromDay}-${dto.toDay}/${dto.month}/${dto.year})`,
+        `Đã có đơn giá cho ${dto.containerType} (${dto.fromDay}-${dto.toDay}/${dto.month}/${dto.year}, ${rnLabel})`,
       );
     }
     const price = this.pricesRepository.create({
@@ -379,6 +382,7 @@ export class CustomersService {
       fromDay: dto.fromDay,
       toDay: dto.toDay,
       containerType: dto.containerType,
+      routeName,
       unitPrice: dto.unitPrice,
     });
     const saved = await this.pricesRepository.save(price);
@@ -405,6 +409,10 @@ export class CustomersService {
     if (dto.containerType !== undefined && dto.containerType !== price.containerType) {
       changes.containerType = { old: price.containerType, new: dto.containerType };
       price.containerType = dto.containerType;
+    }
+    if (dto.routeName !== undefined && dto.routeName.trim() !== (price.routeName || '')) {
+      changes.routeName = { old: price.routeName || '', new: dto.routeName.trim() };
+      price.routeName = dto.routeName.trim();
     }
     if (dto.unitPrice !== undefined && Number(dto.unitPrice) !== Number(price.unitPrice)) {
       changes.unitPrice = { old: Number(price.unitPrice), new: Number(dto.unitPrice) };
@@ -441,6 +449,7 @@ export class CustomersService {
     if (dto.fromDay > dto.toDay) {
       throw new BadRequestException('"Từ ngày" không được lớn hơn "Đến ngày"');
     }
+    const routeName = (dto.routeName || '').trim();
     let created = 0;
     let updated = 0;
     for (const [type, price] of Object.entries(dto.prices || {})) {
@@ -455,6 +464,7 @@ export class CustomersService {
           fromDay: dto.fromDay,
           toDay: dto.toDay,
           containerType: type,
+          routeName,
         },
       });
       if (existing) {
@@ -473,6 +483,7 @@ export class CustomersService {
           fromDay: dto.fromDay,
           toDay: dto.toDay,
           containerType: type,
+          routeName,
           unitPrice: val,
         });
         const saved = await this.pricesRepository.save(p);
@@ -480,8 +491,9 @@ export class CustomersService {
         created++;
       }
     }
+    const rnLabel = routeName ? ` tuyến "${routeName}"` : ' (mọi tuyến)';
     return {
-      message: `Đã lưu ${created + updated} đơn giá (tạo ${created}, cập nhật ${updated}).`,
+      message: `Đã lưu ${created + updated} đơn giá${rnLabel} (tạo ${created}, cập nhật ${updated}).`,
       created,
       updated,
     };
@@ -494,10 +506,11 @@ export class CustomersService {
     fromDay: number,
     toDay: number,
     actor: { id?: number; fullName?: string },
+    routeName?: string,
   ): Promise<{ message: string }> {
-    const found = await this.pricesRepository.find({
-      where: { customerId, month, year, fromDay, toDay },
-    });
+    const where: any = { customerId, month, year, fromDay, toDay };
+    if (routeName !== undefined) where.routeName = routeName.trim();
+    const found = await this.pricesRepository.find({ where });
     if (found.length === 0) {
       throw new NotFoundException('Không tìm thấy đơn giá của khoảng này');
     }
@@ -505,7 +518,8 @@ export class CustomersService {
     for (const p of found) {
       await this.logAudit(customerId, 'price', p.id, 'DELETE', actor, '');
     }
-    return { message: `Đã xóa ${found.length} đơn giá của khoảng ${fromDay}-${toDay}/${month}/${year}` };
+    const rnLabel = routeName ? ` tuyến "${routeName}"` : '';
+    return { message: `Đã xóa ${found.length} đơn giá${rnLabel} của khoảng ${fromDay}-${toDay}/${month}/${year}` };
   }
 
   // ─── Phụ phí theo khách hàng ──────────────────────────────────
@@ -698,11 +712,15 @@ export class CustomersService {
       if (m) return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
       return null;
     };
-    const donGiaFor = (type: string | undefined, day: number | null): number | null => {
+    const donGiaFor = (type: string | undefined, day: number | null, routeName?: string): number | null => {
       if (!type || day === null) return null;
-      const matched = prices.find(
-        (p) => p.containerType === type && day >= p.fromDay && day <= p.toDay,
-      );
+      const rn = (routeName || '').trim();
+      const match = (want: string) =>
+        prices.find(
+          (p) => p.containerType === type && day >= p.fromDay && day <= p.toDay && (p.routeName || '') === want,
+        );
+      // Ưu tiên đơn giá riêng của tuyến, fallback về đơn giá chung (mọi tuyến).
+      const matched = rn ? match(rn) || match('') : match('');
       return matched ? Number(matched.unitPrice) : null;
     };
 
@@ -967,7 +985,7 @@ export class CustomersService {
       const user: any = c.submissionRef?.user;
       const day = getDayOfNgay(sl);
       const type = c.type as string;
-      const dg = donGiaFor(type, day);
+      const dg = donGiaFor(type, day, sl?.routeName || '');
       const is20 = type.includes('20');
       return {
         containerCode: c.containerCode || '',

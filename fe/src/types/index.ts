@@ -74,6 +74,7 @@ export interface CustomerPrice {
   fromDay: number;
   toDay: number;
   containerType: string;
+  routeName: string;
   unitPrice: number;
   createdAt?: string;
   updatedAt?: string;

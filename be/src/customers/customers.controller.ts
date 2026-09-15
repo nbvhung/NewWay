@@ -147,6 +147,7 @@ export class CustomersController {
     @Query('year') year: string,
     @Query('fromDay') fromDay: string,
     @Query('toDay') toDay: string,
+    @Query('routeName') routeName: string | undefined,
     @CurrentUser() user: any,
   ) {
     return this.customersService.deletePricesPeriod(
@@ -156,6 +157,7 @@ export class CustomersController {
       +fromDay,
       +toDay,
       { id: user.id, fullName: user.fullName || user.username },
+      routeName,
     );
   }
 

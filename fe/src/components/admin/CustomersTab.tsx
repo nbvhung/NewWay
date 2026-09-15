@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Customer, CustomerPrice, CustomerSurcharge, CustomerAuditLog } from '@/types';
+import { Customer, CustomerPrice, CustomerSurcharge, CustomerAuditLog, Route } from '@/types';
 import { customersApi, DossierStatus, DossierFileType } from '@/lib/api-customers';
+import { routesApi } from '@/lib/api-routes';
 import { useAuth } from '@/providers/auth-provider';
 import { Modal } from '@/components/ui/modal';
 import { Pagination } from '@/components/ui/pagination';
@@ -101,7 +102,10 @@ export function CustomersTab({ onRefresh, toast }: Props) {
   const [prices, setPrices] = useState<CustomerPrice[]>([]);
   const [priceModal, setPriceModal] = useState(false);
   const [priceEditId, setPriceEditId] = useState<number | null>(null);
-  const [priceForm, setPriceForm] = useState<{ fromDay: string; toDay: string; prices: Record<string, string> }>({ fromDay: '', toDay: '', prices: {} });
+  const [priceForm, setPriceForm] = useState<{ fromDay: string; toDay: string; routeName: string; prices: Record<string, string> }>({ fromDay: '', toDay: '', routeName: '', prices: {} });
+  const [routeList, setRouteList] = useState<Route[]>([]);
+  const [routeTab, setRouteTab] = useState<string>('chung');
+  const [routeSearch, setRouteSearch] = useState('');
 
   // Phụ phí
   const [surcharges, setSurcharges] = useState<CustomerSurcharge[]>([]);
@@ -156,6 +160,15 @@ export function CustomersTab({ onRefresh, toast }: Props) {
     }
   }, []);
 
+  const loadRoutes = useCallback(async () => {
+    try {
+      const res = await routesApi.getAll();
+      setRouteList(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setRouteList([]);
+    }
+  }, []);
+
   const loadSurcharges = useCallback(async (id: number, m?: number, y?: number) => {
     try {
       const res = await customersApi.getSurcharges(id, m, y);
@@ -168,9 +181,12 @@ export function CustomersTab({ onRefresh, toast }: Props) {
   useEffect(() => {
     if (!selected) return;
     if (section === 'dossier') loadStats(selected.id, month, year);
-    if (section === 'prices') loadPrices(selected.id, month, year);
+    if (section === 'prices') {
+      loadPrices(selected.id, month, year);
+      loadRoutes();
+    }
     if (section === 'surcharges') loadSurcharges(selected.id, month, year);
-  }, [selected, section, month, year, loadStats, loadPrices, loadSurcharges]);
+  }, [selected, section, month, year, loadStats, loadPrices, loadRoutes, loadSurcharges]);
 
   const loadDossierStatus = useCallback(async (id: number, m: number, y: number) => {
     try {
@@ -298,9 +314,19 @@ export function CustomersTab({ onRefresh, toast }: Props) {
   };
 
   // ── Đơn giá ────────────────────────────────────────────────────
+  const routeTabOf = useCallback((name: string): string => {
+    if (!name) return 'chung';
+    const r = routeList.find((x) => x.name === name);
+    const t = r?.type || '';
+    return ['XT', 'CB', 'ĐH'].includes(t) ? t : 'other';
+  }, [routeList]);
+
   const openAddPrice = () => {
     setPriceEditId(null);
-    setPriceForm({ fromDay: '', toDay: '', prices: {} });
+    setPriceForm({ fromDay: '', toDay: '', routeName: '', prices: {} });
+    setRouteTab('chung');
+    setRouteSearch('');
+    if (routeList.length === 0) loadRoutes();
     setPriceModal(true);
   };
 
@@ -309,7 +335,15 @@ export function CustomersTab({ onRefresh, toast }: Props) {
     setPriceEditId(group[0].id);
     const prices: Record<string, string> = {};
     for (const p of group) prices[p.containerType] = String(p.unitPrice);
-    setPriceForm({ fromDay: String(group[0].fromDay), toDay: String(group[0].toDay), prices });
+    setPriceForm({
+      fromDay: String(group[0].fromDay),
+      toDay: String(group[0].toDay),
+      routeName: group[0].routeName || '',
+      prices,
+    });
+    setRouteTab(routeTabOf(group[0].routeName || ''));
+    setRouteSearch('');
+    if (routeList.length === 0) loadRoutes();
     setPriceModal(true);
   };
 
@@ -335,6 +369,7 @@ export function CustomersTab({ onRefresh, toast }: Props) {
         year,
         fromDay: Number(priceForm.fromDay),
         toDay: Number(priceForm.toDay),
+        routeName: priceForm.routeName || '',
         prices,
       });
       toast(res.data.message, 'success');
@@ -350,9 +385,11 @@ export function CustomersTab({ onRefresh, toast }: Props) {
   const removePricePeriod = async (group: CustomerPrice[]) => {
     if (!selected || !group.length) return;
     const p = group[0];
-    if (!confirm(`Xóa toàn bộ đơn giá khoảng ${p.fromDay}-${p.toDay}/${p.month}/${p.year}?`)) return;
+    const rn = p.routeName || '';
+    const rnLabel = rn ? `tuyến "${rn}" ` : '(mọi tuyến) ';
+    if (!confirm(`Xóa toàn bộ đơn giá ${rnLabel}khoảng ${p.fromDay}-${p.toDay}/${p.month}/${p.year}?`)) return;
     try {
-      await customersApi.deletePricesPeriod(selected.id, p.month, p.year, p.fromDay, p.toDay);
+      await customersApi.deletePricesPeriod(selected.id, p.month, p.year, p.fromDay, p.toDay, rn);
       toast('Đã xóa khoảng đơn giá', 'success');
       await loadPrices(selected.id, month, year);
     } catch (err: any) {
@@ -363,12 +400,31 @@ export function CustomersTab({ onRefresh, toast }: Props) {
   const priceGroups = useMemo(() => {
     const map = new Map<string, CustomerPrice[]>();
     for (const p of prices) {
-      const key = `${p.fromDay}-${p.toDay}`;
+      const key = `${p.routeName || ''}|${p.fromDay}-${p.toDay}`;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(p);
     }
-    return Array.from(map.values()).sort((a, b) => a[0].fromDay - b[0].fromDay);
+    return Array.from(map.values()).sort((a, b) => {
+      const ra = a[0].routeName || '';
+      const rb = b[0].routeName || '';
+      if (ra !== rb) {
+        if (!ra) return -1;
+        if (!rb) return 1;
+        return ra.localeCompare(rb, 'vi');
+      }
+      return a[0].fromDay - b[0].fromDay;
+    });
   }, [prices]);
+
+  const filteredRoutes = useMemo(() => {
+    const q = routeSearch.trim().toLowerCase();
+    return routeList.filter((r) => {
+      const type = ['XT', 'CB', 'ĐH'].includes(r.type) ? r.type : 'other';
+      if (type !== routeTab) return false;
+      if (q) return r.name.toLowerCase().includes(q);
+      return true;
+    });
+  }, [routeList, routeTab, routeSearch]);
 
   // ── Phụ phí ────────────────────────────────────────────────────
   const openAddSur = () => {
@@ -846,7 +902,14 @@ export function CustomersTab({ onRefresh, toast }: Props) {
                     {priceGroups.map(g => (
                       <div key={g[0].id} className="border border-[#e7e5e4] rounded-lg overflow-hidden">
                         <div className="flex items-center justify-between px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
-                          <span className="text-xs font-bold text-[#1c1917]">{g[0].fromDay} → {g[0].toDay} / {g[0].month}/{g[0].year}</span>
+                          <span className="text-xs font-bold text-[#1c1917] flex items-center gap-1.5 flex-wrap">
+                            {g[0].routeName ? (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-100 text-purple-700">🛣 {g[0].routeName}</span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#e7e5e4] text-[#57534e]">Mọi tuyến</span>
+                            )}
+                            <span>{g[0].fromDay} → {g[0].toDay} / {g[0].month}/{g[0].year}</span>
+                          </span>
                           {canEdit && (
                             <div className="flex gap-1">
                               <button onClick={() => openEditPricePeriod(g)} title="Sửa cả khoảng"
@@ -1015,6 +1078,66 @@ export function CustomersTab({ onRefresh, toast }: Props) {
         }
       >
         <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Tuyến đường áp dụng</label>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {[
+                { key: 'chung', label: 'Mọi tuyến' },
+                { key: 'XT', label: 'XT' },
+                { key: 'CB', label: 'CB' },
+                { key: 'ĐH', label: 'ĐH' },
+                { key: 'other', label: 'Khác' },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => { setRouteTab(tab.key); setRouteSearch(''); }}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer ${
+                    routeTab === tab.key
+                      ? 'bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white border-transparent'
+                      : 'bg-white text-[#78716c] border-[#e7e5e4] hover:text-[#1c1917]'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            {routeTab === 'chung' ? (
+              <div className="px-3 py-2 rounded-lg bg-[#fafaf9] border border-[#e7e5e4] text-[11px] text-[#78716c]">
+                Áp dụng cho <b className="text-[#1c1917]">mọi tuyến</b> — dùng khi tuyến không có đơn giá riêng.
+              </div>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  value={routeSearch}
+                  onChange={(e) => setRouteSearch(e.target.value)}
+                  placeholder="🔍 Tìm tuyến đường..."
+                  className={`${inputCls} mb-2`}
+                />
+                <div className="max-h-36 overflow-y-auto border border-[#e7e5e4] rounded-lg divide-y divide-[#f5f5f4]">
+                  {filteredRoutes.length === 0 ? (
+                    <div className="px-3 py-3 text-[11px] text-[#a8a29e] text-center">Không có tuyến nào.</div>
+                  ) : (
+                    filteredRoutes.map((r) => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => setPriceForm((f) => ({ ...f, routeName: r.name }))}
+                        className={`w-full text-left px-3 py-2 text-[11px] transition-all cursor-pointer ${
+                          priceForm.routeName === r.name
+                            ? 'bg-[#fef3c7] font-semibold text-[#92400e]'
+                            : 'hover:bg-[#fafaf9] text-[#44403c]'
+                        }`}
+                      >
+                        {priceForm.routeName === r.name ? '✓ ' : ''}{r.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-[#78716c] mb-1.5">Từ ngày <span className="text-[#ef4444]">*</span></label>
@@ -1026,7 +1149,8 @@ export function CustomersTab({ onRefresh, toast }: Props) {
             </div>
           </div>
           <p className="text-[10px] text-[#a8a29e]">
-            Nhập đơn giá cho từng loại container (bỏ trống = loại đó không áp dụng). Áp dụng tháng {month}/{year}.
+            Nhập đơn giá cho từng loại container (bỏ trống = loại đó không áp dụng). Áp dụng tháng {month}/{year}
+            {priceForm.routeName ? ` cho tuyến "${priceForm.routeName}"` : ' cho mọi tuyến'}.
           </p>
           <div className="grid grid-cols-2 gap-2">
             {PRICE_TYPES.map(t => (

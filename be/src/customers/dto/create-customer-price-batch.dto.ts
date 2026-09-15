@@ -1,4 +1,4 @@
-import { IsInt, Min, Max, IsObject } from 'class-validator';
+import { IsInt, Min, Max, IsObject, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateCustomerPriceBatchDto {
@@ -24,6 +24,10 @@ export class CreateCustomerPriceBatchDto {
   @Min(1)
   @Max(31)
   toDay: number;
+
+  @IsOptional()
+  @IsString()
+  routeName?: string;
 
   @IsObject({ message: 'Danh sách đơn giá không hợp lệ' })
   prices: Record<string, number>;
