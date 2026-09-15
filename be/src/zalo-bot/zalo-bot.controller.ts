@@ -13,13 +13,17 @@ import {
 import { join } from 'node:path';
 import type { Response } from 'express';
 import { ZaloQueueService } from './zalo-queue.service';
+import { ZaloMessagesService } from '../zalo-messages/zalo-messages.service';
 import type { ZaloEvent } from './zalo-bot.service';
 
 @Controller('zalo')
 export class ZaloBotController {
   private readonly logger = new Logger(ZaloBotController.name);
 
-  constructor(private zaloQueueService: ZaloQueueService) {}
+  constructor(
+    private zaloQueueService: ZaloQueueService,
+    private zaloMessagesService: ZaloMessagesService,
+  ) {}
 
   private verify(secret: string | undefined): void {
     const expected = process.env.ZALO_WEBHOOK_SECRET;
@@ -104,6 +108,39 @@ export class ZaloBotController {
     return { status: 'ok' };
   }
 
+  // ─── Bot 3 ────────────────────────────────────────────────────
+
+  @Get('webhook3')
+  webhook3Verify() {
+    this.logger.log('[WEBHOOK3] GET verify called by Zalo');
+    return { status: 'ok' };
+  }
+
+  @Post('webhook3')
+  @HttpCode(HttpStatus.OK)
+  async webhook3(
+    @Body() event: ZaloEvent,
+    @Headers('x-bot-api-secret-token') secret?: string,
+  ) {
+    this.logger.log(`[WEBHOOK3] body: ${JSON.stringify(event)}`);
+    this.verify(secret);
+    if (event && typeof event === 'object') {
+      (event as any).botIndex = 2;
+      // Chỉ bot 3: thu nhóm (chat_type=GROUP) để dùng cho tin hẹn giờ nhiều nhóm.
+      const msg = (event as any)?.message;
+      if (msg?.chat?.chat_type === 'GROUP' && msg.chat.id) {
+        void this.zaloMessagesService.upsertGroup(
+          String(msg.chat.id),
+          2,
+          (msg as any)?.group_name || (msg as any)?.chat?.name || undefined,
+        );
+      }
+    }
+    const enqueued = await this.zaloQueueService.enqueue(event);
+    this.logger.log(`[WEBHOOK3] enqueued=${enqueued}`);
+    return { status: 'ok' };
+  }
+
   // ─── Debug (xem Zalo gửi gì) ─────────────────────────────────
 
   /** Echo endpoint — nhận bất kỳ POST nào và log ra, không xử lý.
@@ -148,6 +185,7 @@ export class ZaloBotController {
       status: 'ok',
       botConfigured: !!process.env.ZALO_BOT_TOKEN,
       bot2Configured: !!process.env.ZALO_BOT_TOKEN_2,
+      bot3Configured: !!process.env.ZALO_BOT_TOKEN_3,
       sttConfigured: !!process.env.OPENAI_API_KEY,
     };
   }

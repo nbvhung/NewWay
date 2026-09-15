@@ -10,12 +10,28 @@ export class ZaloScheduledMessage {
   @Column({ name: 'batch_id', type: 'varchar', length: 36, nullable: false })
   batchId: string;
 
-  @Column({ name: 'user_id', type: 'int', nullable: false })
-  userId: number;
+  @Column({ name: 'user_id', type: 'int', nullable: true })
+  userId: number | null;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })
   user: User | null;
+
+  /** 'user' = gửi cho lái xe (theo user_id), 'group' = gửi cho nhóm Zalo (theo chat_id, bot 3). */
+  @Column({ name: 'target_type', type: 'varchar', length: 10, default: 'user', nullable: false })
+  targetType: 'user' | 'group';
+
+  /** chat_id của nhóm khi target_type='group'. */
+  @Column({ name: 'chat_id', type: 'varchar', length: 100, nullable: true })
+  chatId: string | null;
+
+  /** bot_index dùng để gửi (group luôn = 2 = bot 3; user dùng zaloBot của lái xe). */
+  @Column({ name: 'bot_index', type: 'int', default: 0, nullable: false })
+  botIndex: number;
+
+  /** Nếu true → sau khi gửi thành công, tự tạo record +24h (gửi hàng ngày). */
+  @Column({ name: 'repeat_daily', type: 'boolean', default: false, nullable: false })
+  repeatDaily: boolean;
 
   @Column({ name: 'content', type: 'text', nullable: false })
   content: string;

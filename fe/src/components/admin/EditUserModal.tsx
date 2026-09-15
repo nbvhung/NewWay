@@ -68,6 +68,7 @@ export function EditUserModal({ open, onClose, editUserData, setEditUserData, on
           className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]">
           <option value={0}>Bot 1</option>
           <option value={1}>Bot 2</option>
+          <option value={2}>Bot 3</option>
         </select>
       </div>
       <div className="mb-3">

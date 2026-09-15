@@ -96,6 +96,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     allowanceParking: '',
     hasBhxh: true,
     chiHo: '',
+    advanceDeduct: '',
   });
 
   // Giá trị nền tài xế (sửa trong tab này)
@@ -149,7 +150,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const pickDriver = (id: number | null) => {
     setSelectedId(id);
     if (id == null) {
-      setForm({ fixedSalary: '', attendanceBonus: '', hasFarHome: false, allowanceFarHome: '', allowanceWaitLoadingRate: '', daysOff: '', daysOffNote: '', hasOldCar: false, allowanceOldCar: '', hasParkingHph2: false, allowanceParking: '', hasBhxh: true, chiHo: '' });
+      setForm({ fixedSalary: '', attendanceBonus: '', hasFarHome: false, allowanceFarHome: '', allowanceWaitLoadingRate: '', daysOff: '', daysOffNote: '', hasOldCar: false, allowanceOldCar: '', hasParkingHph2: false, allowanceParking: '', hasBhxh: true, chiHo: '', advanceDeduct: '' });
       setBaseFarHome('');
       setBaseOldCar(false);
       setBaseBhxh(true);
@@ -171,6 +172,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       allowanceParking: rec?.parkingHph2Override != null ? fmtMoney(rec.parkingHph2Override) : '',
       hasBhxh: rec?.hasBhxh ?? true,
       chiHo: fmtMoney(rec?.chiHo),
+      advanceDeduct: fmtMoney(rec?.advanceDeduct),
     });
     setBaseFarHome(fmtMoney(drv?.allowanceFarHome));
     setBaseOldCar(drv?.oldCar || false);
@@ -219,6 +221,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         parkingHph2: form.allowanceParking.trim() === '' ? null : (Number(parkingOverrideValue) || 0),
         hasBhxh: form.hasBhxh,
         chiHo: Number(chiHoValue) || 0,
+        advanceDeduct: Number(advanceDeductValue) || 0,
       });
       toast(`Đã lưu cho ${selectedDriver.fullName}`, 'success');
       loadData();
@@ -590,7 +593,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const itemSumDeduct = recordItems.filter(v => v.enabled && v.kind === 'deduct').reduce((s, v) => s + v.amount, 0);
 
   // Tạm ứng
-  const advanceDeductValue = selectedRecord?.advanceDeduct || 0;
+  const advanceDeductValue = Number(form.advanceDeduct.replace(/[^\d]/g, '')) || 0;
   const totalRemainingAdvance = selectedRecord?.totalRemainingAdvance || 0;
   const advanceRemainingAfter = selectedRecord?.advanceRemainingAfter ?? 0;
   const driverAdvances: DriverAdvance[] = selectedRecord?.advances || [];
@@ -805,16 +808,14 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                     <div>
                       <label className={labelCls}>
                         💸 Khấu trừ tạm ứng tháng này (VNĐ)
-                      </label>
-                      <div className="px-3.5 py-2.5 bg-[#fff7ed] border border-[#fed7aa] rounded-lg text-sm font-bold text-[#c2410c]">
-                        {fmtMoney(advanceDeductValue)} ₫
                         {selectedRecord?.advanceDeductOverridden && (
                           <span className="ml-2 text-[10px] font-medium text-[#9a3412] bg-[#fee2e2] px-1.5 py-0.5 rounded">✏️ Đã sửa tay</span>
                         )}
-                      </div>
+                      </label>
+                      <input value={form.advanceDeduct} onChange={e => setForm(f => ({ ...f, advanceDeduct: e.target.value }))} inputMode="numeric" placeholder="0" className={inputCls} />
                       <div className="flex items-center gap-2 mt-1">
                         <p className="text-[10px] text-amber-600 flex-1">
-                          Dư nợ còn lại sau tháng này: <strong>{fmtMoney(advanceRemainingAfter)} ₫</strong>
+                          Trừ vào lương: <strong>{fmtMoney(advanceDeductValue)} ₫</strong> · Dư nợ còn lại sau tháng này: <strong>{fmtMoney(advanceRemainingAfter)} ₫</strong>
                           {advanceRemainingAfter === 0 && <span className="ml-1 text-green-600">✅ Đã trả hết</span>}
                         </p>
                         {selectedRecord?.advanceDeductOverridden && (

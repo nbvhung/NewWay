@@ -33,9 +33,11 @@ export class ZaloApiService {
    * (ZALO_BOT_TOKEN_2, ...). Mọi method nhận botIndex để chọn đúng token.
    */
   private tokens(): string[] {
-    return [process.env.ZALO_BOT_TOKEN, process.env.ZALO_BOT_TOKEN_2].filter(
-      (t): t is string => !!t,
-    );
+    return [
+      process.env.ZALO_BOT_TOKEN,
+      process.env.ZALO_BOT_TOKEN_2,
+      process.env.ZALO_BOT_TOKEN_3,
+    ].filter((t): t is string => !!t);
   }
 
   private token(botIndex = 0): string {
@@ -150,6 +152,24 @@ export class ZaloApiService {
       this.logger.error(`sendMessage (bot ${botIndex}) failed: ${err.message}`);
       return false;
     }
+  }
+
+  /**
+   * Gửi tin nhắn báo cho admin qua bot đã được cấu hình.
+   * Người nhận: ZALO_ADMIN_NOTIFY_ZALO_ID.
+   * Bot gửi: ZALO_ADMIN_NOTIFY_BOT_INDEX (mặc định 0 = bot 1) — dùng token
+   * đang chạy, nên admin chỉ cần từng nhắn với đúng bot đó là nhận được.
+   */
+  async sendAdminNotify(text: string): Promise<boolean> {
+    const chatId = process.env.ZALO_ADMIN_NOTIFY_ZALO_ID || '';
+    const botIndex = parseInt(process.env.ZALO_ADMIN_NOTIFY_BOT_INDEX || '0', 10) || 0;
+    if (!chatId) {
+      this.logger.warn(
+        `sendAdminNotify bỏ qua: thiếu ZALO_ADMIN_NOTIFY_ZALO_ID`,
+      );
+      return false;
+    }
+    return this.sendMessage(chatId, text, botIndex);
   }
 
   /**

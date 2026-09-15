@@ -10,6 +10,7 @@ import { ZaloApiService } from './zalo-api.service';
  * Bật bằng cách set ZALO_POLLING=false (hoặc không set) và set:
  *   ZALO_WEBHOOK_URL=https://newwayai.duckdns.org/api/zalo/webhook
  *   ZALO_WEBHOOK_URL_2=https://newwayai.duckdns.org/api/zalo/webhook2 (bot 2)
+ *   ZALO_WEBHOOK_URL_3=https://newwayai.duckdns.org/api/zalo/webhook3 (bot 3)
  */
 @Injectable()
 export class ZaloWebhookService implements OnApplicationBootstrap {
@@ -50,6 +51,13 @@ export class ZaloWebhookService implements OnApplicationBootstrap {
     if (url2 && this.zaloApi.botCount >= 2) {
       const ok = await this.zaloApi.setWebhook(url2, secret, 1);
       this.logger.log(`setWebhook bot 1 → ${ok ? '✅ thành công' : '❌ thất bại'} (${url2})`);
+    }
+
+    // Bot 3
+    const url3 = process.env.ZALO_WEBHOOK_URL_3;
+    if (url3 && this.zaloApi.botCount >= 3) {
+      const ok = await this.zaloApi.setWebhook(url3, secret, 2);
+      this.logger.log(`setWebhook bot 2 → ${ok ? '✅ thành công' : '❌ thất bại'} (${url3})`);
     }
   }
 }

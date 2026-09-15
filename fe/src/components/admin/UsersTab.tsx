@@ -216,7 +216,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-sm font-bold text-[#1c1917]">{u.fullName}</span>
                     <span className={roleBadge(u.role)}>{ROLE_LABELS[u.role] || u.role}</span>
-                    {u.zaloId && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(245,158,11,0.15)] text-[#d97706]">💬 Zalo{u.zaloBot === 1 ? ' Bot2' : ''}</span>}
+                    {u.zaloId && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(245,158,11,0.15)] text-[#d97706]">💬 Zalo{u.zaloBot === 1 ? ' Bot2' : u.zaloBot === 2 ? ' Bot3' : ''}</span>}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     <span className="text-[10px] text-[#a8a29e]">@{u.username}</span>
@@ -336,6 +336,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
                     className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer">
                     <option value={0}>Bot 1</option>
                     <option value={1}>Bot 2</option>
+                    <option value={2}>Bot 3</option>
                   </select>
                 </div>
               </div>
