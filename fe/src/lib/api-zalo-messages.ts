@@ -23,9 +23,10 @@ export interface ZaloScheduledBatch {
   batchId: string;
   content: string;
   sendAt: string;
+  nextSendAt?: string | null;
   createdAt: string;
   repeatDaily?: boolean;
-  recipients: Array<{ userId: number | null; fullName: string; targetType?: string; status: string; error?: string | null; sentAt?: string | null }>;
+  recipients: Array<{ userId: number | null; fullName: string; targetType?: string; status: string; error?: string | null; sendAt?: string; sentAt?: string | null }>;
   counts: { pending: number; processing: number; sent: number; failed: number; cancelled: number };
 }
 

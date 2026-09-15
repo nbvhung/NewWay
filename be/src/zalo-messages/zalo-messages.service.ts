@@ -265,6 +265,7 @@ export class ZaloMessagesService {
         targetType: row.targetType,
         status: row.status,
         error: row.error,
+        sendAt: row.sendAt,
         sentAt: row.sentAt,
       };
       if (!g) {
@@ -285,6 +286,17 @@ export class ZaloMessagesService {
       for (const r of g.recipients) {
         g.counts[r.status] = (g.counts[r.status] || 0) + 1;
       }
+      // Sắp xếp người nhận theo thời gian gửi; mốc thời gian batch = lần gửi GỐC (sớm nhất).
+      g.recipients.sort(
+        (a: any, b: any) =>
+          new Date(a.sendAt).getTime() - new Date(b.sendAt).getTime(),
+      );
+      const times = g.recipients.map((r: any) => new Date(r.sendAt).getTime());
+      g.sendAt = new Date(Math.min(...times));
+      const nextPending = g.recipients
+        .filter((r: any) => r.status === 'pending')
+        .map((r: any) => new Date(r.sendAt).getTime());
+      g.nextSendAt = nextPending.length ? new Date(Math.min(...nextPending)) : null;
     }
     return Array.from(grouped.values());
   }

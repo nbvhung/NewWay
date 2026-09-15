@@ -400,13 +400,18 @@ export function ScheduleMessageModal({ open, onClose, allUsers, toast }: Props) 
                   <div key={b.batchId} className="border border-[#e7e5e4] rounded-lg p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs text-[#78716c] mb-1 flex items-center gap-1.5">
+                        <div className="text-xs text-[#78716c] mb-1 flex items-center gap-1.5 flex-wrap">
                           ⏰ {fmtDateTime(b.sendAt)}
                           {b.repeatDaily && (
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700">🔁 Hàng ngày</span>
                           )}
                           {hasGroup && (
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-700">👥 Nhóm</span>
+                          )}
+                          {b.repeatDaily && b.nextSendAt && new Date(b.nextSendAt).getTime() !== new Date(b.sendAt).getTime() && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#f5f5f4] text-[#78716c]">
+                              ⏭ Lần tới: {fmtDateTime(b.nextSendAt)}
+                            </span>
                           )}
                         </div>
                         <div className="text-sm leading-snug break-words whitespace-pre-wrap mb-1">{b.content}</div>
