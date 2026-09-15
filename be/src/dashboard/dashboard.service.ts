@@ -327,9 +327,9 @@ export class DashboardService {
         vendorKhac: plan.vendorKhac,
         completed: plan.completed,
         totalCont: conts.length,
-        revenue:       revenue,
-        subvendorCost: subvendorCost,
-        luongChuyen:   luongChuyen,
+        revenue:       Math.round(revenue),
+        subvendorCost: Math.round(subvendorCost),
+        luongChuyen:   Math.round(luongChuyen),
         driverCount: driverIds.size,
         contByType,
       });
@@ -347,13 +347,13 @@ export class DashboardService {
         soMooc:    u?.soMooc ?? '',
         stt:       u?.stt ?? '',
         sdt:       u?.sdt ?? '',
-        revenue:   entry.revenue,
-        luongKhoan: entry.luongKhoan,
+        revenue:   Math.round(entry.revenue),
+        luongKhoan: Math.round(entry.luongKhoan),
         planCount:  entry.planCount,
         totalPlanCount: plans.length,
         totalCont:  entry.totalCont,
         routes: Array.from(entry.routes.entries())
-          .map(([routeName, r]) => ({ routeName, revenue: r.revenue, planCount: r.planCount, contCount: r.contCount }))
+          .map(([routeName, r]) => ({ routeName, revenue: Math.round(r.revenue), planCount: r.planCount, contCount: r.contCount }))
           .sort((a, b) => b.revenue - a.revenue),
       });
     }
@@ -365,7 +365,7 @@ export class DashboardService {
       .map(([customerId, e]) => ({
         customerId,
         customerName: e.name,
-        revenue:    e.revenue,
+        revenue:    Math.round(e.revenue),
         planCount:  e.planCount,
         totalCont:  e.totalCont,
         contByType: e.contByType,
@@ -374,7 +374,7 @@ export class DashboardService {
 
     // ─── Build byDay ─────────────────────────────────────────────
     const byDay: DailyRevenue[] = Array.from(dailyRevenueMap.entries())
-      .map(([day, d]) => ({ day, revenue: d.revenue, planCount: d.planCount }))
+      .map(([day, d]) => ({ day, revenue: Math.round(d.revenue), planCount: d.planCount }))
       .sort((a, b) => a.day - b.day);
 
     return {
@@ -387,15 +387,15 @@ export class DashboardService {
         list: planSummaries,
       },
       revenue: {
-        total: totalRevenue,
+        total: Math.round(totalRevenue),
         byCustomer,
         byDriver,
         byDay,
       },
       cost: {
-        subvendor:    totalSubvendor,
-        luongChuyen:  totalLuongChuyen,
-        profit:       totalRevenue - totalSubvendor - totalLuongChuyen,
+        subvendor:    Math.round(totalSubvendor),
+        luongChuyen:  Math.round(totalLuongChuyen),
+        profit:       Math.round(totalRevenue - totalSubvendor - totalLuongChuyen),
       },
     };
   }

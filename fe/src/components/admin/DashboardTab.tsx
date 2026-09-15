@@ -308,7 +308,7 @@ function DriverSheet({ d, totalP, onClose }: { d: DriverRevenue; totalP: number;
   const pp  = pc(d.planCount, totalP);
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/25" onClick={onClose}>
-      <div className="dsh bg-white w-full sm:max-w-[420px] sm:rounded-xl rounded-t-xl overflow-hidden shadow-xl"
+      <div className="dsh bg-white w-full sm:max-w-[640px] sm:rounded-xl rounded-t-xl overflow-hidden shadow-xl"
         onClick={e => e.stopPropagation()} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="px-5 pt-5 pb-4 flex items-start gap-3.5" style={{ background: C.surface }}>
           <div className="w-14 h-14 rounded-xl flex items-center justify-center text-white text-lg font-bold flex-shrink-0"
@@ -352,7 +352,7 @@ function DriverSheet({ d, totalP, onClose }: { d: DriverRevenue; totalP: number;
           <div className="px-5 py-4">
             <p className="text-[12px] font-semibold mb-3">Sản lượng theo tuyến đường</p>
             <div className="space-y-3">
-              {d.routes.slice(0, 8).map((r, i) => (
+              {d.routes.slice(0, 12).map((r, i) => (
                 <div key={i}>
                   <div className="flex justify-between mb-1">
                     <span className="text-[11px] truncate flex-1 mr-2">{r.routeName || '—'}</span>
