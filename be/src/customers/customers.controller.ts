@@ -20,8 +20,10 @@ import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { CreateCustomerPriceDto } from './dto/create-customer-price.dto';
 import { UpdateCustomerPriceDto } from './dto/update-customer-price.dto';
+import { CreateCustomerPriceBatchDto } from './dto/create-customer-price-batch.dto';
 import { CreateCustomerSurchargeDto } from './dto/create-customer-surcharge.dto';
 import { UpdateCustomerSurchargeDto } from './dto/update-customer-surcharge.dto';
+import { AssignPlansDto } from './dto/assign-plans.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -67,6 +69,25 @@ export class CustomersController {
     );
   }
 
+  // ─── Kế hoạch của khách hàng ───────────────────────────────────
+  @Get('all-completed-plans')
+  getAllCompletedPlans() {
+    return this.customersService.getAllCompletedPlans();
+  }
+
+  @Get(':id/plans')
+  getPlans(@Param('id') id: string, @Query('completed') completed?: string) {
+    return this.customersService.getPlans(
+      +id,
+      completed === undefined ? undefined : completed === 'true',
+    );
+  }
+
+  @Put(':id/plans')
+  assignPlans(@Param('id') id: string, @Body() body: AssignPlansDto) {
+    return this.customersService.assignPlans(+id, body.planIds);
+  }
+
   // ─── Đơn giá ───────────────────────────────────────────────────
   @Get(':id/prices')
   getPrices(
@@ -106,6 +127,36 @@ export class CustomersController {
   @Roles('hr', 'admin', 'supper_admin')
   deletePrice(@Param('priceId') priceId: string, @CurrentUser() user: any) {
     return this.customersService.deletePrice(+priceId, { id: user.id, fullName: user.fullName || user.username });
+  }
+
+  @Post(':id/prices/batch')
+  @Roles('hr', 'admin', 'supper_admin')
+  batchUpsertPrices(
+    @Param('id') id: string,
+    @Body() dto: CreateCustomerPriceBatchDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.customersService.batchUpsertPrices(+id, dto, { id: user.id, fullName: user.fullName || user.username });
+  }
+
+  @Delete(':id/prices/period')
+  @Roles('hr', 'admin', 'supper_admin')
+  deletePricesPeriod(
+    @Param('id') id: string,
+    @Query('month') month: string,
+    @Query('year') year: string,
+    @Query('fromDay') fromDay: string,
+    @Query('toDay') toDay: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.customersService.deletePricesPeriod(
+      +id,
+      +month,
+      +year,
+      +fromDay,
+      +toDay,
+      { id: user.id, fullName: user.fullName || user.username },
+    );
   }
 
   // ─── Phụ phí ───────────────────────────────────────────────────
@@ -158,21 +209,83 @@ export class CustomersController {
 
   @Post(':id/dossier/upload')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
-  uploadInvoice(
+  uploadDossierFile(
     @Param('id') id: string,
     @Query('month') month?: string,
     @Query('year') year?: string,
+    @Query('fileType') fileType?: string,
     @UploadedFile() file?: any,
   ) {
     const now = new Date();
-    return this.customersService.uploadInvoice(
+    const ft = (['invoice', 'bangKe', 'deNghi'].includes(fileType || '')
+      ? fileType
+      : 'invoice') as 'invoice' | 'bangKe' | 'deNghi';
+    return this.customersService.uploadDossierFile(
       +id,
       month ? +month : now.getMonth() + 1,
       year ? +year : now.getFullYear(),
+      ft,
       file || { originalname: '', buffer: undefined },
     );
   }
 
+  @Get(':id/dossier/status')
+  getDossierStatus(
+    @Param('id') id: string,
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+  ) {
+    const now = new Date();
+    return this.customersService.getDossierStatus(
+      +id,
+      month ? +month : now.getMonth() + 1,
+      year ? +year : now.getFullYear(),
+    );
+  }
+
+  @Get(':id/dossier/download')
+  async downloadDossierFile(
+    @Res() res: Response,
+    @Param('id') id: string,
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+    @Query('fileType') fileType?: string,
+  ) {
+    const now = new Date();
+    const ft = (['invoice', 'bangKe', 'deNghi'].includes(fileType || '')
+      ? fileType
+      : 'invoice') as 'invoice' | 'bangKe' | 'deNghi';
+    const result = await this.customersService.getDossierFile(
+      +id,
+      month ? +month : now.getMonth() + 1,
+      year ? +year : now.getFullYear(),
+      ft,
+    );
+    if (!result || !result.data) {
+      throw new NotFoundException('Chưa có file này.');
+    }
+    const fileName = result.fileName || 'file';
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    const mimeMap: Record<string, string> = {
+      pdf: 'application/pdf',
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      xls: 'application/vnd.ms-excel',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    };
+    const mime = mimeMap[ext] || 'application/octet-stream';
+    res.setHeader('Content-Type', mime);
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+    );
+    res.send(result.data);
+  }
+
+  // Keep old route for backward compat
   @Get(':id/dossier/invoice')
   async getInvoice(
     @Res() res: Response,

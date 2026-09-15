@@ -9,9 +9,16 @@ interface ModalProps {
   title: string;
   children: ReactNode;
   footer?: ReactNode;
+  size?: 'md' | 'lg' | 'xl';
 }
 
-export function Modal({ open, onClose, title, children, footer }: ModalProps) {
+const SIZES: Record<string, string> = {
+  md: 'max-w-[580px]',
+  lg: 'max-w-[780px]',
+  xl: 'max-w-[960px]',
+};
+
+export function Modal({ open, onClose, title, children, footer, size = 'md' }: ModalProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -36,7 +43,7 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
       className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[1000] flex items-center justify-center p-5"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="w-full max-w-[580px] max-h-[90vh] overflow-y-auto bg-[#ffffff] border border-[#e7e5e4] rounded-xl shadow-lg">
+      <div className={`w-full ${SIZES[size]} max-h-[90vh] overflow-y-auto bg-[#ffffff] border border-[#e7e5e4] rounded-xl shadow-lg`}>
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#e7e5e4]">
           <h2 className="text-base font-bold">{title}</h2>
           <button

@@ -51,6 +51,7 @@ export interface Customer {
   bankName: string;
   bankAccount: string;
   status: 'active' | 'inactive';
+  type: 'customer' | 'subvendor';
   note: string;
   createdAt?: string;
   updatedAt?: string;

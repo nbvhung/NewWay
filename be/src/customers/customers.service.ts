@@ -14,6 +14,7 @@ import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { CreateCustomerPriceDto } from './dto/create-customer-price.dto';
 import { UpdateCustomerPriceDto } from './dto/update-customer-price.dto';
+import { CreateCustomerPriceBatchDto } from './dto/create-customer-price-batch.dto';
 import { CreateCustomerSurchargeDto } from './dto/create-customer-surcharge.dto';
 import { UpdateCustomerSurchargeDto } from './dto/update-customer-surcharge.dto';
 
@@ -64,6 +65,7 @@ export class CustomersService {
       bankName: dto.bankName?.trim() || '',
       bankAccount: dto.bankAccount?.trim() || '',
       status: dto.status || 'active',
+      type: dto.type || 'customer',
       note: dto.note || '',
     });
     return this.customersRepository.save(c);
@@ -81,6 +83,7 @@ export class CustomersService {
     if (dto.bankName !== undefined) c.bankName = dto.bankName.trim();
     if (dto.bankAccount !== undefined) c.bankAccount = dto.bankAccount.trim();
     if (dto.status !== undefined) c.status = dto.status;
+    if (dto.type !== undefined) c.type = dto.type;
     if (dto.note !== undefined) c.note = dto.note;
     return this.customersRepository.save(c);
   }
@@ -133,37 +136,201 @@ export class CustomersService {
     };
   }
 
-  async uploadInvoice(
+  /** Danh sách kế hoạch của khách hàng (lọc theo hoàn thành nếu có). */
+  async getPlans(customerId: number, completed?: boolean): Promise<any[]> {
+    const where: any = { customerId };
+    if (completed !== undefined) where.completed = completed;
+    const plans = await this.shippingLinesRepository.find({
+      where,
+      order: { ngay: 'DESC' },
+    });
+    const planIds = plans.map((p) => p.id);
+    const counts = new Map<number, number>();
+    if (planIds.length > 0) {
+      const rows = await this.containerImportsRepository
+        .createQueryBuilder('ci')
+        .select('ci.shipping_line_id', 'planId')
+        .addSelect('COUNT(*)::int', 'cnt')
+        .where('ci.shipping_line_id IN (:...ids)', { ids: planIds })
+        .groupBy('ci.shipping_line_id')
+        .getRawMany();
+      for (const r of rows) counts.set(Number(r.planId), Number(r.cnt));
+    }
+    return plans.map((p) => ({
+      id: p.id,
+      name: p.name,
+      soChuyen: p.soChuyen,
+      routeName: p.routeName,
+      ngay: p.ngay,
+      completed: p.completed,
+      containers: counts.get(p.id) || 0,
+    }));
+  }
+
+  /** Tất cả kế hoạch đã hoàn thành (kèm customerId hiện tại) để chọn gán. */
+  async getAllCompletedPlans(): Promise<any[]> {
+    const plans = await this.shippingLinesRepository.find({
+      where: { completed: true },
+      order: { ngay: 'DESC' },
+    });
+    const planIds = plans.map((p) => p.id);
+    const counts = new Map<number, number>();
+    if (planIds.length > 0) {
+      const rows = await this.containerImportsRepository
+        .createQueryBuilder('ci')
+        .select('ci.shipping_line_id', 'planId')
+        .addSelect('COUNT(*)::int', 'cnt')
+        .where('ci.shipping_line_id IN (:...ids)', { ids: planIds })
+        .groupBy('ci.shipping_line_id')
+        .getRawMany();
+      for (const r of rows) counts.set(Number(r.planId), Number(r.cnt));
+    }
+    return plans.map((p) => ({
+      id: p.id,
+      name: p.name,
+      soChuyen: p.soChuyen,
+      routeName: p.routeName,
+      ngay: p.ngay,
+      customerId: p.customerId,
+      containers: counts.get(p.id) || 0,
+    }));
+  }
+
+  /** Gán danh sách kế hoạch đã hoàn thành cho 1 khách hàng (và bỏ gán các KH còn lại). */
+  async assignPlans(customerId: number, planIds: number[]): Promise<{ message: string; assigned: number }> {
+    const customer = await this.customersRepository.findOne({ where: { id: customerId } });
+    if (!customer) throw new NotFoundException('Không tìm thấy khách hàng');
+    const ids = (planIds || []).map(Number).filter((n) => Number.isFinite(n));
+
+    if (ids.length > 0) {
+      await this.shippingLinesRepository
+        .createQueryBuilder()
+        .update(ShippingLine)
+        .set({ customerId })
+        .where('id IN (:...ids)', { ids })
+        .execute();
+      await this.shippingLinesRepository
+        .createQueryBuilder()
+        .update(ShippingLine)
+        .set({ customerId: null })
+        .where('customer_id = :customerId AND id NOT IN (:...ids)', { customerId, ids })
+        .execute();
+    } else {
+      await this.shippingLinesRepository
+        .createQueryBuilder()
+        .update(ShippingLine)
+        .set({ customerId: null })
+        .where('customer_id = :customerId', { customerId })
+        .execute();
+    }
+
+    await this.logAudit(customerId, 'plan', null, 'UPDATE', { id: undefined, fullName: '' }, JSON.stringify({ assignedPlanIds: ids }));
+    return { message: `Đã gán ${ids.length} kế hoạch cho ${customer.name}`, assigned: ids.length };
+  }
+
+  // ─── Hồ sơ thanh toán (multi-file) ─────────────────────────────
+
+  async uploadDossierFile(
     customerId: number,
     month: number,
     year: number,
+    fileType: 'invoice' | 'bangKe' | 'deNghi',
     file: { originalname?: string; buffer?: Buffer },
   ): Promise<{ message: string; fileName: string }> {
     const customer = await this.customersRepository.findOne({
       where: { id: customerId },
     });
     if (!customer) throw new NotFoundException('Không tìm thấy khách hàng');
+
     let dossier = await this.dossiersRepository.findOne({
       where: { customerId, month, year },
     });
-    const fileName = file?.originalname || 'hoa-don';
+    const fileName = file?.originalname || 'file';
     const data = file?.buffer || null;
+
     if (!dossier) {
-      dossier = this.dossiersRepository.create({
-        customerId,
-        month,
-        year,
-        invoiceFileName: fileName,
-        invoiceData: data,
-      });
-    } else {
+      dossier = this.dossiersRepository.create({ customerId, month, year });
+    }
+
+    const labels: Record<string, string> = {
+      invoice: 'Hoá đơn GTGT',
+      bangKe: 'Bảng kê',
+      deNghi: 'Đề nghị thanh toán',
+    };
+
+    if (fileType === 'invoice') {
       dossier.invoiceFileName = fileName;
       dossier.invoiceData = data;
+    } else if (fileType === 'bangKe') {
+      dossier.bangKeFileName = fileName;
+      dossier.bangKeData = data;
+    } else if (fileType === 'deNghi') {
+      dossier.deNghiFileName = fileName;
+      dossier.deNghiData = data;
     }
+
     await this.dossiersRepository.save(dossier);
-    return { message: `Đã lưu hoá đơn cho tháng ${month}/${year}`, fileName };
+    return {
+      message: `Đã lưu ${labels[fileType]} cho tháng ${month}/${year}`,
+      fileName,
+    };
   }
 
+  async getDossierFile(
+    customerId: number,
+    month: number,
+    year: number,
+    fileType: 'invoice' | 'bangKe' | 'deNghi',
+  ): Promise<{ fileName: string; data: Buffer | null } | null> {
+    const dossier = await this.dossiersRepository.findOne({
+      where: { customerId, month, year },
+    });
+    if (!dossier) return null;
+
+    if (fileType === 'invoice') {
+      return dossier.invoiceData
+        ? { fileName: dossier.invoiceFileName, data: dossier.invoiceData }
+        : null;
+    } else if (fileType === 'bangKe') {
+      return dossier.bangKeData
+        ? { fileName: dossier.bangKeFileName, data: dossier.bangKeData }
+        : null;
+    } else {
+      return dossier.deNghiData
+        ? { fileName: dossier.deNghiFileName, data: dossier.deNghiData }
+        : null;
+    }
+  }
+
+  async getDossierStatus(
+    customerId: number,
+    month: number,
+    year: number,
+  ): Promise<{
+    invoice: { has: boolean; fileName: string };
+    bangKe: { has: boolean; fileName: string };
+    deNghi: { has: boolean; fileName: string };
+  }> {
+    const dossier = await this.dossiersRepository.findOne({
+      where: { customerId, month, year },
+    });
+    return {
+      invoice: {
+        has: !!(dossier?.invoiceData),
+        fileName: dossier?.invoiceFileName || '',
+      },
+      bangKe: {
+        has: !!(dossier?.bangKeData),
+        fileName: dossier?.bangKeFileName || '',
+      },
+      deNghi: {
+        has: !!(dossier?.deNghiData),
+        fileName: dossier?.deNghiFileName || '',
+      },
+    };
+  }
+
+  /** @deprecated — kept for backward compat, delegates to new method */
   async getInvoice(
     customerId: number,
     month: number,
@@ -260,6 +427,85 @@ export class CustomersService {
     await this.pricesRepository.remove(price);
     await this.logAudit(customerId, 'price', id, 'DELETE', actor, '');
     return { message: 'Đã xóa đơn giá' };
+  }
+
+  /**
+   * Lưu đơn giá cho 1 khoảng thời gian, nhiều loại cùng lúc (upsert).
+   * prices: { containerType: unitPrice } — chỉ xử lý các loại hợp lệ.
+   */
+  async batchUpsertPrices(
+    customerId: number,
+    dto: CreateCustomerPriceBatchDto,
+    actor: { id?: number; fullName?: string },
+  ): Promise<{ message: string; created: number; updated: number }> {
+    if (dto.fromDay > dto.toDay) {
+      throw new BadRequestException('"Từ ngày" không được lớn hơn "Đến ngày"');
+    }
+    let created = 0;
+    let updated = 0;
+    for (const [type, price] of Object.entries(dto.prices || {})) {
+      if (!TYPE_HEADERS.includes(type)) continue;
+      const val = Number(price);
+      if (!Number.isFinite(val) || val < 0) continue;
+      const existing = await this.pricesRepository.findOne({
+        where: {
+          customerId,
+          month: dto.month,
+          year: dto.year,
+          fromDay: dto.fromDay,
+          toDay: dto.toDay,
+          containerType: type,
+        },
+      });
+      if (existing) {
+        const oldVal = Number(existing.unitPrice);
+        if (oldVal !== val) {
+          existing.unitPrice = val;
+          await this.pricesRepository.save(existing);
+          await this.logAudit(customerId, 'price', existing.id, 'UPDATE', actor, JSON.stringify({ unitPrice: { old: oldVal, new: val } }));
+          updated++;
+        }
+      } else {
+        const p = this.pricesRepository.create({
+          customerId,
+          month: dto.month,
+          year: dto.year,
+          fromDay: dto.fromDay,
+          toDay: dto.toDay,
+          containerType: type,
+          unitPrice: val,
+        });
+        const saved = await this.pricesRepository.save(p);
+        await this.logAudit(customerId, 'price', saved.id, 'CREATE', actor, JSON.stringify(saved));
+        created++;
+      }
+    }
+    return {
+      message: `Đã lưu ${created + updated} đơn giá (tạo ${created}, cập nhật ${updated}).`,
+      created,
+      updated,
+    };
+  }
+
+  async deletePricesPeriod(
+    customerId: number,
+    month: number,
+    year: number,
+    fromDay: number,
+    toDay: number,
+    actor: { id?: number; fullName?: string },
+  ): Promise<{ message: string }> {
+    const found = await this.pricesRepository.find({
+      where: { customerId, month, year, fromDay, toDay },
+    });
+    if (found.length === 0) {
+      throw new NotFoundException('Không tìm thấy đơn giá của khoảng này');
+    }
+    await this.pricesRepository.remove(found);
+    for (const p of found) {
+      await this.logAudit(customerId, 'price', p.id, 'DELETE', actor, '');
+    }
+    return { message: `Đã xóa ${found.length} đơn giá của khoảng ${fromDay}-${toDay}/${month}/${year}` };
   }
 
   // ─── Phụ phí theo khách hàng ──────────────────────────────────

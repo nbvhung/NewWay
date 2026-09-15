@@ -35,6 +35,18 @@ export class PaymentDossier {
   @Column({ name: 'invoice_data', type: 'bytea', nullable: true })
   invoiceData: Buffer | null;
 
+  @Column({ name: 'bang_ke_file_name', length: 255, default: '' })
+  bangKeFileName: string;
+
+  @Column({ name: 'bang_ke_data', type: 'bytea', nullable: true })
+  bangKeData: Buffer | null;
+
+  @Column({ name: 'de_nghi_file_name', length: 255, default: '' })
+  deNghiFileName: string;
+
+  @Column({ name: 'de_nghi_data', type: 'bytea', nullable: true })
+  deNghiData: Buffer | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

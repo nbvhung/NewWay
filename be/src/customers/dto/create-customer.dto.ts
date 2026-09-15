@@ -5,6 +5,10 @@ export class CreateCustomerDto {
   @IsNotEmpty({ message: 'Tên khách hàng không được để trống' })
   name: string;
 
+  @IsIn(['customer', 'subvendor'], { message: 'Loại khách hàng không hợp lệ' })
+  @IsNotEmpty({ message: 'Vui lòng chọn loại khách hàng' })
+  type: string;
+
   @IsOptional()
   @IsString()
   phone?: string;

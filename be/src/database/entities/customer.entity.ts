@@ -32,6 +32,9 @@ export class Customer {
   @Column({ name: 'status', length: 20, default: 'active' })
   status: string;
 
+  @Column({ name: 'type', length: 20, default: 'customer' })
+  type: string;
+
   @Column({ name: 'note', type: 'text', default: '' })
   note: string;
 

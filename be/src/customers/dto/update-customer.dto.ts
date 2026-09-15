@@ -2,6 +2,9 @@ import { IsString, IsOptional, IsIn } from 'class-validator';
 
 export class UpdateCustomerDto {
   @IsOptional()
+  @IsIn(['customer', 'subvendor'], { message: 'Loại khách hàng không hợp lệ' })
+  type?: string;
+  @IsOptional()
   @IsString()
   name?: string;
 

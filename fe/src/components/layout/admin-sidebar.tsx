@@ -18,6 +18,12 @@ interface NavGroup {
 
 const GROUPS: NavGroup[] = [
   {
+    label: 'Tổng Quan',
+    icon: '📊',
+    showFor: ['admin', 'supper_admin'],
+    items: () => [{ href: '/admin/overview', label: 'Tổng Quan', icon: '📊' }],
+  },
+  {
     label: 'Vận hành',
     icon: '🚛',
     showFor: ['ops', 'admin', 'supper_admin'],
