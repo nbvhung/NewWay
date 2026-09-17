@@ -97,14 +97,16 @@ export class ZaloGroupAutoService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Nhóm có nên BẬT không:
-   * ∃ kế hoạch trên tuyến (khớp keyword) thoả CẢ 2:
+   * ∃ kế hoạch CHƯA completed trên tuyến (khớp keyword) thoả CẢ 2:
    *   1) đã có ≥1 container được ghi nhận (submission_id NOT NULL)
    *   2) vẫn còn ≥1 container chưa ghi (submission_id IS NULL, không phải phát sinh)
+   * Kế hoạch đã completed (dù còn container sót) bị bỏ qua — không giữ nhóm BẬT.
    */
   async shouldBeActive(group: ZaloGroup): Promise<boolean> {
     if (!group.routeKeyword) return false;
     const plans = await this.shippingLinesRepository.find();
     for (const plan of plans) {
+      if (plan.completed) continue;
       if (!this.routeMatches(group, plan.routeName)) continue;
       const hasClaimed = await this.containersRepository.countBy({
         shippingLineId: plan.id,

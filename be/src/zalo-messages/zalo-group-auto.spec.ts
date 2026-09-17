@@ -117,9 +117,19 @@ describe('ZaloGroupAutoService', () => {
       });
       expect(await s.shouldBeActive(group('hph'))).toBe(false);
     });
-    it('không phụ thuộc completed (plan completed vẫn tính)', async () => {
+    it('bỏ qua kế hoạch đã completed (dù còn container chưa ghi)', async () => {
       const s = mkService(
         [{ id: 1, routeName: 'HPH-GREENPORT', completed: true }],
+        {
+          claimed: 10,
+          unclaimed: 1,
+        },
+      );
+      expect(await s.shouldBeActive(group('hph'))).toBe(false);
+    });
+    it('true khi kế hoạch CHƯA completed đang ghi dở', async () => {
+      const s = mkService(
+        [{ id: 1, routeName: 'HPH-GREENPORT', completed: false }],
         {
           claimed: 10,
           unclaimed: 1,
