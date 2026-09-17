@@ -11,6 +11,7 @@ import { ContainerClaim } from './entities/container-claim.entity';
 import { ZaloMessage } from './entities/zalo-message.entity';
 import { ZaloScheduledMessage } from './entities/zalo-scheduled-message.entity';
 import { ZaloGroup } from './entities/zalo-group.entity';
+import { ZaloGroupSchedule } from './entities/zalo-group-schedule.entity';
 import { SalarySettings } from './entities/salary-settings.entity';
 import { SalaryRecord } from './entities/salary-record.entity';
 import { SalaryItem } from './entities/salary-item.entity';
@@ -46,6 +47,7 @@ import { SeedService } from './seed.service';
               ZaloMessage,
               ZaloScheduledMessage,
               ZaloGroup,
+              ZaloGroupSchedule,
               SalarySettings,
               SalaryRecord,
               SalaryItem,
@@ -81,7 +83,8 @@ import { SeedService } from './seed.service';
             ContainerClaim,
             ZaloMessage,
             ZaloScheduledMessage,
-              ZaloGroup,
+            ZaloGroup,
+            ZaloGroupSchedule,
             SalarySettings,
             SalaryRecord,
             SalaryItem,
@@ -114,7 +117,8 @@ import { SeedService } from './seed.service';
       ContainerClaim,
       ZaloMessage,
       ZaloScheduledMessage,
-              ZaloGroup,
+      ZaloGroup,
+      ZaloGroupSchedule,
       SalarySettings,
       SalaryRecord,
       SalaryItem,
