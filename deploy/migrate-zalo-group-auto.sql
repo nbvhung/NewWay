@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS zalo_group_schedules (
   send_time TIME NOT NULL,          -- giờ VN (Asia/Ho_Chi_Minh)
   content   TEXT NOT NULL
 );
+ALTER TABLE zalo_group_schedules ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT now();
 
 -- ─── 3. Gán keyword cho 2 nhóm ───────────────────────────────────────
 UPDATE zalo_groups SET route_keyword = 'hph'    WHERE chat_id = 'zgr-0ed4f3ce70ab99f5c0ba';
