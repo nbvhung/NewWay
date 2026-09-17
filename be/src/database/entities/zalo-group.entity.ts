@@ -32,6 +32,24 @@ export class ZaloGroup {
   })
   lastSeenAt: Date | null;
 
+  /** Tự động BẬT/TẮT tin giao ca hằng ngày của nhóm theo trạng thái kế hoạch trên tuyến. */
+  @Column({ name: 'active', type: 'boolean', default: false, nullable: false })
+  active: boolean;
+
+  /**
+   * Danh sách keyword tuyến (phân tách bằng dấu phẩy) để khớp route_name
+   * của kế hoạch với nhóm. VD: 'hph' hoặc 'hechun,hc'. So khớp sau khi
+   * chuẩn hoá (bỏ dấu, lowercase, bỏ khoảng trắng).
+   */
+  @Column({
+    name: 'route_keyword',
+    type: 'varchar',
+    length: 100,
+    default: '',
+    nullable: false,
+  })
+  routeKeyword: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

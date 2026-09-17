@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, In } from 'typeorm';
@@ -13,6 +14,7 @@ import { Submission } from '../database/entities/submission.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
 import { User } from '../database/entities/user.entity';
 import { TYPE_FIELD_MAP } from '../zalo-bot/type-map';
+import { ZaloGroupAutoService } from '../zalo-messages/zalo-group-auto.service';
 
 export interface ParsedContainer {
   code: string;
@@ -35,6 +37,7 @@ interface ClaimUnit {
 
 @Injectable()
 export class ContainerImportService {
+  private readonly logger = new Logger(ContainerImportService.name);
   constructor(
     @InjectRepository(ContainerImport)
     private containerImportsRepository: Repository<ContainerImport>,
@@ -48,6 +51,7 @@ export class ContainerImportService {
     private editHistoryRepository: Repository<EditHistory>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    private groupAuto: ZaloGroupAutoService,
   ) {}
 
   normalizeCode(raw: string): string | null {
@@ -745,6 +749,14 @@ export class ContainerImportService {
     const units = this.buildClaimUnits(pending);
     const result = await this.applyClaimForDriver(plan, driver, units);
 
+    await this.groupAuto
+      .syncForPlan(plan.id)
+      .catch((err) =>
+        this.logger.error(
+          `groupAuto.syncForPlan lỗi plan ${plan.id}: ${(err as Error).message}`,
+        ),
+      );
+
     return {
       message: `Đã ghi nhận ${result.claimed} container cho ${driver.fullName}.`,
       claimed: result.claimed,
@@ -838,6 +850,15 @@ export class ContainerImportService {
     }
 
     const result = await this.applyClaimForDriver(plan, driver, units);
+
+    await this.groupAuto
+      .syncForPlan(plan.id)
+      .catch((err) =>
+        this.logger.error(
+          `groupAuto.syncForPlan lỗi plan ${plan.id}: ${(err as Error).message}`,
+        ),
+      );
+
     return {
       message: `Đã ghi nhận ${result.claimed} container cho ${driver.fullName}.`,
       claimed: result.claimed,
@@ -1099,6 +1120,14 @@ export class ContainerImportService {
     await this.containerImportsRepository.save(container);
 
     await this.recordClaims([container.id], submission.id, 'CLASSIFY');
+
+    await this.groupAuto
+      .syncForPlan(plan.id)
+      .catch((err) =>
+        this.logger.error(
+          `groupAuto.syncForPlan lỗi plan ${plan.id}: ${(err as Error).message}`,
+        ),
+      );
 
     return {
       id: container.id,

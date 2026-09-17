@@ -18,6 +18,7 @@ import {
 } from './type-map';
 import { ContainerImportService } from '../container-import/container-import.service';
 import { ZaloMessagesService } from '../zalo-messages/zalo-messages.service';
+import { ZaloGroupAutoService } from '../zalo-messages/zalo-group-auto.service';
 import { ZaloOpsNotifierService } from './zalo-ops-notifier.service';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { User } from '../database/entities/user.entity';
@@ -70,6 +71,7 @@ export class ZaloBotService {
     private redis: RedisService,
     private containerImportService: ContainerImportService,
     private zaloMessagesService: ZaloMessagesService,
+    private groupAuto: ZaloGroupAutoService,
     private opsNotifier: ZaloOpsNotifierService,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
@@ -1946,6 +1948,15 @@ export class ZaloBotService {
           claimType,
         );
       }
+
+      // Tự động BẬT/TẮT tin giao ca nhóm theo trạng thái kế hoạch (bật/tắt tức thì)
+      await this.groupAuto
+        .syncForPlan(plan.id)
+        .catch((err) =>
+          this.logger.error(
+            `groupAuto.syncForPlan lỗi plan ${plan.id}: ${(err as Error).message}`,
+          ),
+        );
 
       const clampMainCode =
         session.awaitingClamp?.mainCode || session.clampClaimed?.mainCode;

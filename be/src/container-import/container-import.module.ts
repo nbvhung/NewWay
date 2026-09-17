@@ -8,9 +8,13 @@ import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Submission } from '../database/entities/submission.entity';
 import { User } from '../database/entities/user.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
+import { ZaloMessagesModule } from '../zalo-messages/zalo-messages.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ContainerImport, ContainerClaim, ShippingLine, Submission, User, EditHistory])],
+  imports: [
+    TypeOrmModule.forFeature([ContainerImport, ContainerClaim, ShippingLine, Submission, User, EditHistory]),
+    ZaloMessagesModule,
+  ],
   controllers: [ContainerImportController],
   providers: [ContainerImportService],
   exports: [ContainerImportService],
