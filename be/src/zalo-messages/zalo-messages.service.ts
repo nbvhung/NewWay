@@ -52,20 +52,44 @@ export class ZaloMessagesService {
     });
   }
 
-  async getConversations(): Promise<Array<{ userId: number; lastAt: Date; fullName: string | null; soXe: string | null }>> {
-    const rows = await this.zaloMessagesRepository
+  /**
+   * Cấp bậc vai trò: chỉ xem cuộc trò chuyện với người dùng có cấp bằng hoặc thấp hơn mình.
+   * supper_admin → tất cả
+   * admin        → tất cả trừ supper_admin
+   * ops / hr     → chỉ laixe
+   */
+  private visibleRolesFor(currentRole: string): string[] | null {
+    if (currentRole === 'supper_admin') return null; // không lọc
+    if (currentRole === 'admin') return ['laixe', 'ops', 'hr', 'admin'];
+    // ops, hr và các cấp thấp hơn chỉ xem laixe
+    return ['laixe'];
+  }
+
+  async getConversations(currentRole: string): Promise<Array<{ userId: number; lastAt: Date; fullName: string | null; soXe: string | null }>> {
+    const allowedRoles = this.visibleRolesFor(currentRole);
+
+    const qb = this.zaloMessagesRepository
       .createQueryBuilder('m')
       .select('m.user_id', 'userId')
       .addSelect('MAX(m.created_at)', 'lastAt')
       .addSelect('u.full_name', 'fullName')
       .addSelect('u.so_xe', 'soXe')
+      .addSelect('u.role', 'role')
       .leftJoin('users', 'u', 'u.id = m.user_id')
-      .where('m.user_id IS NOT NULL')
+      .where('m.user_id IS NOT NULL');
+
+    if (allowedRoles) {
+      qb.andWhere('u.role IN (:...roles)', { roles: allowedRoles });
+    }
+
+    const rows = await qb
       .groupBy('m.user_id')
       .addGroupBy('u.full_name')
       .addGroupBy('u.so_xe')
+      .addGroupBy('u.role')
       .orderBy('MAX(m.created_at)', 'DESC')
       .getRawMany();
+
     return rows.map((r) => ({
       userId: Number(r.userId),
       lastAt: new Date(r.lastAt),
