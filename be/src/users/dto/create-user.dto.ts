@@ -1,4 +1,5 @@
-import { IsString, IsNotEmpty, MinLength, IsOptional, IsIn, IsBoolean, IsArray } from 'class-validator';
+import { IsString, IsNotEmpty, MinLength, IsOptional, IsIn, IsBoolean, IsArray, IsInt } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateUserDto {
   @IsString()
@@ -22,6 +23,12 @@ export class CreateUserDto {
   @IsOptional()
   @IsArray()
   permissions?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @Type(() => Number)
+  @IsInt({ each: true, message: 'Danh sách xe không hợp lệ' })
+  visibleDriverIds?: number[];
 
   @IsOptional()
   @IsString()

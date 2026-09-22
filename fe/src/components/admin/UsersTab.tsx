@@ -3,13 +3,26 @@
 import { useMemo, useState } from 'react';
 import { EditUserModal } from './EditUserModal';
 import { PermissionChecklist } from './PermissionChecklist';
+import { VehicleSelect } from './VehicleSelect';
 import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/use-pagination';
 import { User } from '@/types';
 import { usersApi } from '@/lib/api-users';
 import { ROLE_LABELS } from '@/lib/utils';
 import { Modal } from '@/components/ui/modal';
-import { ROLE_PRESETS, resolvePermissions, PERMISSION_KEYS } from '@/lib/permissions';
+import { ROLE_PRESETS, resolvePermissions, PERMISSION_KEYS, hasPerm } from '@/lib/permissions';
+
+// Bộ quyền mặc định cho tài khoản "Xem vốn" (chỉ xem, không thao tác)
+const VIEW_ONLY_PERMS = [
+  'entry.view_all',
+  'plan.view',
+  'container.view',
+  'customer.view',
+  'export.data',
+  'export.salary_col',
+  'dashboard.view',
+  'route.view',
+];
 
 interface Props {
   currentUser: any;
@@ -56,9 +69,27 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
 
   const presetFor = (role: string) => (ROLE_PRESETS[role] || []).filter((k) => grantableSet.has(k));
 
+  const drivers = useMemo(
+    () =>
+      allUsers
+        .filter((u) => u.role === 'laixe')
+        .sort((a, b) => (parseInt(a.stt) || 999999) - (parseInt(b.stt) || 999999)),
+    [allUsers],
+  );
+
+  const applyViewOnlyTemplate = () => {
+    setNewUser((prev: any) => ({
+      ...prev,
+      role: 'admin',
+      permissions: VIEW_ONLY_PERMS.filter((k) => grantableSet.has(k)),
+      visibleDriverIds: prev.visibleDriverIds || [],
+    }));
+  };
+
   const [newUser, setNewUser] = useState<any>({
     username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', zaloId: '', zaloBot: 0,
     permissions: presetFor('laixe'),
+    visibleDriverIds: [],
   });
   const [editUserData, setEditUserData] = useState<any>(null);
   const [editUserModalOpen, setEditUserModalOpen] = useState(false);
@@ -118,9 +149,10 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
       await usersApi.create({
         ...newUser,
         permissions: (newUser.permissions || []).filter((p: string) => PERMISSION_KEYS.includes(p)),
+        visibleDriverIds: (newUser.visibleDriverIds || []).map(Number),
       });
       toast(`Đã thêm tài khoản: ${newUser.username}`, 'success');
-      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', zaloId: '', zaloBot: 0, permissions: presetFor('laixe') });
+      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', zaloId: '', zaloBot: 0, permissions: presetFor('laixe'), visibleDriverIds: [] });
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
   };
@@ -129,7 +161,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
     const perms = Array.isArray(u.permissions) && u.permissions.length > 0
       ? u.permissions.filter((p) => PERMISSION_KEYS.includes(p))
       : presetFor(u.role);
-    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, permissions: perms, soXe: u.soXe, soMooc: u.soMooc || '', stt: u.stt, sdt: u.sdt, zaloId: u.zaloId || '', zaloBot: u.zaloBot ?? 0, password: '' });
+    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, permissions: perms, visibleDriverIds: Array.isArray(u.visibleDriverIds) ? u.visibleDriverIds : [], soXe: u.soXe, soMooc: u.soMooc || '', stt: u.stt, sdt: u.sdt, zaloId: u.zaloId || '', zaloBot: u.zaloBot ?? 0, password: '' });
     setEditUserModalOpen(true);
   };
 
@@ -140,6 +172,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         fullName: editUserData.fullName,
         role: editUserData.role,
         permissions: (editUserData.permissions || []).filter((p: string) => PERMISSION_KEYS.includes(p)),
+        visibleDriverIds: (editUserData.visibleDriverIds || []).map(Number),
         soXe: editUserData.soXe || '',
         soMooc: editUserData.soMooc || '',
         stt: editUserData.stt || '',
@@ -250,6 +283,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
                     <span className="text-sm font-bold text-[#1c1917]">{u.fullName}</span>
                     <span className={roleBadge(u.role)}>{ROLE_LABELS[u.role] || u.role}</span>
                     {isCustomPerms(u) && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(59,130,246,0.15)] text-blue-600">⚙️ Quyền tùy chỉnh</span>}
+                    {Array.isArray(u.visibleDriverIds) && u.visibleDriverIds.length > 0 && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(16,185,129,0.15)] text-emerald-600">🚗 Xem {u.visibleDriverIds.length} xe</span>}
                     {u.zaloId && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(245,158,11,0.15)] text-[#d97706]">💬 Zalo{u.zaloBot === 1 ? ' Bot2' : u.zaloBot === 2 ? ' Bot3' : ''}</span>}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -347,8 +381,14 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
 
           {/* Nhóm vai trò + quyền */}
           <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
-            <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
+            <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4] flex items-center justify-between gap-2">
               <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">Vai trò mẫu & Quyền chi tiết</span>
+              {hasPerm(currentUser, 'user.manage') && (
+                <button type="button" onClick={applyViewOnlyTemplate}
+                  className="px-2 py-1 rounded-md text-[9px] font-bold bg-[rgba(59,130,246,0.12)] text-blue-600 border border-blue-200 hover:bg-[rgba(59,130,246,0.2)] cursor-pointer whitespace-nowrap">
+                  📋 Mẫu: Xem vốn
+                </button>
+              )}
             </div>
             <div className="p-3 space-y-3">
               <div>
@@ -370,6 +410,21 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
                 onChange={(p) => setNewUser({ ...newUser, permissions: p })}
                 grantable={grantablePerms}
               />
+            </div>
+          </div>
+
+          {/* Nhóm xe được xem dữ liệu */}
+          <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
+            <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
+              <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">🚗 Xe được xem dữ liệu <span className="text-[#a8a29e] font-normal">(để trống = xem tất cả)</span></span>
+            </div>
+            <div className="p-3">
+              <VehicleSelect
+                drivers={drivers}
+                selected={newUser.visibleDriverIds || []}
+                onChange={(ids) => setNewUser({ ...newUser, visibleDriverIds: ids })}
+              />
+              <p className="text-[9px] text-[#a8a29e] mt-2">Dành cho tài khoản <b>Xem vốn</b>: người góp vốn chỉ thấy dữ liệu của những xe được chọn (Data, Kế hoạch, Container, Xuất Excel, Dashboard).</p>
             </div>
           </div>
 
@@ -413,6 +468,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
           ? [...roleOptionsFor(currentUser.role), editUserData.role]
           : roleOptionsFor(currentUser.role)}
         grantablePerms={grantablePerms}
+        drivers={drivers}
       />
 
       <Modal

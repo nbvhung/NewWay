@@ -4,6 +4,7 @@ export interface User {
   fullName: string;
   role: Role;
   permissions?: string[] | null;
+  visibleDriverIds?: number[] | null;
   soXe: string;
   soMooc?: string;
   stt: string;

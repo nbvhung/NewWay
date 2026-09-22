@@ -15,6 +15,7 @@ import { EditHistory } from '../database/entities/edit-history.entity';
 import { User } from '../database/entities/user.entity';
 import { TYPE_FIELD_MAP } from '../zalo-bot/type-map';
 import { ZaloGroupAutoService } from '../zalo-messages/zalo-group-auto.service';
+import { resolveVisibleDriverIds } from '../common/permissions/permissions';
 
 export interface ParsedContainer {
   code: string;
@@ -378,6 +379,7 @@ export class ContainerImportService {
 
   async findAll(
     planId?: number,
+    user?: any,
   ): Promise<
     Array<
       ContainerImport & {
@@ -396,8 +398,12 @@ export class ContainerImportService {
       .leftJoin('sub.user', 'u')
       .addSelect(['u.id', 'u.fullName', 'u.username'])
       .leftJoin('c.importedByRef', 'imp')
-      .addSelect(['imp.id', 'imp.fullName'])
-      .orderBy('c.createdAt', 'DESC')
+      .addSelect(['imp.id', 'imp.fullName']);
+    const visible = resolveVisibleDriverIds(user);
+    if (visible) {
+      qb.andWhere('sub.id IS NULL OR u.id IN (:...visible)', { visible });
+    }
+    qb.orderBy('c.createdAt', 'DESC')
       .take(5000);
     const rows = await qb.getMany();
     const claimInfo = await this.loadClaimInfo(rows.map((r) => r.id));
@@ -524,7 +530,7 @@ export class ContainerImportService {
    * Tra cứu mã container toàn bộ (web, ops/admin/supper_admin).
    * Tìm theo mã đầy đủ HOẶC 7 số cuối; kèm thông tin kế hoạch + người ghi nhận.
    */
-  async searchAllByCode(code: string): Promise<any[]> {
+  async searchAllByCode(code: string, user?: any): Promise<any[]> {
     const q = (code || '').trim().toUpperCase();
     if (!q) return [];
     const qb = this.containerImportsRepository.createQueryBuilder('c');
@@ -534,8 +540,12 @@ export class ContainerImportService {
       .addSelect(['u.id', 'u.fullName', 'u.username'])
       .leftJoin('c.importedByRef', 'imp')
       .addSelect(['imp.id', 'imp.fullName'])
-      .where('c.containerCode = :q OR RIGHT(c.containerCode, 7) = :q', { q })
-      .orderBy('c.containerCode', 'ASC')
+      .where('c.containerCode = :q OR RIGHT(c.containerCode, 7) = :q', { q });
+    const visible = resolveVisibleDriverIds(user);
+    if (visible) {
+      qb.andWhere('sub.id IS NULL OR u.id IN (:...visible)', { visible });
+    }
+    qb.orderBy('c.containerCode', 'ASC')
       .take(200);
     const rows = await qb.getMany();
     const claimInfo = await this.loadClaimInfo(rows.map((r) => r.id));

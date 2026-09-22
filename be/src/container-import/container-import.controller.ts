@@ -62,8 +62,8 @@ export class ContainerImportController {
 
   @Get('search')
   @Permissions('container.view')
-  search(@Query('code') code?: string) {
-    return this.containerImportService.searchAllByCode(code || '');
+  search(@Query('code') code?: string, @CurrentUser() user?: any) {
+    return this.containerImportService.searchAllByCode(code || '', user);
   }
 
   @Get('template')
@@ -80,8 +80,8 @@ export class ContainerImportController {
 
   @Get()
   @Permissions('container.view')
-  findAll(@Query('planId') planId?: string) {
-    return this.containerImportService.findAll(planId ? +planId : undefined);
+  findAll(@Query('planId') planId?: string, @CurrentUser() user?: any) {
+    return this.containerImportService.findAll(planId ? +planId : undefined, user);
   }
 
   @Post('claim-remaining')

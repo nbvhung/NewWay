@@ -10,6 +10,7 @@ import { CustomerSurcharge } from '../database/entities/customer-surcharge.entit
 import { SalaryRecord } from '../database/entities/salary-record.entity';
 import { User } from '../database/entities/user.entity';
 import { Route } from '../database/entities/route.entity';
+import { resolveVisibleDriverIds } from '../common/permissions/permissions';
 
 // ─── Helpers ────────────────────────────────────────────────────
 function dayOfDate(d: string | Date | null | undefined): number | null {
@@ -108,7 +109,7 @@ export class DashboardService {
     @InjectRepository(Route)        private routeRepo: Repository<Route>,
   ) {}
 
-  async getOverview(month: number, year: number): Promise<DashboardOverview> {
+  async getOverview(month: number, year: number, user?: any): Promise<DashboardOverview> {
     const pad = (n: number) => String(n).padStart(2, '0');
     const fromDate = `${year}-${pad(month)}-01`;
     const lastDay  = new Date(year, month, 0).getDate();
@@ -125,21 +126,34 @@ export class DashboardService {
 
     const planIds = plans.map(p => p.id);
 
-    // 2. Containers của các kế hoạch
+    // 2. Containers của các kế hoạch (lọc theo xe được phép xem nếu có)
+    const visible = resolveVisibleDriverIds(user);
     const containers: ContainerImport[] = planIds.length
       ? await this.ciRepo
           .createQueryBuilder('ci')
           .leftJoinAndSelect('ci.submissionRef', 'sub')
           .leftJoinAndSelect('sub.user', 'u')
           .where('ci.shippingLineId IN (:...ids)', { ids: planIds })
+          .andWhere(
+            visible
+              ? '(sub.id IS NULL OR u.id IN (:...visible))'
+              : '1=1',
+            visible ? { visible } : {},
+          )
           .getMany()
       : [];
 
-    // 3. Submissions trong tháng (để tính luong khoan)
+    // 3. Submissions trong tháng (để tính luong khoan) — lọc theo xe được phép xem nếu có
     const allSubmissions = planIds.length
       ? await this.subRepo
           .createQueryBuilder('sub')
           .where('sub.shippingLineId IN (:...ids)', { ids: planIds })
+          .andWhere(
+            visible
+              ? 'sub.userId IN (:...visible)'
+              : '1=1',
+            visible ? { visible } : {},
+          )
           .getMany()
       : [];
 

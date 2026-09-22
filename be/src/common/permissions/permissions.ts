@@ -151,3 +151,16 @@ export function hasAnyPermission(
   const own = new Set(resolvePermissions(user));
   return permissions.some((p) => own.has(p));
 }
+
+/**
+ * Danh sách lái xe (userId) mà tài khoản này được phép xem dữ liệu.
+ * null/[] = xem tất cả (không giới hạn).
+ */
+export function resolveVisibleDriverIds(user: {
+  visibleDriverIds?: number[] | null;
+} | null | undefined): number[] | null {
+  if (Array.isArray(user?.visibleDriverIds) && user.visibleDriverIds.length > 0) {
+    return user.visibleDriverIds;
+  }
+  return null;
+}

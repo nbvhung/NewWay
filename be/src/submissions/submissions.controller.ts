@@ -76,7 +76,7 @@ export class SubmissionsController {
       fromDate,
       toDate,
       excludeCompleted: false,
-    }, user.role);
+    }, user.role, user);
     return { data: result };
   }
 

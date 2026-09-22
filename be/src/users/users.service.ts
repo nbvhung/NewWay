@@ -102,6 +102,7 @@ export class UsersService {
       fullName: dto.fullName.trim(),
       role: validRole,
       permissions,
+      visibleDriverIds: dto.visibleDriverIds?.length ? dto.visibleDriverIds : null,
       soXe: dto.soXe?.trim() || '',
       soMooc: dto.soMooc?.trim() || '',
       stt: dto.stt?.trim() || '',
@@ -152,6 +153,9 @@ export class UsersService {
     }
     if (dto.permissions !== undefined) {
       target.permissions = this.validateGrantablePermissions(dto.permissions, actor);
+    }
+    if (dto.visibleDriverIds !== undefined) {
+      target.visibleDriverIds = dto.visibleDriverIds?.length ? dto.visibleDriverIds : null;
     }
     if (dto.password) {
       target.passwordHash = bcrypt.hashSync(dto.password, 10);

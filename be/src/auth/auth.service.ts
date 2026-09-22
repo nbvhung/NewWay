@@ -117,6 +117,7 @@ export class AuthService {
         fullName: user.fullName,
         role: user.role,
         permissions,
+        visibleDriverIds: user.visibleDriverIds,
         jti: accessJti,
       },
       {
@@ -132,6 +133,7 @@ export class AuthService {
         fullName: user.fullName,
         role: user.role,
         permissions,
+        visibleDriverIds: user.visibleDriverIds,
         jti: refreshJti,
       },
       {
@@ -158,6 +160,7 @@ export class AuthService {
         fullName: user.fullName,
         role: user.role,
         permissions: resolvePermissions(user),
+        visibleDriverIds: user.visibleDriverIds,
       },
     };
   }

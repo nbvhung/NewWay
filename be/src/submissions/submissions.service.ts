@@ -20,7 +20,7 @@ import { DriverAdvance } from '../database/entities/driver-advance.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateSubmissionDto } from './dto/update-submission.dto';
 import { SettingsService } from '../settings/settings.service';
-import { hasPermission } from '../common/permissions/permissions';
+import { hasPermission, resolveVisibleDriverIds } from '../common/permissions/permissions';
 
 @Injectable()
 export class SubmissionsService {
@@ -499,7 +499,7 @@ export class SubmissionsService {
     fromDate?: string;
     toDate?: string;
     excludeCompleted?: boolean;
-  }, role?: string): Promise<any[]> {
+  }, role?: string, user?: any): Promise<any[]> {
     const query = this.submissionsRepository
       .createQueryBuilder('s')
       .leftJoinAndSelect('s.user', 'user')
@@ -508,6 +508,11 @@ export class SubmissionsService {
 
     if (role !== 'admin' && role !== 'supper_admin') {
       query.andWhere('user.role NOT IN (:...excludedRoles)', { excludedRoles: ['admin', 'supper_admin'] });
+    }
+
+    const visible = resolveVisibleDriverIds(user);
+    if (visible) {
+      query.andWhere('s.userId IN (:...visibleDriverIds)', { visibleDriverIds: visible });
     }
 
     if (filter.userId) {
@@ -627,7 +632,7 @@ export class SubmissionsService {
     }
     const role = filter.done ? 'ops' : user.role;
     const showLuong = role !== 'ops';
-    const submissions = await this.findAll(filter, role);
+    const submissions = await this.findAll(filter, role, user);
 
     // Xác định tháng/năm (múi giờ VN) để lấy thành phần lương cho Excel
     const vnParts = new Intl.DateTimeFormat('en-GB', {

@@ -4,6 +4,7 @@ export interface TokenPayload {
   fullName: string;
   role: string;
   permissions?: string[];
+  visibleDriverIds?: number[];
   jti?: string;
 }
 

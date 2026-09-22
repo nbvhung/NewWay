@@ -3,7 +3,9 @@
 import { Modal } from '@/components/ui/modal';
 import { ROLE_LABELS } from '@/lib/utils';
 import { PermissionChecklist } from './PermissionChecklist';
+import { VehicleSelect } from './VehicleSelect';
 import { ROLE_PRESETS } from '@/lib/permissions';
+import { User } from '@/types';
 
 interface Props {
   open: boolean;
@@ -13,6 +15,7 @@ interface Props {
   onSave: () => void;
   roleOptions: string[];
   grantablePerms: string[];
+  drivers: User[];
 }
 
 const ROLE_DESC: Record<string, string> = {
@@ -23,7 +26,7 @@ const ROLE_DESC: Record<string, string> = {
   supper_admin: 'Toàn quyền, kể cả xóa toàn bộ dữ liệu',
 };
 
-export function EditUserModal({ open, onClose, editUserData, setEditUserData, onSave, roleOptions, grantablePerms }: Props) {
+export function EditUserModal({ open, onClose, editUserData, setEditUserData, onSave, roleOptions, grantablePerms, drivers }: Props) {
   const presetFor = (role: string) => (ROLE_PRESETS[role] || []).filter((k) => grantablePerms.includes(k));
 
   return (
@@ -64,6 +67,16 @@ export function EditUserModal({ open, onClose, editUserData, setEditUserData, on
           onChange={(p) => setEditUserData({ ...editUserData, permissions: p })}
           grantable={grantablePerms}
         />
+
+        <div>
+          <label className="text-xs font-medium text-[#78716c] mb-1 block">🚗 Xe được xem dữ liệu <span className="text-[#a8a29e] font-normal">(để trống = xem tất cả)</span></label>
+          <VehicleSelect
+            drivers={drivers}
+            selected={editUserData?.visibleDriverIds || []}
+            onChange={(ids) => setEditUserData({ ...editUserData, visibleDriverIds: ids })}
+          />
+          <p className="text-[9px] text-[#a8a29e] mt-1">Tài khoản Xem vốn chỉ thấy dữ liệu của những xe được chọn.</p>
+        </div>
 
         <div className="grid grid-cols-2 gap-2">
           <div>
