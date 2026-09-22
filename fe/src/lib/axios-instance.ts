@@ -10,6 +10,13 @@ let refreshPromise: Promise<boolean> | null = null;
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
+    // Extract the real error message from backend response
+    const data = err.response?.data;
+    if (data) {
+      const msg = Array.isArray(data.message) ? data.message.join(', ') : data.message;
+      if (msg) err.message = msg;
+    }
+
     if (err.response?.status === 401 && !err.config.url?.includes('/auth/')) {
       if (!refreshPromise) {
         refreshPromise = (async () => {

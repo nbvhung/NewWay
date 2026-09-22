@@ -48,7 +48,7 @@ export class UpdateUserDto {
   zaloId?: string;
 
   @IsOptional()
-  @IsIn([0, 1], { message: 'Bot Zalo không hợp lệ' })
+  @IsIn([0, 1, 2], { message: 'Bot Zalo không hợp lệ' })
   zaloBot?: number;
 
   @IsOptional()
