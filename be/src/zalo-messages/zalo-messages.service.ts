@@ -52,18 +52,25 @@ export class ZaloMessagesService {
     });
   }
 
-  async getConversations(): Promise<Array<{ userId: number; lastAt: Date }>> {
+  async getConversations(): Promise<Array<{ userId: number; lastAt: Date; fullName: string | null; soXe: string | null }>> {
     const rows = await this.zaloMessagesRepository
       .createQueryBuilder('m')
       .select('m.user_id', 'userId')
       .addSelect('MAX(m.created_at)', 'lastAt')
+      .addSelect('u.full_name', 'fullName')
+      .addSelect('u.so_xe', 'soXe')
+      .leftJoin('users', 'u', 'u.id = m.user_id')
       .where('m.user_id IS NOT NULL')
       .groupBy('m.user_id')
+      .addGroupBy('u.full_name')
+      .addGroupBy('u.so_xe')
       .orderBy('MAX(m.created_at)', 'DESC')
       .getRawMany();
     return rows.map((r) => ({
       userId: Number(r.userId),
       lastAt: new Date(r.lastAt),
+      fullName: r.fullName || null,
+      soXe: r.soXe || null,
     }));
   }
 

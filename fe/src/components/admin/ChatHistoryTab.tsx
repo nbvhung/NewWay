@@ -15,7 +15,7 @@ interface Props {
 
 export function ChatHistoryTab({ allUsers, currentUser, toast }: Props) {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [conversations, setConversations] = useState<Array<{ userId: number; lastAt: string }>>([]);
+  const [conversations, setConversations] = useState<Array<{ userId: number; lastAt: string; fullName: string | null; soXe: string | null }>>([]);
   const [messages, setMessages] = useState<ZaloMessage[]>([]);
   const [loadingConv, setLoadingConv] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
@@ -90,7 +90,12 @@ export function ChatHistoryTab({ allUsers, currentUser, toast }: Props) {
     setSending(false);
   }, [draft, selectedUserId, sending, toast]);
 
-  const userMap = (id: number) => allUsers.find(u => u.id === id);
+  // Lấy tên lái xe: ưu tiên từ conversations API (có fullName), fallback sang allUsers
+  const getDriverName = (conv: { userId: number; fullName?: string | null }) =>
+    conv.fullName || allUsers.find(u => u.id === conv.userId)?.fullName || `User #${conv.userId}`;
+
+  const getDriverSoXe = (conv: { userId: number; soXe?: string | null }) =>
+    conv.soXe || allUsers.find(u => u.id === conv.userId)?.soXe || '';
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5 items-start">
@@ -104,7 +109,8 @@ export function ChatHistoryTab({ allUsers, currentUser, toast }: Props) {
         ) : (
           <div className="flex flex-col gap-1.5 max-h-[70vh] overflow-y-auto">
             {conversations.map(c => {
-              const u = userMap(c.userId);
+              const name = getDriverName(c);
+              const soXe = getDriverSoXe(c);
               return (
                 <button key={c.userId}
                   onClick={() => loadMessages(c.userId)}
@@ -114,10 +120,11 @@ export function ChatHistoryTab({ allUsers, currentUser, toast }: Props) {
                       : 'bg-[#f5f5f4] border border-[#e7e5e4] hover:border-[rgba(26,86,219,0.3)]'
                   }`}>
                   <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#f59e0b] to-[#06b6d4] flex items-center justify-center font-bold text-sm text-white shrink-0">
-                    {(u?.fullName || '?')[0].toUpperCase()}
+                    {(name)[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold truncate">{u?.fullName || `User #${c.userId}`}</div>
+                    <div className="text-sm font-semibold truncate">{name}</div>
+                    {soXe && <div className="text-[10px] text-[#a8a29e] truncate">🚛 {soXe}</div>}
                     <div className="text-[10px] text-[#78716c]">{fmtDateTime(c.lastAt)}</div>
                   </div>
                 </button>
@@ -133,7 +140,7 @@ export function ChatHistoryTab({ allUsers, currentUser, toast }: Props) {
       <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl p-5 flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-bold">
-            💬 Lịch sử chat {selectedUserId ? `— ${userMap(selectedUserId)?.fullName || `User #${selectedUserId}`}` : ''}
+            💬 Lịch sử chat {selectedUserId ? `— ${getDriverName({ userId: selectedUserId, fullName: conversations.find(c => c.userId === selectedUserId)?.fullName })}` : ''}
           </h3>
           <button
             onClick={() => setScheduleOpen(true)}
