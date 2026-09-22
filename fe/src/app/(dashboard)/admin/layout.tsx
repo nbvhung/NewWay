@@ -9,6 +9,18 @@ import { customersApi } from '@/lib/api-customers';
 import { User, ShippingLine, Route, Customer } from '@/types';
 import { AdminSidebar, MobileAdminNav } from '@/components/layout/admin-sidebar';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { hasAnyPerm } from '@/lib/permissions';
+
+const STAFF_PERMS = [
+  'entry.view_all',
+  'plan.view',
+  'container.view',
+  'customer.view',
+  'route.view',
+  'salary.view',
+  'dashboard.view',
+  'user.view',
+];
 
 interface AdminData {
   user: any;
@@ -80,7 +92,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (authLoading) return <LoadingSpinner className="min-h-[60vh]" />;
   if (!user) return null;
-  if (user.role === 'laixe') {
+  if (!hasAnyPerm(user, STAFF_PERMS)) {
     return <div className="text-center py-16 text-[#78716c] text-sm">Bạn không có quyền truy cập trang này.</div>;
   }
 

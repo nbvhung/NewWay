@@ -3,6 +3,7 @@ export interface TokenPayload {
   username: string;
   fullName: string;
   role: string;
+  permissions?: string[];
   jti?: string;
 }
 

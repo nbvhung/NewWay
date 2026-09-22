@@ -33,6 +33,14 @@ export class ZaloScheduledMessage {
   @Column({ name: 'repeat_daily', type: 'boolean', default: false, nullable: false })
   repeatDaily: boolean;
 
+  /** Tin do cơ chế tự động (tin giao ca nhóm theo 2 mốc gần thời điểm ghi cont đầu). */
+  @Column({ name: 'is_auto', type: 'boolean', default: false, nullable: false })
+  isAuto: boolean;
+
+  /** Thứ tự mốc trong chu kỳ tự động (1, 2...). */
+  @Column({ name: 'section_no', type: 'int', nullable: true })
+  sectionNo: number | null;
+
   @Column({ name: 'content', type: 'text', nullable: false })
   content: string;
 

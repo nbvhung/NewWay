@@ -20,6 +20,7 @@ import { DriverAdvance } from '../database/entities/driver-advance.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateSubmissionDto } from './dto/update-submission.dto';
 import { SettingsService } from '../settings/settings.service';
+import { hasPermission } from '../common/permissions/permissions';
 
 @Injectable()
 export class SubmissionsService {
@@ -51,15 +52,15 @@ export class SubmissionsService {
     private settingsService: SettingsService,
   ) {}
 
-  async create(dto: CreateSubmissionDto, userId: number, fullName: string, userRole?: string) {
-    if (userRole === 'laixe' && (await this.settingsService.isEntryLocked())) {
+  async create(dto: CreateSubmissionDto, userId: number, fullName: string, user: any) {
+    if (user?.role === 'laixe' && (await this.settingsService.isEntryLocked())) {
       throw new ForbiddenException('Hệ thống đang tạm khóa nhập liệu. Vui lòng quay lại sau.');
     }
 
     let targetUserId = userId;
     let targetFullName = fullName;
 
-    if (dto.driverId && dto.driverId !== userId && userRole && ['ops', 'admin', 'supper_admin'].includes(userRole)) {
+    if (dto.driverId && dto.driverId !== userId && hasPermission(user, 'entry.enter_for_other')) {
       const driver = await this.usersRepository.findOne({ where: { id: dto.driverId } });
       if (!driver || driver.role !== 'laixe') {
         throw new BadRequestException('Lái xe không hợp lệ');
@@ -183,8 +184,8 @@ export class SubmissionsService {
     return { ...submission, history };
   }
 
-  async updateMy(id: number, dto: UpdateSubmissionDto, userId: number, role: string, fullName: string): Promise<any> {
-    if (role === 'laixe' && (await this.settingsService.isEntryLocked())) {
+  async updateMy(id: number, dto: UpdateSubmissionDto, userId: number, user: any, fullName: string): Promise<any> {
+    if (user?.role === 'laixe' && (await this.settingsService.isEntryLocked())) {
       throw new ForbiddenException('Hệ thống đang tạm khóa nhập liệu. Vui lòng quay lại sau.');
     }
 
@@ -192,12 +193,12 @@ export class SubmissionsService {
     if (!submission) {
       throw new NotFoundException('Không tìm thấy bản ghi');
     }
-    if (submission.userId !== userId && !['admin', 'supper_admin', 'ops'].includes(role)) {
+    if (submission.userId !== userId && !hasPermission(user, 'entry.edit_other')) {
       throw new ForbiddenException('Bạn không có quyền sửa bản ghi này');
     }
 
-    // Prevent editing if the plan is completed (admin/supper_admin bypass)
-    if (!['admin', 'supper_admin'].includes(role)) {
+    // Prevent editing if the plan is completed (chỉ admin/supper_admin bypass)
+    if (!['admin', 'supper_admin'].includes(user?.role)) {
       const plan = submission.shippingLineId
         ? await this.shippingLinesRepository.findOne({ where: { id: submission.shippingLineId } })
         : null;

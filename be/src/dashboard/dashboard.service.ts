@@ -162,21 +162,29 @@ export class DashboardService {
     const userMap  = new Map<number, User>();
     for (const u of allUsers) userMap.set(u.id, u);
 
-    // ─── Helper: Tính doanh thu theo customer price ──────────────
+    // ─── Helper: Tính doanh thu theo customer price (ưu tiên đơn giá deal đã duyệt của kế hoạch) ──────────────
     const calcRevenue = (
       customerId: number | null,
       day: number | null,
       conts: ContainerImport[],
+      plan: ShippingLine | null,
     ): number => {
       if (!customerId || !day) return 0;
       const myPrices     = allPrices.filter(p => p.customerId === customerId && day >= p.fromDay && day <= p.toDay);
       const mySurcharges = allSurcharges.filter(s => s.customerId === customerId && day >= s.fromDay && day <= s.toDay);
+      const usePlanPrice = !!plan && plan.priceStatus === 'approved' && !!plan.dealedPrices;
       const countByType: Record<string, number> = {};
       for (const ci of conts) countByType[ci.type] = (countByType[ci.type] ?? 0) + 1;
       let total = 0;
       for (const [type, count] of Object.entries(countByType)) {
-        const price = myPrices.find(p => p.containerType === type);
-        if (price) total += Number(price.unitPrice) * count;
+        let unit = 0;
+        if (usePlanPrice) {
+          unit = Number((plan as ShippingLine).dealedPrices![type]) || 0;
+        } else {
+          const price = myPrices.find(p => p.containerType === type);
+          unit = price ? Number(price.unitPrice) : 0;
+        }
+        total += unit * count;
       }
       for (const sur of mySurcharges) {
         if (sur.calcType === 'add') total += Number(sur.value);
@@ -245,7 +253,7 @@ export class DashboardService {
       for (const ci of conts) contByType[ci.type] = (contByType[ci.type] ?? 0) + 1;
 
       // Revenue từ khách hàng chính
-      const revenue = calcRevenue(plan.customerId, day, conts);
+      const revenue = calcRevenue(plan.customerId, day, conts, plan);
 
       // Chi phí subvendor
       let subvendorCost = 0;
@@ -254,7 +262,7 @@ export class DashboardService {
         const svCust = allCustomers.find(
           c => c.type === 'subvendor' && c.name.trim().toLowerCase() === vendorName.trim().toLowerCase(),
         );
-        if (svCust) subvendorCost = calcRevenue(svCust.id, day, conts);
+        if (svCust) subvendorCost = calcRevenue(svCust.id, day, conts, null);
       }
 
       // Lương chuyến thực tế (tổng submissions của KH này)

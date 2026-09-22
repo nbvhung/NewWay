@@ -16,6 +16,8 @@ import { CreateShippingLineDto } from './dto/create-shipping-line.dto';
 import { UpdateShippingLineDto } from './dto/update-shipping-line.dto';
 import { ZaloPlanCompletedNotifierService } from '../zalo-bot/zalo-plan-completed-notifier.service';
 
+const PRICE_TYPES = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'VSL', 'TIP'];
+
 @Injectable()
 export class ShippingLinesService {
   private readonly logger = new Logger(ShippingLinesService.name);
@@ -60,6 +62,11 @@ export class ShippingLinesService {
       throw new BadRequestException('Tên kế hoạch không được để trống');
     }
 
+    const dealedPrices = this.normalizePrices(dto.dealedPrices);
+    if (!dealedPrices) {
+      throw new BadRequestException('Vui lòng nhập đơn giá deal với khách hàng (ít nhất 1 loại container)');
+    }
+
     const plan = this.shippingLinesRepository.create({
       name,
       soChuyen: dto.soChuyen?.trim() || '',
@@ -73,12 +80,28 @@ export class ShippingLinesService {
       tenNguoiNhap: dto.tenNguoiNhap?.trim() || '',
       driverIds: JSON.stringify(dto.driverIds || []),
       allDrivers: dto.allDrivers !== undefined ? dto.allDrivers : true,
+      dealedPrices,
+      priceStatus: 'pending',
     });
     if (dto.routeId) {
       (plan as any).routeId = dto.routeId;
     }
 
     return this.shippingLinesRepository.save(plan);
+  }
+
+  private normalizePrices(prices?: Record<string, unknown>): Record<string, number> | null {
+    if (!prices || typeof prices !== 'object') return null;
+    const out: Record<string, number> = {};
+    let hasValue = false;
+    for (const type of PRICE_TYPES) {
+      const raw = prices[type];
+      const val = raw === undefined || raw === null || raw === '' ? 0 : Number(raw);
+      const n = isNaN(val) ? 0 : Math.max(0, val);
+      out[type] = n;
+      if (n > 0) hasValue = true;
+    }
+    return hasValue ? out : null;
   }
 
   async update(id: number, dto: UpdateShippingLineDto) {
@@ -127,6 +150,23 @@ export class ShippingLinesService {
     if (dto.driverIds !== undefined) plan.driverIds = JSON.stringify(dto.driverIds);
     if (dto.allDrivers !== undefined) plan.allDrivers = dto.allDrivers;
 
+    if (dto.dealedPrices !== undefined) {
+      const dealedPrices = this.normalizePrices(dto.dealedPrices);
+      if (!dealedPrices) {
+        throw new BadRequestException('Đơn giá deal không hợp lệ (ít nhất 1 loại container)');
+      }
+      plan.dealedPrices = dealedPrices;
+      plan.priceStatus = 'pending';
+      plan.priceApprovedBy = null;
+      plan.priceApprovedAt = null;
+    }
+
+    if (dto.completed === true) {
+      if (plan.priceStatus !== 'approved') {
+        throw new BadRequestException('Kế hoạch cần HR/Admin duyệt đơn giá trước khi hoàn thành');
+      }
+    }
+
     const saved = await this.shippingLinesRepository.save(plan);
 
     if (dto.completed === true && !wasCompleted) {
@@ -140,6 +180,44 @@ export class ShippingLinesService {
     }
 
     return saved;
+  }
+
+  /**
+   * Duyệt/từ chối đơn giá deal của kế hoạch. Chỉ HR/Admin/Supper_admin.
+   */
+  async approvePrice(id: number, action: 'approve' | 'reject', actor: { id: number; fullName?: string }): Promise<any> {
+    const plan = await this.shippingLinesRepository.findOne({ where: { id } });
+    if (!plan) {
+      throw new NotFoundException('Không tìm thấy kế hoạch');
+    }
+    if (action === 'approve') {
+      plan.priceStatus = 'approved';
+      plan.priceApprovedBy = actor?.id ?? null;
+      plan.priceApprovedAt = new Date();
+    } else if (action === 'reject') {
+      plan.priceStatus = 'rejected';
+      plan.priceApprovedBy = actor?.id ?? null;
+      plan.priceApprovedAt = new Date();
+    } else {
+      throw new BadRequestException('Hành động duyệt không hợp lệ');
+    }
+    const saved = await this.shippingLinesRepository.save(plan);
+    this.logger.log(
+      `Plan ${plan.id} "${plan.name}" -> ${action === 'approve' ? 'DUYỆT' : 'TỪ CHỐI'} đơn giá bởi user #${actor?.id}`,
+    );
+    return saved;
+  }
+
+  /**
+   * Nút "Kết thúc": gửi tin rà soát sản lượng cho từng lái xe (không đổi trạng thái kế hoạch).
+   */
+  async notifyEnd(id: number): Promise<{ message: string }> {
+    const plan = await this.shippingLinesRepository.findOne({ where: { id } });
+    if (!plan) {
+      throw new NotFoundException('Không tìm thấy kế hoạch');
+    }
+    await this.zaloPlanCompletedNotifier.notifyPlanEnd(plan);
+    return { message: `Đã gửi tin rà soát cho kế hoạch "${plan.name}"` };
   }
 
   /**

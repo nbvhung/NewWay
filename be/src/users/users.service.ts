@@ -11,6 +11,10 @@ import { User } from '../database/entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { RedisService } from '../redis/redis.service';
+import {
+  resolvePermissions,
+  PERMISSION_KEYS,
+} from '../common/permissions/permissions';
 
 @Injectable()
 export class UsersService {
@@ -19,6 +23,28 @@ export class UsersService {
     private usersRepository: Repository<User>,
     private redisService: RedisService,
   ) {}
+
+  /**
+   * Kiểm tra chống leo thang: người quản lý chỉ được gán quyền mà chính mình đang có.
+   */
+  private validateGrantablePermissions(
+    permissions: string[] | undefined,
+    actor: { role?: string; permissions?: string[] | null },
+  ): string[] | null {
+    if (!permissions) return null;
+    if (actor?.role === 'supper_admin') {
+      return permissions.filter((p) => PERMISSION_KEYS.includes(p));
+    }
+    const own = new Set(resolvePermissions(actor));
+    const granted = permissions.filter((p) => PERMISSION_KEYS.includes(p));
+    const over = granted.filter((p) => !own.has(p));
+    if (over.length > 0) {
+      throw new ForbiddenException(
+        `Bạn không thể gán quyền mà mình không có: ${over.join(', ')}`,
+      );
+    }
+    return granted;
+  }
 
   async findAll(currentRole: string) {
     let users: User[];
@@ -48,7 +74,7 @@ export class UsersService {
     return users.map(({ passwordHash, ...rest }) => rest);
   }
 
-  async create(dto: CreateUserDto, currentRole: string) {
+  async create(dto: CreateUserDto, currentRole: string, actor: any) {
     const existing = await this.usersRepository.findOne({
       where: { username: dto.username.trim() },
     });
@@ -67,12 +93,15 @@ export class UsersService {
       throw new ForbiddenException('Bạn không có quyền tạo tài khoản này');
     }
 
+    const permissions = this.validateGrantablePermissions(dto.permissions, actor);
+
     const hash = bcrypt.hashSync(dto.password, 10);
     const user = this.usersRepository.create({
       username: dto.username.trim(),
       passwordHash: hash,
       fullName: dto.fullName.trim(),
       role: validRole,
+      permissions,
       soXe: dto.soXe?.trim() || '',
       soMooc: dto.soMooc?.trim() || '',
       stt: dto.stt?.trim() || '',
@@ -92,6 +121,7 @@ export class UsersService {
     dto: UpdateUserDto,
     currentRole: string,
     currentUserId: number,
+    actor: any,
   ) {
     const target = await this.usersRepository.findOne({ where: { id } });
     if (!target) {
@@ -119,6 +149,9 @@ export class UsersService {
         throw new ForbiddenException('Bạn không có quyền sửa tài khoản này');
       }
       target.role = dto.role;
+    }
+    if (dto.permissions !== undefined) {
+      target.permissions = this.validateGrantablePermissions(dto.permissions, actor);
     }
     if (dto.password) {
       target.passwordHash = bcrypt.hashSync(dto.password, 10);

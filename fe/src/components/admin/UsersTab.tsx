@@ -2,12 +2,14 @@
 
 import { useMemo, useState } from 'react';
 import { EditUserModal } from './EditUserModal';
+import { PermissionChecklist } from './PermissionChecklist';
 import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/use-pagination';
 import { User } from '@/types';
 import { usersApi } from '@/lib/api-users';
 import { ROLE_LABELS } from '@/lib/utils';
 import { Modal } from '@/components/ui/modal';
+import { ROLE_PRESETS, resolvePermissions, PERMISSION_KEYS } from '@/lib/permissions';
 
 interface Props {
   currentUser: any;
@@ -40,8 +42,24 @@ function roleOptionsFor(currentRole: string) {
   return ['laixe'];
 }
 
+const ROLE_DESC: Record<string, string> = {
+  laixe: 'Chỉ nhập sản lượng và sửa bản ghi của mình',
+  ops: 'Vận hành: kế hoạch, container, dữ liệu, chat Zalo',
+  hr: 'Nhân sự: khách hàng, tuyến đường, lương tháng',
+  admin: 'Quản trị toàn hệ thống (trừ xóa toàn bộ dữ liệu)',
+  supper_admin: 'Toàn quyền, kể cả xóa toàn bộ dữ liệu',
+};
+
 export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
-  const [newUser, setNewUser] = useState({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', zaloId: '', zaloBot: 0 });
+  const grantablePerms = useMemo(() => resolvePermissions(currentUser), [currentUser]);
+  const grantableSet = useMemo(() => new Set(grantablePerms), [grantablePerms]);
+
+  const presetFor = (role: string) => (ROLE_PRESETS[role] || []).filter((k) => grantableSet.has(k));
+
+  const [newUser, setNewUser] = useState<any>({
+    username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', zaloId: '', zaloBot: 0,
+    permissions: presetFor('laixe'),
+  });
   const [editUserData, setEditUserData] = useState<any>(null);
   const [editUserModalOpen, setEditUserModalOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ user: User; counts: { submissions: number; containers: number; history: number } } | null>(null);
@@ -83,21 +101,35 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
 
   const setRoleFilterSafe = (r: string) => { setRoleFilter(r); setPage(1); };
 
+  const isCustomPerms = (u: User) => {
+    const explicit = u.permissions;
+    if (!Array.isArray(explicit) || explicit.length === 0) return false;
+    const preset = ROLE_PRESETS[u.role] || [];
+    const sort = (a: string[]) => [...a].sort().join(',');
+    return sort(explicit) !== sort(preset);
+  };
+
   const addUser = async () => {
     if (!newUser.username || !newUser.fullName || !newUser.password) {
       toast('Vui lòng điền đầy đủ thông tin', 'error');
       return;
     }
     try {
-      await usersApi.create(newUser);
+      await usersApi.create({
+        ...newUser,
+        permissions: (newUser.permissions || []).filter((p: string) => PERMISSION_KEYS.includes(p)),
+      });
       toast(`Đã thêm tài khoản: ${newUser.username}`, 'success');
-      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', zaloId: '', zaloBot: 0 });
+      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', zaloId: '', zaloBot: 0, permissions: presetFor('laixe') });
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
   };
 
   const openEditUser = (u: User) => {
-    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, soXe: u.soXe, soMooc: u.soMooc || '', stt: u.stt, sdt: u.sdt, zaloId: u.zaloId || '', zaloBot: u.zaloBot ?? 0, password: '' });
+    const perms = Array.isArray(u.permissions) && u.permissions.length > 0
+      ? u.permissions.filter((p) => PERMISSION_KEYS.includes(p))
+      : presetFor(u.role);
+    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, permissions: perms, soXe: u.soXe, soMooc: u.soMooc || '', stt: u.stt, sdt: u.sdt, zaloId: u.zaloId || '', zaloBot: u.zaloBot ?? 0, password: '' });
     setEditUserModalOpen(true);
   };
 
@@ -107,6 +139,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
       await usersApi.update(editUserData.id, {
         fullName: editUserData.fullName,
         role: editUserData.role,
+        permissions: (editUserData.permissions || []).filter((p: string) => PERMISSION_KEYS.includes(p)),
         soXe: editUserData.soXe || '',
         soMooc: editUserData.soMooc || '',
         stt: editUserData.stt || '',
@@ -216,6 +249,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-sm font-bold text-[#1c1917]">{u.fullName}</span>
                     <span className={roleBadge(u.role)}>{ROLE_LABELS[u.role] || u.role}</span>
+                    {isCustomPerms(u) && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(59,130,246,0.15)] text-blue-600">⚙️ Quyền tùy chỉnh</span>}
                     {u.zaloId && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(245,158,11,0.15)] text-[#d97706]">💬 Zalo{u.zaloBot === 1 ? ' Bot2' : u.zaloBot === 2 ? ' Bot3' : ''}</span>}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -311,34 +345,53 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
             </div>
           </div>
 
-          {/* Nhóm vai trò */}
+          {/* Nhóm vai trò + quyền */}
           <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
             <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
-              <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">Phân quyền & Zalo</span>
+              <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">Vai trò mẫu & Quyền chi tiết</span>
             </div>
-            <div className="p-3 space-y-2">
+            <div className="p-3 space-y-3">
               <div>
-                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Zalo ID (tùy chọn)</label>
-                <input type="text" value={newUser.zaloId} onChange={e => setNewUser({ ...newUser, zaloId: e.target.value })} placeholder="5f9c8e1a2b3c4d5e6f7a8b9c"
-                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Vai trò</label>
-                  <select value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })}
-                    className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer">
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Vai trò mẫu <span className="text-[#a8a29e] font-normal">(chọn để tự tích sẵn quyền, sau đó sửa từng quyền bên dưới)</span></label>
+                <div className="flex gap-2">
+                  <select value={newUser.role} onChange={e => { const r = e.target.value; setNewUser({ ...newUser, role: r, permissions: presetFor(r) }); }}
+                    className="flex-1 px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer">
                     {roleOptionsFor(currentUser.role).map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                   </select>
+                  <button type="button" onClick={() => setNewUser({ ...newUser, permissions: presetFor(newUser.role) })}
+                    className="px-2.5 py-2 rounded-lg text-[9px] font-semibold border border-[#e7e5e4] text-[#78716c] hover:text-[#1c1917] hover:border-[#d4d4d0] cursor-pointer whitespace-nowrap">
+                    ↩️ Theo vai trò mẫu
+                  </button>
                 </div>
-                <div>
-                  <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Bot Zalo</label>
-                  <select value={newUser.zaloBot} onChange={e => setNewUser({ ...newUser, zaloBot: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer">
-                    <option value={0}>Bot 1</option>
-                    <option value={1}>Bot 2</option>
-                    <option value={2}>Bot 3</option>
-                  </select>
-                </div>
+                <p className="text-[9px] text-[#a8a29e] mt-1.5">{ROLE_DESC[newUser.role] || ''}</p>
+              </div>
+              <PermissionChecklist
+                selected={newUser.permissions || []}
+                onChange={(p) => setNewUser({ ...newUser, permissions: p })}
+                grantable={grantablePerms}
+              />
+            </div>
+          </div>
+
+          {/* Nhóm Zalo */}
+          <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
+            <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
+              <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">Zalo (tùy chọn)</span>
+            </div>
+            <div className="p-3 grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Zalo ID</label>
+                <input type="text" value={newUser.zaloId} onChange={e => setNewUser({ ...newUser, zaloId: e.target.value })} placeholder="5f9c8e1a2b3c..."
+                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
+              </div>
+              <div>
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Bot Zalo</label>
+                <select value={newUser.zaloBot} onChange={e => setNewUser({ ...newUser, zaloBot: Number(e.target.value) })}
+                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer">
+                  <option value={0}>Bot 1</option>
+                  <option value={1}>Bot 2</option>
+                  <option value={2}>Bot 3</option>
+                </select>
               </div>
             </div>
           </div>
@@ -359,6 +412,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         roleOptions={editUserData?.role && !roleOptionsFor(currentUser.role).includes(editUserData.role)
           ? [...roleOptionsFor(currentUser.role), editUserData.role]
           : roleOptionsFor(currentUser.role)}
+        grantablePerms={grantablePerms}
       />
 
       <Modal

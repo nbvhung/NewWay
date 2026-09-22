@@ -25,13 +25,13 @@ import { CreateCustomerSurchargeDto } from './dto/create-customer-surcharge.dto'
 import { UpdateCustomerSurchargeDto } from './dto/update-customer-surcharge.dto';
 import { AssignPlansDto } from './dto/assign-plans.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
+import { Permissions } from '../common/decorators/permissions.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('admin/customers')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ops', 'hr', 'admin', 'supper_admin')
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Permissions('customer.view')
 export class CustomersController {
   constructor(private customersService: CustomersService) {}
 
@@ -41,16 +41,19 @@ export class CustomersController {
   }
 
   @Post()
+  @Permissions('customer.manage')
   create(@Body() dto: CreateCustomerDto) {
     return this.customersService.create(dto);
   }
 
   @Put(':id')
+  @Permissions('customer.manage')
   update(@Param('id') id: string, @Body() dto: UpdateCustomerDto) {
     return this.customersService.update(+id, dto);
   }
 
   @Delete(':id')
+  @Permissions('customer.manage')
   remove(@Param('id') id: string) {
     return this.customersService.remove(+id);
   }
@@ -84,6 +87,7 @@ export class CustomersController {
   }
 
   @Put(':id/plans')
+  @Permissions('customer.manage')
   assignPlans(@Param('id') id: string, @Body() body: AssignPlansDto) {
     return this.customersService.assignPlans(+id, body.planIds);
   }
@@ -104,7 +108,7 @@ export class CustomersController {
   }
 
   @Post(':id/prices')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('customer.price')
   createPrice(
     @Param('id') id: string,
     @Body() dto: CreateCustomerPriceDto,
@@ -114,7 +118,7 @@ export class CustomersController {
   }
 
   @Put(':id/prices/:priceId')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('customer.price')
   updatePrice(
     @Param('priceId') priceId: string,
     @Body() dto: UpdateCustomerPriceDto,
@@ -124,13 +128,13 @@ export class CustomersController {
   }
 
   @Delete(':id/prices/:priceId')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('customer.price')
   deletePrice(@Param('priceId') priceId: string, @CurrentUser() user: any) {
     return this.customersService.deletePrice(+priceId, { id: user.id, fullName: user.fullName || user.username });
   }
 
   @Post(':id/prices/batch')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('customer.price')
   batchUpsertPrices(
     @Param('id') id: string,
     @Body() dto: CreateCustomerPriceBatchDto,
@@ -140,7 +144,7 @@ export class CustomersController {
   }
 
   @Delete(':id/prices/period')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('customer.price')
   deletePricesPeriod(
     @Param('id') id: string,
     @Query('month') month: string,
@@ -177,7 +181,7 @@ export class CustomersController {
   }
 
   @Post(':id/surcharges')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('customer.surcharge')
   createSurcharge(
     @Param('id') id: string,
     @Body() dto: CreateCustomerSurchargeDto,
@@ -187,7 +191,7 @@ export class CustomersController {
   }
 
   @Put(':id/surcharges/:sid')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('customer.surcharge')
   updateSurcharge(
     @Param('sid') sid: string,
     @Body() dto: UpdateCustomerSurchargeDto,
@@ -197,19 +201,20 @@ export class CustomersController {
   }
 
   @Delete(':id/surcharges/:sid')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('customer.surcharge')
   deleteSurcharge(@Param('sid') sid: string, @CurrentUser() user: any) {
     return this.customersService.deleteSurcharge(+sid, { id: user.id, fullName: user.fullName || user.username });
   }
 
   // ─── Lịch sử thêm/sửa (chỉ admin) ──────────────────────────────
   @Get(':id/history')
-  @Roles('admin', 'supper_admin')
+  @Permissions('customer.history')
   getHistory(@Param('id') id: string, @Query('entity') entity?: string) {
     return this.customersService.getHistory(+id, entity);
   }
 
   @Post(':id/dossier/upload')
+  @Permissions('customer.dossier')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
   uploadDossierFile(
     @Param('id') id: string,

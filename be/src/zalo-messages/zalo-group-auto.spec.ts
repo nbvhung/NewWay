@@ -4,15 +4,8 @@ import { ZaloGroup } from '../database/entities/zalo-group.entity';
 import { ZaloGroupSchedule } from '../database/entities/zalo-group-schedule.entity';
 import { ZaloScheduledMessage } from '../database/entities/zalo-scheduled-message.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
-import { ContainerImport } from '../database/entities/container-import.entity';
 import { ZaloApiService } from '../zalo-bot/zalo-api.service';
 import { RedisService } from '../redis/redis.service';
-
-interface PlanMock {
-  id: number;
-  routeName: string;
-  completed?: boolean;
-}
 
 const group = (routeKeyword: string): ZaloGroup =>
   ({
@@ -25,36 +18,19 @@ const group = (routeKeyword: string): ZaloGroup =>
   }) as unknown as ZaloGroup;
 
 describe('ZaloGroupAutoService', () => {
-  const mkService = (
-    plans: PlanMock[],
-    counts: { claimed?: number; unclaimed?: number } = {},
-  ) => {
-    const shippingLinesRepository = {
-      find: jest.fn().mockResolvedValue(plans),
-    } as unknown as Repository<ShippingLine>;
-    const containersRepository = {
-      countBy: jest.fn((where: { phatSinh?: boolean }) =>
-        Promise.resolve(
-          where.phatSinh === false
-            ? counts.unclaimed || 0
-            : counts.claimed || 0,
-        ),
-      ),
-    } as unknown as Repository<ContainerImport>;
-    return new ZaloGroupAutoService(
+  const mkService = () =>
+    new ZaloGroupAutoService(
       {} as unknown as Repository<ZaloGroup>,
       {} as unknown as Repository<ZaloGroupSchedule>,
       {} as unknown as Repository<ZaloScheduledMessage>,
-      shippingLinesRepository,
-      containersRepository,
+      {} as unknown as Repository<ShippingLine>,
       {} as unknown as ZaloApiService,
       {} as unknown as RedisService,
     );
-  };
 
   describe('normalize', () => {
     it('bỏ dấu + lowercase + bỏ khoảng trắng', () => {
-      const s = mkService([]);
+      const s = mkService();
       expect(s.normalize('HPH-GREENPORT')).toBe('hph-greenport');
       expect(s.normalize('Hechun MP-VIMC DV')).toBe('hechunmp-vimcdv');
       expect(s.normalize('HÉ CHÙN')).toBe('hechun');
@@ -64,7 +40,7 @@ describe('ZaloGroupAutoService', () => {
   });
 
   describe('routeMatches', () => {
-    const s = mkService([]);
+    const s = mkService();
     it('khớp keyword hph', () => {
       const g = group('hph');
       expect(s.routeMatches(g, 'HPH-GREENPORT')).toBe(true);
@@ -88,69 +64,28 @@ describe('ZaloGroupAutoService', () => {
     });
   });
 
-  describe('shouldBeActive', () => {
-    it('true khi có plan đã ghi + vẫn còn container chưa ghi', async () => {
-      const s = mkService([{ id: 1, routeName: 'HPH-GREENPORT' }], {
-        claimed: 3,
-        unclaimed: 2,
-      });
-      expect(await s.shouldBeActive(group('hph'))).toBe(true);
-    });
-    it('false khi plan chưa ai ghi (0 claimed)', async () => {
-      const s = mkService([{ id: 1, routeName: 'HPH-GREENPORT' }], {
-        claimed: 0,
-        unclaimed: 50,
-      });
-      expect(await s.shouldBeActive(group('hph'))).toBe(false);
-    });
-    it('false khi đã ghi đủ (0 unclaimed)', async () => {
-      const s = mkService([{ id: 1, routeName: 'HPH-GREENPORT' }], {
-        claimed: 24,
-        unclaimed: 0,
-      });
-      expect(await s.shouldBeActive(group('hph'))).toBe(false);
-    });
-    it('false khi không có plan khớp tuyến của nhóm', async () => {
-      const s = mkService([{ id: 2, routeName: 'CIMC-GFT6' }], {
-        claimed: 5,
-        unclaimed: 5,
-      });
-      expect(await s.shouldBeActive(group('hph'))).toBe(false);
-    });
-    it('bỏ qua kế hoạch đã completed (dù còn container chưa ghi)', async () => {
-      const s = mkService(
-        [{ id: 1, routeName: 'HPH-GREENPORT', completed: true }],
-        {
-          claimed: 10,
-          unclaimed: 1,
-        },
-      );
-      expect(await s.shouldBeActive(group('hph'))).toBe(false);
-    });
-    it('true khi kế hoạch CHƯA completed đang ghi dở', async () => {
-      const s = mkService(
-        [{ id: 1, routeName: 'HPH-GREENPORT', completed: false }],
-        {
-          claimed: 10,
-          unclaimed: 1,
-        },
-      );
-      expect(await s.shouldBeActive(group('hph'))).toBe(true);
-    });
-  });
+  describe('nextOccurrenceAfter', () => {
+    const s = mkService();
+    // from = 2026-09-18 10:00 giờ VN (= 03:00 UTC)
+    const from = new Date('2026-09-18T03:00:00.000Z');
 
-  describe('nextOccurrence', () => {
-    it('trả về mốc giờ VN đúng HH:mm, trong tương lai', () => {
-      const s = mkService([]);
-      const d = s.nextOccurrence('11:30:00');
-      expect(d.getTime()).toBeGreaterThan(Date.now());
-      const vn = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Asia/Ho_Chi_Minh',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      }).format(d);
-      expect(vn.endsWith(':30')).toBe(true);
+    it('mốc trong ngày (chưa qua) → cùng ngày giờ VN', () => {
+      expect(s.nextOccurrenceAfter('11:30:00', from).toISOString()).toBe(
+        '2026-09-18T04:30:00.000Z', // 11:30 VN
+      );
+    });
+
+    it('mốc đã qua trong ngày → ngày kế tiếp', () => {
+      expect(s.nextOccurrenceAfter('05:15:00', from).toISOString()).toBe(
+        '2026-09-18T22:15:00.000Z', // 05:15 VN ngày 19/09
+      );
+    });
+
+    it('mốc trùng đúng thời điểm from → ngày kế tiếp', () => {
+      const exact = new Date('2026-09-18T04:30:00.000Z'); // 11:30 VN
+      expect(s.nextOccurrenceAfter('11:30:00', exact).toISOString()).toBe(
+        '2026-09-19T04:30:00.000Z', // 11:30 VN ngày 19/09
+      );
     });
   });
 });

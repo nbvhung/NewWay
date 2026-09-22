@@ -2,6 +2,7 @@ import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@ne
 import { RedisService } from '../redis/redis.service';
 import { ZaloApiService } from '../zalo-bot/zalo-api.service';
 import { ZaloMessagesService } from './zalo-messages.service';
+import { ZaloGroupAutoService } from './zalo-group-auto.service';
 
 /**
  * Gửi tin nhắn đã hẹn giờ (zalo_scheduled_messages) đúng thời điểm.
@@ -27,6 +28,7 @@ export class ZaloSchedulerService
     private redis: RedisService,
     private zaloApi: ZaloApiService,
     private zaloMessages: ZaloMessagesService,
+    private groupAuto: ZaloGroupAutoService,
   ) {}
 
   onApplicationBootstrap() {
@@ -92,9 +94,18 @@ export class ZaloSchedulerService
             );
             if (sent) {
               await this.zaloMessages.markResult(item.id, true);
-              await this.zaloMessages.createNextDaily(item);
+              // Tin auto (2 mốc giao ca): không lặp +24h, sau khi gửi xong
+              // mốc cuối cùng thì tắt nhóm cho tới khi có kế hoạch mới.
+              if (item.isAuto) {
+                await this.groupAuto.disarmIfCycleComplete(item.chatId || '');
+              } else {
+                await this.zaloMessages.createNextDaily(item);
+              }
             } else {
               await this.zaloMessages.markResult(item.id, false);
+              if (item.isAuto) {
+                await this.groupAuto.disarmIfCycleComplete(item.chatId || '');
+              }
             }
             continue;
           }

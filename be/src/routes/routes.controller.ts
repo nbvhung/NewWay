@@ -3,34 +3,34 @@ import { RoutesService } from './routes.service';
 import { CreateRouteDto } from './dto/create-route.dto';
 import { UpdateRouteDto } from './dto/update-route.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
+import { Permissions } from '../common/decorators/permissions.decorator';
 
 @Controller('admin/routes')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class RoutesController {
   constructor(private routesService: RoutesService) {}
 
   @Get()
-  @Roles('ops', 'hr', 'admin', 'supper_admin')
+  @Permissions('route.view')
   findAll() {
     return this.routesService.findAll();
   }
 
   @Post()
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('route.manage')
   create(@Body() dto: CreateRouteDto) {
     return this.routesService.create(dto);
   }
 
   @Put(':id')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('route.manage')
   update(@Param('id') id: string, @Body() dto: UpdateRouteDto) {
     return this.routesService.update(+id, dto);
   }
 
   @Delete(':id')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('route.manage')
   remove(@Param('id') id: string) {
     return this.routesService.remove(+id);
   }

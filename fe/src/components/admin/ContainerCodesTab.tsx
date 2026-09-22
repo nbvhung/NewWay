@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ShippingLine, User } from '@/types';
 import { fmtNgay, fmtDateTime } from '@/lib/utils';
 import { containerImportApi, ContainerImport, ContainerSearchResult } from '@/lib/api-container-import';
+import { hasPerm } from '@/lib/permissions';
 
 interface Props {
   allShippingLines: ShippingLine[];
@@ -222,7 +223,7 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
     [allUsers],
   );
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'supper_admin';
+  const isAdmin = hasPerm(user, 'container.claim');
 
   const claimOne = async (item: ContainerImport) => {
     if (!claimDriverId) { toast('Vui lòng chọn lái xe để ghi nhận', 'error'); return; }

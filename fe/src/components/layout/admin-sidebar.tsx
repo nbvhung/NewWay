@@ -2,17 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { hasPerm } from '@/lib/permissions';
 
 interface NavItem {
   href: string;
   label: string;
   icon: string;
+  perm: string;
 }
 
 interface NavGroup {
   label: string;
   icon: string;
-  showFor: string[];
   items: (role: string) => NavItem[];
 }
 
@@ -20,43 +21,41 @@ const GROUPS: NavGroup[] = [
   {
     label: 'Tổng Quan',
     icon: '📊',
-    showFor: ['admin', 'supper_admin'],
-    items: () => [{ href: '/admin/overview', label: 'Tổng Quan', icon: '📊' }],
+    items: () => [{ href: '/admin/overview', label: 'Tổng Quan', icon: '📊', perm: 'dashboard.view' }],
   },
   {
     label: 'Vận hành',
     icon: '🚛',
-    showFor: ['ops', 'admin', 'supper_admin'],
-    items: (role) => [
-      { href: '/admin/data', label: role === 'ops' ? 'Thống kê' : 'Tất cả dữ liệu', icon: '📊' },
-      { href: '/admin/plans', label: 'Kế hoạch', icon: '🚢' },
-      { href: '/admin/monthly', label: 'Kế hoạch theo tháng', icon: '📅' },
-      { href: '/admin/completed', label: 'Đã hoàn thành', icon: '✅' },
-      { href: '/admin/containers', label: 'Mã Số Container', icon: '🗃️' },
-      { href: '/admin/chat', label: 'Lịch sử chat', icon: '💬' },
-    ],
+    items: (role) => {
+      if (role === 'hr') return [{ href: '/admin/plans', label: 'Kế hoạch', icon: '🚢', perm: 'plan.view' }];
+      return [
+        { href: '/admin/data', label: role === 'ops' ? 'Thống kê' : 'Tất cả dữ liệu', icon: '📊', perm: 'entry.view_all' },
+        { href: '/admin/plans', label: 'Kế hoạch', icon: '🚢', perm: 'plan.view' },
+        { href: '/admin/monthly', label: 'Kế hoạch theo tháng', icon: '📅', perm: 'entry.view_all' },
+        { href: '/admin/completed', label: 'Đã hoàn thành', icon: '✅', perm: 'plan.view' },
+        { href: '/admin/containers', label: 'Mã Số Container', icon: '🗃️', perm: 'container.view' },
+        { href: '/admin/chat', label: 'Lịch sử chat', icon: '💬', perm: 'zalo.chat' },
+      ];
+    },
   },
   {
     label: 'Khách hàng & Doanh thu',
     icon: '💼',
-    showFor: ['ops', 'hr', 'admin', 'supper_admin'],
-    items: () => [{ href: '/admin/customers', label: 'Khách hàng', icon: '👥' }],
+    items: () => [{ href: '/admin/customers', label: 'Khách hàng', icon: '👥', perm: 'customer.view' }],
   },
   {
     label: 'Nhân sự & Lương',
     icon: '🧑‍💼',
-    showFor: ['hr', 'admin', 'supper_admin'],
     items: (role) => [
-      ...(role === 'hr' ? [{ href: '/admin/data', label: 'Lương chuyến', icon: '📊' }] : []),
-      { href: '/admin/routes', label: 'Tuyến đường', icon: '🛤️' },
-      { href: '/admin/salary', label: 'Lương Tháng', icon: '💵' },
+      ...(role === 'hr' ? [{ href: '/admin/data', label: 'Lương chuyến', icon: '📊', perm: 'entry.view_all' }] : []),
+      { href: '/admin/routes', label: 'Tuyến đường', icon: '🛤️', perm: 'route.view' },
+      { href: '/admin/salary', label: 'Lương Tháng', icon: '💵', perm: 'salary.view' },
     ],
   },
   {
     label: 'Hệ thống',
     icon: '⚙️',
-    showFor: ['admin', 'supper_admin'],
-    items: () => [{ href: '/admin/users', label: 'Tài khoản', icon: '🧑‍💼' }],
+    items: () => [{ href: '/admin/users', label: 'Tài khoản', icon: '🧑‍💼', perm: 'user.view' }],
   },
 ];
 
@@ -64,7 +63,10 @@ export function AdminSidebar({ user }: { user: any }) {
   const pathname = usePathname();
   if (!user) return null;
 
-  const groups = GROUPS.filter((g) => g.showFor.includes(user.role));
+  const groups = GROUPS.map((g) => ({
+    ...g,
+    items: g.items(user.role).filter((item) => hasPerm(user, item.perm)),
+  })).filter((g) => g.items.length > 0);
 
   return (
     <aside className="hidden lg:flex flex-col w-[230px] shrink-0 bg-[#ffffff] border border-[#e7e5e4] rounded-xl p-3 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
@@ -75,7 +77,7 @@ export function AdminSidebar({ user }: { user: any }) {
               {g.icon} {g.label}
             </div>
             <div className="flex flex-col gap-0.5">
-              {g.items(user.role).map((item) => {
+              {g.items.map((item) => {
                 const active = pathname === item.href;
                 return (
                   <Link
@@ -103,7 +105,10 @@ export function AdminSidebar({ user }: { user: any }) {
 export function MobileAdminNav({ user }: { user: any }) {
   const pathname = usePathname();
   if (!user) return null;
-  const groups = GROUPS.filter((g) => g.showFor.includes(user.role));
+  const groups = GROUPS.map((g) => ({
+    ...g,
+    items: g.items(user.role).filter((item) => hasPerm(user, item.perm)),
+  })).filter((g) => g.items.length > 0);
   return (
     <div className="lg:hidden flex flex-col gap-1 mb-4">
       {groups.map((g) => (
@@ -112,7 +117,7 @@ export function MobileAdminNav({ user }: { user: any }) {
             {g.icon} {g.label}
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {g.items(user.role).map((item) => {
+            {g.items.map((item) => {
               const active = pathname === item.href;
               return (
                 <Link

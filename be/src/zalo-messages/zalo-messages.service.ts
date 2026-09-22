@@ -336,6 +336,8 @@ export class ZaloMessagesService {
         chatId: r.chat_id,
         botIndex: r.bot_index,
         repeatDaily: r.repeat_daily,
+        isAuto: r.is_auto,
+        sectionNo: r.section_no,
         content: r.content,
         sendAt: r.send_at,
         status: r.status,

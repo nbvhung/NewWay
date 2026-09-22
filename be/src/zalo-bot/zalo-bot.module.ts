@@ -19,6 +19,7 @@ import { Submission } from '../database/entities/submission.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { Route } from '../database/entities/route.entity';
+import { ZaloMessage } from '../database/entities/zalo-message.entity';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { Route } from '../database/entities/route.entity';
       EditHistory,
       ContainerImport,
       Route,
+      ZaloMessage,
     ]),
     ContainerImportModule,
     ZaloMessagesModule,

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, MinLength, IsOptional, IsIn, IsBoolean } from 'class-validator';
+import { IsString, IsNotEmpty, MinLength, IsOptional, IsIn, IsBoolean, IsArray } from 'class-validator';
 
 export class CreateUserDto {
   @IsString()
@@ -7,6 +7,7 @@ export class CreateUserDto {
 
   @IsString()
   @IsNotEmpty({ message: 'Vui lòng nhập mật khẩu' })
+  @MinLength(6, { message: 'Mật khẩu tối thiểu 6 ký tự' })
   password: string;
 
   @IsString()
@@ -17,6 +18,10 @@ export class CreateUserDto {
   @IsString()
   @IsIn(['laixe', 'ops', 'admin', 'supper_admin', 'hr'], { message: 'Vai trò không hợp lệ' })
   role?: string;
+
+  @IsOptional()
+  @IsArray()
+  permissions?: string[];
 
   @IsOptional()
   @IsString()

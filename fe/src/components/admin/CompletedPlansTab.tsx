@@ -5,6 +5,7 @@ import { ShippingLine } from '@/types';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { submissionsApi } from '@/lib/api-submissions';
 import { fmtNgay } from '@/lib/utils';
+import { hasPerm } from '@/lib/permissions';
 
 interface Props {
   user?: any;
@@ -124,11 +125,11 @@ export function CompletedPlansTab({ user, onRefresh }: Props) {
                   <span className="text-sm">{display}</span>
                 </div>
                 <div className="flex gap-1 shrink-0">
-                  {(user?.role === 'admin' || user?.role === 'supper_admin') && (
+                  {hasPerm(user, 'plan.complete') && (
                     <button onClick={() => revertPlan(p)}
                       className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">↩️</button>
                   )}
-                  {user?.role === 'supper_admin' && (
+                  {hasPerm(user, 'plan.delete') && (
                     <button onClick={() => deletePlan(p)}
                       className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">🗑️</button>
                   )}

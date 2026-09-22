@@ -47,6 +47,18 @@ export class ShippingLine {
   @Column({ name: 'frozen_money', type: 'decimal', precision: 15, scale: 2, nullable: true, default: null })
   frozenMoney: number | null;
 
+  @Column({ name: 'dealed_prices', type: 'jsonb', nullable: true, default: null })
+  dealedPrices: Record<string, number> | null;
+
+  @Column({ name: 'price_status', length: 20, default: 'none' })
+  priceStatus: string;
+
+  @Column({ name: 'price_approved_by', type: 'int', nullable: true, default: null })
+  priceApprovedBy: number | null;
+
+  @Column({ name: 'price_approved_at', type: 'timestamp', nullable: true, default: null })
+  priceApprovedAt: Date | null;
+
   @Column({ name: 'driver_ids', type: 'text', default: '[]' })
   driverIds: string;
 

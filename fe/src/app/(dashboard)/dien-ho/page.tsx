@@ -9,6 +9,7 @@ import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { usersApi } from '@/lib/api-users';
 import { User, ShippingLine } from '@/types';
 import { fmtNgay } from '@/lib/utils';
+import { hasPerm } from '@/lib/permissions';
 
 export default function DienHoPage() {
   const { user } = useAuth();
@@ -28,7 +29,7 @@ export default function DienHoPage() {
 
   useEffect(() => {
     if (!user) return;
-    if (user.role !== 'ops' && user.role !== 'admin' && user.role !== 'supper_admin') {
+    if (!hasPerm(user, 'entry.enter_for_other')) {
       router.replace('/');
       return;
     }

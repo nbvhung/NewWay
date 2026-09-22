@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, In } from 'typeorm';
+import { Repository, IsNull, In, Not } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { ContainerClaim } from '../database/entities/container-claim.entity';
@@ -53,6 +53,14 @@ export class ContainerImportService {
     private usersRepository: Repository<User>,
     private groupAuto: ZaloGroupAutoService,
   ) {}
+
+  /** Số container đã được ghi nhận (submissionId NOT NULL) của 1 kế hoạch. */
+  async countClaimed(planId: number): Promise<number> {
+    return this.containerImportsRepository.countBy({
+      shippingLineId: planId,
+      submissionId: Not(IsNull()),
+    });
+  }
 
   normalizeCode(raw: string): string | null {
     const c = (raw || '').trim().toUpperCase();
@@ -747,10 +755,11 @@ export class ContainerImportService {
     }
 
     const units = this.buildClaimUnits(pending);
+    const claimedBefore = await this.countClaimed(plan.id);
     const result = await this.applyClaimForDriver(plan, driver, units);
 
     await this.groupAuto
-      .syncForPlan(plan.id)
+      .syncForPlan(plan.id, claimedBefore)
       .catch((err) =>
         this.logger.error(
           `groupAuto.syncForPlan lỗi plan ${plan.id}: ${(err as Error).message}`,
@@ -849,10 +858,11 @@ export class ContainerImportService {
       codes = [container.containerCode];
     }
 
+    const claimedBefore = await this.countClaimed(plan.id);
     const result = await this.applyClaimForDriver(plan, driver, units);
 
     await this.groupAuto
-      .syncForPlan(plan.id)
+      .syncForPlan(plan.id, claimedBefore)
       .catch((err) =>
         this.logger.error(
           `groupAuto.syncForPlan lỗi plan ${plan.id}: ${(err as Error).message}`,
@@ -1095,6 +1105,8 @@ export class ContainerImportService {
       );
     }
 
+    const claimedBefore = await this.countClaimed(plan.id);
+
     const submission = await this.findOrCreateSubmission(
       container.importedById,
       plan,
@@ -1122,7 +1134,7 @@ export class ContainerImportService {
     await this.recordClaims([container.id], submission.id, 'CLASSIFY');
 
     await this.groupAuto
-      .syncForPlan(plan.id)
+      .syncForPlan(plan.id, claimedBefore)
       .catch((err) =>
         this.logger.error(
           `groupAuto.syncForPlan lỗi plan ${plan.id}: ${(err as Error).message}`,

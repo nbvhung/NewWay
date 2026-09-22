@@ -7,6 +7,7 @@ import { Repository, MoreThan } from 'typeorm';
 import { User } from '../database/entities/user.entity';
 import { RefreshToken } from '../database/entities/refresh-token.entity';
 import { RedisService } from '../redis/redis.service';
+import { resolvePermissions } from '../common/permissions/permissions';
 
 @Injectable()
 export class AuthService {
@@ -107,12 +108,15 @@ export class AuthService {
     const accessJti = randomUUID();
     const refreshJti = randomUUID();
 
+    const permissions = resolvePermissions(user);
+
     const accessToken = this.jwtService.sign(
       {
         sub: user.id,
         username: user.username,
         fullName: user.fullName,
         role: user.role,
+        permissions,
         jti: accessJti,
       },
       {
@@ -127,6 +131,7 @@ export class AuthService {
         username: user.username,
         fullName: user.fullName,
         role: user.role,
+        permissions,
         jti: refreshJti,
       },
       {
@@ -152,6 +157,7 @@ export class AuthService {
         username: user.username,
         fullName: user.fullName,
         role: user.role,
+        permissions: resolvePermissions(user),
       },
     };
   }

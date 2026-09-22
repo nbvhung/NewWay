@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean, IsArray, IsInt } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsArray, IsInt, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdateShippingLineDto {
@@ -54,4 +54,8 @@ export class UpdateShippingLineDto {
   @IsOptional()
   @IsBoolean()
   allDrivers?: boolean;
+
+  @IsOptional()
+  @IsObject()
+  dealedPrices?: Record<string, number>;
 }

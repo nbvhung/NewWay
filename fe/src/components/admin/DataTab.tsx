@@ -11,6 +11,7 @@ import { submissionsApi } from '@/lib/api-submissions';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { settingsApi } from '@/lib/api-settings';
 import { ROLE_LABELS, fmtNgay } from '@/lib/utils';
+import { hasPerm } from '@/lib/permissions';
 
 interface Props {
   user: any;
@@ -173,7 +174,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
   };
 
   const handleExportClick = () => {
-    if (user?.role === 'ops' || user?.role === 'admin' || user?.role === 'supper_admin') {
+    if (hasPerm(user, 'export.data') && user?.role !== 'hr') {
       setExportVendorKhac('');
       setExportTenNguoiNhap('');
       setExportConfirmOpen(true);
@@ -317,7 +318,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         )}
       </div>
 
-      {user?.role === 'supper_admin' && submissions.length > 0 && (
+      {hasPerm(user, 'entry.delete_all') && submissions.length > 0 && (
         <div className="flex justify-end mb-3">
           <button onClick={() => setDeleteAllOpen(true)}
             className="px-3 py-1.5 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">

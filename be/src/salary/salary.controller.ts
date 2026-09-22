@@ -21,56 +21,56 @@ import {
 } from './dto/update-salary-item.dto';
 import { CreateDriverAdvanceDto } from './dto/driver-advance.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
+import { Permissions } from '../common/decorators/permissions.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('admin/salary')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class SalaryController {
   constructor(private salaryService: SalaryService) {}
 
   @Get('settings')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('salary.view')
   async getSettings() {
     const settings = await this.salaryService.getSettings();
     return { data: settings };
   }
 
   @Put('settings')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('salary.manage')
   async updateSettings(@Body() dto: UpdateSalarySettingsDto) {
     const settings = await this.salaryService.updateSettings(dto);
     return { data: settings };
   }
 
   @Get('items')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('salary.view')
   async getItems() {
     return { data: await this.salaryService.getItems() };
   }
 
   @Post('items')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('salary.manage')
   async createItem(@Body() dto: CreateSalaryItemDto) {
     return { data: await this.salaryService.createItem(dto) };
   }
 
   @Put('items/:id')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('salary.manage')
   async updateItem(@Param('id') id: string, @Body() dto: UpdateSalaryItemDto) {
     return { data: await this.salaryService.updateItem(+id, dto) };
   }
 
   @Delete('items/:id')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('salary.manage')
   async deleteItem(@Param('id') id: string) {
     await this.salaryService.deleteItem(+id);
     return { message: 'Đã xóa khoản lương' };
   }
 
   @Get('records')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('salary.view')
   async getRecords(
     @Query('month') month?: string,
     @Query('year') year?: string,
@@ -82,7 +82,7 @@ export class SalaryController {
   }
 
   @Put('records/:id')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('salary.manage')
   async updateRecord(
     @Param('id') id: string,
     @Body() dto: UpdateSalaryRecordDto,
@@ -92,7 +92,7 @@ export class SalaryController {
   }
 
   @Put('records/:id/reset-advance')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('salary.manage')
   async resetAdvanceDeduct(@Param('id') id: string) {
     const record = await this.salaryService.resetAdvanceDeductAuto(+id);
     return { data: record };
@@ -101,7 +101,7 @@ export class SalaryController {
   // ── Thanh toán lương ──
 
   @Post('fixed-salary/pay')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('salary.pay')
   async payFixedSalary(
     @Body() dto: PaySalaryDto,
     @CurrentUser() user: any,
@@ -117,7 +117,7 @@ export class SalaryController {
   }
 
   @Post('total/pay')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('salary.pay')
   async payTotalSalary(
     @Body() dto: PaySalaryDto,
     @CurrentUser() user: any,
@@ -133,7 +133,7 @@ export class SalaryController {
   }
 
   @Get('payment-logs')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('salary.view')
   async getPaymentLogs(
     @Query('month') month?: string,
     @Query('year') year?: string,
@@ -147,25 +147,25 @@ export class SalaryController {
   // ── Advance (Tạm ứng) ──
 
   @Post('advances')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('salary.manage')
   async createAdvance(@Body() dto: CreateDriverAdvanceDto) {
     return { data: await this.salaryService.createAdvance(dto) };
   }
 
   @Get('advances/:driverId')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('salary.view')
   async getAdvancesByDriver(@Param('driverId') driverId: string) {
     return { data: await this.salaryService.getAdvancesByDriver(+driverId) };
   }
 
   @Put('advances/:id')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('salary.manage')
   async updateAdvance(@Param('id') id: string, @Body() dto: Partial<CreateDriverAdvanceDto>) {
     return { data: await this.salaryService.updateAdvance(+id, dto) };
   }
 
   @Delete('advances/:id')
-  @Roles('hr', 'admin', 'supper_admin')
+  @Permissions('salary.manage')
   async deleteAdvance(@Param('id') id: string) {
     await this.salaryService.deleteAdvance(+id);
     return { message: 'Đã xóa khoản tạm ứng' };

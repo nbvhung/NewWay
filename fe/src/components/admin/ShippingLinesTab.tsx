@@ -5,6 +5,7 @@ import { ShippingLine, Route, User, Customer } from '@/types';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { submissionsApi } from '@/lib/api-submissions';
 import { fmtNgay } from '@/lib/utils';
+import { hasPerm } from '@/lib/permissions';
 import { Modal } from '@/components/ui/modal';
 import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/use-pagination';
@@ -60,6 +61,34 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
   const [routeTypeFilter, setRouteTypeFilter] = useState('Tất cả');
   const [editRouteTypeFilter, setEditRouteTypeFilter] = useState('Tất cả');
   const ROUTE_TYPES = ['Tất cả', 'XT', 'CB', 'ĐH'];
+  const PRICE_TYPES = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'VSL', 'TIP'];
+
+  const emptyPrices = () => Object.fromEntries(PRICE_TYPES.map(t => [t, ''])) as Record<string, string>;
+  const [prices, setPrices] = useState<Record<string, string>>(emptyPrices());
+  const [editPrices, setEditPrices] = useState<Record<string, string>>(emptyPrices());
+  const [approveOpen, setApproveOpen] = useState(false);
+  const [approvePlan, setApprovePlan] = useState<ShippingLine | null>(null);
+
+  const isOps = hasPerm(user, 'plan.create') || hasPerm(user, 'plan.edit') || hasPerm(user, 'plan.complete') || hasPerm(user, 'plan.delete');
+  const canCreate = hasPerm(user, 'plan.create');
+  const canEdit = hasPerm(user, 'plan.edit');
+  const canComplete = hasPerm(user, 'plan.complete');
+  const isApprover = hasPerm(user, 'plan.approve_price');
+  const canDelete = hasPerm(user, 'plan.delete');
+
+  const priceStatusBadge = (p: ShippingLine) => {
+    if (p.completed) return <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[rgba(16,185,129,0.15)] text-emerald-600">✅ Đã hoàn thành</span>;
+    switch (p.priceStatus) {
+      case 'approved':
+        return <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[rgba(16,185,129,0.15)] text-emerald-600">✅ Giá đã duyệt</span>;
+      case 'pending':
+        return <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[rgba(245,158,11,0.15)] text-amber-600">⏳ Chờ duyệt giá</span>;
+      case 'rejected':
+        return <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[rgba(239,68,68,0.15)] text-red-600">❌ Giá bị từ chối</span>;
+      default:
+        return <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[rgba(148,163,184,0.15)] text-[#78716c]">— Chưa nhập giá</span>;
+    }
+  };
 
   const activePlans = allShippingLines.filter(p => !p.completed);
 
@@ -75,10 +104,14 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
     setDriverIds([]);
     setAllDrivers(true);
     setCustomerId('');
+    setPrices(emptyPrices());
   };
 
   const createPlan = async (): Promise<ShippingLine | null> => {
     if (!name.trim()) { toast('Vui lòng nhập tên kế hoạch', 'error'); return null; }
+    const dealedPrices: Record<string, number> = {};
+    PRICE_TYPES.forEach(t => { const v = Number(prices[t]); if (!isNaN(v) && v > 0) dealedPrices[t] = v; });
+    if (Object.keys(dealedPrices).length === 0) { toast('Vui lòng nhập ít nhất 1 đơn giá deal với khách hàng', 'error'); return null; }
     const res = await shippingLinesApi.create({
       name: name.trim(),
       soChuyen: soChuyen.trim(),
@@ -91,6 +124,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
       tenNguoiNhap: addTenNguoiNhap.trim(),
       driverIds: allDrivers ? [] : driverIds,
       allDrivers,
+      dealedPrices,
     });
     return res.data;
   };
@@ -158,12 +192,19 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
     try { setEditDriverIds(JSON.parse(p.driverIds || '[]')); } catch { setEditDriverIds([]); }
     setEditAllDrivers(p.allDrivers);
     setEditCustomerId(p.customerId ? String(p.customerId) : '');
+    setEditPrices(emptyPrices());
+    if (p.dealedPrices) {
+      PRICE_TYPES.forEach(t => { setEditPrices(prev => ({ ...prev, [t]: String(p.dealedPrices![t] ?? '') })); });
+    }
     setEditOpen(true);
   };
 
   const saveEdit = async () => {
     if (!editTarget) return;
     if (!editName.trim()) { toast('Tên kế hoạch/Tên Tàu không được để trống', 'error'); return; }
+    const dealedPrices: Record<string, number> = {};
+    PRICE_TYPES.forEach(t => { const v = Number(editPrices[t]); if (!isNaN(v) && v > 0) dealedPrices[t] = v; });
+    if (Object.keys(dealedPrices).length === 0) { toast('Vui lòng nhập ít nhất 1 đơn giá deal với khách hàng', 'error'); return; }
     setSaving(true);
     try {
       await shippingLinesApi.update(editTarget.id, {
@@ -176,6 +217,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
         leTet: editLeTet,
         driverIds: editAllDrivers ? [] : editDriverIds,
         allDrivers: editAllDrivers,
+        dealedPrices,
       });
       toast('Đã cập nhật kế hoạch', 'success');
       setEditOpen(false);
@@ -191,6 +233,27 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
       toast(`Đã hoàn thành: ${displayName}`, 'success');
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
+  };
+
+  const ketThuc = async (id: number, displayName: string) => {
+    if (!confirm(`Gửi tin rà soát cho lái xe của kế hoạch "${displayName}"?`)) return;
+    try {
+      const res = await shippingLinesApi.ketThuc(id);
+      toast(res.data?.message || 'Đã gửi tin rà soát', 'success');
+    } catch (err: any) { toast(err.message, 'error'); }
+  };
+
+  const submitApprove = async (action: 'approve' | 'reject') => {
+    if (!approvePlan) return;
+    setSaving(true);
+    try {
+      await shippingLinesApi.approvePrice(approvePlan.id, action);
+      toast(action === 'approve' ? 'Đã duyệt đơn giá' : 'Đã từ chối đơn giá', 'success');
+      setApproveOpen(false);
+      setApprovePlan(null);
+      onRefresh();
+    } catch (err: any) { toast(err.message, 'error'); }
+    finally { setSaving(false); }
   };
 
   const deletePlan = async (id: number, displayName: string) => {
@@ -259,19 +322,34 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
                         ? <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[rgba(245,158,11,0.12)] text-amber-600">⚡ +15%</span>
                         : null}
                   </div>
-                  <div className="text-[10px] text-[#a8a29e] mt-0.5">👷 {driversText(p)}</div>
+                  <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                    {priceStatusBadge(p)}
+                    <span className="text-[10px] text-[#a8a29e]">👷 {driversText(p)}</span>
+                  </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
-                  <button onClick={() => openEdit(p)}
-                    className="px-2 py-1 rounded-lg text-[10px] font-medium border border-[#e7e5e4] text-[#78716c] hover:text-[#1c1917] hover:border-[#d4d4d0] cursor-pointer">✏️</button>
-                  {user?.role === 'ops' || user?.role === 'admin' || user?.role === 'supper_admin' ? (
-                    <button onClick={() => completePlan(p.id, display)}
-                      className="px-2 py-1 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white cursor-pointer">✅</button>
-                  ) : null}
-                  {(user?.role === 'admin' || user?.role === 'supper_admin') ? (
-                    <button onClick={() => deletePlan(p.id, display)}
+                  {canEdit && (
+                    <button onClick={() => openEdit(p)} title="Sửa"
+                      className="px-2 py-1 rounded-lg text-[10px] font-medium border border-[#e7e5e4] text-[#78716c] hover:text-[#1c1917] hover:border-[#d4d4d0] cursor-pointer">✏️</button>
+                  )}
+                  {canComplete && (
+                    <button onClick={() => ketThuc(p.id, display)} title="Kết thúc — gửi tin rà soát cho lái xe"
+                      className="px-2 py-1 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">🏁</button>
+                  )}
+                  {canComplete && (
+                    <button
+                      onClick={() => p.priceStatus === 'approved' && completePlan(p.id, display)}
+                      title={p.priceStatus === 'approved' ? 'Hoàn thành kế hoạch' : 'Chờ HR/Admin duyệt đơn giá mới hoàn thành được'}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white ${p.priceStatus === 'approved' ? 'cursor-pointer' : 'opacity-30 cursor-not-allowed'}`}>✅</button>
+                  )}
+                  {isApprover && (p.priceStatus === 'pending' || p.priceStatus === 'rejected') && (
+                    <button onClick={() => { setApprovePlan(p); setApproveOpen(true); }} title="Duyệt / từ chối đơn giá"
+                      className="px-2 py-1 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#3b82f6] to-[#2563eb] text-white cursor-pointer">🛡️</button>
+                  )}
+                  {canDelete && (
+                    <button onClick={() => deletePlan(p.id, display)} title="Xóa"
                       className="px-2 py-1 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">✕</button>
-                  ) : null}
+                  )}
                 </div>
               </div>
             );
@@ -290,6 +368,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
       </div>
 
       {/* ── Form thêm kế hoạch ── */}
+      {canCreate && (
       <div className="bg-[#ffffff] border border-[#e7e5e4] rounded-xl overflow-hidden sticky top-20">
         <div className="bg-gradient-to-r from-[#f59e0b] to-[#d97706] px-5 py-3.5">
           <h3 className="text-sm font-bold text-white">➕ Thêm kế hoạch mới</h3>
@@ -397,12 +476,32 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
             </label>
           </div>
 
+          {/* Đơn giá deal */}
+          <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
+            <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
+              <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">💵 Đơn giá deal với khách hàng <span className="text-red-400">*</span></span>
+            </div>
+            <div className="p-3">
+              <div className="grid grid-cols-2 gap-2">
+                {PRICE_TYPES.map(t => (
+                  <div key={t}>
+                    <label className="text-[10px] font-medium text-[#78716c] mb-1 block">{t}</label>
+                    <input type="number" min="0" value={prices[t] ?? ''} onChange={e => setPrices(prev => ({ ...prev, [t]: e.target.value }))} placeholder="0"
+                      className="w-full px-2.5 py-1.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-[#a8a29e] mt-2">Đơn giá (₫/container) đã deal với khách hàng. Lưu để HR/Admin duyệt — sau khi duyệt mới hoàn thành kế hoạch được.</p>
+            </div>
+          </div>
+
           <button onClick={() => { setAddVendorKhac(''); setAddTenNguoiNhap(''); setAddOpen(true); }}
             className="w-full py-2.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.4)] cursor-pointer">
             ➕ Thêm kế hoạch
           </button>
         </div>
       </div>
+      )}
 
       <Modal
         open={addOpen}
@@ -594,6 +693,59 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
             className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
           <span className="text-xs font-medium text-[#78716c]">🎉 Tàu Lễ, Tết <span className="text-red-600 font-bold">x3</span></span>
         </label>
+        <div className="mt-4 pt-3 border-t border-[#e7e5e4]">
+          <p className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide mb-2">💵 Đơn giá deal với khách hàng</p>
+          <div className="grid grid-cols-2 gap-2">
+            {PRICE_TYPES.map(t => (
+              <div key={t}>
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">{t}</label>
+                <input type="number" min="0" value={editPrices[t] ?? ''} onChange={e => setEditPrices(prev => ({ ...prev, [t]: e.target.value }))} placeholder="0"
+                  className="w-full px-2.5 py-1.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-[#a8a29e] mt-2">Sửa đơn giá → kế hoạch trở về trạng thái chờ duyệt.</p>
+        </div>
+      </Modal>
+
+      <Modal
+        open={approveOpen}
+        onClose={() => { setApproveOpen(false); setApprovePlan(null); }}
+        title="🛡️ Duyệt đơn giá kế hoạch"
+        footer={
+          <div className="flex gap-2 w-full">
+            <button onClick={() => { setApproveOpen(false); setApprovePlan(null); }}
+              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] cursor-pointer">
+              Đóng
+            </button>
+            <button onClick={() => submitApprove('reject')} disabled={saving}
+              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white disabled:opacity-50 cursor-pointer">
+              ❌ Từ chối
+            </button>
+            <button onClick={() => submitApprove('approve')} disabled={saving}
+              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white disabled:opacity-50 cursor-pointer">
+              {saving ? 'Đang duyệt...' : '✅ Duyệt'}
+            </button>
+          </div>
+        }
+      >
+        <div className="mb-3">
+          <label className="text-xs font-medium text-[#78716c] mb-1.5 block">Kế hoạch</label>
+          <div className="px-3.5 py-2.5 bg-[#f5f5f4] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917]">
+            {approvePlan
+              ? [approvePlan.name, approvePlan.soChuyen, approvePlan.routeName, fmtNgay(approvePlan.ngay)].filter(Boolean).join(' / ')
+              : '—'}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {PRICE_TYPES.map(t => (
+            <div key={t} className="flex items-center justify-between px-3 py-2 bg-[#f9f9f8] border border-[#e7e5e4] rounded-lg">
+              <span className="text-xs font-semibold text-[#1c1917]">{t}</span>
+              <span className="text-xs font-bold text-[#d97706]">{Number(approvePlan?.dealedPrices?.[t] || 0) > 0 ? `${Number(approvePlan?.dealedPrices?.[t]).toLocaleString('vi-VN')} ₫` : '—'}</span>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-[#a8a29e] mt-2">Sau khi duyệt, kế hoạch mới được phép hoàn thành. Đơn giá này được ưu tiên khi tính doanh thu.</p>
       </Modal>
 
     </div>

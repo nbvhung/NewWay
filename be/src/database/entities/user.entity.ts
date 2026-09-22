@@ -22,6 +22,9 @@ export class User {
   @Column({ name: 'role', length: 20, default: 'laixe' })
   role: string;
 
+  @Column({ name: 'permissions', type: 'text', array: true, nullable: true, default: null })
+  permissions: string[] | null;
+
   @Column({ name: 'so_xe', length: 50, default: '' })
   soXe: string;
 

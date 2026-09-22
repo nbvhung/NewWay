@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import { ROLE_LABELS } from '@/lib/utils';
+import { hasPerm } from '@/lib/permissions';
 import { Modal } from '@/components/ui/modal';
 
 export function Navbar() {
@@ -16,17 +17,17 @@ export function Navbar() {
 
   if (!user) return null;
 
-  const links: { href: string; label: string; roles: string[] }[] = [
-    { href: '/form', label: '📝 Nhập liệu', roles: ['laixe'] },
-    { href: '/dien-ho', label: '📝 Điền hộ', roles: ['ops'] },
+  const links: { href: string; label: string; show: boolean }[] = [
+    { href: '/form', label: '📝 Nhập liệu', show: hasPerm(user, 'entry.submit') },
+    { href: '/dien-ho', label: '📝 Điền hộ', show: hasPerm(user, 'entry.enter_for_other') },
     {
       href: '/my-data',
       label: user.role === 'ops' ? '📊 SL TỔNG TÀU' : '📊 Sản lượng của tôi',
-      roles: ['laixe', 'ops'],
+      show: user.role === 'laixe' || hasPerm(user, 'entry.view_all') || user.role === 'ops',
     },
-    { href: '/admin', label: '⚙️ Quản lý', roles: ['ops', 'admin', 'supper_admin', 'hr'] },
+    { href: '/admin', label: '⚙️ Quản lý', show: hasPerm(user, 'entry.view_all') || hasPerm(user, 'customer.view') || hasPerm(user, 'salary.view') || hasPerm(user, 'dashboard.view') || hasPerm(user, 'user.view') || hasPerm(user, 'route.view') || hasPerm(user, 'plan.view') },
   ];
-  const visibleLinks = links.filter((l) => l.roles.includes(user.role));
+  const visibleLinks = links.filter((l) => l.show);
 
   const isActive = (path: string) =>
     path === '/admin' ? pathname.startsWith('/admin') : pathname.startsWith(path);

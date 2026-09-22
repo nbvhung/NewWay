@@ -3,8 +3,8 @@ import { ShippingLinesService } from './shipping-lines.service';
 import { CreateShippingLineDto } from './dto/create-shipping-line.dto';
 import { UpdateShippingLineDto } from './dto/update-shipping-line.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
+import { Permissions } from '../common/decorators/permissions.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller()
@@ -18,37 +18,55 @@ export class ShippingLinesController {
   }
 
   @Get('admin/shipping-lines')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ops', 'admin', 'supper_admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('plan.view')
   findAllForAdmin() {
     return this.shippingLinesService.findAll();
   }
 
   @Post('admin/shipping-lines')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ops', 'admin', 'supper_admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('plan.create')
   create(@Body() dto: CreateShippingLineDto) {
     return this.shippingLinesService.create(dto);
   }
 
   @Put('admin/shipping-lines/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ops', 'admin', 'supper_admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('plan.edit', 'plan.complete')
   update(@Param('id') id: string, @Body() dto: UpdateShippingLineDto) {
     return this.shippingLinesService.update(+id, dto);
   }
 
   @Delete('admin/shipping-lines/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'supper_admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('plan.delete')
   remove(@Param('id') id: string) {
     return this.shippingLinesService.remove(+id);
   }
 
   @Post('admin/shipping-lines/backfill-frozen-money')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'supper_admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('plan.edit')
   backfillFrozenMoney() {
     return this.shippingLinesService.backfillFrozenMoney();
+  }
+
+  @Post('admin/shipping-lines/:id/approve-price')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('plan.approve_price')
+  approvePrice(
+    @Param('id') id: string,
+    @Body() body: { action: 'approve' | 'reject' },
+    @CurrentUser() actor: { id: number; fullName?: string },
+  ) {
+    return this.shippingLinesService.approvePrice(+id, body?.action, actor);
+  }
+
+  @Post('admin/shipping-lines/:id/ket-thuc')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('plan.complete')
+  notifyEnd(@Param('id') id: string) {
+    return this.shippingLinesService.notifyEnd(+id);
   }
 }

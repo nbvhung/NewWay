@@ -21,17 +21,17 @@ import { SingleContainerDto } from './dto/single-container.dto';
 import { ClaimRemainingDto } from './dto/claim-remaining.dto';
 import { ClaimOneDto } from './dto/claim-one.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
+import { Permissions } from '../common/decorators/permissions.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('admin/container-import')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ops', 'admin', 'supper_admin')
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ContainerImportController {
   constructor(private containerImportService: ContainerImportService) {}
 
   @Post()
+  @Permissions('container.import')
   @UseInterceptors(
     FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }),
   )
@@ -50,6 +50,7 @@ export class ContainerImportController {
   }
 
   @Post('single')
+  @Permissions('container.manage')
   addSingle(@Body() body: SingleContainerDto, @CurrentUser() user: any) {
     return this.containerImportService.addSingle(
       body.code,
@@ -60,11 +61,13 @@ export class ContainerImportController {
   }
 
   @Get('search')
+  @Permissions('container.view')
   search(@Query('code') code?: string) {
     return this.containerImportService.searchAllByCode(code || '');
   }
 
   @Get('template')
+  @Permissions('container.import')
   async downloadTemplate(@Res() res: any) {
     const buffer = await this.containerImportService.buildTemplateBuffer();
     res.set({
@@ -76,12 +79,13 @@ export class ContainerImportController {
   }
 
   @Get()
+  @Permissions('container.view')
   findAll(@Query('planId') planId?: string) {
     return this.containerImportService.findAll(planId ? +planId : undefined);
   }
 
   @Post('claim-remaining')
-  @Roles('admin', 'supper_admin')
+  @Permissions('container.claim')
   claimRemaining(@Body() body: ClaimRemainingDto) {
     return this.containerImportService.claimRemainingForDriver(
       body.planId,
@@ -90,7 +94,7 @@ export class ContainerImportController {
   }
 
   @Post('claim-one')
-  @Roles('admin', 'supper_admin')
+  @Permissions('container.claim')
   claimOne(@Body() body: ClaimOneDto) {
     return this.containerImportService.claimContainerForDriver(
       body.containerImportId,
@@ -99,6 +103,7 @@ export class ContainerImportController {
   }
 
   @Patch(':id/classify')
+  @Permissions('container.classify')
   classify(
     @Param('id') id: string,
     @Body() body: ClassifyContainerDto,
@@ -113,11 +118,13 @@ export class ContainerImportController {
   }
 
   @Delete('plan/:planId')
+  @Permissions('container.manage')
   removeByPlan(@Param('planId') planId: string) {
     return this.containerImportService.removeByPlan(+planId);
   }
 
   @Delete(':id')
+  @Permissions('container.manage')
   remove(@Param('id') id: string) {
     return this.containerImportService.remove(+id);
   }

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { ZaloApiService } from './zalo-api.service';
 import { ZaloSttService } from './zalo-stt.service';
 import { ZaloSessionService } from './zalo-session.service';
@@ -25,6 +25,7 @@ import { User } from '../database/entities/user.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Submission } from '../database/entities/submission.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
+import { ZaloMessage } from '../database/entities/zalo-message.entity';
 
 export interface ZaloEvent {
   ok?: boolean;
@@ -81,6 +82,8 @@ export class ZaloBotService {
     private submissionsRepository: Repository<Submission>,
     @InjectRepository(EditHistory)
     private editHistoryRepository: Repository<EditHistory>,
+    @InjectRepository(ZaloMessage)
+    private zaloMessagesRepository: Repository<ZaloMessage>,
   ) {}
 
   private normalizePhone(sdt: string): string | null {
@@ -96,6 +99,35 @@ export class ZaloBotService {
       where: { zaloId: zaloUserId },
     });
     return user ? user.id : null;
+  }
+
+  /**
+   * Tự khôi phục liên kết Zalo khi users.zalo_id bị mất/xóa: dò lịch sử
+   * zalo_messages để tìm user từng nhắn với Zalo này (bản ghi gần nhất có
+   * user_id). Bỏ qua tài khoản đã xóa hoặc bị khóa (disabled). Khi tìm thấy
+   * → khôi phục lại users.zalo_id để lái xe không phải gửi lại SĐT.
+   */
+  private async recoverUserByZaloId(
+    zaloUserId: string,
+  ): Promise<User | null> {
+    const row = await this.zaloMessagesRepository.findOne({
+      where: { zaloUserId, userId: Not(IsNull()) },
+      order: { createdAt: 'DESC' },
+    });
+    if (!row?.userId) return null;
+    const user = await this.usersRepository.findOne({
+      where: { id: row.userId },
+    });
+    if (!user || user.role === 'disabled') return null;
+    if (user.zaloId !== zaloUserId) {
+      user.zaloId = zaloUserId;
+      user.zaloBot = this.botOf(zaloUserId);
+      await this.usersRepository.save(user);
+      this.logger.log(
+        `Tự khôi phục liên kết Zalo: user #${user.id} (${user.fullName}) ← ${zaloUserId}`,
+      );
+    }
+    return user;
   }
 
   private async reply(
@@ -129,6 +161,15 @@ export class ZaloBotService {
         chatId,
         zaloUserId,
         `SĐT ${rawText.trim()} chưa được đăng ký trong hệ thống.\nSếp liên hệ admin để thêm SĐT vào tài khoản nhé.`,
+      );
+      return;
+    }
+
+    if (user.role === 'disabled') {
+      await this.reply(
+        chatId,
+        zaloUserId,
+        'Tài khoản đã bị khóa. Liên hệ admin để mở khóa nhé.',
       );
       return;
     }
@@ -211,6 +252,13 @@ export class ZaloBotService {
     const eventName = payload.event_name || (event as any).type;
     const botIndex = (event as any).botIndex ?? 0;
     this.botByUser.set(zaloUserId, botIndex);
+
+    // Bot nhóm (index 2) chỉ gửi tin 1 chiều theo lịch — bỏ qua tin từ group,
+    // không xử lý/phản hồi trong nhóm.
+    if (botIndex === 2 && payload.message?.chat?.chat_type === 'GROUP') {
+      this.logger.log(`Bot nhóm (index 2): bỏ qua tin từ group ${chatId}`);
+      return;
+    }
 
     let text = '';
     if (eventName === 'message.voice.received') {
@@ -340,10 +388,24 @@ export class ZaloBotService {
     const session = (await this.sessionService.get(zaloUserId)) || {};
 
     if (!session.userId) {
-      const linked = await this.usersRepository.findOne({
+      let linked = await this.usersRepository.findOne({
         where: { zaloId: zaloUserId },
       });
+      // Không tìm thấy qua users.zalo_id (link bị mất/xóa) → tự khôi phục từ
+      // lịch sử tin nhắn zalo_messages để lái xe KHÔNG phải gửi lại SĐT.
+      if (!linked) {
+        linked = await this.recoverUserByZaloId(zaloUserId);
+      }
       if (linked) {
+        if (linked.role === 'disabled') {
+          await this.sessionService.clear(zaloUserId);
+          await this.reply(
+            chatId,
+            zaloUserId,
+            'Tài khoản đã bị khóa. Liên hệ admin để mở khóa nhé.',
+          );
+          return;
+        }
         session.userId = linked.id;
         session.userFullName = linked.fullName;
         await this.sessionService.save(zaloUserId, session);
@@ -353,6 +415,21 @@ export class ZaloBotService {
           await this.handlePhoneLink(chatId, zaloUserId, text, phone);
           return;
         }
+      }
+    } else {
+      // Phiên đã có user — kiểm tra tài khoản vẫn hoạt động (chặn tài khoản
+      // đã bị khóa giữa chừng).
+      const active = await this.usersRepository.findOne({
+        where: { id: session.userId },
+      });
+      if (!active || active.role === 'disabled') {
+        await this.sessionService.clear(zaloUserId);
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Tài khoản đã bị khóa. Liên hệ admin để mở khóa nhé.',
+        );
+        return;
       }
     }
 
@@ -1929,6 +2006,8 @@ export class ZaloBotService {
         await this.editHistoryRepository.save(history);
       }
 
+      const claimedBefore = await this.containerImportService.countClaimed(plan.id);
+
       if (container.bundleId) {
         await this.containerImportService.claimBundle(
           container.bundleId,
@@ -1949,9 +2028,9 @@ export class ZaloBotService {
         );
       }
 
-      // Tự động BẬT/TẮT tin giao ca nhóm theo trạng thái kế hoạch (bật/tắt tức thì)
+      // Tự động ARM/DISARM tin giao ca nhóm khi kế hoạch có container đầu tiên
       await this.groupAuto
-        .syncForPlan(plan.id)
+        .syncForPlan(plan.id, claimedBefore)
         .catch((err) =>
           this.logger.error(
             `groupAuto.syncForPlan lỗi plan ${plan.id}: ${(err as Error).message}`,

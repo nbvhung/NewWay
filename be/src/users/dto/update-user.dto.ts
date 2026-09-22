@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsIn, IsNumber, Min, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsNumber, Min, IsBoolean, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdateUserDto {
@@ -12,6 +12,10 @@ export class UpdateUserDto {
     message: 'Vai trò không hợp lệ',
   })
   role?: string;
+
+  @IsOptional()
+  @IsArray()
+  permissions?: string[];
 
   @IsOptional()
   @IsString()

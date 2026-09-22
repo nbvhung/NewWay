@@ -4,8 +4,8 @@ import { SubmissionsService } from './submissions.service';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateSubmissionDto } from './dto/update-submission.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
+import { Permissions } from '../common/decorators/permissions.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller()
@@ -15,7 +15,7 @@ export class SubmissionsController {
   @Post('submissions')
   @UseGuards(JwtAuthGuard)
   async create(@Body() dto: CreateSubmissionDto, @CurrentUser() user: any) {
-    const result = await this.submissionsService.create(dto, user.id, user.fullName || user.username, user.role);
+    const result = await this.submissionsService.create(dto, user.id, user.fullName || user.username, user);
     return { data: result };
   }
 
@@ -54,13 +54,13 @@ export class SubmissionsController {
     @Body() dto: UpdateSubmissionDto,
     @CurrentUser() user: any,
   ) {
-    const result = await this.submissionsService.updateMy(+id, dto, user.id, user.role, user.fullName || user.username);
+    const result = await this.submissionsService.updateMy(+id, dto, user.id, user, user.fullName || user.username);
     return { data: result };
   }
 
   @Get('admin/submissions')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ops', 'admin', 'supper_admin', 'hr')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('entry.view_all')
   async findAll(
     @CurrentUser() user: any,
     @Query('user_id') userId?: string,
@@ -81,34 +81,34 @@ export class SubmissionsController {
   }
 
   @Put('admin/submissions/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ops', 'admin', 'supper_admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('entry.edit_other')
   async updateByAdmin(
     @Param('id') id: string,
     @Body() dto: UpdateSubmissionDto,
     @CurrentUser() user: any,
   ) {
-    const result = await this.submissionsService.updateMy(+id, dto, user.id, user.role, user.fullName || user.username);
+    const result = await this.submissionsService.updateMy(+id, dto, user.id, user, user.fullName || user.username);
     return { data: result };
   }
 
   @Delete('admin/submissions')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('supper_admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('entry.delete_all')
   async removeAll() {
     return this.submissionsService.removeAll();
   }
 
   @Delete('admin/submissions/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'supper_admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('entry.delete')
   async remove(@Param('id') id: string) {
     return this.submissionsService.remove(+id);
   }
 
   @Get('admin/export')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ops', 'admin', 'supper_admin', 'hr')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('export.data')
   async export(
     @Res() res: Response,
     @CurrentUser() user: any,
@@ -140,8 +140,8 @@ export class SubmissionsController {
   }
 
   @Get('admin/export/luong-thang')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('hr', 'admin', 'supper_admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('salary.export')
   async exportLuongThang(
     @Res() res: Response,
     @Query('month') month?: string,

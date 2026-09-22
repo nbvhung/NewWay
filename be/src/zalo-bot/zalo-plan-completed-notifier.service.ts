@@ -21,6 +21,7 @@ interface DriverTotals {
 }
 
 const OPS_PHONE = '0902051708';
+const DUONG_PHONE = '0902051708';
 
 @Injectable()
 export class ZaloPlanCompletedNotifierService {
@@ -37,61 +38,69 @@ export class ZaloPlanCompletedNotifierService {
     private readonly zaloMessages: ZaloMessagesService,
   ) {}
 
+  private async getDriverTotals(
+    plan: ShippingLine,
+  ): Promise<Map<number, { totals: DriverTotals; zaloId: string | null; zaloBot: number }>> {
+    const subs = await this.submissionsRepository
+      .createQueryBuilder('s')
+      .leftJoinAndSelect('s.user', 'user')
+      .where('s.shippingLineId = :planId', { planId: plan.id })
+      .getMany();
+
+    const byDriver = new Map<
+      number,
+      { totals: DriverTotals; zaloId: string | null; zaloBot: number }
+    >();
+    for (const sub of subs) {
+      let entry = byDriver.get(sub.userId);
+      if (!entry) {
+        entry = {
+          totals: this.zeroTotals(),
+          zaloId: sub.user?.zaloId || null,
+          zaloBot: sub.user?.zaloBot ?? 0,
+        };
+        byDriver.set(sub.userId, entry);
+      }
+      const t = entry.totals;
+      t.h20 += parseFloat(sub.hang20) || 0;
+      t.h40 += parseFloat(sub.hang40) || 0;
+      t.v20 += parseFloat(sub.vo20) || 0;
+      t.v40 += parseFloat(sub.vo40) || 0;
+      t.v20fr += parseFloat(sub.vo20fr) || 0;
+      t.v40fr += parseFloat(sub.vo40fr) || 0;
+      t.vsl += parseFloat(sub.veSinhLai) || 0;
+      t.kv += parseFloat(sub.keoVe) || 0;
+      t.tip += parseFloat(sub.tip) || 0;
+    }
+
+    // Gộp thêm tài xế được gán trong driver_ids nhưng chưa có submission
+    if (!plan.allDrivers && plan.driverIds) {
+      let assigned: number[] = [];
+      try {
+        const parsed: unknown = JSON.parse(plan.driverIds);
+        assigned = Array.isArray(parsed) ? (parsed as number[]) : [];
+      } catch {
+        assigned = [];
+      }
+      for (const uid of assigned) {
+        if (byDriver.has(uid)) continue;
+        const user = await this.usersRepository.findOne({
+          where: { id: uid },
+        });
+        byDriver.set(uid, {
+          totals: this.zeroTotals(),
+          zaloId: user?.zaloId || null,
+          zaloBot: user?.zaloBot ?? 0,
+        });
+      }
+    }
+
+    return byDriver;
+  }
+
   async notifyPlanCompleted(plan: ShippingLine): Promise<void> {
     try {
-      const subs = await this.submissionsRepository
-        .createQueryBuilder('s')
-        .leftJoinAndSelect('s.user', 'user')
-        .where('s.shippingLineId = :planId', { planId: plan.id })
-        .getMany();
-
-      const byDriver = new Map<
-        number,
-        { totals: DriverTotals; zaloId: string | null; zaloBot: number }
-      >();
-      for (const sub of subs) {
-        let entry = byDriver.get(sub.userId);
-        if (!entry) {
-          entry = {
-            totals: this.zeroTotals(),
-            zaloId: sub.user?.zaloId || null,
-            zaloBot: sub.user?.zaloBot ?? 0,
-          };
-          byDriver.set(sub.userId, entry);
-        }
-        const t = entry.totals;
-        t.h20 += parseFloat(sub.hang20) || 0;
-        t.h40 += parseFloat(sub.hang40) || 0;
-        t.v20 += parseFloat(sub.vo20) || 0;
-        t.v40 += parseFloat(sub.vo40) || 0;
-        t.v20fr += parseFloat(sub.vo20fr) || 0;
-        t.v40fr += parseFloat(sub.vo40fr) || 0;
-        t.vsl += parseFloat(sub.veSinhLai) || 0;
-        t.kv += parseFloat(sub.keoVe) || 0;
-        t.tip += parseFloat(sub.tip) || 0;
-      }
-
-      // Gộp thêm tài xế được gán trong driver_ids nhưng chưa có submission
-      if (!plan.allDrivers && plan.driverIds) {
-        let assigned: number[] = [];
-        try {
-          const parsed: unknown = JSON.parse(plan.driverIds);
-          assigned = Array.isArray(parsed) ? (parsed as number[]) : [];
-        } catch {
-          assigned = [];
-        }
-        for (const uid of assigned) {
-          if (byDriver.has(uid)) continue;
-          const user = await this.usersRepository.findOne({
-            where: { id: uid },
-          });
-          byDriver.set(uid, {
-            totals: this.zeroTotals(),
-            zaloId: user?.zaloId || null,
-            zaloBot: user?.zaloBot ?? 0,
-          });
-        }
-      }
+      const byDriver = await this.getDriverTotals(plan);
 
       if (byDriver.size === 0) {
         this.logger.log(
@@ -126,6 +135,63 @@ export class ZaloPlanCompletedNotifierService {
         `notifyPlanCompleted thất bại plan ${plan.id}: ${(err as Error).message}`,
       );
     }
+  }
+
+  async notifyPlanEnd(plan: ShippingLine): Promise<void> {
+    try {
+      const byDriver = await this.getDriverTotals(plan);
+      if (byDriver.size === 0) {
+        this.logger.log(
+          `Plan ${plan.id} "${plan.name}" không có ai nhận tin rà soát, bỏ qua notifyPlanEnd`,
+        );
+        return;
+      }
+
+      const planName = this.planDisplayName(plan);
+      for (const [userId, entry] of byDriver) {
+        if (!entry.zaloId) {
+          this.logger.log(
+            `Plan ${plan.id}: tài xế #${userId} chưa liên kết Zalo, bỏ qua tin rà soát`,
+          );
+          continue;
+        }
+        const text = this.buildEndMessage(planName, entry.totals);
+        const sent = await this.zaloApi.sendMessage(
+          entry.zaloId,
+          text,
+          entry.zaloBot,
+        );
+        if (sent) {
+          await this.zaloMessages.log(entry.zaloId, userId, 'bot', text);
+        }
+      }
+    } catch (err) {
+      this.logger.error(
+        `notifyPlanEnd thất bại plan ${plan.id}: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  private buildEndMessage(planName: string, t: DriverTotals): string {
+    const parts: string[] = [];
+    if (t.h20 > 0) parts.push(`H20: ${t.h20}`);
+    if (t.h40 > 0) parts.push(`H40: ${t.h40}`);
+    if (t.v20 > 0) parts.push(`V20: ${t.v20}`);
+    if (t.v40 > 0) parts.push(`V40: ${t.v40}`);
+    if (t.v20fr > 0) parts.push(`V20FR: ${t.v20fr}`);
+    if (t.v40fr > 0) parts.push(`V40FR: ${t.v40fr}`);
+    if (t.vsl > 0) parts.push(`Vệ sinh lại: ${t.vsl}`);
+    if (t.kv > 0) parts.push(`Kéo về: ${t.kv}`);
+    if (t.tip > 0) parts.push(`TIP: ${t.tip}`);
+
+    return [
+      `🏁 ${planName}`,
+      parts.length
+        ? `Sản lượng của Sếp là: ${parts.join(', ')}`
+        : 'Sản lượng của Sếp là: không có sản lượng',
+      `Nếu có sai sót, vui lòng điền thêm mã Cont hoặc liên hệ DƯƠNG (SĐT: ${DUONG_PHONE})`,
+      'Nếu không có thắc mắc, thông tin mặc định ĐÚNG',
+    ].join('\n');
   }
 
   private zeroTotals(): DriverTotals {

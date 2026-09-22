@@ -3,6 +3,7 @@ export interface User {
   username: string;
   fullName: string;
   role: Role;
+  permissions?: string[] | null;
   soXe: string;
   soMooc?: string;
   stt: string;
@@ -35,6 +36,10 @@ export interface ShippingLine {
   frozenMoney: number | null;
   driverIds: string;
   allDrivers: boolean;
+  dealedPrices?: Record<string, number> | null;
+  priceStatus?: 'none' | 'pending' | 'approved' | 'rejected';
+  priceApprovedBy?: number | null;
+  priceApprovedAt?: string | null;
   createdAt: string;
   routeId?: number;
   route?: Route;

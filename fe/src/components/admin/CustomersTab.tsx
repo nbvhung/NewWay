@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/modal';
 import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/use-pagination';
 import { fmtDateTime } from '@/lib/utils';
+import { hasPerm, hasAnyPerm } from '@/lib/permissions';
 
 interface Props {
   onRefresh?: () => void;
@@ -75,8 +76,8 @@ function formatChanges(raw: string): string {
 
 export function CustomersTab({ onRefresh, toast }: Props) {
   const { user } = useAuth();
-  const canEdit = user?.role === 'hr' || user?.role === 'admin' || user?.role === 'supper_admin';
-  const isAdmin = user?.role === 'admin' || user?.role === 'supper_admin';
+  const canEdit = hasAnyPerm(user, ['customer.manage', 'customer.price', 'customer.surcharge']);
+  const isAdmin = hasPerm(user, 'customer.history');
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
