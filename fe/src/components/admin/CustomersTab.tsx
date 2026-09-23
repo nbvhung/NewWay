@@ -31,6 +31,8 @@ const EMPTY_FORM = {
 };
 
 const PRICE_TYPES = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'KV20', 'KV20FR', 'VSL', 'TIP'];
+const PRICE_LABELS: Record<string, string> = { KV20: 'Kẹp V20', KV20FR: 'Kẹp V20FR' };
+const priceLabel = (t: string) => PRICE_LABELS[t] ?? t;
 
 const ACTION_LABEL: Record<string, string> = {
   CREATE: '➕ Tạo mới',
@@ -1156,7 +1158,7 @@ export function CustomersTab({ onRefresh, toast }: Props) {
           <div className="grid grid-cols-2 gap-2">
             {PRICE_TYPES.map(t => (
               <div key={t}>
-                <label className="block text-[10px] font-medium text-[#78716c] mb-1">{t}</label>
+                <label className="block text-[10px] font-medium text-[#78716c] mb-1">{priceLabel(t)}</label>
                 <input type="number" min="0" value={priceForm.prices[t] || ''}
                   onChange={e => setPriceForm(f => ({ ...f, prices: { ...f.prices, [t]: e.target.value } }))}
                   placeholder="0" className={inputCls} />

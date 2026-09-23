@@ -62,6 +62,8 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
   const [editRouteTypeFilter, setEditRouteTypeFilter] = useState('Tất cả');
   const ROUTE_TYPES = ['Tất cả', 'XT', 'CB', 'ĐH'];
   const PRICE_TYPES = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'KV20', 'KV20FR', 'VSL', 'TIP'];
+  const PRICE_LABELS: Record<string, string> = { KV20: 'Kẹp V20', KV20FR: 'Kẹp V20FR' };
+  const priceLabel = (t: string) => PRICE_LABELS[t] ?? t;
 
   const emptyPrices = () => Object.fromEntries(PRICE_TYPES.map(t => [t, ''])) as Record<string, string>;
   const [prices, setPrices] = useState<Record<string, string>>(emptyPrices());
@@ -500,7 +502,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
               <div className="grid grid-cols-2 gap-2">
                 {PRICE_TYPES.map(t => (
                   <div key={t}>
-                    <label className="text-[10px] font-medium text-[#78716c] mb-1 block">{t}</label>
+                    <label className="text-[10px] font-medium text-[#78716c] mb-1 block">{priceLabel(t)}</label>
                     <input type="number" min="0" value={prices[t] ?? ''} onChange={e => setPrices(prev => ({ ...prev, [t]: e.target.value }))} placeholder="0"
                       className="w-full px-2.5 py-1.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
                   </div>
@@ -713,7 +715,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
           <div className="grid grid-cols-2 gap-2">
             {PRICE_TYPES.map(t => (
               <div key={t}>
-                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">{t}</label>
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">{priceLabel(t)}</label>
                 <input type="number" min="0" value={editPrices[t] ?? ''} onChange={e => setEditPrices(prev => ({ ...prev, [t]: e.target.value }))} placeholder="0"
                   className="w-full px-2.5 py-1.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
               </div>
@@ -756,7 +758,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
         <div className="grid grid-cols-2 gap-2">
           {PRICE_TYPES.map(t => (
             <div key={t}>
-              <label className="text-[10px] font-medium text-[#78716c] mb-1 block">{t}</label>
+              <label className="text-[10px] font-medium text-[#78716c] mb-1 block">{priceLabel(t)}</label>
               <input
                 type="number" min="0"
                 value={approvePrices[t] ?? ''}
