@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { User } from '@/types';
 
 interface Props {
@@ -14,7 +14,11 @@ const normalize = (s: string) =>
 
 export function VehicleSelect({ drivers, selected, onChange }: Props) {
   const [q, setQ] = useState('');
-  const sel = new Set(selected);
+  // Luôn so sánh theo number để tránh mismatch string/number từ API
+  const sel = new Set(selected.map(Number));
+
+  // Reset ô tìm kiếm mỗi khi danh sách xe được chọn thay đổi (mở modal mới)
+  useEffect(() => { setQ(''); }, [JSON.stringify(selected)]);
 
   const filtered = useMemo(() => {
     const s = normalize(q.trim());

@@ -161,7 +161,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
     const perms = Array.isArray(u.permissions) && u.permissions.length > 0
       ? u.permissions.filter((p) => PERMISSION_KEYS.includes(p))
       : presetFor(u.role);
-    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, permissions: perms, visibleDriverIds: Array.isArray(u.visibleDriverIds) ? u.visibleDriverIds : [], soXe: u.soXe, soMooc: u.soMooc || '', stt: u.stt, sdt: u.sdt, zaloId: u.zaloId || '', zaloBot: u.zaloBot ?? 0, password: '' });
+    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, permissions: perms, visibleDriverIds: Array.isArray(u.visibleDriverIds) ? u.visibleDriverIds.map(Number) : [], soXe: u.soXe, soMooc: u.soMooc || '', stt: u.stt, sdt: u.sdt, zaloId: u.zaloId || '', zaloBot: u.zaloBot ?? 0, password: '' });
     setEditUserModalOpen(true);
   };
 
