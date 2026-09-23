@@ -15,7 +15,7 @@ export class UsersController {
   @Get()
   @Permissions('user.view')
   findAll(@CurrentUser() user: any) {
-    return this.usersService.findAll(user.role);
+    return this.usersService.findAll(user);
   }
 
   @Post()

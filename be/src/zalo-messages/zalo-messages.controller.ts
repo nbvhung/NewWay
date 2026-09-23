@@ -15,7 +15,7 @@ export class ZaloMessagesController {
   @Get('conversations')
   @Permissions('zalo.chat')
   async conversations(@CurrentUser() user: any) {
-    const data = await this.zaloMessagesService.getConversations(user.role);
+    const data = await this.zaloMessagesService.getConversations(user.role, user.visibleDriverIds);
     return { data };
   }
 

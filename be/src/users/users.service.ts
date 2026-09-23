@@ -46,7 +46,15 @@ export class UsersService {
     return granted;
   }
 
-  async findAll(currentRole: string) {
+  async findAll(currentUser: { role: string; visibleDriverIds?: number[] | null }) {
+    const { role: currentRole, visibleDriverIds } = currentUser;
+
+    // Nếu tài khoản có giới hạn xe cụ thể → chỉ trả về đúng những ID đó (+ bản thân)
+    if (visibleDriverIds && visibleDriverIds.length > 0) {
+      const users = await this.usersRepository.findByIds(visibleDriverIds);
+      return users.map(({ passwordHash, ...rest }) => rest);
+    }
+
     let users: User[];
     if (currentRole === 'supper_admin') {
       users = await this.usersRepository.find({ order: { createdAt: 'DESC' } });

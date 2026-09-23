@@ -65,7 +65,10 @@ export class ZaloMessagesService {
     return ['laixe'];
   }
 
-  async getConversations(currentRole: string): Promise<Array<{ userId: number; lastAt: Date; fullName: string | null; soXe: string | null }>> {
+  async getConversations(
+    currentRole: string,
+    visibleDriverIds?: number[] | null,
+  ): Promise<Array<{ userId: number; lastAt: Date; fullName: string | null; soXe: string | null }>> {
     const allowedRoles = this.visibleRolesFor(currentRole);
 
     const qb = this.zaloMessagesRepository
@@ -78,7 +81,10 @@ export class ZaloMessagesService {
       .leftJoin('users', 'u', 'u.id = m.user_id')
       .where('m.user_id IS NOT NULL');
 
-    if (allowedRoles) {
+    // Nếu có giới hạn xe cụ thể → ưu tiên lọc theo ID xe, bỏ qua lọc theo role
+    if (visibleDriverIds && visibleDriverIds.length > 0) {
+      qb.andWhere('m.user_id IN (:...driverIds)', { driverIds: visibleDriverIds });
+    } else if (allowedRoles) {
       qb.andWhere('u.role IN (:...roles)', { roles: allowedRoles });
     }
 
