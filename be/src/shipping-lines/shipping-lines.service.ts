@@ -184,12 +184,24 @@ export class ShippingLinesService {
 
   /**
    * Duyệt/từ chối đơn giá deal của kế hoạch. Chỉ HR/Admin/Supper_admin.
+   * Nếu truyền kèm `dealedPrices`, cập nhật giá trước khi duyệt/từ chối.
    */
-  async approvePrice(id: number, action: 'approve' | 'reject', actor: { id: number; fullName?: string }): Promise<any> {
+  async approvePrice(
+    id: number,
+    action: 'approve' | 'reject',
+    actor: { id: number; fullName?: string },
+    dealedPrices?: Record<string, number>,
+  ): Promise<any> {
     const plan = await this.shippingLinesRepository.findOne({ where: { id } });
     if (!plan) {
       throw new NotFoundException('Không tìm thấy kế hoạch');
     }
+
+    // Cập nhật đơn giá nếu người duyệt sửa
+    if (dealedPrices && Object.keys(dealedPrices).length > 0) {
+      plan.dealedPrices = dealedPrices;
+    }
+
     if (action === 'approve') {
       plan.priceStatus = 'approved';
       plan.priceApprovedBy = actor?.id ?? null;
@@ -203,7 +215,7 @@ export class ShippingLinesService {
     }
     const saved = await this.shippingLinesRepository.save(plan);
     this.logger.log(
-      `Plan ${plan.id} "${plan.name}" -> ${action === 'approve' ? 'DUYỆT' : 'TỪ CHỐI'} đơn giá bởi user #${actor?.id}`,
+      `Plan ${plan.id} "${plan.name}" -> ${action === 'approve' ? 'DUYỆT' : 'TỪ CHỐI'} đơn giá bởi user #${actor?.id}${dealedPrices ? ' (kèm sửa giá)' : ''}`,
     );
     return saved;
   }

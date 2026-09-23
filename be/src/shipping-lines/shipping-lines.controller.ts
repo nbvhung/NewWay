@@ -57,10 +57,10 @@ export class ShippingLinesController {
   @Permissions('plan.approve_price')
   approvePrice(
     @Param('id') id: string,
-    @Body() body: { action: 'approve' | 'reject' },
+    @Body() body: { action: 'approve' | 'reject'; dealedPrices?: Record<string, number> },
     @CurrentUser() actor: { id: number; fullName?: string },
   ) {
-    return this.shippingLinesService.approvePrice(+id, body?.action, actor);
+    return this.shippingLinesService.approvePrice(+id, body?.action, actor, body?.dealedPrices);
   }
 
   @Post('admin/shipping-lines/:id/ket-thuc')

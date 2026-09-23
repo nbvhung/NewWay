@@ -68,6 +68,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
   const [editPrices, setEditPrices] = useState<Record<string, string>>(emptyPrices());
   const [approveOpen, setApproveOpen] = useState(false);
   const [approvePlan, setApprovePlan] = useState<ShippingLine | null>(null);
+  const [approvePrices, setApprovePrices] = useState<Record<string, string>>(emptyPrices());
 
   const isOps = hasPerm(user, 'plan.create') || hasPerm(user, 'plan.edit') || hasPerm(user, 'plan.complete') || hasPerm(user, 'plan.delete');
   const canCreate = hasPerm(user, 'plan.create');
@@ -247,7 +248,14 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
     if (!approvePlan) return;
     setSaving(true);
     try {
-      await shippingLinesApi.approvePrice(approvePlan.id, action);
+      // Thu thập giá đã sửa (bỏ qua trường trống / 0)
+      const dealedPrices: Record<string, number> = {};
+      PRICE_TYPES.forEach(t => { const v = Number(approvePrices[t]); if (!isNaN(v) && v > 0) dealedPrices[t] = v; });
+      await shippingLinesApi.approvePrice(
+        approvePlan.id,
+        action,
+        Object.keys(dealedPrices).length > 0 ? dealedPrices : undefined,
+      );
       toast(action === 'approve' ? 'Đã duyệt đơn giá' : 'Đã từ chối đơn giá', 'success');
       setApproveOpen(false);
       setApprovePlan(null);
@@ -343,7 +351,14 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
                       className={`px-2 py-1 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#10b981] to-[#059669] text-white ${p.priceStatus === 'approved' ? 'cursor-pointer' : 'opacity-30 cursor-not-allowed'}`}>✅</button>
                   )}
                   {isApprover && (p.priceStatus === 'pending' || p.priceStatus === 'rejected') && (
-                    <button onClick={() => { setApprovePlan(p); setApproveOpen(true); }} title="Duyệt / từ chối đơn giá"
+                    <button onClick={() => {
+                      setApprovePlan(p);
+                      // Pre-populate giá hiện tại để người duyệt có thể sửa ngay
+                      const preloaded = emptyPrices();
+                      PRICE_TYPES.forEach(t => { preloaded[t] = String(p.dealedPrices?.[t] ?? ''); });
+                      setApprovePrices(preloaded);
+                      setApproveOpen(true);
+                    }} title="Duyệt / từ chối đơn giá"
                       className="px-2 py-1 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#3b82f6] to-[#2563eb] text-white cursor-pointer">🛡️</button>
                   )}
                   {canDelete && (
@@ -737,15 +752,22 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
               : '—'}
           </div>
         </div>
+        <p className="text-[11px] font-semibold text-[#1c1917] mb-2">✏️ Xem / Sửa đơn giá</p>
         <div className="grid grid-cols-2 gap-2">
           {PRICE_TYPES.map(t => (
-            <div key={t} className="flex items-center justify-between px-3 py-2 bg-[#f9f9f8] border border-[#e7e5e4] rounded-lg">
-              <span className="text-xs font-semibold text-[#1c1917]">{t}</span>
-              <span className="text-xs font-bold text-[#d97706]">{Number(approvePlan?.dealedPrices?.[t] || 0) > 0 ? `${Number(approvePlan?.dealedPrices?.[t]).toLocaleString('vi-VN')} ₫` : '—'}</span>
+            <div key={t}>
+              <label className="text-[10px] font-medium text-[#78716c] mb-1 block">{t}</label>
+              <input
+                type="number" min="0"
+                value={approvePrices[t] ?? ''}
+                onChange={e => setApprovePrices(prev => ({ ...prev, [t]: e.target.value }))}
+                placeholder="0"
+                className="w-full px-2.5 py-1.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#3b82f6] placeholder:text-[#a8a29e]"
+              />
             </div>
           ))}
         </div>
-        <p className="text-[10px] text-[#a8a29e] mt-2">Sau khi duyệt, kế hoạch mới được phép hoàn thành. Đơn giá này được ưu tiên khi tính doanh thu.</p>
+        <p className="text-[10px] text-[#a8a29e] mt-2">Sau khi duyệt, kế hoạch mới được phép hoàn thành. Nếu bạn sửa giá ở đây, đơn giá sẽ được cập nhật đồng thời.</p>
       </Modal>
 
     </div>

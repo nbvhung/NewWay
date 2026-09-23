@@ -17,8 +17,8 @@ export const shippingLinesApi = {
   delete: (id: number) =>
     api.delete(`/admin/shipping-lines/${id}`),
 
-  approvePrice: (id: number, action: 'approve' | 'reject') =>
-    api.post<ShippingLine>(`/admin/shipping-lines/${id}/approve-price`, { action }),
+  approvePrice: (id: number, action: 'approve' | 'reject', dealedPrices?: Record<string, number>) =>
+    api.post<ShippingLine>(`/admin/shipping-lines/${id}/approve-price`, { action, dealedPrices }),
 
   ketThuc: (id: number) =>
     api.post<{ message: string }>(`/admin/shipping-lines/${id}/ket-thuc`),
