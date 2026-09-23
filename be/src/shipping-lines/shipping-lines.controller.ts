@@ -20,8 +20,8 @@ export class ShippingLinesController {
   @Get('admin/shipping-lines')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions('plan.view')
-  findAllForAdmin() {
-    return this.shippingLinesService.findAll();
+  findAllForAdmin(@CurrentUser() user: any) {
+    return this.shippingLinesService.findAll(undefined, undefined, user);
   }
 
   @Post('admin/shipping-lines')

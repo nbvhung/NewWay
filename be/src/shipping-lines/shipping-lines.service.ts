@@ -15,6 +15,7 @@ import { EditHistory } from '../database/entities/edit-history.entity';
 import { CreateShippingLineDto } from './dto/create-shipping-line.dto';
 import { UpdateShippingLineDto } from './dto/update-shipping-line.dto';
 import { ZaloPlanCompletedNotifierService } from '../zalo-bot/zalo-plan-completed-notifier.service';
+import { resolveVisibleDriverIds } from '../common/permissions/permissions';
 
 const PRICE_TYPES = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'VSL', 'TIP'];
 
@@ -38,7 +39,7 @@ export class ShippingLinesService {
     private zaloPlanCompletedNotifier: ZaloPlanCompletedNotifierService,
   ) {}
 
-  async findAll(completed?: boolean, userId?: number): Promise<any[]> {
+  async findAll(completed?: boolean, userId?: number, user?: any): Promise<any[]> {
     const qb = this.shippingLinesRepository
       .createQueryBuilder('sl')
       .leftJoinAndSelect('sl.route', 'route')
@@ -52,6 +53,17 @@ export class ShippingLinesService {
         '(sl.all_drivers = true OR CAST(sl.driver_ids AS JSONB) @> CAST(:userIds AS JSONB))',
         { userIds: JSON.stringify([userId]) },
       );
+    }
+    // Lọc theo visibleDriverIds: chỉ hiện kế hoạch có ít nhất 1 lái xe được phép xem,
+    // hoặc kế hoạch áp dụng cho all_drivers (khi đó admin/ops được xem nhưng số liệu
+    // sẽ bị filter tại lần lấy container)
+    const visible = resolveVisibleDriverIds(user);
+    if (visible && visible.length > 0) {
+      // Kế hoạch được hiện nếu: allDrivers = true HOẶC driver_ids chứa ít nhất 1 ID visible
+      const conditions = visible.map((_, i) => `CAST(sl.driver_ids AS JSONB) @> CAST(:vid${i} AS JSONB)`).join(' OR ');
+      const params: Record<string, string> = {};
+      visible.forEach((id, i) => { params[`vid${i}`] = JSON.stringify([id]); });
+      qb.andWhere(`(sl.all_drivers = true OR ${conditions})`, params);
     }
     return qb.getMany();
   }
