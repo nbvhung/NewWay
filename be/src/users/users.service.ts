@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not } from 'typeorm';
+import { Repository, Not, In } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User } from '../database/entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -51,7 +51,7 @@ export class UsersService {
 
     // Nếu tài khoản có giới hạn xe cụ thể → chỉ trả về đúng những ID đó (+ bản thân)
     if (visibleDriverIds && visibleDriverIds.length > 0) {
-      const users = await this.usersRepository.findByIds(visibleDriverIds);
+      const users = await this.usersRepository.findBy({ id: In(visibleDriverIds) });
       return users.map(({ passwordHash, ...rest }) => rest);
     }
 
