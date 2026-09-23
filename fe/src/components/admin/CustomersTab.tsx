@@ -30,7 +30,7 @@ const EMPTY_FORM = {
   type: 'customer' as 'customer' | 'subvendor',
 };
 
-const PRICE_TYPES = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'VSL', 'TIP'];
+const PRICE_TYPES = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'KV20', 'KV20FR', 'VSL', 'TIP'];
 
 const ACTION_LABEL: Record<string, string> = {
   CREATE: '➕ Tạo mới',

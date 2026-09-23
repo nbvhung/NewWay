@@ -61,7 +61,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
   const [routeTypeFilter, setRouteTypeFilter] = useState('Tất cả');
   const [editRouteTypeFilter, setEditRouteTypeFilter] = useState('Tất cả');
   const ROUTE_TYPES = ['Tất cả', 'XT', 'CB', 'ĐH'];
-  const PRICE_TYPES = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'VSL', 'TIP'];
+  const PRICE_TYPES = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'KV20', 'KV20FR', 'VSL', 'TIP'];
 
   const emptyPrices = () => Object.fromEntries(PRICE_TYPES.map(t => [t, ''])) as Record<string, string>;
   const [prices, setPrices] = useState<Record<string, string>>(emptyPrices());
