@@ -182,6 +182,17 @@ export class UsersService {
     if (dto.payBhxh !== undefined) target.payBhxh = dto.payBhxh;
 
     const saved = await this.usersRepository.save(target);
+
+    // Nếu đã thay đổi visibleDriverIds / role / permissions → huỷ refresh token
+    // để JWT mới được tạo tự động với thông tin cập nhật
+    const sensitiveChanged =
+      dto.visibleDriverIds !== undefined ||
+      dto.role !== undefined ||
+      dto.permissions !== undefined;
+    if (sensitiveChanged) {
+      await this.redisService.removeRefreshToken(id);
+    }
+
     const { passwordHash, ...result } = saved;
     return result;
   }
