@@ -46,8 +46,26 @@ export class UsersService {
     return granted;
   }
 
-  async findAll(currentUser: { role: string; visibleDriverIds?: number[] | null }) {
+  /**
+   * @param currentUser Người đang đăng nhập.
+   * @param opts.forAssignment = true → bỏ qua giới hạn `visibleDriverIds`, trả về
+   *   TOÀN BỘ danh sách (để form tạo kế hoạch hiện đủ lái xe cho admin phân công).
+   *   Chỉ admin/supper_admin được dùng chế độ này.
+   */
+  async findAll(
+    currentUser: { role: string; visibleDriverIds?: number[] | null },
+    opts: { forAssignment?: boolean } = {},
+  ) {
     const { role: currentRole, visibleDriverIds } = currentUser;
+
+    // Chế độ phân công kế hoạch: bỏ qua giới hạn xe → trả về đủ lái xe để
+    // admin chọn từng người. Chỉ admin / supper_admin được dùng chế độ này;
+    // các role khác rơi xuống logic thường bên dưới.
+    const canAssign = currentRole === 'admin' || currentRole === 'supper_admin';
+    if (opts.forAssignment && canAssign) {
+      const users = await this.usersRepository.find({ order: { createdAt: 'DESC' } });
+      return users.map(({ passwordHash, ...rest }) => rest);
+    }
 
     // Nếu tài khoản có giới hạn xe cụ thể → chỉ trả về đúng những ID đó (+ bản thân)
     if (visibleDriverIds && visibleDriverIds.length > 0) {

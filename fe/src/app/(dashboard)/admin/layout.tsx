@@ -25,6 +25,8 @@ const STAFF_PERMS = [
 interface AdminData {
   user: any;
   allUsers: User[];
+  /** Danh sách lái xe đầy đủ (không giới hạn theo visibleDriverIds) — dùng cho phân công kế hoạch. */
+  assignmentUsers: User[];
   allShippingLines: ShippingLine[];
   allRoutes: Route[];
   allCustomers: Customer[];
@@ -35,6 +37,7 @@ interface AdminData {
 const AdminDataContext = createContext<AdminData>({
   user: null,
   allUsers: [],
+  assignmentUsers: [],
   allShippingLines: [],
   allRoutes: [],
   allCustomers: [],
@@ -47,6 +50,7 @@ export const useAdminData = () => useContext(AdminDataContext);
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [assignmentUsers, setAssignmentUsers] = useState<User[]>([]);
   const [allShippingLines, setAllShippingLines] = useState<ShippingLine[]>([]);
   const [allRoutes, setAllRoutes] = useState<Route[]>([]);
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
@@ -57,6 +61,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       const res = await usersApi.getAll();
       setAllUsers(Array.isArray(res.data) ? res.data : (res.data as any).data || []);
     } catch {}
+  };
+  const loadAssignmentUsers = async () => {
+    try {
+      const res = await usersApi.getAllForAssignment();
+      setAssignmentUsers(Array.isArray(res.data) ? res.data : (res.data as any).data || []);
+    } catch {
+      // Nếu không được phép (vd role khác) → fallback dùng danh sách thường
+      setAssignmentUsers([]);
+    }
   };
   const loadShippingLines = async () => {
     try {
@@ -79,15 +92,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const reload = () => {
     loadUsers();
+    loadAssignmentUsers();
     loadShippingLines();
     loadRoutes();
     loadCustomers();
   };
 
   useEffect(() => {
-    Promise.all([loadUsers(), loadShippingLines(), loadRoutes(), loadCustomers()]).finally(() =>
-      setLoading(false),
-    );
+    Promise.all([
+      loadUsers(),
+      loadAssignmentUsers(),
+      loadShippingLines(),
+      loadRoutes(),
+      loadCustomers(),
+    ]).finally(() => setLoading(false));
   }, []);
 
   if (authLoading) return <LoadingSpinner className="min-h-[60vh]" />;
@@ -98,7 +116,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <AdminDataContext.Provider
-      value={{ user, allUsers, allShippingLines, allRoutes, allCustomers, loading, reload }}
+      value={{ user, allUsers, assignmentUsers, allShippingLines, allRoutes, allCustomers, loading, reload }}
     >
       <div className="flex gap-5 items-start">
         <AdminSidebar user={user} />

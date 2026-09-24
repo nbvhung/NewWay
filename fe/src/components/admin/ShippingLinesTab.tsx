@@ -15,13 +15,17 @@ interface Props {
   allShippingLines: ShippingLine[];
   allRoutes: Route[];
   allUsers: User[];
+  /** Danh sách lái xe đầy đủ để phân công kế hoạch (không giới hạn visibleDriverIds). */
+  assignmentUsers?: User[];
   allCustomers?: Customer[];
   onRefresh: () => void;
   toast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, allCustomers, onRefresh, toast }: Props) {
-  const drivers = allUsers.filter(u => u.role === 'laixe').sort((a, b) => {
+export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, assignmentUsers, allCustomers, onRefresh, toast }: Props) {
+  // Ưu tiên danh sách đầy đủ (phân công kế hoạch); fallback về allUsers nếu không có.
+  const driverPool = assignmentUsers && assignmentUsers.length > 0 ? assignmentUsers : allUsers;
+  const drivers = driverPool.filter(u => u.role === 'laixe').sort((a, b) => {
     const aStt = a.stt ? parseInt(String(a.stt), 10) : 999999;
     const bStt = b.stt ? parseInt(String(b.stt), 10) : 999999;
     return aStt - bStt;

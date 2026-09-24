@@ -14,8 +14,10 @@ export class UsersController {
 
   @Get()
   @Permissions('user.view')
-  findAll(@CurrentUser() user: any) {
-    return this.usersService.findAll(user);
+  findAll(@CurrentUser() user: any, @Query('forAssignment') forAssignment?: string) {
+    return this.usersService.findAll(user, {
+      forAssignment: forAssignment === 'true' || forAssignment === '1',
+    });
   }
 
   @Post()

@@ -5,6 +5,13 @@ export const usersApi = {
   getAll: () =>
     api.get<User[]>('/admin/users'),
 
+  /**
+   * Danh sách đầy đủ để phân công kế hoạch (bỏ qua giới hạn visibleDriverIds).
+   * Form tạo/sửa kế hoạch dùng API này để hiện đủ mọi lái xe cho admin chọn.
+   */
+  getAllForAssignment: () =>
+    api.get<User[]>('/admin/users', { params: { forAssignment: 'true' } }),
+
   create: (data: Record<string, unknown>) =>
     api.post<User>('/admin/users', data),
 
