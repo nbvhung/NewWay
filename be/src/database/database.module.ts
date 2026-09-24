@@ -1,4 +1,4 @@
-﻿import { Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { ShippingLine } from './entities/shipping-line.entity';
@@ -23,6 +23,7 @@ import { PaymentDossier } from './entities/payment-dossier.entity';
 import { CustomerPrice } from './entities/customer-price.entity';
 import { CustomerSurcharge } from './entities/customer-surcharge.entity';
 import { CustomerAuditLog } from './entities/customer-audit-log.entity';
+import { FinanceEntry } from './entities/finance-entry.entity';
 import { SeedService } from './seed.service';
 
 @Module({
@@ -59,6 +60,7 @@ import { SeedService } from './seed.service';
               CustomerPrice,
               CustomerSurcharge,
               CustomerAuditLog,
+              FinanceEntry,
             ],
             synchronize: !isProd,
             logging: false,
@@ -96,6 +98,7 @@ import { SeedService } from './seed.service';
             CustomerPrice,
             CustomerSurcharge,
             CustomerAuditLog,
+            FinanceEntry,
           ],
           synchronize: !isProd,
           logging: false,
@@ -130,6 +133,7 @@ import { SeedService } from './seed.service';
       CustomerPrice,
       CustomerSurcharge,
       CustomerAuditLog,
+      FinanceEntry,
     ]),
   ],
   providers: [SeedService],

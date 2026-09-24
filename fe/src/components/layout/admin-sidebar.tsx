@@ -21,7 +21,10 @@ const GROUPS: NavGroup[] = [
   {
     label: 'Tổng Quan',
     icon: '📊',
-    items: () => [{ href: '/admin/overview', label: 'Tổng Quan', icon: '📊', perm: 'dashboard.view' }],
+    items: () => [
+      { href: '/admin/overview', label: 'Tổng Quan', icon: '📊', perm: 'dashboard.view' },
+      { href: '/admin/finance',  label: 'Tài Chính',  icon: '💰', perm: 'dashboard.view' },
+    ],
   },
   {
     label: 'Vận hành',

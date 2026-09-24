@@ -10,6 +10,7 @@ import { CustomerSurcharge } from '../database/entities/customer-surcharge.entit
 import { SalaryRecord } from '../database/entities/salary-record.entity';
 import { User } from '../database/entities/user.entity';
 import { Route } from '../database/entities/route.entity';
+import { FinanceEntry } from '../database/entities/finance-entry.entity';
 import { resolveVisibleDriverIds } from '../common/permissions/permissions';
 
 // ─── Helpers ────────────────────────────────────────────────────
@@ -107,6 +108,7 @@ export class DashboardService {
     @InjectRepository(SalaryRecord) private salaryRepo: Repository<SalaryRecord>,
     @InjectRepository(User)         private userRepo: Repository<User>,
     @InjectRepository(Route)        private routeRepo: Repository<Route>,
+    @InjectRepository(FinanceEntry) private financeRepo: Repository<FinanceEntry>,
   ) {}
 
   async getOverview(month: number, year: number, user?: any): Promise<DashboardOverview> {
@@ -399,6 +401,16 @@ export class DashboardService {
       .map(([day, d]) => ({ day, revenue: Math.round(d.revenue), planCount: d.planCount }))
       .sort((a, b) => a.day - b.day);
 
+    // ─── Finance entries (chi phí + vốn đầu tư) ─────────────────
+    const finance = await this.financeRepo.findOne({ where: { month, year } });
+    const suaChua   = Number(finance?.suaChua   ?? 0);
+    const nhienLieu = Number(finance?.nhienLieu ?? 0);
+    const cpKhac    = Number(finance?.cpKhac    ?? 0);
+    const vonXe     = Number(finance?.vonXe     ?? 0);
+    const vonMooc   = Number(finance?.vonMooc   ?? 0);
+    const vonKhac   = Number(finance?.vonKhac   ?? 0);
+    const totalChiPhi = Math.round(totalSubvendor + totalLuongChuyen + suaChua + nhienLieu + cpKhac);
+
     return {
       month,
       year,
@@ -417,7 +429,17 @@ export class DashboardService {
       cost: {
         subvendor:    Math.round(totalSubvendor),
         luongChuyen:  Math.round(totalLuongChuyen),
-        profit:       Math.round(totalRevenue - totalSubvendor - totalLuongChuyen),
+        suaChua:      Math.round(suaChua),
+        nhienLieu:    Math.round(nhienLieu),
+        cpKhac:       Math.round(cpKhac),
+        total:        totalChiPhi,
+        profit:       Math.round(totalRevenue - totalChiPhi),
+      },
+      investment: {
+        vonXe:   Math.round(vonXe),
+        vonMooc: Math.round(vonMooc),
+        vonKhac: Math.round(vonKhac),
+        total:   Math.round(vonXe + vonMooc + vonKhac),
       },
     };
   }

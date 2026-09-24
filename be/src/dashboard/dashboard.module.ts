@@ -11,6 +11,7 @@ import { ContainerImport } from '../database/entities/container-import.entity';
 import { SalaryRecord } from '../database/entities/salary-record.entity';
 import { User } from '../database/entities/user.entity';
 import { Route } from '../database/entities/route.entity';
+import { FinanceEntry } from '../database/entities/finance-entry.entity';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { Route } from '../database/entities/route.entity';
       SalaryRecord,
       User,
       Route,
+      FinanceEntry,
     ]),
   ],
   controllers: [DashboardController],

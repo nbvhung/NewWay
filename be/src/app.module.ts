@@ -16,6 +16,7 @@ import { SettingsModule } from './settings/settings.module';
 import { SalaryModule } from './salary/salary.module';
 import { CustomersModule } from './customers/customers.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { FinanceModule } from './finance/finance.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 @Module({
@@ -36,6 +37,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     SalaryModule,
     CustomersModule,
     DashboardModule,
+    FinanceModule,
   ],
   providers: [
     {
