@@ -310,7 +310,7 @@ export function DashboardTab() {
             style={{ background: C.amber }}>N</div>
           <div>
             <h1 className="text-[18px] font-extrabold leading-none">Tổng quan</h1>
-            <p className="text-[11px] mt-0.5" style={{ color: C.muted }}>{MONTHS_VI[month]}, {year}</p>
+            <p className="text-[11px] mt-0.5" style={{ color: C.muted }}>{MONTHS_VN[month]}, {year}</p>
           </div>
         </div>
         <div className="flex gap-1.5 items-center">
