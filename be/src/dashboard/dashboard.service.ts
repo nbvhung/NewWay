@@ -165,12 +165,16 @@ export class DashboardService {
     //    Khi bị giới hạn xe: CHỈ lấy container đã gán cho xe của họ — container
     //    chưa gán (sub = NULL) không được tính để tránh lộ sản lượng của kế hoạch
     //    mà xe họ không tham gia.
+    //    CHỈ tính submission/container của tài khoản LÁI XE (role='laixe').
+    //    Tài khoản ops nhập thay không phải sản lượng của lái xe → loại khỏi
+    //    thống kê lương/doanh thu để tránh phồng số liệu.
     const containers: ContainerImport[] = planIds.length
       ? await this.ciRepo
           .createQueryBuilder('ci')
           .leftJoinAndSelect('ci.submissionRef', 'sub')
           .leftJoinAndSelect('sub.user', 'u')
           .where('ci.shippingLineId IN (:...ids)', { ids: planIds })
+          .andWhere('u.role = :laixeRole', { laixeRole: 'laixe' })
           .andWhere(
             visible
               ? 'u.id IN (:...visible)'
@@ -180,11 +184,13 @@ export class DashboardService {
           .getMany()
       : [];
 
-    // 3. Submissions trong tháng (để tính luong khoan) — lọc theo xe được phép xem nếu có
+    // 3. Submissions trong tháng (để tính luong khoan) — chỉ của tài khoản lái xe
     const allSubmissions = planIds.length
       ? await this.subRepo
           .createQueryBuilder('sub')
+          .innerJoin('sub.user', 'u')
           .where('sub.shippingLineId IN (:...ids)', { ids: planIds })
+          .andWhere('u.role = :laixeRole', { laixeRole: 'laixe' })
           .andWhere(
             visible
               ? 'sub.userId IN (:...visible)'

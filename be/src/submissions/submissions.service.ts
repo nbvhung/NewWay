@@ -267,7 +267,27 @@ export class SubmissionsService {
       return [sl.name, sl.soChuyen, sl.routeName, ngay].filter(Boolean).join(' / ');
     };
 
-    // Fetch all submissions, then filter by plan date (sl.ngay) instead of createdAt
+    // Fetch all submissions, then filter by plan date (sl.ngay) instead of createdAt.
+    // CHỈ tính submission của tài khoản LÁI XE — tài khoản ops nhập thay không
+    // phải sản lượng lương của lái xe.
+    const owner = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!owner || owner.role !== 'laixe') {
+      return {
+        totalSalary: 0,
+        totalTip: 0,
+        count: 0,
+        month,
+        year,
+        details: [],
+        components: {
+          fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0,
+          allowanceOldCar: 0, parkingHph2: 0, hasParkingHph2: false, ngayCong: 0,
+          daysOffList: [], daysOffNote: null, bhxh: 0, chiHo: 0,
+          deductions: [], allowances: [], fixedSalaryPaid: false, salaryPaid: false,
+        },
+      };
+    }
+
     const submissions = await this.submissionsRepository.find({
       where: { userId },
       order: { createdAt: 'DESC' },
