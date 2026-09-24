@@ -91,7 +91,17 @@ export interface DashboardOverview {
   cost: {
     subvendor: number;
     luongChuyen: number;       // tổng lương khoán/chuyến
+    suaChua: number;
+    nhienLieu: number;
+    cpKhac: number;
+    total: number;
     profit: number;
+  };
+  investment: {
+    vonXe: number;
+    vonMooc: number;
+    vonKhac: number;
+    total: number;
   };
 }
 
