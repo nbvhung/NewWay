@@ -146,19 +146,38 @@ function DriverSheet({ d, totalP, onClose }: { d: DriverRevenue; totalP: number;
         </div>
         {d.routes.length > 0 && (
           <div className="px-5 py-4">
-            <p className="text-[11px] font-semibold mb-3">Tuyến đường</p>
-            <div className="space-y-2.5">
-              {d.routes.slice(0, 10).map((r, i) => (
-                <div key={i}>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-[10px] truncate flex-1 mr-2">{r.routeName || '—'}</span>
-                    <span className="text-[10px] font-semibold flex-shrink-0" style={{ color: C.amber }}>{r.contCount} cont · {fmt(r.revenue)} ₫</span>
+            <p className="text-[12px] font-bold mb-3">Tuyến đường</p>
+            <div className="space-y-3">
+              {d.routes.slice(0, 12).map((r, i) => {
+                const types = Object.entries(r.contByType ?? {}).sort((a, b) => b[1] - a[1]);
+                return (
+                  <div key={i} className="rounded-lg p-3" style={{ background: i === 0 ? C.amberLt : C.surface, border: `1px solid ${i === 0 ? '#fcd34d' : C.faint}` }}>
+                    {/* Route name + total */}
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-[13px] font-semibold leading-snug" style={{ color: i === 0 ? C.amberDk : C.ink }}>{r.routeName || '—'}</span>
+                      <div className="text-right flex-shrink-0 ml-2">
+                        <p className="text-[13px] font-bold" style={{ color: C.amber }}>{fmt(r.revenue)} ₫</p>
+                        <p className="text-[10px]" style={{ color: C.muted }}>{r.contCount} cont</p>
+                      </div>
+                    </div>
+                    {/* Container type badges */}
+                    {types.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {types.map(([t, n]) => (
+                          <span key={t} className="px-2 py-0.5 rounded text-[11px] font-semibold"
+                            style={{ background: '#fff7ed', color: C.amberDk, border: `1px solid #fcd34d` }}>
+                            {t} ×{n}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {/* Progress bar */}
+                    <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: '#e7e5e4' }}>
+                      <div className="h-full rounded-full" style={{ width: `${pc(r.contCount, d.totalCont || 1)}%`, background: i === 0 ? C.amber : '#fcd34d' }} />
+                    </div>
                   </div>
-                  <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: '#f5f5f4' }}>
-                    <div className="h-full rounded-full" style={{ width: `${pc(r.contCount, d.totalCont || 1)}%`, background: i === 0 ? C.amber : '#fcd34d' }} />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

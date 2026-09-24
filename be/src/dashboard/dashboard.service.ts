@@ -55,7 +55,7 @@ export interface DriverRevenue {
   planCount: number;
   totalPlanCount: number;
   totalCont: number;    // tổng sản lượng (container đã ghi nhận) của lái xe trong tháng
-  routes: { routeName: string; revenue: number; planCount: number; contCount: number }[];
+  routes: { routeName: string; revenue: number; planCount: number; contCount: number; contByType: Record<string, number> }[];
 }
 
 export interface CustomerRevenue {
@@ -259,7 +259,7 @@ export class DashboardService {
 
     // ─── Accumulation maps ───────────────────────────────────────
     const customerRevenueMap = new Map<number, { name: string; revenue: number; planCount: number; totalCont: number; contByType: Record<string, number> }>();
-    const driverRevenueMap   = new Map<number, { revenue: number; luongKhoan: number; planCount: number; totalCont: number; routes: Map<string, { revenue: number; planCount: number; contCount: number }> }>();
+    const driverRevenueMap   = new Map<number, { revenue: number; luongKhoan: number; planCount: number; totalCont: number; routes: Map<string, { revenue: number; planCount: number; contCount: number; contByType: Record<string, number> }> }>();
     const dailyRevenueMap    = new Map<number, { revenue: number; planCount: number }>(); // day → revenue
 
     let totalRevenue   = 0;
@@ -342,10 +342,14 @@ export class DashboardService {
         const driverConts = conts.filter(ci => ci.submissionRef?.userId === dId);
         entry.totalCont += driverConts.length;
 
-        const routeEntry = entry.routes.get(plan.routeName) ?? { revenue: 0, planCount: 0, contCount: 0 };
+        const routeEntry = entry.routes.get(plan.routeName) ?? { revenue: 0, planCount: 0, contCount: 0, contByType: {} };
         routeEntry.revenue    += perDriverRevenue;
         routeEntry.planCount  += 1;
         routeEntry.contCount  += driverConts.length;
+        // Ghi nhận loại cont của lái xe này trong tuyến đường này
+        for (const ci of driverConts) {
+          routeEntry.contByType[ci.type] = (routeEntry.contByType[ci.type] ?? 0) + 1;
+        }
         entry.routes.set(plan.routeName, routeEntry);
         driverRevenueMap.set(dId, entry);
       }
@@ -387,7 +391,7 @@ export class DashboardService {
         totalPlanCount: plans.length,
         totalCont:  entry.totalCont,
         routes: Array.from(entry.routes.entries())
-          .map(([routeName, r]) => ({ routeName, revenue: Math.round(r.revenue), planCount: r.planCount, contCount: r.contCount }))
+          .map(([routeName, r]) => ({ routeName, revenue: Math.round(r.revenue), planCount: r.planCount, contCount: r.contCount, contByType: r.contByType }))
           .sort((a, b) => b.revenue - a.revenue),
       });
     }

@@ -31,7 +31,7 @@ export interface DriverRevenue {
   planCount: number;
   totalPlanCount: number;
   totalCont: number;     // tổng sản lượng (container) của lái xe trong tháng
-  routes: { routeName: string; revenue: number; planCount: number; contCount: number }[];
+  routes: { routeName: string; revenue: number; planCount: number; contCount: number; contByType: Record<string, number> }[];
 }
 
 export interface CustomerRevenue {
