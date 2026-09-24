@@ -24,6 +24,7 @@ import { CustomerPrice } from './entities/customer-price.entity';
 import { CustomerSurcharge } from './entities/customer-surcharge.entity';
 import { CustomerAuditLog } from './entities/customer-audit-log.entity';
 import { FinanceEntry } from './entities/finance-entry.entity';
+import { FinanceAuditLog } from './entities/finance-audit-log.entity';
 import { SeedService } from './seed.service';
 
 @Module({
@@ -61,6 +62,7 @@ import { SeedService } from './seed.service';
               CustomerSurcharge,
               CustomerAuditLog,
               FinanceEntry,
+              FinanceAuditLog,
             ],
             synchronize: !isProd,
             logging: false,
@@ -99,6 +101,7 @@ import { SeedService } from './seed.service';
             CustomerSurcharge,
             CustomerAuditLog,
             FinanceEntry,
+      FinanceAuditLog,
           ],
           synchronize: !isProd,
           logging: false,
@@ -134,6 +137,7 @@ import { SeedService } from './seed.service';
       CustomerSurcharge,
       CustomerAuditLog,
       FinanceEntry,
+      FinanceAuditLog,
     ]),
   ],
   providers: [SeedService],

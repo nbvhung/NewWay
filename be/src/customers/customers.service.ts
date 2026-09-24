@@ -17,6 +17,7 @@ import { UpdateCustomerPriceDto } from './dto/update-customer-price.dto';
 import { CreateCustomerPriceBatchDto } from './dto/create-customer-price-batch.dto';
 import { CreateCustomerSurchargeDto } from './dto/create-customer-surcharge.dto';
 import { UpdateCustomerSurchargeDto } from './dto/update-customer-surcharge.dto';
+import { resolveVisibleDriverIds } from '../common/permissions/permissions';
 
 const TYPE_FIELD_MAP: Record<string, string> = {
   H20: 'H20',
@@ -50,8 +51,66 @@ export class CustomersService {
     private auditLogsRepository: Repository<CustomerAuditLog>,
   ) {}
 
-  async findAll(): Promise<Customer[]> {
-    return this.customersRepository.find({ order: { name: 'ASC' } });
+  /**
+   * Danh sách customerId mà tài khoản này được phép xem.
+   *
+   * - Tài khoản không giới hạn xe (admin thường / supper_admin / hr...) → null
+   *   (xem tất cả khách hàng).
+   * - Tài khoản "chủ xe" (có visibleDriverIds) → chỉ những khách hàng có ÍT NHẤT
+   *   1 kế hoạch mà xe của họ thực sự tham gia (có container/submission đã ghi
+   *   nhận, hoặc kế hoạch chỉ định đích danh xe của họ).
+   */
+  private async resolveVisibleCustomerIds(
+    user?: { visibleDriverIds?: number[] | null } | null,
+  ): Promise<number[] | null> {
+    const visible = resolveVisibleDriverIds(user);
+    if (!visible || visible.length === 0) return null;
+    const visibleSet = new Set(visible);
+
+    const plans = await this.shippingLinesRepository.find({
+      select: { id: true, customerId: true, driverIds: true, allDrivers: true },
+    });
+    if (plans.length === 0) return [];
+
+    const planDriverIds = (sl: ShippingLine): number[] => {
+      try {
+        const raw = sl.driverIds ? JSON.parse(sl.driverIds) : [];
+        return Array.isArray(raw) ? raw.map(Number) : [];
+      } catch {
+        return [];
+      }
+    };
+
+    const allowedPlanIds = new Set<number>();
+    for (const sl of plans) {
+      // Kế hoạch "all_drivers" (phân công tất cả) → luôn được xem vì bao gồm
+      // cả xe của tài khoản này. Hoặc kế hoạch chỉ định đích danh xe của họ.
+      if (sl.allDrivers || planDriverIds(sl).some((id) => visibleSet.has(id))) {
+        allowedPlanIds.add(sl.id);
+      }
+    }
+
+    const customerIds = new Set<number>();
+    for (const sl of plans) {
+      if (sl.customerId != null && allowedPlanIds.has(sl.id)) {
+        customerIds.add(Number(sl.customerId));
+      }
+    }
+    return Array.from(customerIds);
+  }
+
+  async findAll(user?: {
+    visibleDriverIds?: number[] | null;
+  } | null): Promise<Customer[]> {
+    const allowedCustomerIds = await this.resolveVisibleCustomerIds(user);
+    if (allowedCustomerIds === null) {
+      return this.customersRepository.find({ order: { name: 'ASC' } });
+    }
+    if (allowedCustomerIds.length === 0) return [];
+    return this.customersRepository.find({
+      where: { id: In(allowedCustomerIds) },
+      order: { name: 'ASC' },
+    });
   }
 
   async create(dto: CreateCustomerDto): Promise<Customer> {
@@ -107,6 +166,7 @@ export class CustomersService {
     customerId: number,
     month: number,
     year: number,
+    user?: { visibleDriverIds?: number[] | null } | null,
   ): Promise<{
     customerId: number;
     month: number;
@@ -116,15 +176,19 @@ export class CustomersService {
     containers: number;
   }> {
     const { fromDate, toDate } = this.monthRange(month, year);
-    const plans = await this.shippingLinesRepository.find({
+    const allowedCustomerIds = await this.resolveVisibleCustomerIds(user);
+    if (allowedCustomerIds !== null && !allowedCustomerIds.includes(customerId)) {
+      return { customerId, month, year, plans: 0, soChuyen: 0, containers: 0 };
+    }
+    let plans = await this.shippingLinesRepository.find({
       where: { customerId, ngay: Between(fromDate, toDate) },
     });
+    // Khi bị giới hạn xe → chỉ đếm kế hoạch có sẵn sản lượng của xe họ.
+    plans = await this.filterPlansByVisibleDrivers(plans, user);
     const planIds = plans.map((p) => p.id);
     let containers = 0;
     if (planIds.length > 0) {
-      containers = await this.containerImportsRepository.count({
-        where: { shippingLineId: In(planIds) },
-      });
+      containers = await this.countVisibleContainers(planIds, user);
     }
     return {
       customerId,
@@ -136,24 +200,85 @@ export class CustomersService {
     };
   }
 
+  /**
+   * Lọc danh sách kế hoạch: chỉ bỏ kế hoạch chỉ định đích danh người khác.
+   * Kế hoạch "all_drivers" (phân công cho tất cả) LUÔN được giữ vì bao gồm cả
+   * xe của tài khoản này.
+   */
+  private async filterPlansByVisibleDrivers(
+    plans: ShippingLine[],
+    user?: { visibleDriverIds?: number[] | null } | null,
+  ): Promise<ShippingLine[]> {
+    const visible = resolveVisibleDriverIds(user);
+    if (!visible || visible.length === 0) return plans;
+    const visibleSet = new Set(visible);
+    const planDriverIds = (sl: ShippingLine): number[] => {
+      try {
+        const raw = sl.driverIds ? JSON.parse(sl.driverIds) : [];
+        return Array.isArray(raw) ? raw.map(Number) : [];
+      } catch {
+        return [];
+      }
+    };
+    return plans.filter(
+      (sl) => sl.allDrivers || planDriverIds(sl).some((id) => visibleSet.has(id)),
+    );
+  }
+
+  /** Đếm container, chỉ tính container thuộc xe được phép xem (nếu bị giới hạn). */
+  private async countVisibleContainers(
+    planIds: number[],
+    user?: { visibleDriverIds?: number[] | null } | null,
+  ): Promise<number> {
+    const visible = resolveVisibleDriverIds(user);
+    if (!visible || visible.length === 0) {
+      return this.containerImportsRepository.count({
+        where: { shippingLineId: In(planIds) },
+      });
+    }
+    const rows = await this.containerImportsRepository
+      .createQueryBuilder('ci')
+      .leftJoin('ci.submissionRef', 'sub')
+      .select('COUNT(*)::int', 'cnt')
+      .where('ci.shipping_line_id IN (:...ids)', { ids: planIds })
+      .andWhere('sub.user_id IN (:...visible)', { visible })
+      .getRawOne();
+    return Number(rows?.cnt) || 0;
+  }
+
   /** Danh sách kế hoạch của khách hàng (lọc theo hoàn thành nếu có). */
-  async getPlans(customerId: number, completed?: boolean): Promise<any[]> {
+  async getPlans(
+    customerId: number,
+    completed?: boolean,
+    user?: { visibleDriverIds?: number[] | null } | null,
+  ): Promise<any[]> {
+    const allowedCustomerIds = await this.resolveVisibleCustomerIds(user);
+    if (allowedCustomerIds !== null && !allowedCustomerIds.includes(customerId)) {
+      return [];
+    }
     const where: any = { customerId };
     if (completed !== undefined) where.completed = completed;
-    const plans = await this.shippingLinesRepository.find({
+    let plans = await this.shippingLinesRepository.find({
       where,
       order: { ngay: 'DESC' },
     });
+    plans = await this.filterPlansByVisibleDrivers(plans, user);
     const planIds = plans.map((p) => p.id);
     const counts = new Map<number, number>();
     if (planIds.length > 0) {
-      const rows = await this.containerImportsRepository
+      const visible = resolveVisibleDriverIds(user);
+      const qb = this.containerImportsRepository
         .createQueryBuilder('ci')
         .select('ci.shipping_line_id', 'planId')
         .addSelect('COUNT(*)::int', 'cnt')
-        .where('ci.shipping_line_id IN (:...ids)', { ids: planIds })
-        .groupBy('ci.shipping_line_id')
-        .getRawMany();
+        .where('ci.shipping_line_id IN (:...ids)', { ids: planIds });
+      if (visible && visible.length > 0) {
+        qb.leftJoin('ci.submissionRef', 'sub').andWhere(
+          'sub.user_id IN (:...visible)',
+          { visible },
+        );
+      }
+      const rows = await qb.groupBy('ci.shipping_line_id').getRawMany();
       for (const r of rows) counts.set(Number(r.planId), Number(r.cnt));
     }
     return plans.map((p) => ({
@@ -168,21 +293,30 @@ export class CustomersService {
   }
 
   /** Tất cả kế hoạch đã hoàn thành (kèm customerId hiện tại) để chọn gán. */
-  async getAllCompletedPlans(): Promise<any[]> {
-    const plans = await this.shippingLinesRepository.find({
+  async getAllCompletedPlans(user?: {
+    visibleDriverIds?: number[] | null;
+  } | null): Promise<any[]> {
+    let plans = await this.shippingLinesRepository.find({
       where: { completed: true },
       order: { ngay: 'DESC' },
     });
+    plans = await this.filterPlansByVisibleDrivers(plans, user);
     const planIds = plans.map((p) => p.id);
     const counts = new Map<number, number>();
     if (planIds.length > 0) {
-      const rows = await this.containerImportsRepository
+      const visible = resolveVisibleDriverIds(user);
+      const qb = this.containerImportsRepository
         .createQueryBuilder('ci')
         .select('ci.shipping_line_id', 'planId')
         .addSelect('COUNT(*)::int', 'cnt')
-        .where('ci.shipping_line_id IN (:...ids)', { ids: planIds })
-        .groupBy('ci.shipping_line_id')
-        .getRawMany();
+        .where('ci.shipping_line_id IN (:...ids)', { ids: planIds });
+      if (visible && visible.length > 0) {
+        qb.leftJoin('ci.submissionRef', 'sub').andWhere(
+          'sub.user_id IN (:...visible)',
+          { visible },
+        );
+      }
+      const rows = await qb.groupBy('ci.shipping_line_id').getRawMany();
       for (const r of rows) counts.set(Number(r.planId), Number(r.cnt));
     }
     return plans.map((p) => ({

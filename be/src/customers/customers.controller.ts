@@ -36,8 +36,8 @@ export class CustomersController {
   constructor(private customersService: CustomersService) {}
 
   @Get()
-  findAll() {
-    return this.customersService.findAll();
+  findAll(@CurrentUser() user: any) {
+    return this.customersService.findAll(user);
   }
 
   @Post()
@@ -61,6 +61,7 @@ export class CustomersController {
   @Get(':id/stats')
   getStats(
     @Param('id') id: string,
+    @CurrentUser() user: any,
     @Query('month') month?: string,
     @Query('year') year?: string,
   ) {
@@ -69,20 +70,26 @@ export class CustomersController {
       +id,
       month ? +month : now.getMonth() + 1,
       year ? +year : now.getFullYear(),
+      user,
     );
   }
 
   // ─── Kế hoạch của khách hàng ───────────────────────────────────
   @Get('all-completed-plans')
-  getAllCompletedPlans() {
-    return this.customersService.getAllCompletedPlans();
+  getAllCompletedPlans(@CurrentUser() user: any) {
+    return this.customersService.getAllCompletedPlans(user);
   }
 
   @Get(':id/plans')
-  getPlans(@Param('id') id: string, @Query('completed') completed?: string) {
+  getPlans(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Query('completed') completed?: string,
+  ) {
     return this.customersService.getPlans(
       +id,
       completed === undefined ? undefined : completed === 'true',
+      user,
     );
   }
 

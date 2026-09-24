@@ -127,8 +127,12 @@ export class DashboardService {
     const lastDay  = new Date(year, month, 0).getDate();
     const toDate   = `${year}-${pad(month)}-${pad(lastDay)}`;
 
+    // 0. Danh sách xe (lái xe) mà tài khoản này được phép xem.
+    //    null = xem tất cả (admin/supper_admin hoặc tài khoản không giới hạn xe).
+    const visible = resolveVisibleDriverIds(user);
+
     // 1. Kế hoạch trong tháng
-    const plans = await this.slRepo
+    let plans = await this.slRepo
       .createQueryBuilder('sl')
       .leftJoinAndSelect('sl.customer', 'customer')
       .leftJoinAndSelect('sl.route', 'route')
@@ -136,10 +140,31 @@ export class DashboardService {
       .orderBy('sl.ngay', 'ASC')
       .getMany();
 
+    // 1b. Nếu tài khoản bị giới hạn xe (admin làm chủ xe) → chỉ giữ lại các kế hoạch
+    //     mà CÓ xe của họ tham gia (driverIds chứa ≥1 id visible). Kế hoạch
+    //     "allDrivers" (áp dụng mọi xe) vẫn được giữ vì xe của họ có thể tham gia;
+    //     phần doanh thu/sản lượng bên dưới đã được lọc theo đúng xe của họ.
+    if (visible && visible.length > 0) {
+      const planDriverIds = (sl: ShippingLine): number[] => {
+        try {
+          const raw = sl.driverIds ? JSON.parse(sl.driverIds) : [];
+          return Array.isArray(raw) ? raw.map(Number) : [];
+        } catch {
+          return [];
+        }
+      };
+      const visibleSet = new Set(visible);
+      plans = plans.filter(
+        (sl) => sl.allDrivers || planDriverIds(sl).some((id) => visibleSet.has(id)),
+      );
+    }
+
     const planIds = plans.map(p => p.id);
 
-    // 2. Containers của các kế hoạch (lọc theo xe được phép xem nếu có)
-    const visible = resolveVisibleDriverIds(user);
+    // 2. Containers của các kế hoạch (lọc theo xe được phép xem nếu có).
+    //    Khi bị giới hạn xe: CHỈ lấy container đã gán cho xe của họ — container
+    //    chưa gán (sub = NULL) không được tính để tránh lộ sản lượng của kế hoạch
+    //    mà xe họ không tham gia.
     const containers: ContainerImport[] = planIds.length
       ? await this.ciRepo
           .createQueryBuilder('ci')
@@ -148,7 +173,7 @@ export class DashboardService {
           .where('ci.shippingLineId IN (:...ids)', { ids: planIds })
           .andWhere(
             visible
-              ? '(sub.id IS NULL OR u.id IN (:...visible))'
+              ? 'u.id IN (:...visible)'
               : '1=1',
             visible ? { visible } : {},
           )
@@ -274,6 +299,24 @@ export class DashboardService {
       const conts = contsByPlan.get(plan.id) ?? [];
       const subs  = subsByPlan.get(plan.id) ?? [];
 
+      // Kế hoạch "all_drivers" (phân công cho tất cả) LUÔN hiện cho mọi admin
+      // vì bao gồm cả xe của họ. Chỉ loại bỏ kế hoạch chỉ định đích danh người khác
+      // (không chứa xe họ). Số liệu bên dưới đã được lọc theo đúng xe của họ nên
+      // không lộ sản lượng của xe khác.
+      if (visible && visible.length > 0 && !plan.allDrivers) {
+        const planDriverIds = ((): number[] => {
+          try {
+            const raw = plan.driverIds ? JSON.parse(plan.driverIds) : [];
+            return Array.isArray(raw) ? raw.map(Number) : [];
+          } catch {
+            return [];
+          }
+        })();
+        if (!planDriverIds.some((id) => visible.includes(id))) {
+          continue;
+        }
+      }
+
       // Container breakdown
       const contByType: Record<string, number> = {};
       for (const ci of conts) contByType[ci.type] = (contByType[ci.type] ?? 0) + 1;
@@ -388,7 +431,7 @@ export class DashboardService {
         revenue:   Math.round(entry.revenue),
         luongKhoan: Math.round(entry.luongKhoan),
         planCount:  entry.planCount,
-        totalPlanCount: plans.length,
+        totalPlanCount: planSummaries.length,
         totalCont:  entry.totalCont,
         routes: Array.from(entry.routes.entries())
           .map(([routeName, r]) => ({ routeName, revenue: Math.round(r.revenue), planCount: r.planCount, contCount: r.contCount, contByType: r.contByType }))
@@ -432,9 +475,9 @@ export class DashboardService {
       month,
       year,
       plans: {
-        total:      plans.length,
-        completed:  plans.filter(p => p.completed).length,
-        incomplete: plans.filter(p => !p.completed).length,
+        total:      planSummaries.length,
+        completed:  planSummaries.filter(p => p.completed).length,
+        incomplete: planSummaries.filter(p => !p.completed).length,
         list: planSummaries,
       },
       revenue: {

@@ -158,6 +158,36 @@ UNIQUE(shippingLineId, name)
 | `admin` | Như tonghop + CRUD user (trừ supper_admin), CRUD shipping-lines & routes, export Excel có cột Lương |
 | `supper_admin` | Toàn quyền (bao gồm CRUD admin & supper_admin), export Excel có cột Lương |
 
+### Owner-scoped data (giới hạn theo xe làm chủ)
+
+Một tài khoản admin có thể được gán `users.visible_driver_ids` (mảng id lái xe) — nghĩa là
+họ là **chủ xe** của các xe đó. Khi đó, họ **chỉ xem được dữ liệu liên quan tới xe của mình**:
+
+- `resolveVisibleDriverIds(user)` trả về `null` (= xem tất cả) khi không có giới hạn, hoặc mảng id khi bị giới hạn.
+- **Kế hoạch `all_drivers = true` (phân công cho tất cả) LUÔN hiện cho mọi admin**, vì nó bao
+  gồm cả xe của họ — không phụ thuộc việc đã có sản lượng hay chưa.
+- **Dashboard doanh thu** (`DashboardService.getOverview`): giữ kế hoạch `all_drivers` hoặc kế
+  hoạch có `driver_ids` chứa xe họ; **số liệu** (container, doanh thu, khách hàng, biểu đồ ngày)
+  chỉ tính phần của đúng xe họ. Container **chưa gán xe** (submission_id = NULL) KHÔNG được tính
+  cho tài khoản bị giới hạn.
+- **Khách hàng** (`CustomersService`): `findAll`, `getStats`, `getPlans`, `getAllCompletedPlans`
+  trả về khách hàng có ≥1 kế hoạch `all_drivers` hoặc có xe của họ tham gia.
+- Tài khoản KHÔNG bị giới hạn (admin thường / supper_admin / hr...) vẫn xem tất cả như trước.
+
+### Tài chính (Finance) — quyền hạn & bảo mật
+
+Bảng `finance_entries` (unique month+year+userId) lưu chi phí + vốn đầu tư theo tháng cho từng admin.
+
+- **Chi phí** (`sua_chua`, `nhien_lieu`, `cp_khac`): xem/sửa cần **mật khẩu** `vhun9`, kiểm tra ở backend
+  qua header `x-cost-password` (hoặc query `pw`). Nếu không có mật khẩu, API trả về 0 cho các trường chi phí.
+  Endpoint: `GET/PUT /api/admin/finance`, `GET /api/admin/finance/history`, `POST /api/admin/finance/verify-password`.
+- **Lịch sử chỉnh sửa chi phí**: bảng `finance_audit_logs` ghi mỗi lần đổi chi phí (ai, khi nào, old→new).
+  Xem qua `GET /api/admin/finance/history` (yêu cầu mật khẩu).
+- **Vốn đầu tư** (`von_xe`, `von_mooc`, `von_khac`): **chỉ `supper_admin` được ghi**. Admin khác chỉ đọc.
+- **Ô lọc admin**: `GET /api/admin/finance/admins` (chỉ supper_admin) → cho phép supper_admin nhập/xem vốn
+  thay cho admin khác qua param `targetUserId`.
+- `DashboardService.getOverview` vẫn đọc finance trực tiếp theo userId (không cần mật khẩu) cho phần tổng quan.
+
 ### Auth Flow
 
 1. **Login**: `POST /api/auth/login` → validate username + password (bcrypt.compare)
