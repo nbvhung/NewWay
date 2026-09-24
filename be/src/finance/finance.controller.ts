@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Body, Query, UseGuards, Req } from '@nestjs/common';
 import { FinanceService } from './finance.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
@@ -14,11 +14,13 @@ export class FinanceController {
   get(
     @Query('month') month: string,
     @Query('year') year: string,
+    @Req() req: any,
   ) {
     const now = new Date();
     const m = month ? parseInt(month) : now.getMonth() + 1;
     const y = year  ? parseInt(year)  : now.getFullYear();
-    return this.financeService.getOrCreate(m, y);
+    const userId: number = req.user?.sub ?? req.user?.id;
+    return this.financeService.getOrCreate(m, y, userId);
   }
 
   @Put()
@@ -26,6 +28,7 @@ export class FinanceController {
   upsert(
     @Query('month') month: string,
     @Query('year')  year: string,
+    @Req() req: any,
     @Body() body: {
       suaChua?: number; nhienLieu?: number; cpKhac?: number;
       vonXe?: number;  vonMooc?: number;   vonKhac?: number;
@@ -35,6 +38,7 @@ export class FinanceController {
     const now = new Date();
     const m = month ? parseInt(month) : now.getMonth() + 1;
     const y = year  ? parseInt(year)  : now.getFullYear();
-    return this.financeService.upsert(m, y, body);
+    const userId: number = req.user?.sub ?? req.user?.id;
+    return this.financeService.upsert(m, y, userId, body);
   }
 }

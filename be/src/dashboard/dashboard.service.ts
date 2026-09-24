@@ -415,8 +415,11 @@ export class DashboardService {
       .map(([day, d]) => ({ day, revenue: Math.round(d.revenue), planCount: d.planCount }))
       .sort((a, b) => a.day - b.day);
 
-    // ─── Finance entries (chi phí + vốn đầu tư) ─────────────────
-    const finance = await this.financeRepo.findOne({ where: { month, year } });
+    // ─── Finance entries (chi phí + vốn đầu tư) — mỗi admin xem của mình ─
+    const userId = user?.sub ?? user?.id ?? null;
+    const financeWhere: any = { month, year };
+    if (userId) financeWhere.userId = userId;
+    const finance = await this.financeRepo.findOne({ where: financeWhere });
     const suaChua   = Number(finance?.suaChua   ?? 0);
     const nhienLieu = Number(finance?.nhienLieu ?? 0);
     const cpKhac    = Number(finance?.cpKhac    ?? 0);
