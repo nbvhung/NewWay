@@ -2,11 +2,14 @@ import {
   Injectable,
   ForbiddenException,
   UnauthorizedException,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { FinanceEntry } from '../database/entities/finance-entry.entity';
 import { FinanceAuditLog } from '../database/entities/finance-audit-log.entity';
+import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
 import { User } from '../database/entities/user.entity';
 
 export interface UpsertFinanceDto {
@@ -21,11 +24,22 @@ export interface UpsertFinanceDto {
   targetUserId?: number;
 }
 
+export interface CostItemDto {
+  category: string;
+  itemDate?: string | null;
+  name?: string;
+  amount?: number;
+  note?: string | null;
+  /** Chỉ supper_admin dùng: thêm chi phí cho admin này */
+  targetUserId?: number;
+}
+
 /** Mật khẩu để xem phần chi phí (kiểm tra phía backend). */
-const COST_VIEW_PASSWORD = 'vhun9';
+const COST_VIEW_PASSWORD = '348';
 
 const COST_FIELDS = ['suaChua', 'nhienLieu', 'cpKhac'] as const;
 const INVEST_FIELDS = ['vonXe', 'vonMooc', 'vonKhac'] as const;
+const COST_CATEGORIES = ['suaChua', 'nhienLieu', 'cpKhac'] as const;
 
 const FIELD_LABELS: Record<string, string> = {
   suaChua: 'Sửa chữa',
@@ -44,6 +58,8 @@ export class FinanceService {
     private repo: Repository<FinanceEntry>,
     @InjectRepository(FinanceAuditLog)
     private auditRepo: Repository<FinanceAuditLog>,
+    @InjectRepository(FinanceCostItem)
+    private costRepo: Repository<FinanceCostItem>,
     @InjectRepository(User)
     private usersRepo: Repository<User>,
   ) {}
@@ -96,20 +112,51 @@ export class FinanceService {
   /**
    * Xem finance của tháng. `includeCost=false` sẽ ẩn các khoản chi phí
    * (dùng khi chưa xác thực mật khẩu).
+   *
+   * Trả về thêm:
+   *  - `costItems`: { suaChua: [...], nhienLieu: [...], cpKhac: [...] }
+   *  - `costTotals`: { suaChua, nhienLieu, cpKhac } = số cũ (cột legacy) + Σ chi tiết
    */
   async getOrCreate(
     month: number,
     year: number,
     actor: any,
     opts: { targetUserId?: number; includeCost?: boolean } = {},
-  ): Promise<Partial<FinanceEntry>> {
+  ): Promise<any> {
     const userId = await this.resolveUserId(actor, opts.targetUserId);
     let entry = await this.repo.findOne({ where: { month, year, userId } });
     if (!entry) {
       entry = this.repo.create({ month, year, userId });
       await this.repo.save(entry);
     }
-    return this.stripCostIfNeeded(entry, opts.includeCost !== false);
+    const includeCost = opts.includeCost !== false;
+    const items = includeCost
+      ? await this.costRepo.find({
+          where: { month, year, userId },
+          order: { itemDate: 'DESC', id: 'DESC' },
+        })
+      : [];
+
+    const grouped: Record<string, FinanceCostItem[]> = {
+      suaChua: [], nhienLieu: [], cpKhac: [],
+    };
+    for (const it of items) {
+      if (grouped[it.category]) grouped[it.category].push(it);
+    }
+
+    const base = includeCost ? entry : this.stripCostIfNeeded(entry, false);
+    const sumItems = (cat: string) =>
+      grouped[cat].reduce((s, i) => s + (Number(i.amount) || 0), 0);
+
+    return {
+      ...base,
+      costItems: grouped,
+      costTotals: {
+        suaChua: (Number(entry.suaChua) || 0) + sumItems('suaChua'),
+        nhienLieu: (Number(entry.nhienLieu) || 0) + sumItems('nhienLieu'),
+        cpKhac: (Number(entry.cpKhac) || 0) + sumItems('cpKhac'),
+      },
+    };
   }
 
   /** Ẩn chi phí nếu chưa xác thực mật khẩu. */
@@ -130,6 +177,149 @@ export class FinanceService {
       createdAt: entry.createdAt,
       updatedAt: entry.updatedAt,
     };
+  }
+
+  // ── Chi tiết chi phí (mỗi dòng = 1 khoản phát sinh) ────────────
+
+  private assertCategory(category: string): void {
+    if (!COST_CATEGORIES.includes(category as any)) {
+      throw new BadRequestException('Nhóm chi phí không hợp lệ');
+    }
+  }
+
+  /** Danh sách chi tiết chi phí theo tháng (yêu cầu đã xác thực mật khẩu ở controller). */
+  async listCostItems(
+    month: number,
+    year: number,
+    actor: any,
+    targetUserId?: number,
+  ): Promise<FinanceCostItem[]> {
+    const userId = await this.resolveUserId(actor, targetUserId);
+    return this.costRepo.find({
+      where: { month, year, userId },
+      order: { itemDate: 'DESC', id: 'DESC' },
+    });
+  }
+
+  /** Thêm 1 khoản chi phí chi tiết. */
+  async addCostItem(
+    month: number,
+    year: number,
+    actor: any,
+    dto: CostItemDto,
+    editorName: string,
+  ): Promise<FinanceCostItem> {
+    this.assertCategory(dto.category);
+    const selfId: number = actor?.sub ?? actor?.id;
+    const userId = await this.resolveUserId(actor, dto.targetUserId);
+
+    // Đảm bảo finance entry tồn tại
+    let entry = await this.repo.findOne({ where: { month, year, userId } });
+    if (!entry) {
+      entry = this.repo.create({ month, year, userId });
+      await this.repo.save(entry);
+    }
+
+    const item = this.costRepo.create({
+      month,
+      year,
+      userId,
+      category: dto.category,
+      itemDate: dto.itemDate || null,
+      name: (dto.name || '').trim(),
+      amount: Number(dto.amount) || 0,
+      note: dto.note ?? null,
+      createdById: selfId ?? null,
+      createdByName: editorName || '',
+    });
+    const saved = await this.costRepo.save(item);
+
+    // Ghi audit: thay đổi tổng của nhóm = +amount
+    await this.writeCostAudit(month, year, userId, selfId, editorName, {
+      [dto.category]: {
+        old: 0,
+        new: Number(saved.amount) || 0,
+        action: 'ADD',
+        itemName: saved.name,
+      },
+    });
+
+    return saved;
+  }
+
+  /** Sửa 1 khoản chi phí chi tiết. */
+  async updateCostItem(
+    id: number,
+    actor: any,
+    dto: CostItemDto,
+    editorName: string,
+  ): Promise<FinanceCostItem> {
+    const item = await this.costRepo.findOne({ where: { id } });
+    if (!item) throw new NotFoundException('Không tìm thấy khoản chi phí');
+    // Chỉ supper_admin được sửa dữ liệu của admin khác
+    const selfId: number = actor?.sub ?? actor?.id;
+    if (item.userId !== selfId && !this.isSuperAdmin(actor)) {
+      throw new ForbiddenException('Bạn không có quyền sửa khoản chi phí này');
+    }
+
+    const oldAmount = Number(item.amount) || 0;
+    if (dto.itemDate !== undefined) item.itemDate = dto.itemDate || null;
+    if (dto.name !== undefined) item.name = (dto.name || '').trim();
+    if (dto.amount !== undefined) item.amount = Number(dto.amount) || 0;
+    if (dto.note !== undefined) item.note = dto.note ?? null;
+
+    const saved = await this.costRepo.save(item);
+
+    if (Number(saved.amount) !== oldAmount) {
+      await this.writeCostAudit(item.month, item.year, item.userId, selfId, editorName, {
+        [item.category]: {
+          old: oldAmount,
+          new: Number(saved.amount) || 0,
+          action: 'UPDATE',
+          itemName: saved.name,
+        },
+      });
+    }
+    return saved;
+  }
+
+  /** Xóa 1 khoản chi phí chi tiết. */
+  async deleteCostItem(id: number, actor: any, editorName: string): Promise<{ message: string }> {
+    const item = await this.costRepo.findOne({ where: { id } });
+    if (!item) throw new NotFoundException('Không tìm thấy khoản chi phí');
+    const selfId: number = actor?.sub ?? actor?.id;
+    if (item.userId !== selfId && !this.isSuperAdmin(actor)) {
+      throw new ForbiddenException('Bạn không có quyền xóa khoản chi phí này');
+    }
+
+    await this.costRepo.remove(item);
+    await this.writeCostAudit(item.month, item.year, item.userId, selfId, editorName, {
+      [item.category]: {
+        old: Number(item.amount) || 0,
+        new: 0,
+        action: 'DELETE',
+        itemName: item.name,
+      },
+    });
+    return { message: 'Đã xóa khoản chi phí' };
+  }
+
+  /** Ghi 1 dòng audit cho thay đổi chi phí (kèm action/itemName nếu là chi tiết). */
+  private async writeCostAudit(
+    month: number,
+    year: number,
+    userId: number,
+    editedById: number | null,
+    editedByName: string,
+    changes: Record<string, { old: number; new: number; action?: string; itemName?: string }>,
+  ): Promise<void> {
+    if (Object.keys(changes).length === 0) return;
+    const log = this.auditRepo.create({
+      month, year, userId, editedById: editedById ?? null,
+      editedByName: editedByName || '',
+      changes: JSON.stringify(changes),
+    });
+    await this.auditRepo.save(log);
   }
 
   async upsert(
@@ -175,18 +365,8 @@ export class FinanceService {
 
     const saved = await this.repo.save(entry);
 
-    // Ghi log nếu có thay đổi chi phí
-    if (Object.keys(changes).length > 0) {
-      const log = this.auditRepo.create({
-        month,
-        year,
-        userId,
-        editedById: selfId ?? null,
-        editedByName: editorName || '',
-        changes: JSON.stringify(changes),
-      });
-      await this.auditRepo.save(log);
-    }
+    // Ghi log nếu có thay đổi chi phí (cột legacy)
+    await this.writeCostAudit(month, year, userId, selfId, editorName, changes);
 
     return saved;
   }

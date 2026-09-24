@@ -3,7 +3,9 @@ import {
   Get,
   Put,
   Post,
+  Delete,
   Body,
+  Param,
   Query,
   Headers,
   UseGuards,
@@ -11,7 +13,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { FinanceService } from './finance.service';
-import type { UpsertFinanceDto } from './finance.service';
+import type { UpsertFinanceDto, CostItemDto } from './finance.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Permissions } from '../common/decorators/permissions.decorator';
@@ -118,5 +120,75 @@ export class FinanceController {
   @Permissions('dashboard.view')
   verifyPassword(@Body() body: { password?: string }) {
     return { ok: this.financeService.verifyCostPassword(body?.password) };
+  }
+
+  // ── Chi tiết chi phí (mỗi dòng = 1 khoản phát sinh) ──────────────
+
+  private assertPw(pw?: string, headerPw?: string): void {
+    if (!this.financeService.verifyCostPassword(pw ?? headerPw)) {
+      throw new UnauthorizedException('Mật khẩu xem chi phí không đúng');
+    }
+  }
+
+  /** Danh sách chi tiết chi phí theo tháng — yêu cầu mật khẩu. */
+  @Get('cost-items')
+  @Permissions('dashboard.view')
+  listCostItems(
+    @Query('month') month: string,
+    @Query('year') year: string,
+    @Query('targetUserId') targetUserId: string,
+    @Query('pw') pw: string,
+    @Headers('x-cost-password') headerPw: string,
+    @Req() req: any,
+  ) {
+    this.assertPw(pw, headerPw);
+    const { m, y } = this.monthYear(month, year);
+    return this.financeService.listCostItems(m, y, req.user, this.targetUserId(targetUserId));
+  }
+
+  /** Thêm 1 khoản chi phí — yêu cầu mật khẩu. */
+  @Post('cost-items')
+  @Permissions('dashboard.view')
+  addCostItem(
+    @Query('month') month: string,
+    @Query('year') year: string,
+    @Query('pw') pw: string,
+    @Headers('x-cost-password') headerPw: string,
+    @Req() req: any,
+    @Body() body: CostItemDto,
+  ) {
+    this.assertPw(pw, headerPw);
+    const { m, y } = this.monthYear(month, year);
+    const editorName = req.user?.fullName || req.user?.username || '';
+    return this.financeService.addCostItem(m, y, req.user, body, editorName);
+  }
+
+  /** Sửa 1 khoản chi phí — yêu cầu mật khẩu. */
+  @Put('cost-items/:id')
+  @Permissions('dashboard.view')
+  updateCostItem(
+    @Param('id') id: string,
+    @Query('pw') pw: string,
+    @Headers('x-cost-password') headerPw: string,
+    @Req() req: any,
+    @Body() body: CostItemDto,
+  ) {
+    this.assertPw(pw, headerPw);
+    const editorName = req.user?.fullName || req.user?.username || '';
+    return this.financeService.updateCostItem(+id, req.user, body, editorName);
+  }
+
+  /** Xóa 1 khoản chi phí — yêu cầu mật khẩu. */
+  @Delete('cost-items/:id')
+  @Permissions('dashboard.view')
+  deleteCostItem(
+    @Param('id') id: string,
+    @Query('pw') pw: string,
+    @Headers('x-cost-password') headerPw: string,
+    @Req() req: any,
+  ) {
+    this.assertPw(pw, headerPw);
+    const editorName = req.user?.fullName || req.user?.username || '';
+    return this.financeService.deleteCostItem(+id, req.user, editorName);
   }
 }

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { ShippingLine, Route, User, Customer } from '@/types';
+import { useState, useEffect, useCallback } from 'react';
+import { ShippingLine, Route, User, Customer, CustomerPrice } from '@/types';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { submissionsApi } from '@/lib/api-submissions';
+import { customersApi } from '@/lib/api-customers';
 import { fmtNgay } from '@/lib/utils';
 import { hasPerm } from '@/lib/permissions';
 import { Modal } from '@/components/ui/modal';
@@ -75,6 +76,59 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
   const [approveOpen, setApproveOpen] = useState(false);
   const [approvePlan, setApprovePlan] = useState<ShippingLine | null>(null);
   const [approvePrices, setApprovePrices] = useState<Record<string, string>>(emptyPrices());
+
+  // ── Tra giá khách hàng theo tuyến (khi chọn khách + tuyến) ──
+  const [custPrices, setCustPrices] = useState<CustomerPrice[]>([]);
+  const [loadingPrices, setLoadingPrices] = useState(false);
+
+  const fetchCustomerPrices = useCallback(async (cid: string) => {
+    if (!cid) { setCustPrices([]); return; }
+    setLoadingPrices(true);
+    try {
+      // Kế hoạch có ngày → dùng tháng/năm của ngày; không có → tháng/năm hiện tại
+      const d = ngay ? new Date(ngay) : new Date();
+      const m = d.getMonth() + 1;
+      const y = d.getFullYear();
+      const res = await customersApi.getPrices(Number(cid), m, y);
+      setCustPrices(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setCustPrices([]);
+    } finally { setLoadingPrices(false); }
+  }, [ngay]);
+
+  useEffect(() => { fetchCustomerPrices(customerId); }, [customerId, fetchCustomerPrices]);
+
+  /** Giá của 1 loại container khớp routeName đã chọn (và ngày kế hoạch nằm trong from→to). */
+  const priceForType = (type: string): number | null => {
+    if (!routeName) return null;
+    const day = ngay ? new Date(ngay).getDate() : null;
+    const matches = custPrices.filter(
+      p => p.containerType === type && (p.routeName || '') === routeName,
+    );
+    const narrowed = day !== null
+      ? matches.filter(p => day >= p.fromDay && day <= p.toDay)
+      : matches;
+    const list = narrowed.length > 0 ? narrowed : matches;
+    if (list.length === 0) return null;
+    return Number(list[0].unitPrice) || 0;
+  };
+
+  /** Áp toàn bộ giá tra được vào form đơn giá deal. */
+  const applySuggestedPrice = () => {
+    const next: Record<string, string> = { ...prices };
+    let applied = 0;
+    PRICE_TYPES.forEach(t => {
+      const v = priceForType(t);
+      if (v !== null) { next[t] = String(v); applied++; }
+    });
+    setPrices(next);
+    if (applied > 0) toast(`Đã điền ${applied} đơn giá từ bảng giá khách hàng`, 'success');
+    else toast('Không tìm thấy giá phù hợp cho tuyến này', 'info');
+  };
+
+  const hasSuggested = !!customerId && !!routeName && custPrices.some(
+    p => (p.routeName || '') === routeName,
+  );
 
   const isOps = hasPerm(user, 'plan.create') || hasPerm(user, 'plan.edit') || hasPerm(user, 'plan.complete') || hasPerm(user, 'plan.delete');
   const canCreate = hasPerm(user, 'plan.create');
@@ -499,10 +553,44 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
 
           {/* Đơn giá deal */}
           <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
-            <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
+            <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4] flex items-center justify-between">
               <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">💵 Đơn giá deal với khách hàng <span className="text-red-400">*</span></span>
+              {hasSuggested && (
+                <button onClick={applySuggestedPrice}
+                  className="text-[10px] font-semibold text-[#d97706] hover:underline cursor-pointer">
+                  ⤓ Điền giá đã set
+                </button>
+              )}
             </div>
             <div className="p-3">
+              {/* Gợi ý giá từ bảng giá khách hàng */}
+              {customerId && routeName && (
+                <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2">
+                  <p className="text-[10px] font-bold text-amber-800 mb-1.5">
+                    💡 Giá đã set cho khách + tuyến «{routeName}»
+                    {loadingPrices && <span className="ml-1 font-normal text-amber-600">(đang tải...)</span>}
+                  </p>
+                  {!loadingPrices && !hasSuggested ? (
+                    <p className="text-[10px] text-amber-700/80">Chưa có bảng giá cho tuyến này ở tháng tương ứng.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {PRICE_TYPES.map(t => {
+                        const v = priceForType(t);
+                        if (v === null) return null;
+                        return (
+                          <button key={t} type="button"
+                            onClick={() => setPrices(prev => ({ ...prev, [t]: String(v) }))}
+                            title={`Chạm để điền ${priceLabel(t)}`}
+                            className="px-2 py-1 rounded-md bg-white border border-amber-200 hover:border-[#f59e0b] hover:bg-amber-100 transition-colors cursor-pointer">
+                            <span className="text-[9px] text-amber-700 font-semibold">{priceLabel(t)}</span>
+                            <span className="text-[10px] text-[#1c1917] font-bold ml-1">{v.toLocaleString('vi-VN')}₫</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 {PRICE_TYPES.map(t => (
                   <div key={t}>

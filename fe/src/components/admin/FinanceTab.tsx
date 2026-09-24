@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { financeApi, FinanceEntry, FinanceAdmin, FinanceAuditLog } from '@/lib/api-finance';
+import {
+  financeApi, FinanceEntry, FinanceAdmin, FinanceAuditLog, FinanceCostItem, CostItemInput,
+} from '@/lib/api-finance';
 import { useAuth } from '@/providers/auth-provider';
+import { Modal } from '@/components/ui/modal';
 
 interface Props { user?: any; }
 
@@ -21,6 +24,13 @@ const FIELD_LABEL: Record<string, string> = {
   note: 'Ghi chú',
 };
 
+/** Gợi ý tên khoản chi hay dùng (datalist). */
+const NAME_SUGGESTIONS: Record<string, string[]> = {
+  suaChua: ['Thay nhớt', 'Vá lốp', 'Thay lốp', 'Sửa phanh', 'Sửa điện', 'Thay gương', 'Bảo dưỡng', 'Sửa hộp số', 'Thay cầu', 'Sơn xe'],
+  nhienLieu: ['Đổ dầu', 'Đổ dầu lần 1', 'Đổ dầu lần 2', 'Dầu máy', 'Dầu cầu', 'Dầu hộp số', 'Nước làm mát'],
+  cpKhac: ['Phí cầu đường', 'Phí bến bãi', 'Tiền ăn', 'Nhà nghỉ', 'Rửa xe', 'Phí qua trạm', 'Khác'],
+};
+
 function NumInput({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <div>
@@ -36,6 +46,69 @@ function NumInput({ label, value, onChange, placeholder }: { label: string; valu
       </div>
       {value && Number(value) > 0 && (
         <p className="text-[10px] text-[#a8a29e] mt-0.5">{fmt(Number(value))} ₫</p>
+      )}
+    </div>
+  );
+}
+
+/** Widget 1 nhóm chi phí: tổng (chỉ đọc) + nút thêm/thu gọn chi tiết. */
+function CostGroup({
+  category, label, icon, total, items, onAdd, onEdit, onDelete,
+}: {
+  category: string;
+  label: string;
+  icon: string;
+  total: number;
+  items: FinanceCostItem[];
+  onAdd: () => void;
+  onEdit: (it: FinanceCostItem) => void;
+  onDelete: (it: FinanceCostItem) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
+      <div className="flex items-stretch">
+        {/* Bên trái: tổng số (không cho sửa) */}
+        <div className="flex-1 px-3 py-2.5 bg-[#faf9f7] flex items-center gap-2 min-w-0">
+          <span className="text-[15px]">{icon}</span>
+          <div className="min-w-0">
+            <p className="text-[10px] font-medium text-[#78716c] truncate">{label}</p>
+            <p className="text-[15px] font-bold text-red-600 whitespace-nowrap">{fmt(total)} ₫</p>
+          </div>
+          {items.length > 0 && (
+            <button onClick={() => setOpen(o => !o)}
+              className="ml-auto text-[10px] text-[#a8a29e] hover:text-[#d97706] cursor-pointer shrink-0">
+              {open ? '▾' : '▸'} {items.length}
+            </button>
+          )}
+        </div>
+        {/* Bên phải: nút thêm chi phí */}
+        <button onClick={onAdd}
+          className="px-3 bg-white border-l border-[#e7e5e4] text-[11px] font-semibold text-[#d97706] hover:bg-amber-50 cursor-pointer whitespace-nowrap">
+          ＋ Thêm
+        </button>
+      </div>
+
+      {/* Danh sách chi tiết */}
+      {open && items.length > 0 && (
+        <div className="border-t border-[#f5f5f4] divide-y divide-[#f5f5f4] max-h-[220px] overflow-y-auto">
+          {items.map(it => (
+            <div key={it.id} className="px-3 py-2 flex items-start gap-2 group">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[11px] font-semibold text-[#1c1917] truncate">{it.name || '(không tên)'}</span>
+                  {it.itemDate && <span className="text-[9px] text-[#a8a29e]">{new Date(it.itemDate).toLocaleDateString('vi-VN')}</span>}
+                </div>
+                {it.note && <p className="text-[10px] text-[#78716c] truncate">{it.note}</p>}
+              </div>
+              <span className="text-[11px] font-bold text-red-600 whitespace-nowrap">{fmt(Number(it.amount))} ₫</span>
+              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => onEdit(it)} title="Sửa" className="text-[10px] text-[#78716c] hover:text-[#d97706] cursor-pointer">✏️</button>
+                <button onClick={() => onDelete(it)} title="Xóa" className="text-[10px] text-[#78716c] hover:text-red-600 cursor-pointer">🗑️</button>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -70,6 +143,17 @@ export function FinanceTab(_props: Props) {
     note: '',
   });
 
+  // ── Chi tiết chi phí ─────────────────────────────────
+  const [costItems, setCostItems] = useState<Record<string, FinanceCostItem[]>>({ suaChua: [], nhienLieu: [], cpKhac: [] });
+  const [costTotals, setCostTotals] = useState({ suaChua: 0, nhienLieu: 0, cpKhac: 0 });
+
+  // ── Popup thêm/sửa khoản chi phí ─────────────────────
+  const [itemOpen, setItemOpen] = useState(false);
+  const [itemCategory, setItemCategory] = useState<string>('suaChua');
+  const [itemEditing, setItemEditing] = useState<FinanceCostItem | null>(null);
+  const [itemForm, setItemForm] = useState({ itemDate: '', name: '', amount: '', note: '' });
+  const [itemSaving, setItemSaving] = useState(false);
+
   const [history, setHistory] = useState<FinanceAuditLog[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -90,6 +174,8 @@ export function FinanceTab(_props: Props) {
         vonKhac:   String(d.vonKhac   || ''),
         note:      d.note ?? '',
       });
+      setCostItems(d.costItems || { suaChua: [], nhienLieu: [], cpKhac: [] });
+      setCostTotals(d.costTotals || { suaChua: 0, nhienLieu: 0, cpKhac: 0 });
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || 'Không tải được dữ liệu');
     } finally { setLoading(false); }
@@ -154,8 +240,69 @@ export function FinanceTab(_props: Props) {
 
   const setF = (k: keyof typeof form) => (v: string) => setForm(f => ({ ...f, [k]: v }));
 
-  const totalChiPhi = COST_FIELDS.reduce((s, k) => s + Number((form as any)[k] || 0), 0);
+  // ── Popup thêm/sửa khoản chi phí ─────────────────────
+  const openAddItem = (category: string) => {
+    setItemCategory(category);
+    setItemEditing(null);
+    setItemForm({ itemDate: new Date().toISOString().slice(0, 10), name: '', amount: '', note: '' });
+    setItemOpen(true);
+  };
+
+  const openEditItem = (category: string, it: FinanceCostItem) => {
+    setItemCategory(category);
+    setItemEditing(it);
+    setItemForm({
+      itemDate: it.itemDate ? String(it.itemDate).slice(0, 10) : '',
+      name: it.name || '',
+      amount: String(it.amount || ''),
+      note: it.note || '',
+    });
+    setItemOpen(true);
+  };
+
+  const submitItem = async () => {
+    if (!itemForm.name.trim()) { setError('Vui lòng nhập tên khoản chi'); return; }
+    setItemSaving(true); setError('');
+    const payload: CostItemInput = {
+      category: itemCategory,
+      itemDate: itemForm.itemDate || null,
+      name: itemForm.name.trim(),
+      amount: Number(itemForm.amount || 0),
+      note: itemForm.note || null,
+      ...(isSuperAdmin && targetUserId ? { targetUserId: Number(targetUserId) } as any : {}),
+    };
+    try {
+      if (itemEditing) {
+        await financeApi.updateCostItem(itemEditing.id, payload, { password: costPassword });
+      } else {
+        await financeApi.addCostItem(month, year, payload, { password: costPassword });
+      }
+      setItemOpen(false);
+      await load();
+      if (showHistory) loadHistory();
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e?.message || 'Lỗi lưu khoản chi phí');
+    } finally { setItemSaving(false); }
+  };
+
+  const deleteItem = async (it: FinanceCostItem) => {
+    if (!confirm(`Xóa khoản "${it.name}" (${fmt(Number(it.amount))} ₫)?`)) return;
+    try {
+      await financeApi.deleteCostItem(it.id, { password: costPassword });
+      await load();
+      if (showHistory) loadHistory();
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e?.message || 'Lỗi xóa khoản chi phí');
+    }
+  };
+
   const totalVon    = ['vonXe', 'vonMooc', 'vonKhac'].reduce((s, k) => s + Number((form as any)[k] || 0), 0);
+
+  const COST_META: Record<string, { label: string; icon: string }> = {
+    suaChua:   { label: 'Sửa chữa',   icon: '🔧' },
+    nhienLieu: { label: 'Nhiên liệu', icon: '⛽' },
+    cpKhac:    { label: 'CP Khác',    icon: '📦' },
+  };
 
   return (
     <div className="space-y-6">
@@ -242,16 +389,26 @@ export function FinanceTab(_props: Props) {
             ) : (
               <>
                 <div className="space-y-3">
-                  <NumInput label="Sửa chữa"    value={form.suaChua}   onChange={setF('suaChua')} />
-                  <NumInput label="Nhiên liệu"  value={form.nhienLieu} onChange={setF('nhienLieu')} />
-                  <NumInput label="CP Khác"     value={form.cpKhac}    onChange={setF('cpKhac')} />
+                  {COST_FIELDS.map(cat => (
+                    <CostGroup
+                      key={cat}
+                      category={cat}
+                      label={COST_META[cat].label}
+                      icon={COST_META[cat].icon}
+                      total={(costTotals as any)[cat] || 0}
+                      items={costItems[cat] || []}
+                      onAdd={() => openAddItem(cat)}
+                      onEdit={it => openEditItem(cat, it)}
+                      onDelete={deleteItem}
+                    />
+                  ))}
                 </div>
-                {totalChiPhi > 0 && (
-                  <div className="mt-4 pt-3 border-t border-[#f5f5f4] flex justify-between">
-                    <span className="text-[12px] font-semibold text-[#78716c]">Tổng chi phí</span>
-                    <span className="text-[14px] font-bold text-red-600">{fmt(totalChiPhi)} ₫</span>
-                  </div>
-                )}
+                <div className="mt-4 pt-3 border-t border-[#f5f5f4] flex justify-between">
+                  <span className="text-[12px] font-semibold text-[#78716c]">Tổng chi phí</span>
+                  <span className="text-[14px] font-bold text-red-600">
+                    {fmt((costTotals.suaChua || 0) + (costTotals.nhienLieu || 0) + (costTotals.cpKhac || 0))} ₫
+                  </span>
+                </div>
                 <button onClick={() => { setShowHistory(s => { const n = !s; if (n) loadHistory(); return n; }); }}
                   className="mt-3 text-[11px] font-medium text-[#d97706] hover:underline cursor-pointer">
                   {showHistory ? '▾ Ẩn lịch sử chỉnh sửa' : '▸ Xem lịch sử chỉnh sửa'}
@@ -313,7 +470,7 @@ export function FinanceTab(_props: Props) {
               ) : (
                 <div className="space-y-2 max-h-[320px] overflow-y-auto">
                   {history.map(h => {
-                    let changes: Record<string, { old: number; new: number }> = {};
+                    let changes: Record<string, { old: number; new: number; action?: string; itemName?: string }> = {};
                     try { changes = JSON.parse(h.changes); } catch {}
                     return (
                       <div key={h.id} className="rounded-lg border border-[#f5f5f4] px-4 py-2.5">
@@ -324,7 +481,9 @@ export function FinanceTab(_props: Props) {
                         <div className="flex flex-wrap gap-x-4 gap-y-1">
                           {Object.entries(changes).map(([f, c]) => (
                             <span key={f} className="text-[11px] text-[#78716c]">
-                              <strong className="text-[#1c1917]">{FIELD_LABEL[f] || f}</strong>: {fmt(c.old)} → <span className="text-[#d97706] font-semibold">{fmt(c.new)}</span>
+                              <strong className="text-[#1c1917]">{FIELD_LABEL[f] || f}</strong>
+                              {c.itemName ? ` (${c.itemName})` : ''}
+                              {c.action ? ` — ${c.action === 'ADD' ? 'thêm' : c.action === 'DELETE' ? 'xóa' : 'sửa'}` : ''}: {fmt(c.old)} → <span className="text-[#d97706] font-semibold">{fmt(c.new)}</span>
                             </span>
                           ))}
                         </div>
@@ -346,6 +505,64 @@ export function FinanceTab(_props: Props) {
           {saving ? 'Đang lưu...' : saved ? '✅ Đã lưu!' : '💾 Lưu tháng này'}
         </button>
       </div>
+
+      {/* ── Popup thêm/sửa khoản chi phí ────────────────── */}
+      <Modal
+        open={itemOpen}
+        onClose={() => setItemOpen(false)}
+        title={`${itemEditing ? '✏️ Sửa' : '➕ Thêm'} khoản — ${COST_META[itemCategory]?.label || ''}`}
+        footer={
+          <div className="flex gap-2 w-full justify-end">
+            <button onClick={() => setItemOpen(false)}
+              className="px-4 py-2 rounded-lg text-[12px] font-medium border border-[#e7e5e4] text-[#78716c] hover:bg-[#faf9f7] cursor-pointer">
+              Huỷ
+            </button>
+            <button onClick={submitItem} disabled={itemSaving}
+              className="px-5 py-2 rounded-lg text-[12px] font-semibold text-white bg-gradient-to-r from-[#f59e0b] to-[#d97706] disabled:opacity-50 cursor-pointer">
+              {itemSaving ? 'Đang lưu...' : itemEditing ? '✅ Cập nhật' : '✅ Thêm'}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="text-[11px] font-medium text-[#78716c] mb-1 block">Ngày</label>
+            <input type="date" value={itemForm.itemDate}
+              onChange={e => setItemForm(f => ({ ...f, itemDate: e.target.value }))}
+              className="w-full px-3 py-2 bg-white border border-[#e7e5e4] rounded-lg text-sm outline-none focus:border-[#d97706]" />
+          </div>
+          <div>
+            <label className="text-[11px] font-medium text-[#78716c] mb-1 block">Tên khoản chi <span className="text-red-400">*</span></label>
+            <input type="text" list={`sugg-${itemCategory}`} value={itemForm.name}
+              onChange={e => setItemForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="vd: Thay nhớt, Đổ dầu..."
+              className="w-full px-3 py-2 bg-white border border-[#e7e5e4] rounded-lg text-sm outline-none focus:border-[#d97706]" />
+            <datalist id={`sugg-${itemCategory}`}>
+              {(NAME_SUGGESTIONS[itemCategory] || []).map(s => <option key={s} value={s} />)}
+            </datalist>
+          </div>
+          <div>
+            <label className="text-[11px] font-medium text-[#78716c] mb-1 block">Số tiền <span className="text-red-400">*</span></label>
+            <div className="relative">
+              <input type="number" min="0" value={itemForm.amount}
+                onChange={e => setItemForm(f => ({ ...f, amount: e.target.value }))}
+                placeholder="0"
+                className="w-full px-3 py-2 bg-white border border-[#e7e5e4] rounded-lg text-sm outline-none focus:border-[#d97706]" />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#a8a29e]">₫</span>
+            </div>
+            {itemForm.amount && Number(itemForm.amount) > 0 && (
+              <p className="text-[10px] text-[#a8a29e] mt-0.5">{fmt(Number(itemForm.amount))} ₫</p>
+            )}
+          </div>
+          <div>
+            <label className="text-[11px] font-medium text-[#78716c] mb-1 block">Ghi chú</label>
+            <textarea rows={2} value={itemForm.note}
+              onChange={e => setItemForm(f => ({ ...f, note: e.target.value }))}
+              placeholder="Ghi chú thêm..."
+              className="w-full px-3 py-2 bg-white border border-[#e7e5e4] rounded-lg text-sm outline-none focus:border-[#d97706] resize-none" />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

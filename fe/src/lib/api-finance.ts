@@ -12,6 +12,34 @@ export interface FinanceEntry {
   vonMooc: number;
   vonKhac: number;
   note?: string | null;
+  /** Chi tiết từng khoản chi phí, nhóm theo category */
+  costItems?: Record<string, FinanceCostItem[]>;
+  /** Tổng của mỗi nhóm = giá trị legacy + Σ chi tiết */
+  costTotals?: { suaChua: number; nhienLieu: number; cpKhac: number };
+}
+
+export interface FinanceCostItem {
+  id: number;
+  month: number;
+  year: number;
+  userId: number;
+  category: string;
+  itemDate: string | null;
+  name: string;
+  amount: number;
+  note: string | null;
+  createdById: number | null;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CostItemInput {
+  category: string;
+  itemDate?: string | null;
+  name?: string;
+  amount?: number;
+  note?: string | null;
 }
 
 export interface FinanceAdmin {
@@ -81,4 +109,40 @@ export const financeApi = {
 
   verifyPassword: (password: string) =>
     axios.post<{ ok: boolean }>('/admin/finance/verify-password', { password }),
+
+  // ── Chi tiết chi phí (mỗi dòng = 1 khoản phát sinh) ──────────────
+  listCostItems: (
+    month: number,
+    year: number,
+    opts: { password: string; targetUserId?: number },
+  ) =>
+    axios.get<FinanceCostItem[]>('/admin/finance/cost-items', {
+      params: {
+        month,
+        year,
+        ...(opts.targetUserId ? { targetUserId: opts.targetUserId } : {}),
+      },
+      ...pwHeader(opts.password),
+    }),
+
+  addCostItem: (
+    month: number,
+    year: number,
+    data: CostItemInput,
+    opts: { password: string },
+  ) =>
+    axios.post<FinanceCostItem>('/admin/finance/cost-items', data, {
+      params: { month, year },
+      ...pwHeader(opts.password),
+    }),
+
+  updateCostItem: (id: number, data: CostItemInput, opts: { password: string }) =>
+    axios.put<FinanceCostItem>(`/admin/finance/cost-items/${id}`, data, {
+      ...pwHeader(opts.password),
+    }),
+
+  deleteCostItem: (id: number, opts: { password: string }) =>
+    axios.delete<{ message: string }>(`/admin/finance/cost-items/${id}`, {
+      ...pwHeader(opts.password),
+    }),
 };
