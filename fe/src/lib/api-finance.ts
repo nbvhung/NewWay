@@ -22,6 +22,10 @@ export interface FinanceEntry {
   costItems?: Record<string, FinanceCostItem[]>;
   /** Tổng của mỗi nhóm = giá trị legacy + Σ chi tiết */
   costTotals?: { suaChua: number; nhienLieu: number; cpKhac: number };
+  /** Chi tiết từng khoản VỐN ĐẦU TƯ, nhóm theo category (vonXe | vonMooc | vonKhac) */
+  investItems?: Record<string, FinanceCostItem[]>;
+  /** Tổng vốn mỗi nhóm = giá trị legacy + Σ chi tiết */
+  investTotals?: { vonXe: number; vonMooc: number; vonKhac: number };
 }
 
 /** 1 xe để chọn khi nhập chi phí (1 xe = 1 tài khoản lái xe). */

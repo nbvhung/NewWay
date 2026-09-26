@@ -380,8 +380,45 @@ Danh sách tài khoản người dùng — hiển thị avatar, họ tên, vai t
 
 ### 6.9. Tài Chính
 
-Xem **doanh thu / lợi nhuận** và quản lý **các khoản chi phí** (thêm, sửa, xoá — xoá cần mật khẩu `348`).
-Có thể tách chi phí theo **bên A / bên B** (theo xe), và nhập **vốn đầu tư**.
+Tab **💰 Tài Chính** gồm 2 thẻ: **Chi Phí** và **Vốn Đầu Tư**. Cả hai đều nhập **theo từng khoản chi tiết**, có thể gắn cho **1 hoặc nhiều xe**.
+
+**Mở khoá:** nhập mật khẩu `348` ở ô phía trên để xem chi phí và để thêm/sửa/xoá các khoản chi tiết.
+Supper Admin được miễn mật khẩu khi nhập **vốn đầu tư**, nhưng vẫn cần mật khẩu để nhập **chi tiết từng khoản**.
+
+**Cách nhập một khoản:**
+
+1. Nhấn **＋ Thêm** ở đúng nhóm cần nhập.
+2. Điền **Ngày**, **Tên khoản** (có gợi ý sẵn — ví dụ nhóm *Sửa chữa* gợi ý "Thay nhớt", "Vá lốp"…).
+3. Chọn **🚛 Xe**: chọn 1 xe, nhiều xe, hoặc **để trống = chi phí chung**.
+   - Chọn **nhiều xe** → mỗi xe hiện 1 ô số tiền riêng, hệ thống tạo **mỗi xe 1 dòng**.
+   - Xe quyết định khoản đó thuộc **bên A** hay **bên B**.
+4. Nhập **số tiền** và **ghi chú** (nếu cần) → **✅ Thêm**.
+
+**Sửa / xoá:** đưa chuột vào một dòng trong danh sách → hiện ✏️ (sửa) và 🗑️ (xoá). Xoá cần mật khẩu `348`.
+
+**Xem chi tiết:** nhấn **▸ n** ở góc phải mỗi nhóm để mở danh sách các khoản đã nhập.
+
+| Nhóm | Thẻ | Gồm những gì |
+|---|---|---|
+| 🔧 Sửa chữa | Chi Phí | Thay nhớt, vá lốp, sửa phanh, bảo dưỡng… |
+| ⛽ Nhiên liệu | Chi Phí | Đổ dầu, dầu máy, dầu cầu, nước làm mát… |
+| 📦 CP Khác | Chi Phí | Phí cầu đường, bến bãi, tiền ăn, rửa xe… |
+| 🚛 Vốn xe | Vốn Đầu Tư | Mua xe, trả góp, đăng ký, bảo hiểm, làm thùng… |
+| 🚋 Vốn mooc | Vốn Đầu Tư | Mua mooc, trả góp, đăng ký, bảo hiểm mooc… |
+| 🏗️ Vốn khác | Vốn Đầu Tư | Mua thiết bị, công cụ dụng cụ, cải tạo, nhà xưởng… |
+
+**Cách tính tổng:** `Tổng 1 nhóm = số nhập ở ô "Nhập nhanh" (nếu có) + tổng các khoản chi tiết`.
+
+> Thẻ **Vốn Đầu Tư** có thêm mục **▸ Nhập nhanh theo ô (số tổng)** — đây là 3 ô *Xe / Mooc / Khác* như trước.
+> Số nhập ở đây được **cộng thêm** vào các khoản chi tiết bên dưới, nên dữ liệu vốn đã nhập từ trước vẫn hiển thị đúng.
+
+**Tách bên A / bên B:** mỗi bên có sổ riêng. Xe của bên này **không** thấy được ở sổ bên kia.
+Supper Admin có ô chọn ở góc trên phải để xem/nhập sổ của từng bên.
+
+**Lịch sử chỉnh sửa:** nhấn **▸ Xem lịch sử chỉnh sửa (chi phí & vốn)** để xem ai đã sửa gì, từ số nào sang số nào.
+
+**Lưu:** nhấn **💾 Lưu tháng này** để ghi 3 ô nhập nhanh của vốn đầu tư.
+Các khoản chi tiết được lưu **ngay** khi bấm ✅ Thêm/Cập nhật — không cần bấm Lưu.
 
 > ⚠️ Mục này **chỉ Admin và Supper Admin** mới thấy.
 

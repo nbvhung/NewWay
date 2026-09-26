@@ -17,6 +17,7 @@ const MONTHS_VI = ['','Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Th
 const fmt = (n: number) => Number(n || 0).toLocaleString('vi-VN');
 
 const COST_FIELDS = ['suaChua', 'nhienLieu', 'cpKhac'] as const;
+const INVEST_FIELDS = ['vonXe', 'vonMooc', 'vonKhac'] as const;
 const FIELD_LABEL: Record<string, string> = {
   suaChua: 'Sửa chữa',
   nhienLieu: 'Nhiên liệu',
@@ -27,11 +28,27 @@ const FIELD_LABEL: Record<string, string> = {
   note: 'Ghi chú',
 };
 
-/** Gợi ý tên khoản chi hay dùng (datalist). */
+/** Nhãn + icon của cả 6 nhóm: 3 nhóm CHI PHÍ + 3 nhóm VỐN ĐẦU TƯ. */
+const GROUP_META: Record<string, { label: string; icon: string }> = {
+  suaChua:   { label: 'Sửa chữa',   icon: '🔧' },
+  nhienLieu: { label: 'Nhiên liệu', icon: '⛽' },
+  cpKhac:    { label: 'CP Khác',    icon: '📦' },
+  vonXe:     { label: 'Vốn xe',     icon: '🚛' },
+  vonMooc:   { label: 'Vốn mooc',   icon: '🚋' },
+  vonKhac:   { label: 'Vốn khác',   icon: '🏗️' },
+};
+
+/** Nhóm này thuộc VỐN ĐẦU TƯ? (còn lại là chi phí) */
+const isInvestCategory = (c: string) => (INVEST_FIELDS as readonly string[]).includes(c);
+
+/** Gợi ý tên khoản hay dùng (datalist) — dùng chung cho chi phí và vốn đầu tư. */
 const NAME_SUGGESTIONS: Record<string, string[]> = {
   suaChua: ['Thay nhớt', 'Vá lốp', 'Thay lốp', 'Sửa phanh', 'Sửa điện', 'Thay gương', 'Bảo dưỡng', 'Sửa hộp số', 'Thay cầu', 'Sơn xe'],
   nhienLieu: ['Đổ dầu', 'Đổ dầu lần 1', 'Đổ dầu lần 2', 'Dầu máy', 'Dầu cầu', 'Dầu hộp số', 'Nước làm mát'],
   cpKhac: ['Phí cầu đường', 'Phí bến bãi', 'Tiền ăn', 'Nhà nghỉ', 'Rửa xe', 'Phí qua trạm', 'Khác'],
+  vonXe: ['Mua xe', 'Trả góp xe', 'Đăng ký xe', 'Bảo hiểm xe', 'Phí trước bạ', 'Làm thùng', 'Nâng cấp xe', 'Sửa lớn'],
+  vonMooc: ['Mua mooc', 'Trả góp mooc', 'Đăng ký mooc', 'Bảo hiểm mooc', 'Phí trước bạ mooc', 'Sửa mooc'],
+  vonKhac: ['Mua thiết bị', 'Công cụ dụng cụ', 'Cải tạo', 'Nhà xưởng', 'Khác'],
 };
 
 function NumInput({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
@@ -54,9 +71,10 @@ function NumInput({ label, value, onChange, placeholder }: { label: string; valu
   );
 }
 
-/** Widget 1 nhóm chi phí: tổng (chỉ đọc) + nút thêm/thu gọn chi tiết. */
+/** Widget 1 nhóm: tổng (chỉ đọc) + nút thêm/thu gọn chi tiết. Dùng cho cả chi phí và vốn đầu tư. */
 function CostGroup({
   category, label, icon, total, items, onAdd, onEdit, onDelete, vehicleLabel,
+  accentClass = 'text-red-600', readOnly = false,
 }: {
   category: string;
   label: string;
@@ -68,6 +86,10 @@ function CostGroup({
   onDelete: (it: FinanceCostItem) => void;
   /** Nhãn xe của 1 dòng chi phí ('' nếu là chi phí chung) */
   vehicleLabel: (vehicleUserId: number | null) => string;
+  /** Màu số tiền: chi phí = đỏ, vốn đầu tư = xanh */
+  accentClass?: string;
+  /** Chỉ xem (không có nút thêm/sửa/xoá) — dùng khi chưa mở khoá mật khẩu */
+  readOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -78,7 +100,7 @@ function CostGroup({
           <span className="text-[15px]">{icon}</span>
           <div className="min-w-0">
             <p className="text-[10px] font-medium text-[#78716c] truncate">{label}</p>
-            <p className="text-[15px] font-bold text-red-600 whitespace-nowrap">{fmt(total)} ₫</p>
+            <p className={`text-[15px] font-bold whitespace-nowrap ${accentClass}`}>{fmt(total)} ₫</p>
           </div>
           {items.length > 0 && (
             <button onClick={() => setOpen(o => !o)}
@@ -87,11 +109,13 @@ function CostGroup({
             </button>
           )}
         </div>
-        {/* Bên phải: nút thêm chi phí */}
-        <button onClick={onAdd}
-          className="px-3 bg-white border-l border-[#e7e5e4] text-[11px] font-semibold text-[#d97706] hover:bg-amber-50 cursor-pointer whitespace-nowrap">
-          ＋ Thêm
-        </button>
+        {/* Bên phải: nút thêm khoản */}
+        {!readOnly && (
+          <button onClick={onAdd}
+            className="px-3 bg-white border-l border-[#e7e5e4] text-[11px] font-semibold text-[#d97706] hover:bg-amber-50 cursor-pointer whitespace-nowrap">
+            ＋ Thêm
+          </button>
+        )}
       </div>
 
       {/* Danh sách chi tiết */}
@@ -109,11 +133,13 @@ function CostGroup({
                 )}
                 {it.note && <p className="text-[10px] text-[#78716c] truncate">{it.note}</p>}
               </div>
-              <span className="text-[11px] font-bold text-red-600 whitespace-nowrap">{fmt(Number(it.amount))} ₫</span>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => onEdit(it)} title="Sửa" className="text-[10px] text-[#78716c] hover:text-[#d97706] cursor-pointer">✏️</button>
-                <button onClick={() => onDelete(it)} title="Xóa" className="text-[10px] text-[#78716c] hover:text-red-600 cursor-pointer">🗑️</button>
-              </div>
+              <span className={`text-[11px] font-bold whitespace-nowrap ${accentClass}`}>{fmt(Number(it.amount))} ₫</span>
+              {!readOnly && (
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => onEdit(it)} title="Sửa" className="text-[10px] text-[#78716c] hover:text-[#d97706] cursor-pointer">✏️</button>
+                  <button onClick={() => onDelete(it)} title="Xóa" className="text-[10px] text-[#78716c] hover:text-red-600 cursor-pointer">🗑️</button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -157,6 +183,18 @@ export function FinanceTab(_props: Props) {
   // ── Chi tiết chi phí ─────────────────────────────────
   const [costItems, setCostItems] = useState<Record<string, FinanceCostItem[]>>({ suaChua: [], nhienLieu: [], cpKhac: [] });
   const [costTotals, setCostTotals] = useState({ suaChua: 0, nhienLieu: 0, cpKhac: 0 });
+
+  // ── Chi tiết VỐN ĐẦU TƯ (cùng cơ chế với chi phí) ────
+  const [investItems, setInvestItems] = useState<Record<string, FinanceCostItem[]>>({ vonXe: [], vonMooc: [], vonKhac: [] });
+  const [investTotals, setInvestTotals] = useState({ vonXe: 0, vonMooc: 0, vonKhac: 0 });
+  /** Thu gọn 3 ô nhập nhanh (số tổng cũ) để đỡ rối mắt. */
+  const [showQuick, setShowQuick] = useState(true);
+
+  /**
+   * Sửa/thêm/xoá TỪNG KHOẢN (cả chi phí lẫn vốn) đều phải có mật khẩu:
+   * backend yêu cầu mật khẩu ở mọi endpoint `cost-items` kể cả supper_admin.
+   */
+  const canEditItems = unlocked;
 
   // ── Bên A / Bên B ────────────────────────────────────
   // Bên là thuộc tính của tài khoản chủ vốn; mỗi bên có sổ chi phí riêng.
@@ -210,6 +248,8 @@ export function FinanceTab(_props: Props) {
       });
       setCostItems(d.costItems || { suaChua: [], nhienLieu: [], cpKhac: [] });
       setCostTotals(d.costTotals || { suaChua: 0, nhienLieu: 0, cpKhac: 0 });
+      setInvestItems(d.investItems || { vonXe: [], vonMooc: [], vonKhac: [] });
+      setInvestTotals(d.investTotals || { vonXe: 0, vonMooc: 0, vonKhac: 0 });
       setBen(d.ben || 'A');
       setBenLabel(d.benLabel || `Bên ${d.ben || 'A'}`);
       setOwnerName(d.ownerName || '');
@@ -381,13 +421,12 @@ export function FinanceTab(_props: Props) {
     if (showHistory) loadHistory();
   };
 
-  const totalVon    = ['vonXe', 'vonMooc', 'vonKhac'].reduce((s, k) => s + Number((form as any)[k] || 0), 0);
-
-  const COST_META: Record<string, { label: string; icon: string }> = {
-    suaChua:   { label: 'Sửa chữa',   icon: '🔧' },
-    nhienLieu: { label: 'Nhiên liệu', icon: '⛽' },
-    cpKhac:    { label: 'CP Khác',    icon: '📦' },
-  };
+  /** Tổng vốn = 3 ô nhập nhanh (cột legacy) + Σ các khoản chi tiết. */
+  const totalVon    = INVEST_FIELDS.reduce((s, k) => s + Number((investTotals as any)[k] || 0), 0);
+  /** Tổng chi phí = Σ 3 nhóm (mỗi nhóm đã gồm chi tiết). */
+  const totalChiPhi = COST_FIELDS.reduce((s, k) => s + Number((costTotals as any)[k] || 0), 0);
+  /** Màu số tiền theo loại nhóm: chi phí = đỏ, vốn đầu tư = xanh. */
+  const accentOf = (cat: string) => (isInvestCategory(cat) ? 'text-blue-600' : 'text-red-600');
 
   return (
     <div className="space-y-6">
@@ -485,8 +524,8 @@ export function FinanceTab(_props: Props) {
                     <CostGroup
                       key={cat}
                       category={cat}
-                      label={COST_META[cat].label}
-                      icon={COST_META[cat].icon}
+                      label={GROUP_META[cat].label}
+                      icon={GROUP_META[cat].icon}
                       total={(costTotals as any)[cat] || 0}
                       items={costItems[cat] || []}
                       onAdd={() => openAddItem(cat)}
@@ -498,9 +537,7 @@ export function FinanceTab(_props: Props) {
                 </div>
                 <div className="mt-4 pt-3 border-t border-[#f5f5f4] flex justify-between">
                   <span className="text-[12px] font-semibold text-[#78716c]">Tổng chi phí</span>
-                  <span className="text-[14px] font-bold text-red-600">
-                    {fmt((costTotals.suaChua || 0) + (costTotals.nhienLieu || 0) + (costTotals.cpKhac || 0))} ₫
-                  </span>
+                  <span className="text-[14px] font-bold text-red-600">{fmt(totalChiPhi)} ₫</span>
                 </div>
                 <button onClick={() => { setShowHistory(s => { const n = !s; if (n) loadHistory(); return n; }); }}
                   className="mt-3 text-[11px] font-medium text-[#d97706] hover:underline cursor-pointer">
@@ -510,7 +547,7 @@ export function FinanceTab(_props: Props) {
             )}
           </div>
 
-          {/* Vốn đầu tư — admin cần mật khẩu, supper_admin được miễn */}
+          {/* Vốn đầu tư — chi tiết hoá giống Chi Phí; admin cần mật khẩu, supper_admin được miễn */}
           <div className="bg-white border border-[#e7e5e4] rounded-xl p-5">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-[16px]">🏗️</div>
@@ -522,36 +559,65 @@ export function FinanceTab(_props: Props) {
                 <span className="ml-auto text-[10px] text-[#a8a29e]">chỉ đọc</span>
               )}
             </div>
-            {canEditInvest ? (
-              <>
-                {targetUserId && (
-                  <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-3">
-                    Đang nhập vốn cho: <strong>{admins.find(a => a.id === targetUserId)?.fullName}</strong>
-                  </p>
-                )}
-                <div className="space-y-3">
-                  <NumInput label="Xe"    value={form.vonXe}    onChange={setF('vonXe')} />
-                  <NumInput label="Mooc"  value={form.vonMooc}  onChange={setF('vonMooc')} />
-                  <NumInput label="Khác"  value={form.vonKhac}  onChange={setF('vonKhac')} />
-                </div>
-                {totalVon > 0 && (
-                  <div className="mt-4 pt-3 border-t border-[#f5f5f4] flex justify-between">
-                    <span className="text-[12px] font-semibold text-[#78716c]">Tổng vốn</span>
-                    <span className="text-[14px] font-bold text-blue-600">{fmt(totalVon)} ₫</span>
+
+            {targetUserId && (
+              <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-3">
+                Đang nhập vốn cho: <strong>{admins.find(a => a.id === targetUserId)?.fullName}</strong>
+              </p>
+            )}
+
+            {/* ── 1. Nhập nhanh: 3 ô tổng cũ (giữ nguyên) ──────────────
+                Số ở đây được CỘNG THÊM vào tổng các khoản chi tiết bên dưới,
+                nên dữ liệu vốn đã nhập trước đây vẫn hiển thị đúng. */}
+            {canEditInvest && (
+              <div className="mb-4">
+                <button onClick={() => setShowQuick(v => !v)}
+                  className="flex items-center gap-1 text-[11px] font-semibold text-[#78716c] hover:text-[#d97706] cursor-pointer mb-2">
+                  {showQuick ? '▾' : '▸'} Nhập nhanh theo ô (số tổng)
+                </button>
+                {showQuick && (
+                  <div className="rounded-xl border border-[#e7e5e4] bg-[#faf9f7] p-3 space-y-3">
+                    <NumInput label="Xe"   value={form.vonXe}   onChange={setF('vonXe')} />
+                    <NumInput label="Mooc" value={form.vonMooc} onChange={setF('vonMooc')} />
+                    <NumInput label="Khác" value={form.vonKhac} onChange={setF('vonKhac')} />
+                    <p className="text-[10px] text-[#a8a29e] leading-snug">
+                      Số nhập ở đây được <strong>cộng thêm</strong> vào các khoản chi tiết bên dưới.
+                    </p>
                   </div>
                 )}
-              </>
-            ) : (
-              <div className="space-y-3 opacity-80">
-                {([['Xe', form.vonXe], ['Mooc', form.vonMooc], ['Khác', form.vonKhac]] as [string, string][]).map(([l, v]) => (
-                  <div key={l} className="flex justify-between px-3 py-2 bg-[#faf9f7] rounded-lg">
-                    <span className="text-[12px] text-[#78716c]">{l}</span>
-                    <span className="text-[12px] font-semibold text-[#1c1917]">{fmt(Number(v || 0))} ₫</span>
-                  </div>
-                ))}
-                <p className="text-[10px] text-[#a8a29e]">* Nhập mật khẩu ở trên để nhập vốn đầu tư.</p>
               </div>
             )}
+
+            {/* ── 2. Chi tiết từng khoản (giống hệt Chi Phí) ─────────── */}
+            <p className="text-[11px] font-semibold text-[#78716c] mb-2">Chi tiết theo khoản</p>
+            <div className="space-y-3">
+              {INVEST_FIELDS.map(cat => (
+                <CostGroup
+                  key={cat}
+                  category={cat}
+                  label={GROUP_META[cat].label}
+                  icon={GROUP_META[cat].icon}
+                  total={(investTotals as any)[cat] || 0}
+                  items={investItems[cat] || []}
+                  onAdd={() => openAddItem(cat)}
+                  onEdit={it => openEditItem(cat, it)}
+                  onDelete={deleteItem}
+                  vehicleLabel={vehicleLabel}
+                  accentClass="text-blue-600"
+                  readOnly={!canEditItems}
+                />
+              ))}
+            </div>
+            {!canEditItems && (
+              <p className="text-[10px] text-[#a8a29e] mt-2">
+                * Nhập mật khẩu ở trên để thêm / sửa các khoản vốn chi tiết.
+              </p>
+            )}
+
+            <div className="mt-4 pt-3 border-t border-[#f5f5f4] flex justify-between">
+              <span className="text-[12px] font-semibold text-[#78716c]">Tổng vốn</span>
+              <span className="text-[14px] font-bold text-blue-600">{fmt(totalVon)} ₫</span>
+            </div>
           </div>
 
           {/* Lịch sử chỉnh sửa chi phí & vốn đầu tư */}
@@ -603,7 +669,7 @@ export function FinanceTab(_props: Props) {
       <Modal
         open={itemOpen}
         onClose={() => setItemOpen(false)}
-        title={`${itemEditing ? '✏️ Sửa' : '➕ Thêm'} khoản — ${COST_META[itemCategory]?.label || ''}`}
+        title={`${itemEditing ? '✏️ Sửa' : '➕ Thêm'} khoản — ${GROUP_META[itemCategory]?.label || ''}`}
         footer={
           <div className="flex gap-2 w-full justify-end">
             <button onClick={() => setItemOpen(false)}
@@ -687,7 +753,7 @@ export function FinanceTab(_props: Props) {
                 <span className="text-[11px] font-semibold text-[#78716c]">
                   Tổng {itemVehicles.length} xe
                 </span>
-                <span className="text-[12px] font-bold text-red-600">
+                <span className={`text-[12px] font-bold ${accentOf(itemCategory)}`}>
                   {fmt(itemVehicles.reduce((s, id) => s + Number(itemAmounts[id] || 0), 0))} ₫
                 </span>
               </div>

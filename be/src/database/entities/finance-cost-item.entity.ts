@@ -8,9 +8,13 @@ import {
 } from 'typeorm';
 
 /**
- * Chi tiết từng khoản chi phí (mỗi dòng = 1 lần phát sinh).
- * Nhóm theo `category` (suaChua | nhienLieu | cpKhac) và theo
- * tháng/năm + userId của finance entry tương ứng.
+ * Chi tiết từng khoản (mỗi dòng = 1 lần phát sinh).
+ * Nhóm theo `category` và theo tháng/năm + userId của finance entry tương ứng.
+ *
+ * `category` dùng CHUNG cho 2 loại:
+ *  - CHI PHÍ    : suaChua | nhienLieu | cpKhac
+ *  - VỐN ĐẦU TƯ : vonXe   | vonMooc   | vonKhac
+ * Nhờ vậy không cần bảng/cột mới cho vốn đầu tư.
  */
 @Entity('finance_cost_items')
 @Index('idx_finance_cost_items_scope', ['month', 'year', 'userId', 'category'])
@@ -28,7 +32,7 @@ export class FinanceCostItem {
   @Column({ name: 'user_id', type: 'int' })
   userId: number;
 
-  /** Nhóm chi phí: suaChua | nhienLieu | cpKhac */
+  /** Nhóm: suaChua | nhienLieu | cpKhac | vonXe | vonMooc | vonKhac */
   @Column({ type: 'varchar', length: 20 })
   category: string;
 

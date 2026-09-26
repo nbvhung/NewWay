@@ -82,7 +82,18 @@ const COST_VIEW_PASSWORD = ACTION_PASSWORD;
 
 const COST_FIELDS = ['suaChua', 'nhienLieu', 'cpKhac'] as const;
 const INVEST_FIELDS = ['vonXe', 'vonMooc', 'vonKhac'] as const;
+
+/** Nhóm CHI PHÍ — lưu chi tiết trong `finance_cost_items`. */
 const COST_CATEGORIES = ['suaChua', 'nhienLieu', 'cpKhac'] as const;
+
+/**
+ * Nhóm VỐN ĐẦU TƯ — chi tiết hoá giống chi phí, dùng CHUNG bảng
+ * `finance_cost_items` (phân biệt bằng `category`, không cần cột mới).
+ * Tổng vốn của 1 nhóm = 3 cột legacy trên `finance_entries` + tổng các dòng chi tiết.
+ */
+const INVEST_CATEGORIES = ['vonXe', 'vonMooc', 'vonKhac'] as const;
+
+const ALL_CATEGORIES = [...COST_CATEGORIES, ...INVEST_CATEGORIES] as const;
 
 const FIELD_LABELS: Record<string, string> = {
   suaChua: 'Sửa chữa',
@@ -248,11 +259,14 @@ export class FinanceService {
 
   /**
    * Xem finance của tháng. `includeCost=false` sẽ ẩn các khoản chi phí
-   * (dùng khi chưa xác thực mật khẩu).
+   * (dùng khi chưa xác thực mật khẩu). Vốn đầu tư KHÔNG bị ẩn — 3 cột vốn
+   * cũ vốn đã hiện khi chưa mở khoá.
    *
    * Trả về thêm:
-   *  - `costItems`: { suaChua: [...], nhienLieu: [...], cpKhac: [...] }
-   *  - `costTotals`: { suaChua, nhienLieu, cpKhac } = số cũ (cột legacy) + Σ chi tiết
+   *  - `costItems`  : { suaChua: [...], nhienLieu: [...], cpKhac: [...] }
+   *  - `costTotals` : { suaChua, nhienLieu, cpKhac } = số cũ (cột legacy) + Σ chi tiết
+   *  - `investItems`: { vonXe: [...], vonMooc: [...], vonKhac: [...] }
+   *  - `investTotals`: { vonXe, vonMooc, vonKhac } = cột legacy + Σ chi tiết
    *  - `ben` / `ownerName` / `benLabel`: bản ghi này thuộc bên nào (A/B) và của ai
    */
   async getOrCreate(
@@ -270,34 +284,58 @@ export class FinanceService {
       await this.repo.save(entry);
     }
     const includeCost = opts.includeCost !== false;
-    const items = includeCost
-      ? await this.costRepo.find({
-          where: { month, year, userId },
-          order: { itemDate: 'DESC', id: 'DESC' },
-        })
+
+    // Nạp TẤT CẢ dòng chi tiết rồi mới tách theo nhóm:
+    //  - CHI PHÍ     : chỉ trả về khi đã mở khoá bằng mật khẩu (`includeCost`).
+    //  - VỐN ĐẦU TƯ  : luôn trả về — 3 cột vốn cũ vốn đã hiện khi chưa mở khoá.
+    const allItems = await this.costRepo.find({
+      where: { month, year, userId },
+      order: { itemDate: 'DESC', id: 'DESC' },
+    });
+    const isInvest = (c: string) =>
+      (INVEST_CATEGORIES as readonly string[]).includes(c);
+
+    const investRows = allItems.filter((it) => isInvest(it.category));
+    const costRows = includeCost
+      ? allItems.filter((it) => !isInvest(it.category))
       : [];
 
-    const grouped: Record<string, FinanceCostItem[]> = {
-      suaChua: [], nhienLieu: [], cpKhac: [],
+    const groupBy = (rows: FinanceCostItem[], keys: readonly string[]) => {
+      const g: Record<string, FinanceCostItem[]> = {};
+      keys.forEach((k) => (g[k] = []));
+      rows.forEach((it) => {
+        if (g[it.category]) g[it.category].push(it);
+      });
+      return g;
     };
-    for (const it of items) {
-      if (grouped[it.category]) grouped[it.category].push(it);
-    }
+    const costGrouped = groupBy(costRows, COST_CATEGORIES);
+    const investGrouped = groupBy(investRows, INVEST_CATEGORIES);
 
+    // `stripCostIfNeeded` đã zero hoá 3 cột chi phí khi chưa mở khoá (và GIỮ 3 cột vốn)
+    // → dùng `base` cho cả 2 tổng để không lộ số chi phí qua API khi chưa có mật khẩu.
     const base = includeCost ? entry : this.stripCostIfNeeded(entry, false);
-    const sumItems = (cat: string) =>
-      grouped[cat].reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    const num = (v: unknown) => Number(v) || 0;
+    const sum = (g: Record<string, FinanceCostItem[]>, cat: string) =>
+      g[cat].reduce((s, i) => s + (Number(i.amount) || 0), 0);
 
     return {
       ...base,
       ben,
       benLabel: FinanceService.benLabel(ben),
       ownerName: owner?.fullName || owner?.username || '',
-      costItems: grouped,
+      // ── Chi phí (3 nhóm) ──
+      costItems: costGrouped,
       costTotals: {
-        suaChua: (Number(entry.suaChua) || 0) + sumItems('suaChua'),
-        nhienLieu: (Number(entry.nhienLieu) || 0) + sumItems('nhienLieu'),
-        cpKhac: (Number(entry.cpKhac) || 0) + sumItems('cpKhac'),
+        suaChua: num(base.suaChua) + sum(costGrouped, 'suaChua'),
+        nhienLieu: num(base.nhienLieu) + sum(costGrouped, 'nhienLieu'),
+        cpKhac: num(base.cpKhac) + sum(costGrouped, 'cpKhac'),
+      },
+      // ── Vốn đầu tư (3 nhóm) — chi tiết hoá giống chi phí ──
+      investItems: investGrouped,
+      investTotals: {
+        vonXe: num(base.vonXe) + sum(investGrouped, 'vonXe'),
+        vonMooc: num(base.vonMooc) + sum(investGrouped, 'vonMooc'),
+        vonKhac: num(base.vonKhac) + sum(investGrouped, 'vonKhac'),
       },
     };
   }
@@ -324,9 +362,13 @@ export class FinanceService {
 
   // ── Chi tiết chi phí (mỗi dòng = 1 khoản phát sinh) ────────────
 
+  /**
+   * Nhóm hợp lệ = nhóm chi phí HOẶC nhóm vốn đầu tư (2 tập không giao nhau).
+   * Dùng chung 1 endpoint nên phải nhận cả hai.
+   */
   private assertCategory(category: string): void {
-    if (!COST_CATEGORIES.includes(category as any)) {
-      throw new BadRequestException('Nhóm chi phí không hợp lệ');
+    if (!ALL_CATEGORIES.includes(category as any)) {
+      throw new BadRequestException('Nhóm không hợp lệ');
     }
   }
 

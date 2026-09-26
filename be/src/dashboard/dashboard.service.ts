@@ -11,7 +11,13 @@ import { SalaryRecord } from '../database/entities/salary-record.entity';
 import { User } from '../database/entities/user.entity';
 import { Route } from '../database/entities/route.entity';
 import { FinanceEntry } from '../database/entities/finance-entry.entity';
+import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
 import { resolveVisibleDriverIds } from '../common/permissions/permissions';
+
+// ─── Nhóm chi tiết trong `finance_cost_items` ────────────────────
+// Bảng này dùng CHUNG cho cả chi phí và vốn đầu tư, phân biệt bằng `category`.
+const COST_CATEGORIES = ['suaChua', 'nhienLieu', 'cpKhac'] as const;
+const INVEST_CATEGORIES = ['vonXe', 'vonMooc', 'vonKhac'] as const;
 
 // ─── Helpers ────────────────────────────────────────────────────
 function dayOfDate(d: string | Date | null | undefined): number | null {
@@ -119,6 +125,7 @@ export class DashboardService {
     @InjectRepository(User)         private userRepo: Repository<User>,
     @InjectRepository(Route)        private routeRepo: Repository<Route>,
     @InjectRepository(FinanceEntry) private financeRepo: Repository<FinanceEntry>,
+    @InjectRepository(FinanceCostItem) private costItemRepo: Repository<FinanceCostItem>,
   ) {}
 
   async getOverview(month: number, year: number, user?: any): Promise<DashboardOverview> {
@@ -469,12 +476,31 @@ export class DashboardService {
     const financeWhere: any = { month, year };
     if (userId) financeWhere.userId = userId;
     const finance = await this.financeRepo.findOne({ where: financeWhere });
-    const suaChua   = Number(finance?.suaChua   ?? 0);
-    const nhienLieu = Number(finance?.nhienLieu ?? 0);
-    const cpKhac    = Number(finance?.cpKhac    ?? 0);
-    const vonXe     = Number(finance?.vonXe     ?? 0);
-    const vonMooc   = Number(finance?.vonMooc   ?? 0);
-    const vonKhac   = Number(finance?.vonKhac   ?? 0);
+
+    // Chi tiết từng khoản — dùng CHUNG bảng `finance_cost_items` cho cả chi phí
+    // và vốn đầu tư (phân biệt bằng `category`).
+    // Tổng 1 nhóm = cột legacy trên `finance_entries` + tổng các dòng chi tiết,
+    // nên phải cộng thêm; nếu không Tổng Quan sẽ thiếu so với tab Tài Chính.
+    const itemWhere: any = { month, year };
+    if (userId) itemWhere.userId = userId;
+    const itemRows = await this.costItemRepo.find({ where: itemWhere });
+    const sumByCategories = (cats: readonly string[]): Record<string, number> => {
+      const out: Record<string, number> = {};
+      for (const c of cats) out[c] = 0;
+      for (const it of itemRows) {
+        if (out[it.category] !== undefined) out[it.category] += Number(it.amount) || 0;
+      }
+      return out;
+    };
+    const costItemSums = sumByCategories(COST_CATEGORIES);
+    const investItemSums = sumByCategories(INVEST_CATEGORIES);
+
+    const suaChua   = Number(finance?.suaChua   ?? 0) + costItemSums.suaChua;
+    const nhienLieu = Number(finance?.nhienLieu ?? 0) + costItemSums.nhienLieu;
+    const cpKhac    = Number(finance?.cpKhac    ?? 0) + costItemSums.cpKhac;
+    const vonXe     = Number(finance?.vonXe     ?? 0) + investItemSums.vonXe;
+    const vonMooc   = Number(finance?.vonMooc   ?? 0) + investItemSums.vonMooc;
+    const vonKhac   = Number(finance?.vonKhac   ?? 0) + investItemSums.vonKhac;
     const totalChiPhi = Math.round(totalSubvendor + totalLuongChuyen + suaChua + nhienLieu + cpKhac);
 
     return {

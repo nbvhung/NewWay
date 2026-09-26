@@ -12,6 +12,7 @@ import { SalaryRecord } from '../database/entities/salary-record.entity';
 import { User } from '../database/entities/user.entity';
 import { Route } from '../database/entities/route.entity';
 import { FinanceEntry } from '../database/entities/finance-entry.entity';
+import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { FinanceEntry } from '../database/entities/finance-entry.entity';
       User,
       Route,
       FinanceEntry,
+      FinanceCostItem,
     ]),
   ],
   controllers: [DashboardController],
