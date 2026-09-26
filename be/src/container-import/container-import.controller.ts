@@ -117,15 +117,24 @@ export class ContainerImportController {
     );
   }
 
+  @Get('deletion-log')
+  @Permissions('container.manage')
+  deletionLog(@Query('limit') limit?: string, @Query('code') code?: string) {
+    return this.containerImportService.findDeletionLog(
+      limit ? +limit : 200,
+      code,
+    );
+  }
+
   @Delete('plan/:planId')
   @Permissions('container.manage')
-  removeByPlan(@Param('planId') planId: string) {
-    return this.containerImportService.removeByPlan(+planId);
+  removeByPlan(@Param('planId') planId: string, @CurrentUser() user: any) {
+    return this.containerImportService.removeByPlan(+planId, user);
   }
 
   @Delete(':id')
   @Permissions('container.manage')
-  remove(@Param('id') id: string) {
-    return this.containerImportService.remove(+id);
+  remove(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.containerImportService.remove(+id, user);
   }
 }

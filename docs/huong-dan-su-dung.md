@@ -208,6 +208,11 @@ Chức năng:
 - **🗑️ Xoá** — xoá bản ghi (admin/supper_admin)
 - **📥 Xuất Excel** — tải file Excel tổng hợp
 
+> 🔒 **Mọi thao tác XOÁ đều phải nhập mật khẩu `348`** (trên web và trên app). Bấm nút xoá sẽ hiện
+> popup xác nhận — nhập mật khẩu rồi bấm **Xoá**; bấm **Huỷ** để dừng. Sai mật khẩu thì báo lỗi
+> ngay trong popup, nhập lại hoặc huỷ. Mật khẩu không được ghi nhớ — mỗi lần xoá đều phải nhập lại,
+> kể cả tài khoản supper_admin. Mục đích là tránh xoá nhầm.
+
 ### 6.2. Quản lý tài khoản
 
 Danh sách tài khoản người dùng — hiển thị avatar, họ tên, vai trò.

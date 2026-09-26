@@ -5,10 +5,11 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, In, Not } from 'typeorm';
+import { Repository, IsNull, In, Not, EntityManager } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { ContainerClaim } from '../database/entities/container-claim.entity';
+import { ContainerAuditLog } from '../database/entities/container-audit-log.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Submission } from '../database/entities/submission.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
@@ -36,6 +37,45 @@ interface ClaimUnit {
   bundleId?: string;
 }
 
+/** Nhãn hiển thị của các ô sản lượng trên submission. */
+const FIELD_LABEL: Record<string, string> = {
+  hang20: 'Hàng 20',
+  hang40: 'Hàng 40',
+  vo20: 'Vỏ 20',
+  vo40: 'Vỏ 40',
+  vo20fr: 'Vỏ 20FR',
+  vo40fr: 'Vỏ 40FR',
+  veSinhLai: 'Vệ sinh lại',
+  keoVe: 'Kéo về',
+  tip: 'TIP',
+};
+
+/**
+ * Loại claim cộng vào ô nào của submission — để khi xoá container trừ lại ĐÚNG ô.
+ *
+ * Mặc định (CLAIM / CLAMP / KD2 / REGO / CLASSIFY): ô theo LOẠI container
+ * (`TYPE_FIELD_MAP`, vd V40 → vo40) — xem `applyClaimForDriver`, `recordAgain`
+ * và `classifyPhatSinh`.
+ *
+ * Hai loại dưới đây cố ý KHÁC loại container, vì bot cộng theo loại GHI NHẬN:
+ *  - `VSL` ("Vệ sinh lại") → luôn cộng `veSinhLai` (`reEntryRecord`)
+ *  - `KV`  ("Kéo về")      → luôn cộng `keoVe`    (`reEntryRecord`)
+ */
+const CLAIM_FIELD_OVERRIDE: Record<string, string> = {
+  VSL: 'veSinhLai',
+  KV: 'keoVe',
+};
+
+/** Kết quả trừ sản lượng khi xoá container — trả về cho FE hiển thị. */
+export interface ReversalSummary {
+  claimCount: number;
+  drivers: Array<{
+    submissionId: number;
+    driverName: string;
+    changes: Record<string, { old: string; new: string }>;
+  }>;
+}
+
 @Injectable()
 export class ContainerImportService {
   private readonly logger = new Logger(ContainerImportService.name);
@@ -44,6 +84,8 @@ export class ContainerImportService {
     private containerImportsRepository: Repository<ContainerImport>,
     @InjectRepository(ContainerClaim)
     private containerClaimsRepository: Repository<ContainerClaim>,
+    @InjectRepository(ContainerAuditLog)
+    private containerAuditLogRepository: Repository<ContainerAuditLog>,
     @InjectRepository(ShippingLine)
     private shippingLinesRepository: Repository<ShippingLine>,
     @InjectRepository(Submission)
@@ -437,18 +479,363 @@ export class ContainerImportService {
     });
   }
 
-  async remove(id: number) {
+  /**
+   * Chặn xoá container thuộc kế hoạch ĐÃ HOÀN THÀNH.
+   *
+   * Kế hoạch hoàn thành là số liệu đã chốt (bảng kê khách hàng, lương lái xe),
+   * nên xoá cont lúc này sẽ làm lệch số đã gửi. Muốn sửa thì phải mở khoá kế
+   * hoạch trước — đó là quyết định có chủ ý, không phải xoá nhầm.
+   */
+  private async assertPlansNotCompleted(
+    rows: ContainerImport[],
+  ): Promise<void> {
+    const planIds = [
+      ...new Set(
+        rows.map((r) => r.shippingLineId).filter((x): x is number => x != null),
+      ),
+    ];
+    if (planIds.length === 0) return;
+    const completed = await this.shippingLinesRepository.find({
+      where: { id: In(planIds), completed: true },
+      select: { id: true, name: true },
+    });
+    if (completed.length > 0) {
+      const names = completed
+        .map((p) => p.name || `#${p.id}`)
+        .join(', ');
+      throw new BadRequestException(
+        `Không thể xoá container của kế hoạch đã hoàn thành (${names}). ` +
+          `Xoá lúc này sẽ làm lệch bảng kê / lương đã chốt. ` +
+          `Nếu thật sự cần sửa, hãy bỏ trạng thái "hoàn thành" của kế hoạch trước.`,
+      );
+    }
+  }
+
+  /** Ô sản lượng mà 1 dòng claim đã cộng vào submission (null = không đụng). */
+  private fieldForClaim(
+    claimType: string,
+    containerType: string,
+  ): string | null {
+    const override = CLAIM_FIELD_OVERRIDE[claimType];
+    if (override) return override;
+    return TYPE_FIELD_MAP[containerType] ?? null;
+  }
+
+  /**
+   * Trừ lại sản lượng của những lái xe đã ghi nhận các container SẮP bị xoá.
+   *
+   * Mỗi dòng `container_claims` tương ứng ĐÚNG 1 lần cộng vào submission (kể cả
+   * `KD2` — bot cộng ô loại container thêm một lần nữa cho cùng 1 cont), nên ở
+   * đây trừ đúng theo từng dòng claim. Nhờ vậy số của lái xe luôn khớp với số
+   * container thật còn lại, không phụ thuộc vào việc cont đó có bó FR hay không:
+   * bó FR gồm N cont thì đã cộng N và có N dòng claim, xoá 1 cont trừ 1.
+   *
+   * Không bao giờ trừ xuống dưới 0 (dữ liệu cũ có thể đã lệch sẵn).
+   */
+  private async reverseClaimsForContainers(
+    em: EntityManager,
+    rows: ContainerImport[],
+    claims: ContainerClaim[],
+    actor?: { id?: number; fullName?: string } | null,
+  ): Promise<ReversalSummary> {
+    const summary: ReversalSummary = { claimCount: claims.length, drivers: [] };
+    if (claims.length === 0) return summary;
+
+    const containerById = new Map(rows.map((r) => [r.id, r]));
+    const perSubmission = new Map<number, Map<string, number>>();
+    for (const cl of claims) {
+      const container = containerById.get(cl.containerImportId);
+      if (!container) continue;
+      const field = this.fieldForClaim(cl.claimType, container.type);
+      if (!field) continue;
+      if (!perSubmission.has(cl.submissionId)) {
+        perSubmission.set(cl.submissionId, new Map());
+      }
+      const fields = perSubmission.get(cl.submissionId)!;
+      fields.set(field, (fields.get(field) || 0) + 1);
+    }
+    if (perSubmission.size === 0) return summary;
+
+    const submissionRepo = em.getRepository(Submission);
+    const historyRepo = em.getRepository(EditHistory);
+    const subs = await submissionRepo.find({
+      where: { id: In([...perSubmission.keys()]) },
+    });
+
+    for (const sub of subs) {
+      const fields = perSubmission.get(sub.id)!;
+      const changes: Record<string, { old: string; new: string }> = {};
+      for (const [field, times] of fields) {
+        const oldVal = String((sub as any)[field] ?? '');
+        const oldNum = parseInt(oldVal, 10) || 0;
+        const newNum = Math.max(0, oldNum - times);
+        if (newNum === oldNum) continue;
+        (sub as any)[field] = String(newNum);
+        changes[field] = { old: oldVal, new: String(newNum) };
+      }
+      if (Object.keys(changes).length === 0) continue;
+
+      sub.editCount += 1;
+      sub.lastEditedAt = new Date();
+      await submissionRepo.save(sub);
+
+      await historyRepo.save(
+        historyRepo.create({
+          submissionId: sub.id,
+          editedById: actor?.id ?? sub.userId,
+          editedByName: actor?.fullName || 'Hệ thống (xoá container)',
+          changes: JSON.stringify(changes),
+        }),
+      );
+
+      summary.drivers.push({
+        submissionId: sub.id,
+        driverName: sub.driverName,
+        changes,
+      });
+    }
+    return summary;
+  }
+
+  /** Câu thông báo trả về FE, nêu rõ đã trừ ô nào của lái xe nào. */
+  private buildRemoveMessage(
+    base: string,
+    summary: ReversalSummary,
+  ): string {
+    if (summary.claimCount === 0) {
+      return `${base} (container chưa có ghi nhận nào, sản lượng không đổi)`;
+    }
+    if (summary.drivers.length === 0) {
+      return `${base}. Container có ${summary.claimCount} lượt ghi nhận nhưng sản lượng của lái xe đang ở 0 nên không trừ thêm.`;
+    }
+    const parts = summary.drivers.map((d) => {
+      const chg = Object.entries(d.changes)
+        .map(([f, c]) => `${FIELD_LABEL[f] || f} ${c.old || 0}→${c.new}`)
+        .join(', ');
+      return `${d.driverName}: ${chg}`;
+    });
+    return `${base}. Đã trừ sản lượng — ${parts.join('; ')}`;
+  }
+
+  /**
+   * Ghi lịch sử xoá container vào `container_audit_logs`.
+   *
+   * Cố ý "best-effort": nếu bảng audit chưa được migrate ở môi trường đang chạy
+   * thì chỉ ghi cảnh báo, TUYỆT ĐỐI không được làm hỏng thao tác xoá thật.
+   *
+   * `preloadedClaims`: truyền vào khi claim đã bị xoá trước đó (xoá container
+   * giờ xoá luôn claim để không còn claim mồ côi), để audit vẫn ghi được
+   * `claim_count` / `claim_types` của lúc TRƯỚC khi xoá.
+   */
+  private async logContainerDeletion(
+    rows: ContainerImport[],
+    action: string,
+    actor?: { id?: number; fullName?: string } | null,
+    reason?: string,
+    preloadedClaims?: ContainerClaim[],
+  ): Promise<void> {
+    if (!rows.length) return;
+    try {
+      const ids = rows.map((r) => r.id);
+      const claims =
+        preloadedClaims ??
+        (await this.containerClaimsRepository.find({
+          where: { containerImportId: In(ids) },
+          select: { containerImportId: true, claimType: true },
+        }));
+      const claimsByContainer = new Map<number, string[]>();
+      for (const cl of claims) {
+        if (!claimsByContainer.has(cl.containerImportId)) {
+          claimsByContainer.set(cl.containerImportId, []);
+        }
+        claimsByContainer.get(cl.containerImportId)!.push(cl.claimType);
+      }
+
+      const planIds = [
+        ...new Set(
+          rows
+            .map((r) => r.shippingLineId)
+            .filter((x): x is number => x != null),
+        ),
+      ];
+      const plans = planIds.length
+        ? await this.shippingLinesRepository.find({
+            where: { id: In(planIds) },
+            select: { id: true, name: true },
+          })
+        : [];
+      const planName = new Map(plans.map((p) => [p.id, p.name]));
+
+      const logs = rows.map((r) => {
+        const types = claimsByContainer.get(r.id) || [];
+        return this.containerAuditLogRepository.create({
+          containerImportId: r.id,
+          containerCode: r.containerCode,
+          containerType: r.type,
+          shippingLineId: r.shippingLineId ?? null,
+          shippingLineName: r.shippingLineId
+            ? planName.get(r.shippingLineId) || ''
+            : '',
+          submissionId: r.submissionId ?? null,
+          bundleId: r.bundleId ?? null,
+          claimCount: types.length,
+          claimTypes: [...new Set(types)].join(','),
+          action,
+          performedById: actor?.id ?? null,
+          performedByName: actor?.fullName || '',
+          changes: JSON.stringify({
+            reason: reason || '',
+            snapshot: {
+              id: r.id,
+              containerCode: r.containerCode,
+              type: r.type,
+              shippingLineId: r.shippingLineId,
+              submissionId: r.submissionId,
+              importedById: r.importedById,
+              bundleId: r.bundleId,
+              keoVe: r.keoVe,
+              veSinhLai: r.veSinhLai,
+              phatSinh: r.phatSinh,
+              createdAt: r.createdAt,
+            },
+            claims: types,
+          }),
+        });
+      });
+      await this.containerAuditLogRepository.save(logs);
+    } catch (err) {
+      this.logger.error(
+        `Không ghi được container_audit_logs (${action}): ${(err as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Xoá 1 container VÀ trừ lại sản lượng của lái xe đã ghi nhận nó.
+   *
+   * Trước đây xoá container chỉ mất dòng container, còn `submissions.vo40…`
+   * vẫn nguyên → lái xe bị giữ sản lượng "ảo" (bảng kê Excel thì mất cont, còn
+   * số lái xe nhìn thấy thì không). Giờ hai bên được link lại: mỗi dòng claim
+   * của cont bị xoá sẽ trừ đúng ô mà nó đã cộng (xem `CLAIM_FIELD_OVERRIDE`),
+   * có ghi `edit_history` để tra lại được ai trừ, khi nào.
+   *
+   * Toàn bộ (trừ sản lượng + xoá claim + xoá container) chạy trong 1 transaction
+   * để không bao giờ rơi vào trạng thái nửa vời.
+   */
+  async remove(id: number, actor?: { id?: number; fullName?: string } | null) {
     const item = await this.containerImportsRepository.findOne({
       where: { id },
     });
     if (!item) throw new NotFoundException('Không tìm thấy container');
-    await this.containerImportsRepository.remove(item);
-    return { message: 'Đã xóa container' };
+    await this.assertPlansNotCompleted([item]);
+
+    // TypeORM `remove()` xoá luôn khoá chính trên entity truyền vào (item.id
+    // thành undefined sau lệnh), nên phải chụp bản sao TRƯỚC khi xoá, nếu không
+    // audit sẽ ghi container_import_id = NULL và mất id để khôi phục.
+    const snapshot: ContainerImport = { ...item };
+    const claims = await this.containerClaimsRepository.find({
+      where: { containerImportId: id },
+    });
+
+    const summary = await this.containerImportsRepository.manager.transaction(
+      async (em) => {
+        const rev = await this.reverseClaimsForContainers(
+          em,
+          [item],
+          claims,
+          actor,
+        );
+        if (claims.length > 0) {
+          await em
+            .getRepository(ContainerClaim)
+            .delete({ containerImportId: id });
+        }
+        await em.getRepository(ContainerImport).delete({ id });
+        return rev;
+      },
+    );
+
+    await this.logContainerDeletion([snapshot], 'DELETE', actor, undefined, claims);
+
+    return {
+      message: this.buildRemoveMessage('Đã xóa container', summary),
+      reversed: summary.drivers,
+      claimCount: summary.claimCount,
+    };
   }
 
-  async removeByPlan(planId: number) {
-    await this.containerImportsRepository.delete({ shippingLineId: planId });
-    return { message: 'Đã xóa toàn bộ container của kế hoạch' };
+  /**
+   * Xoá TOÀN BỘ container của 1 kế hoạch — cũng trừ sản lượng của tất cả lái xe
+   * đã chạy, giống hệt xoá từng container một (chọn "trừ sản lượng luôn").
+   */
+  async removeByPlan(
+    planId: number,
+    actor?: { id?: number; fullName?: string } | null,
+  ) {
+    const items = await this.containerImportsRepository.find({
+      where: { shippingLineId: planId },
+    });
+    await this.assertPlansNotCompleted(items);
+
+    // Chụp bản sao trước khi xoá (xem chú thích ở remove()).
+    const snapshots: ContainerImport[] = items.map((c) => ({ ...c }));
+    const ids = items.map((c) => c.id);
+    const claims = ids.length
+      ? await this.containerClaimsRepository.find({
+          where: { containerImportId: In(ids) },
+        })
+      : [];
+
+    const summary = await this.containerImportsRepository.manager.transaction(
+      async (em) => {
+        const rev = await this.reverseClaimsForContainers(
+          em,
+          items,
+          claims,
+          actor,
+        );
+        if (ids.length) {
+          await em
+            .getRepository(ContainerClaim)
+            .delete({ containerImportId: In(ids) });
+        }
+        await em.getRepository(ContainerImport).delete({ shippingLineId: planId });
+        return rev;
+      },
+    );
+
+    await this.logContainerDeletion(
+      snapshots,
+      'DELETE_PLAN',
+      actor,
+      `Xoá toàn bộ container của kế hoạch #${planId}`,
+      claims,
+    );
+
+    return {
+      message: this.buildRemoveMessage(
+        'Đã xóa toàn bộ container của kế hoạch',
+        summary,
+      ),
+      reversed: summary.drivers,
+      claimCount: summary.claimCount,
+    };
+  }
+
+  /**
+   * Lịch sử xoá container (mới nhất trước) — để tra "ai xoá container này".
+   */
+  async findDeletionLog(
+    limit = 200,
+    code?: string,
+  ): Promise<ContainerAuditLog[]> {
+    const qb = this.containerAuditLogRepository.createQueryBuilder('a');
+    const q = (code || '').trim().toUpperCase();
+    if (q) {
+      qb.where('a.containerCode = :q OR RIGHT(a.containerCode, 7) = :q', { q });
+    }
+    const take = Math.min(Math.max(Number(limit) || 200, 1), 1000);
+    return qb.orderBy('a.createdAt', 'DESC').take(take).getMany();
   }
 
   async searchByDigits(
@@ -527,8 +914,29 @@ export class ContainerImportService {
   }
 
   /**
+   * Tên kế hoạch hiển thị đầy đủ, vd: `Chuyển bãi / HPH-GREENPORT / 23-09-2026`.
+   *
+   * Giữ đúng định dạng của `SubmissionsService.planDisplayName` để tên kế hoạch
+   * trên web khớp với tên in ra bảng kê Excel.
+   */
+  private planDisplayName(sl: any): string {
+    if (!sl) return '';
+    const ngay = sl.ngay ? String(sl.ngay).split('-').reverse().join('-') : '';
+    return [sl.name, sl.soChuyen, sl.routeName, ngay].filter(Boolean).join(' / ');
+  }
+
+  /**
    * Tra cứu mã container toàn bộ (web, ops/admin/supper_admin).
-   * Tìm theo mã đầy đủ HOẶC 7 số cuối; kèm thông tin kế hoạch + người ghi nhận.
+   *
+   * Tìm ở **mọi kế hoạch, kể cả kế hoạch đã hoàn thành** (không lọc
+   * `completed`) — vì nhu cầu thường gặp là tra lại container của tàu đã chạy
+   * xong. Chỉ lọc theo lái xe nếu tài khoản bị giới hạn `visibleDriverIds`.
+   *
+   * Cách khớp:
+   * - Nhập **3 số trở lên** → khớp N số cuối của mã (vd `815` khớp
+   *   `WHSU8668815`). Nhập ít hơn 3 số sẽ báo lỗi thay vì trả về hàng nghìn
+   *   kết quả vô nghĩa.
+   * - Nhập mã có chữ → khớp chính xác hoặc chứa chuỗi đó.
    */
   async searchAllByCode(code: string, user?: any): Promise<any[]> {
     const q = (code || '').trim().toUpperCase();
@@ -539,14 +947,28 @@ export class ContainerImportService {
       .leftJoin('sub.user', 'u')
       .addSelect(['u.id', 'u.fullName', 'u.username'])
       .leftJoin('c.importedByRef', 'imp')
-      .addSelect(['imp.id', 'imp.fullName'])
-      .where('c.containerCode = :q OR RIGHT(c.containerCode, 7) = :q', { q });
+      .addSelect(['imp.id', 'imp.fullName']);
+
+    if (/^\d+$/.test(q)) {
+      if (q.length < 3) {
+        throw new BadRequestException(
+          'Vui lòng nhập ít nhất 3 số cuối của mã container để tra cứu (vd: 815, 8668815).',
+        );
+      }
+      qb.where('RIGHT(TRIM(c.container_code), :len) = :q', { q, len: q.length });
+    } else {
+      qb.where(
+        'TRIM(c.container_code) = :q OR c.container_code LIKE :like',
+        { q, like: `%${q}%` },
+      );
+    }
+
     const visible = resolveVisibleDriverIds(user);
     if (visible) {
       qb.andWhere('sub.id IS NULL OR u.id IN (:...visible)', { visible });
     }
     qb.orderBy('c.containerCode', 'ASC')
-      .take(200);
+      .take(300);
     const rows = await qb.getMany();
     const claimInfo = await this.loadClaimInfo(rows.map((r) => r.id));
     return rows.map((r) => {
@@ -585,6 +1007,7 @@ export class ContainerImportService {
               completed: plan.completed,
             }
           : null,
+        planDisplayName: this.planDisplayName(plan),
       };
     });
   }
@@ -956,20 +1379,9 @@ export class ContainerImportService {
     }
     await this.recordClaims(claimedIds, submission.id, 'CLAIM');
 
-    const LABEL_MAP: Record<string, string> = {
-      hang20: 'Hàng 20',
-      hang40: 'Hàng 40',
-      vo20: 'Vỏ 20',
-      vo40: 'Vỏ 40',
-      vo20fr: 'Vỏ 20FR',
-      vo40fr: 'Vỏ 40FR',
-      veSinhLai: 'Vệ sinh lại',
-      keoVe: 'Kéo Về',
-      tip: 'TIP',
-    };
     const totals: Record<string, string> = {};
     for (const [field, total] of totalsMap) {
-      totals[LABEL_MAP[field] || field] = String(total);
+      totals[FIELD_LABEL[field] || field] = String(total);
     }
 
     return {
@@ -1053,8 +1465,15 @@ export class ContainerImportService {
     if (type && !normalized) {
       throw new BadRequestException(`Loại container ${type} không hợp lệ.`);
     }
+    // Mã phát sinh đến từ tin nhắn Zalo của lái xe nên rất dễ dính khoảng trắng
+    // thừa (" WHSU2564264 "). Phải cắt trước khi lưu, nếu không container sẽ
+    // không tra cứu được theo mã / theo số cuối (xem thêm TRIM() ở searchAllByCode).
+    const containerCode = (code || '').trim().toUpperCase();
+    if (!containerCode) {
+      throw new BadRequestException('Mã container không hợp lệ.');
+    }
     const entity = this.containerImportsRepository.create({
-      containerCode: code,
+      containerCode,
       type: normalized || 'PHATSINH',
       shippingLineId: planId,
       importedById: userId,

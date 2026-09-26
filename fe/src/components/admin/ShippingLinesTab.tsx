@@ -10,6 +10,7 @@ import { hasPerm } from '@/lib/permissions';
 import { Modal } from '@/components/ui/modal';
 import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/use-pagination';
+import { confirmDelete } from '@/lib/delete-guard';
 
 interface Props {
   user?: any;
@@ -325,12 +326,14 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
   };
 
   const deletePlan = async (id: number, displayName: string) => {
-    if (!confirm(`Xóa kế hoạch "${displayName}"?`)) return;
-    try {
-      await shippingLinesApi.delete(id);
-      toast(`Đã xóa: ${displayName}`, 'success');
-      onRefresh();
-    } catch (err: any) { toast(err.message, 'error'); }
+    // Xoá luôn phải nhập mật khẩu 348 (popup của <DeleteGuardHost />).
+    const res = await confirmDelete({
+      message: `Xóa kế hoạch "${displayName}"?`,
+      action: () => shippingLinesApi.delete(id),
+    });
+    if (res === undefined) return;
+    toast(`Đã xóa: ${displayName}`, 'success');
+    onRefresh();
   };
 
   const planDisplayName = (p: ShippingLine) => {

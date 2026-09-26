@@ -1,12 +1,20 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { User } from '@/types';
 
 interface Props {
-  drivers: User[]; // chỉ các tài khoản lái xe
+  drivers: VehicleLike[]; // chỉ các tài khoản lái xe
   selected: number[];
   onChange: (ids: number[]) => void;
+}
+
+/** Dạng tối thiểu mà VehicleSelect cần — User và FinanceVehicle đều khớp. */
+export interface VehicleLike {
+  id: number;
+  fullName: string;
+  username: string;
+  soXe?: string;
+  stt?: string;
 }
 
 const normalize = (s: string) =>

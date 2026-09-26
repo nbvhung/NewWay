@@ -11,6 +11,7 @@ import { usersApi } from '@/lib/api-users';
 import { ROLE_LABELS } from '@/lib/utils';
 import { Modal } from '@/components/ui/modal';
 import { ROLE_PRESETS, resolvePermissions, PERMISSION_KEYS, hasPerm } from '@/lib/permissions';
+import { confirmDelete } from '@/lib/delete-guard';
 
 // Bộ quyền mặc định cho tài khoản "Xem vốn" (chỉ xem, không thao tác)
 const VIEW_ONLY_PERMS = [
@@ -90,6 +91,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
     username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', zaloId: '', zaloBot: 0,
     permissions: presetFor('laixe'),
     visibleDriverIds: [],
+    ben: '',
   });
   const [editUserData, setEditUserData] = useState<any>(null);
   const [editUserModalOpen, setEditUserModalOpen] = useState(false);
@@ -150,9 +152,10 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         ...newUser,
         permissions: (newUser.permissions || []).filter((p: string) => PERMISSION_KEYS.includes(p)),
         visibleDriverIds: (newUser.visibleDriverIds || []).map(Number),
+        ben: newUser.ben || '',
       });
       toast(`Đã thêm tài khoản: ${newUser.username}`, 'success');
-      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', zaloId: '', zaloBot: 0, permissions: presetFor('laixe'), visibleDriverIds: [] });
+      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', zaloId: '', zaloBot: 0, permissions: presetFor('laixe'), visibleDriverIds: [], ben: '' });
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
   };
@@ -161,7 +164,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
     const perms = Array.isArray(u.permissions) && u.permissions.length > 0
       ? u.permissions.filter((p) => PERMISSION_KEYS.includes(p))
       : presetFor(u.role);
-    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, permissions: perms, visibleDriverIds: Array.isArray(u.visibleDriverIds) ? u.visibleDriverIds.map(Number) : [], soXe: u.soXe, soMooc: u.soMooc || '', stt: u.stt, sdt: u.sdt, zaloId: u.zaloId || '', zaloBot: u.zaloBot ?? 0, password: '' });
+    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, permissions: perms, visibleDriverIds: Array.isArray(u.visibleDriverIds) ? u.visibleDriverIds.map(Number) : [], soXe: u.soXe, soMooc: u.soMooc || '', stt: u.stt, sdt: u.sdt, zaloId: u.zaloId || '', zaloBot: u.zaloBot ?? 0, password: '', ben: u.ben || '' });
     setEditUserModalOpen(true);
   };
 
@@ -173,6 +176,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         role: editUserData.role,
         permissions: (editUserData.permissions || []).filter((p: string) => PERMISSION_KEYS.includes(p)),
         visibleDriverIds: (editUserData.visibleDriverIds || []).map(Number),
+        ben: editUserData.ben || '',
         soXe: editUserData.soXe || '',
         soMooc: editUserData.soMooc || '',
         stt: editUserData.stt || '',
@@ -197,14 +201,13 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         setPendingDelete({ user: u, counts });
         return;
       }
-      if (!confirm(`Bạn chắc chắn muốn XÓA tài khoản "${u.fullName}"?`)) return;
-      setDeleting(true);
-      try {
-        await usersApi.delete(id);
-        toast('Đã xóa tài khoản', 'success');
-        onRefresh();
-      } catch (err: any) { toast(err.message, 'error'); }
-      setDeleting(false);
+      const del = await confirmDelete({
+        message: `Bạn chắc chắn muốn XÓA tài khoản "${u.fullName}"?`,
+        action: () => usersApi.delete(id),
+      });
+      if (del === undefined) return;
+      toast('Đã xóa tài khoản', 'success');
+      onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
   };
 
@@ -212,19 +215,22 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
     if (!pendingDelete) return;
     const { user, counts } = pendingDelete;
     const isBlock = mode === 'block';
-    if (isBlock) {
-      if (!confirm(`Khóa tài khoản "${user.fullName}"? Lái xe sẽ không đăng nhập được, lịch sử được giữ nguyên.`)) return;
-    } else {
-      if (!confirm(`XÓA TOÀN BỘ "${user.fullName}" kèm ${counts.submissions} bản ghi, ${counts.containers} container? Hành động không thể hoàn tác!`)) return;
-    }
+    // Đóng popup cảnh báo để nhường chỗ cho popup nhập mật khẩu xoá.
+    setPendingDelete(null);
     setDeleting(true);
-    try {
-      await usersApi.delete(user.id, mode);
-      toast(isBlock ? 'Đã khóa tài khoản' : 'Đã xóa tài khoản và toàn bộ dữ liệu', 'success');
-      setPendingDelete(null);
-      onRefresh();
-    } catch (err: any) { toast(err.message, 'error'); }
+    const res = await confirmDelete({
+      title: isBlock ? 'Xác nhận khoá tài khoản' : 'Xác nhận xoá tài khoản',
+      confirmLabel: isBlock ? 'Khoá tài khoản' : 'Xoá toàn bộ',
+      message: isBlock
+        ? `Khoá tài khoản "${user.fullName}"? Lái xe sẽ không đăng nhập được, lịch sử được giữ nguyên.`
+        : `XÓA TOÀN BỘ "${user.fullName}" kèm ${counts.submissions} bản ghi, ${counts.containers} container?`,
+      note: isBlock ? 'Có thể mở khoá lại sau.' : undefined,
+      action: () => usersApi.delete(user.id, mode),
+    });
     setDeleting(false);
+    if (res === undefined) return;
+    toast(isBlock ? 'Đã khóa tài khoản' : 'Đã xóa tài khoản và toàn bộ dữ liệu', 'success');
+    onRefresh();
   };
 
   return (
@@ -284,6 +290,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
                     <span className={roleBadge(u.role)}>{ROLE_LABELS[u.role] || u.role}</span>
                     {isCustomPerms(u) && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(59,130,246,0.15)] text-blue-600">⚙️ Quyền tùy chỉnh</span>}
                     {Array.isArray(u.visibleDriverIds) && u.visibleDriverIds.length > 0 && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(16,185,129,0.15)] text-emerald-600">🚗 Xem {u.visibleDriverIds.length} xe</span>}
+                    {u.ben && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(59,130,246,0.15)] text-blue-600">🏷️ Bên {u.ben}</span>}
                     {u.zaloId && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(245,158,11,0.15)] text-[#d97706]">💬 Zalo{u.zaloBot === 1 ? ' Bot2' : u.zaloBot === 2 ? ' Bot3' : ''}</span>}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -425,6 +432,18 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
                 onChange={(ids) => setNewUser({ ...newUser, visibleDriverIds: ids })}
               />
               <p className="text-[9px] text-[#a8a29e] mt-2">Dành cho tài khoản <b>Xem vốn</b>: người góp vốn chỉ thấy dữ liệu của những xe được chọn (Data, Kế hoạch, Container, Xuất Excel, Dashboard).</p>
+              <div className="mt-3">
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">
+                  🏷️ Bên chủ vốn <span className="text-[#a8a29e] font-normal">(dùng cho trang Tài chính)</span>
+                </label>
+                <select value={newUser.ben || ''} onChange={e => setNewUser({ ...newUser, ben: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer">
+                  <option value="">— Không thuộc bên nào —</option>
+                  <option value="A">Bên A — New Way A</option>
+                  <option value="B">Bên B — New Way B</option>
+                </select>
+                <p className="text-[9px] text-[#a8a29e] mt-1">Các xe ở trên thuộc bên này. Chi phí nhập cho xe đó vào sổ Tài chính của bên.</p>
+              </div>
             </div>
           </div>
 

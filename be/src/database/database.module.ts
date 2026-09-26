@@ -8,6 +8,7 @@ import { EditHistory } from './entities/edit-history.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { ContainerImport } from './entities/container-import.entity';
 import { ContainerClaim } from './entities/container-claim.entity';
+import { ContainerAuditLog } from './entities/container-audit-log.entity';
 import { ZaloMessage } from './entities/zalo-message.entity';
 import { ZaloScheduledMessage } from './entities/zalo-scheduled-message.entity';
 import { ZaloGroup } from './entities/zalo-group.entity';
@@ -47,6 +48,7 @@ import { SeedService } from './seed.service';
               RefreshToken,
               ContainerImport,
               ContainerClaim,
+              ContainerAuditLog,
               ZaloMessage,
               ZaloScheduledMessage,
               ZaloGroup,
@@ -87,6 +89,7 @@ import { SeedService } from './seed.service';
             RefreshToken,
             ContainerImport,
             ContainerClaim,
+            ContainerAuditLog,
             ZaloMessage,
             ZaloScheduledMessage,
             ZaloGroup,
@@ -124,6 +127,7 @@ import { SeedService } from './seed.service';
       RefreshToken,
       ContainerImport,
       ContainerClaim,
+      ContainerAuditLog,
       ZaloMessage,
       ZaloScheduledMessage,
       ZaloGroup,

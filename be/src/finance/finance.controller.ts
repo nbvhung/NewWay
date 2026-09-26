@@ -13,7 +13,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { FinanceService } from './finance.service';
-import type { UpsertFinanceDto, CostItemDto } from './finance.service';
+import type { UpsertFinanceDto, CostItemDto, BulkCostItemDto } from './finance.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Permissions } from '../common/decorators/permissions.decorator';
@@ -46,6 +46,22 @@ export class FinanceController {
   }
 
   /**
+   * Danh sách XE để chọn khi nhập chi phí — chỉ xe thuộc bên của bản ghi
+   * đang xem (bên A không thấy xe bên B).
+   */
+  @Get('vehicles')
+  @Permissions('dashboard.view')
+  listVehicles(
+    @Query('targetUserId') targetUserId: string,
+    @Req() req: any,
+  ) {
+    return this.financeService.listVehicles(
+      req.user,
+      this.targetUserId(targetUserId),
+    );
+  }
+
+  /**
    * Xem finance. Phần chi phí CHỈ trả về khi có mật khẩu hợp lệ
    * (query `pw` hoặc header `x-cost-password`).
    */
@@ -67,6 +83,13 @@ export class FinanceController {
     });
   }
 
+  /**
+   * Ghi finance của tháng.
+   *
+   * - Ghi chi phí (`suaChua/nhienLieu/cpKhac`): BẮT BUỘC mật khẩu (mọi role).
+   * - Ghi vốn đầu tư (`vonXe/vonMooc/vonKhac`): admin phải nhập mật khẩu,
+   *   supper_admin được miễn — service kiểm tra (cờ `investUnlocked`).
+   */
   @Put()
   @Permissions('dashboard.view')
   upsert(
@@ -79,16 +102,18 @@ export class FinanceController {
   ) {
     const { m, y } = this.monthYear(month, year);
     const password = pw ?? headerPw;
+    const pwOk = this.financeService.verifyCostPassword(password);
     const touchesCost =
       body.suaChua !== undefined ||
       body.nhienLieu !== undefined ||
       body.cpKhac !== undefined;
-    // Ghi chi phí yêu cầu mật khẩu; ghi vốn yêu cầu supper_admin (service kiểm tra).
-    if (touchesCost && !this.financeService.verifyCostPassword(password)) {
+    if (touchesCost && !pwOk) {
       throw new UnauthorizedException('Mật khẩu xem chi phí không đúng');
     }
     const editorName = req.user?.fullName || req.user?.username || '';
-    return this.financeService.upsert(m, y, req.user, body, editorName);
+    return this.financeService.upsert(m, y, req.user, body, editorName, {
+      investUnlocked: pwOk,
+    });
   }
 
   /** Lịch sử chỉnh sửa chi phí — yêu cầu mật khẩu. */
@@ -161,6 +186,26 @@ export class FinanceController {
     const { m, y } = this.monthYear(month, year);
     const editorName = req.user?.fullName || req.user?.username || '';
     return this.financeService.addCostItem(m, y, req.user, body, editorName);
+  }
+
+  /**
+   * Thêm 1 khoản chi cho NHIỀU xe cùng lúc — yêu cầu mật khẩu.
+   * Mỗi xe 1 số tiền riêng → mỗi xe 1 dòng chi phí.
+   */
+  @Post('cost-items/bulk')
+  @Permissions('dashboard.view')
+  addCostItemsBulk(
+    @Query('month') month: string,
+    @Query('year') year: string,
+    @Query('pw') pw: string,
+    @Headers('x-cost-password') headerPw: string,
+    @Req() req: any,
+    @Body() body: BulkCostItemDto,
+  ) {
+    this.assertPw(pw, headerPw);
+    const { m, y } = this.monthYear(month, year);
+    const editorName = req.user?.fullName || req.user?.username || '';
+    return this.financeService.addCostItemsBulk(m, y, req.user, body, editorName);
   }
 
   /** Sửa 1 khoản chi phí — yêu cầu mật khẩu. */

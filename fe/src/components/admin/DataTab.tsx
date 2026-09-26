@@ -12,6 +12,7 @@ import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { settingsApi } from '@/lib/api-settings';
 import { ROLE_LABELS, fmtNgay } from '@/lib/utils';
 import { hasPerm } from '@/lib/permissions';
+import { confirmDelete } from '@/lib/delete-guard';
 
 interface Props {
   user: any;
@@ -46,8 +47,6 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
   const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
   const [exportVendorKhac, setExportVendorKhac] = useState('');
   const [exportTenNguoiNhap, setExportTenNguoiNhap] = useState('');
-  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
-  const [deletePassword, setDeletePassword] = useState('');
   const [totalShipOpen, setTotalShipOpen] = useState(false);
   const [entryLocked, setEntryLocked] = useState(false);
   const [locking, setLocking] = useState(false);
@@ -135,13 +134,29 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
   };
 
   const deleteSub = async (id: number) => {
-    if (!confirm('Bạn chắc chắn muốn XÓA bản ghi này?')) return;
-    try {
-      await submissionsApi.delete(id);
-      loadSubmissions();
-    } catch (err: any) {
-      console.error(err);
-    }
+    // Xoá luôn phải nhập mật khẩu 348 (popup của <DeleteGuardHost />).
+    const res = await confirmDelete({
+      message: 'Bạn chắc chắn muốn XÓA bản ghi này?',
+      action: () => submissionsApi.delete(id),
+    });
+    if (res === undefined) return;
+    loadSubmissions();
+  };
+
+  /**
+   * Xoá TẤT CẢ dữ liệu nhập liệu — thao tác nguy hiểm nhất.
+   * Trước đây gate bằng mật khẩu 091281 kiểm tra ở FE; nay dùng chung popup
+   * mật khẩu xoá 348 và được backend (`DeletePasswordGuard`) kiểm tra thật.
+   */
+  const deleteAllSubs = async () => {
+    const res = await confirmDelete({
+      title: '⚠️ Xác nhận xóa tất cả',
+      confirmLabel: 'Xóa tất cả',
+      message: `Bạn có chắc chắn muốn XÓA TẤT CẢ ${submissions.length} bản ghi dữ liệu nhập liệu?`,
+      action: () => submissionsApi.deleteAll(),
+    });
+    if (res === undefined) return;
+    loadSubmissions();
   };
 
   const exportExcel = async (vendorKhac?: string, tenNguoiNhap?: string) => {
@@ -320,7 +335,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
 
       {hasPerm(user, 'entry.delete_all') && submissions.length > 0 && (
         <div className="flex justify-end mb-3">
-          <button onClick={() => setDeleteAllOpen(true)}
+          <button onClick={deleteAllSubs}
             className="px-3 py-1.5 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">
             🗑️ Xóa tất cả dữ liệu
           </button>
@@ -546,38 +561,6 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         </div>
       </Modal>
 
-      <Modal
-        open={deleteAllOpen}
-        onClose={() => { setDeleteAllOpen(false); setDeletePassword(''); }}
-        title="⚠️ Xác nhận xóa tất cả"
-        footer={
-          <div className="flex gap-2 w-full">
-            <button onClick={() => { setDeleteAllOpen(false); setDeletePassword(''); }}
-              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] cursor-pointer">
-              Hủy
-            </button>
-            <button onClick={async () => {
-              if (deletePassword !== '091281') return;
-              setDeleteAllOpen(false);
-              setDeletePassword('');
-              try {
-                await submissionsApi.deleteAll();
-                loadSubmissions();
-              } catch {}
-            }}
-              className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">
-              🗑️ Xóa tất cả
-            </button>
-          </div>
-        }
-      >
-        <p className="text-sm text-[#78716c] mb-4">Bạn có chắc chắn muốn <strong>xóa tất cả</strong> dữ liệu nhập liệu? Hành động này không thể hoàn tác.</p>
-        <div>
-          <label className="text-xs font-medium text-[#78716c] mb-1.5 block">Nhập mật khẩu xác nhận</label>
-          <input type="password" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} placeholder="Nhập mật khẩu..."
-            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
-        </div>
-      </Modal>
     </div>
   );
 }

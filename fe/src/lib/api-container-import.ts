@@ -41,12 +41,25 @@ export interface ContainerSearchResult {
     ngay?: string | null;
     completed: boolean;
   } | null;
+  /** Tên kế hoạch đầy đủ, vd: "Chuyển bãi / HPH-GREENPORT / 23-09-2026" */
+  planDisplayName?: string;
 }
 
 export interface ImportResult {
   total: number;
   imported: number;
   skipped: number;
+}
+
+/** Kết quả xoá container — kèm phần sản lượng đã trừ của lái xe. */
+export interface DeleteContainerResult {
+  message: string;
+  claimCount: number;
+  reversed: Array<{
+    submissionId: number;
+    driverName: string;
+    changes: Record<string, { old: string; new: string }>;
+  }>;
 }
 
 export const containerImportApi = {
@@ -80,10 +93,10 @@ export const containerImportApi = {
     }),
 
   remove: (id: number) =>
-    api.delete<{ message: string }>(`/admin/container-import/${id}`),
+    api.delete<DeleteContainerResult>(`/admin/container-import/${id}`),
 
   removeByPlan: (planId: number) =>
-    api.delete<{ message: string }>(`/admin/container-import/plan/${planId}`),
+    api.delete<DeleteContainerResult>(`/admin/container-import/plan/${planId}`),
 
   classify: (id: number, type: string) =>
     api.patch<{ id: number; containerCode: string; type: string; submissionId: number }>(

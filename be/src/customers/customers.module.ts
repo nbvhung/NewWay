@@ -9,6 +9,7 @@ import { CustomerSurcharge } from '../database/entities/customer-surcharge.entit
 import { CustomerAuditLog } from '../database/entities/customer-audit-log.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
+import { ContainerClaim } from '../database/entities/container-claim.entity';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ContainerImport } from '../database/entities/container-import.entity';
       CustomerAuditLog,
       ShippingLine,
       ContainerImport,
+      ContainerClaim,
     ]),
   ],
   controllers: [CustomersController],

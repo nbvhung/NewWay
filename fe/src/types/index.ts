@@ -5,6 +5,8 @@ export interface User {
   role: Role;
   permissions?: string[] | null;
   visibleDriverIds?: number[] | null;
+  /** Bên chủ vốn: 'A' | 'B' (chỉ tài khoản chủ vốn mới có) */
+  ben?: string | null;
   soXe: string;
   soMooc?: string;
   stt: string;

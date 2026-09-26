@@ -5,6 +5,29 @@ const api = axios.create({
   withCredentials: true,
 });
 
+/**
+ * Mật khẩu thao tác nguy hiểm (xoá). Backend (`DeletePasswordGuard`) BẮT BUỘC
+ * mọi request DELETE phải kèm mật khẩu qua header `x-cost-password`.
+ *
+ * `confirmDelete()` (lib/delete-guard) đặt giá trị này ngay trước khi chạy
+ * hành động xoá và xoá lại ngay sau khi xong — nên mật khẩu KHÔNG được lưu
+ * cho cả phiên, mỗi lần xoá đều phải nhập lại.
+ */
+let actionPassword = '';
+
+export function setActionPassword(pw: string) {
+  actionPassword = pw;
+}
+
+api.interceptors.request.use((config) => {
+  const method = (config.method || '').toLowerCase();
+  if (method === 'delete' && actionPassword) {
+    config.headers = config.headers || {};
+    (config.headers as Record<string, string>)['x-cost-password'] = actionPassword;
+  }
+  return config;
+});
+
 let refreshPromise: Promise<boolean> | null = null;
 
 api.interceptors.response.use(

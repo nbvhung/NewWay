@@ -18,6 +18,7 @@ import { CustomersModule } from './customers/customers.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { FinanceModule } from './finance/finance.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { DeletePasswordGuard } from './common/guards/delete-password.guard';
 
 @Module({
   imports: [
@@ -47,6 +48,11 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    // Mọi request DELETE đều phải kèm mật khẩu thao tác (348) — xem guard.
+    {
+      provide: APP_GUARD,
+      useClass: DeletePasswordGuard,
     },
   ],
 })

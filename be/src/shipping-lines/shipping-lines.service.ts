@@ -17,7 +17,8 @@ import { UpdateShippingLineDto } from './dto/update-shipping-line.dto';
 import { ZaloPlanCompletedNotifierService } from '../zalo-bot/zalo-plan-completed-notifier.service';
 import { resolveVisibleDriverIds } from '../common/permissions/permissions';
 
-const PRICE_TYPES = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'VSL', 'TIP'];
+// KV20/KV20FR = đơn giá cho cả cặp kẹp (xem PRICE_CONTAINER_TYPES ở customers).
+const PRICE_TYPES = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'KV20', 'KV20FR', 'VSL', 'TIP'];
 
 @Injectable()
 export class ShippingLinesService {

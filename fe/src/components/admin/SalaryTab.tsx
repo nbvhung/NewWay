@@ -5,6 +5,7 @@ import { salaryApi } from '@/lib/api-salary';
 import { usersApi } from '@/lib/api-users';
 import { submissionsApi } from '@/lib/api-submissions';
 import { SalaryItem, SalaryRecordItem, SalarySettings, User, DriverAdvance, SalaryPaymentLog } from '@/types';
+import { confirmDelete } from '@/lib/delete-guard';
 
 interface Props {
   currentUser: any;
@@ -291,14 +292,14 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   };
 
   const deleteAdvance = async (id: number) => {
-    if (!confirm('Xóa khoản tạm ứng này? (Lái xe đã trả hết)')) return;
-    try {
-      await salaryApi.deleteAdvance(id);
-      toast('Đã xóa khoản tạm ứng', 'success');
-      loadData(true);
-    } catch (e: any) {
-      toast(e?.response?.data?.message || 'Xóa thất bại', 'error');
-    }
+    // Xoá luôn phải nhập mật khẩu 348 (popup của <DeleteGuardHost />).
+    const res = await confirmDelete({
+      message: 'Xóa khoản tạm ứng này? (Lái xe đã trả hết)',
+      action: () => salaryApi.deleteAdvance(id),
+    });
+    if (res === undefined) return;
+    toast('Đã xóa khoản tạm ứng', 'success');
+    loadData(true);
   };
 
   const resetAdvanceDeduct = async () => {
@@ -452,14 +453,14 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   };
 
   const deleteItem = async (id: number) => {
-    if (!confirm('Xóa khoản lương này?')) return;
-    try {
-      await salaryApi.deleteItem(id);
-      toast('Đã xóa khoản lương', 'success');
-      loadData();
-    } catch (e: any) {
-      toast(e?.response?.data?.message || 'Xóa thất bại', 'error');
-    }
+    // Xoá luôn phải nhập mật khẩu 348 (popup của <DeleteGuardHost />).
+    const res = await confirmDelete({
+      message: 'Xóa khoản lương này?',
+      action: () => salaryApi.deleteItem(id),
+    });
+    if (res === undefined) return;
+    toast('Đã xóa khoản lương', 'success');
+    loadData();
   };
 
   const updateItemDefaultAmount = async (id: number, amountStr: string) => {

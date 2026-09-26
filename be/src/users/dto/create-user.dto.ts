@@ -30,6 +30,12 @@ export class CreateUserDto {
   @IsInt({ each: true, message: 'Danh sách xe không hợp lệ' })
   visibleDriverIds?: number[];
 
+  /** Bên chủ vốn: 'A' | 'B' | '' (rỗng = không thuộc bên nào) */
+  @IsOptional()
+  @IsString()
+  @IsIn(['', 'A', 'B'], { message: 'Bên không hợp lệ' })
+  ben?: string;
+
   @IsOptional()
   @IsString()
   soXe?: string;

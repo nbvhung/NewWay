@@ -6,11 +6,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, Not, IsNull } from 'typeorm';
 import { FinanceEntry } from '../database/entities/finance-entry.entity';
 import { FinanceAuditLog } from '../database/entities/finance-audit-log.entity';
 import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
 import { User } from '../database/entities/user.entity';
+import { ACTION_PASSWORD } from '../common/security/action-password';
 
 export interface UpsertFinanceDto {
   suaChua?: number;
@@ -30,12 +31,54 @@ export interface CostItemDto {
   name?: string;
   amount?: number;
   note?: string | null;
+  /** Xe mà khoản chi thuộc về (id lái xe). Bỏ trống = chi phí chung. */
+  vehicleUserId?: number | null;
   /** Chỉ supper_admin dùng: thêm chi phí cho admin này */
   targetUserId?: number;
 }
 
-/** Mật khẩu để xem phần chi phí (kiểm tra phía backend). */
-const COST_VIEW_PASSWORD = '348';
+/** 1 dòng chi phí cho 1 xe, dùng khi nhập nhiều xe cùng lúc. */
+export interface CostVehicleAmountDto {
+  vehicleUserId: number;
+  amount?: number;
+}
+
+/**
+ * Nhập 1 khoản chi cho NHIỀU xe cùng lúc: cùng tên/ngày/nhóm,
+ * mỗi xe 1 số tiền riêng → tạo mỗi xe 1 dòng `finance_cost_items`.
+ */
+export interface BulkCostItemDto {
+  category: string;
+  itemDate?: string | null;
+  name?: string;
+  note?: string | null;
+  vehicles: CostVehicleAmountDto[];
+  /** Chỉ supper_admin dùng: thêm chi phí cho admin này */
+  targetUserId?: number;
+}
+
+/** Xe để chọn khi nhập chi phí (1 xe = 1 tài khoản lái xe). */
+export interface VehicleOption {
+  id: number;
+  fullName: string;
+  username: string;
+  soXe: string;
+  soMooc: string;
+  stt: string;
+  ben: string;
+}
+
+/** Bên mặc định cho tài khoản / xe không được gán bên. */
+const DEFAULT_BEN = 'A';
+
+/**
+ * Mật khẩu dùng chung cho các khu vực được bảo vệ (kiểm tra phía backend):
+ *  - xem/ghi chi phí (sửa chữa, nhiên liệu, CP khác)
+ *  - ghi vốn đầu tư (vốn xe, vốn mooc, vốn khác)
+ *  - xoá dữ liệu (`DeletePasswordGuard`)
+ * Nguồn duy nhất: `ACTION_PASSWORD` (be/src/common/security/action-password.ts).
+ */
+const COST_VIEW_PASSWORD = ACTION_PASSWORD;
 
 const COST_FIELDS = ['suaChua', 'nhienLieu', 'cpKhac'] as const;
 const INVEST_FIELDS = ['vonXe', 'vonMooc', 'vonKhac'] as const;
@@ -80,7 +123,9 @@ export class FinanceService {
   }
 
   /** Danh sách admin để chọn "nhập vốn cho ai" (chỉ role admin/supper_admin). */
-  async listFinanceAdmins(): Promise<{ id: number; fullName: string; username: string; role: string }[]> {
+  async listFinanceAdmins(): Promise<
+    { id: number; fullName: string; username: string; role: string; ben: string }[]
+  > {
     const users = await this.usersRepo.find({
       where: { role: In(['admin', 'supper_admin']) },
       order: { fullName: 'ASC' },
@@ -90,7 +135,99 @@ export class FinanceService {
       fullName: u.fullName || u.username,
       username: u.username,
       role: u.role,
+      ben: this.normBen(u.ben),
     }));
+  }
+
+  // ── Bên A / Bên B ─────────────────────────────────────────────
+  // Bên là thuộc tính của TÀI KHOẢN CHỦ VỐN (`users.ben`). Xe thừa hưởng bên
+  // từ chủ vốn sở hữu nó qua `visible_driver_ids`; xe không thuộc chủ vốn nào
+  // → bên mặc định 'A'. Nhờ vậy chọn xe là tự biết khoản chi thuộc bên nào.
+
+  /** Chuẩn hoá giá trị bên; rỗng → bên mặc định. */
+  private normBen(v?: string | null): string {
+    return (v || '').trim().toUpperCase() || DEFAULT_BEN;
+  }
+
+  /** Map driverId → bên, suy ra từ chủ vốn sở hữu xe. Chủ vốn id nhỏ thắng. */
+  async loadDriverBenMap(): Promise<Map<number, string>> {
+    const owners = await this.usersRepo.find({
+      where: { ben: Not(IsNull()) },
+      order: { id: 'ASC' },
+    });
+    const map = new Map<number, string>();
+    for (const o of owners) {
+      const ben = (o.ben || '').trim().toUpperCase();
+      if (!ben) continue;
+      for (const d of o.visibleDriverIds || []) {
+        const id = Number(d);
+        if (Number.isFinite(id) && !map.has(id)) map.set(id, ben);
+      }
+    }
+    return map;
+  }
+
+  /**
+   * Xác định "chủ vốn" của bản ghi finance đang thao tác:
+   * `resolveUserId` đã chặn quyền chọn `targetUserId` (chỉ supper_admin).
+   * Trả về userId + bên tương ứng.
+   */
+  private async resolveOwner(
+    actor: any,
+    targetUserId?: number,
+  ): Promise<{ userId: number; ben: string }> {
+    const userId = await this.resolveUserId(actor, targetUserId);
+    const owner = await this.usersRepo.findOne({ where: { id: userId } });
+    return { userId, ben: this.normBen(owner?.ben) };
+  }
+
+  /** Tên hiển thị của bên, vd "Bên A". */
+  static benLabel(ben?: string | null): string {
+    const b = (ben || '').trim().toUpperCase() || DEFAULT_BEN;
+    return `Bên ${b}`;
+  }
+
+  /**
+   * Danh sách xe để chọn khi nhập chi phí — CHỈ xe thuộc bên của bản ghi
+   * đang xem (tách biệt hoàn toàn: bên A không thấy xe bên B).
+   */
+  async listVehicles(actor: any, targetUserId?: number): Promise<VehicleOption[]> {
+    const { ben } = await this.resolveOwner(actor, targetUserId);
+    const drivers = await this.usersRepo.find({
+      where: { role: 'laixe' },
+      order: { id: 'ASC' },
+    });
+    const benMap = await this.loadDriverBenMap();
+    return drivers
+      .map((d) => ({
+        id: d.id,
+        fullName: d.fullName || d.username,
+        username: d.username,
+        soXe: d.soXe || '',
+        soMooc: d.soMooc || '',
+        stt: d.stt || '',
+        ben: this.normBen(benMap.get(d.id)),
+      }))
+      .filter((v) => v.ben === ben);
+  }
+
+  /** Kiểm tra 1 xe có thuộc đúng bên không (chặn nhập xe bên B vào sổ bên A). */
+  private async assertVehicleInBen(
+    vehicleUserId: number | null | undefined,
+    ben: string,
+  ): Promise<void> {
+    if (vehicleUserId === null || vehicleUserId === undefined) return;
+    const vid = Number(vehicleUserId);
+    const vehicle = await this.usersRepo.findOne({ where: { id: vid } });
+    if (!vehicle || vehicle.role !== 'laixe') {
+      throw new BadRequestException('Xe không hợp lệ');
+    }
+    const benMap = await this.loadDriverBenMap();
+    if (this.normBen(benMap.get(vid)) !== ben) {
+      throw new BadRequestException(
+        `Xe ${vehicle.soXe || vehicle.fullName} không thuộc ${FinanceService.benLabel(ben)}`,
+      );
+    }
   }
 
   /**
@@ -116,6 +253,7 @@ export class FinanceService {
    * Trả về thêm:
    *  - `costItems`: { suaChua: [...], nhienLieu: [...], cpKhac: [...] }
    *  - `costTotals`: { suaChua, nhienLieu, cpKhac } = số cũ (cột legacy) + Σ chi tiết
+   *  - `ben` / `ownerName` / `benLabel`: bản ghi này thuộc bên nào (A/B) và của ai
    */
   async getOrCreate(
     month: number,
@@ -124,6 +262,8 @@ export class FinanceService {
     opts: { targetUserId?: number; includeCost?: boolean } = {},
   ): Promise<any> {
     const userId = await this.resolveUserId(actor, opts.targetUserId);
+    const owner = await this.usersRepo.findOne({ where: { id: userId } });
+    const ben = this.normBen(owner?.ben);
     let entry = await this.repo.findOne({ where: { month, year, userId } });
     if (!entry) {
       entry = this.repo.create({ month, year, userId });
@@ -150,6 +290,9 @@ export class FinanceService {
 
     return {
       ...base,
+      ben,
+      benLabel: FinanceService.benLabel(ben),
+      ownerName: owner?.fullName || owner?.username || '',
       costItems: grouped,
       costTotals: {
         suaChua: (Number(entry.suaChua) || 0) + sumItems('suaChua'),
@@ -201,7 +344,7 @@ export class FinanceService {
     });
   }
 
-  /** Thêm 1 khoản chi phí chi tiết. */
+  /** Thêm 1 khoản chi phí chi tiết (có thể gắn 1 xe). */
   async addCostItem(
     month: number,
     year: number,
@@ -211,7 +354,8 @@ export class FinanceService {
   ): Promise<FinanceCostItem> {
     this.assertCategory(dto.category);
     const selfId: number = actor?.sub ?? actor?.id;
-    const userId = await this.resolveUserId(actor, dto.targetUserId);
+    const { userId, ben } = await this.resolveOwner(actor, dto.targetUserId);
+    await this.assertVehicleInBen(dto.vehicleUserId, ben);
 
     // Đảm bảo finance entry tồn tại
     let entry = await this.repo.findOne({ where: { month, year, userId } });
@@ -225,6 +369,10 @@ export class FinanceService {
       year,
       userId,
       category: dto.category,
+      vehicleUserId:
+        dto.vehicleUserId === null || dto.vehicleUserId === undefined
+          ? null
+          : Number(dto.vehicleUserId),
       itemDate: dto.itemDate || null,
       name: (dto.name || '').trim(),
       amount: Number(dto.amount) || 0,
@@ -235,16 +383,103 @@ export class FinanceService {
     const saved = await this.costRepo.save(item);
 
     // Ghi audit: thay đổi tổng của nhóm = +amount
-    await this.writeCostAudit(month, year, userId, selfId, editorName, {
+    await this.writeAudit(month, year, userId, selfId, editorName, {
       [dto.category]: {
         old: 0,
         new: Number(saved.amount) || 0,
         action: 'ADD',
-        itemName: saved.name,
+        itemName: await this.itemNameWithVehicle(saved),
       },
     });
 
     return saved;
+  }
+
+  /**
+   * Thêm 1 khoản chi cho NHIỀU xe cùng lúc: cùng nhóm / tên / ngày / ghi chú,
+   * mỗi xe 1 số tiền riêng → mỗi xe 1 dòng `finance_cost_items`.
+   */
+  async addCostItemsBulk(
+    month: number,
+    year: number,
+    actor: any,
+    dto: BulkCostItemDto,
+    editorName: string,
+  ): Promise<FinanceCostItem[]> {
+    this.assertCategory(dto.category);
+    const selfId: number = actor?.sub ?? actor?.id;
+    const { userId, ben } = await this.resolveOwner(actor, dto.targetUserId);
+
+    const rows = (dto.vehicles || []).filter(
+      (v) => v && Number.isFinite(Number(v.vehicleUserId)),
+    );
+    if (rows.length === 0) {
+      throw new BadRequestException('Vui lòng chọn ít nhất 1 xe');
+    }
+
+    // Mọi xe phải thuộc đúng bên của bản ghi (không nhập xe bên B vào sổ bên A)
+    const vehicles = await this.usersRepo.find({
+      where: { id: In(rows.map((r) => Number(r.vehicleUserId))) },
+    });
+    const byId = new Map(vehicles.map((v) => [v.id, v]));
+    const benMap = await this.loadDriverBenMap();
+    for (const r of rows) {
+      const vid = Number(r.vehicleUserId);
+      const v = byId.get(vid);
+      if (!v || v.role !== 'laixe') {
+        throw new BadRequestException('Xe không hợp lệ');
+      }
+      if (this.normBen(benMap.get(vid)) !== ben) {
+        throw new BadRequestException(
+          `Xe ${v.soXe || v.fullName} không thuộc ${FinanceService.benLabel(ben)}`,
+        );
+      }
+    }
+
+    // Đảm bảo finance entry tồn tại
+    let entry = await this.repo.findOne({ where: { month, year, userId } });
+    if (!entry) {
+      entry = this.repo.create({ month, year, userId });
+      await this.repo.save(entry);
+    }
+
+    const name = (dto.name || '').trim();
+    const saved: FinanceCostItem[] = [];
+    for (const r of rows) {
+      const vid = Number(r.vehicleUserId);
+      const item = this.costRepo.create({
+        month,
+        year,
+        userId,
+        category: dto.category,
+        vehicleUserId: vid,
+        itemDate: dto.itemDate || null,
+        name,
+        amount: Number(r.amount) || 0,
+        note: dto.note ?? null,
+        createdById: selfId ?? null,
+        createdByName: editorName || '',
+      });
+      const s = await this.costRepo.save(item);
+      saved.push(s);
+      await this.writeAudit(month, year, userId, selfId, editorName, {
+        [dto.category]: {
+          old: 0,
+          new: Number(s.amount) || 0,
+          action: 'ADD',
+          itemName: await this.itemNameWithVehicle(s),
+        },
+      });
+    }
+    return saved;
+  }
+
+  /** Tên khoản chi kèm số xe để hiện trong lịch sử, vd "Thay nhớt (15C 04717)". */
+  private async itemNameWithVehicle(item: FinanceCostItem): Promise<string> {
+    if (!item.vehicleUserId) return item.name || '';
+    const v = await this.usersRepo.findOne({ where: { id: Number(item.vehicleUserId) } });
+    const label = v?.soXe || v?.fullName || `#${item.vehicleUserId}`;
+    return item.name ? `${item.name} (${label})` : `(${label})`;
   }
 
   /** Sửa 1 khoản chi phí chi tiết. */
@@ -267,16 +502,22 @@ export class FinanceService {
     if (dto.name !== undefined) item.name = (dto.name || '').trim();
     if (dto.amount !== undefined) item.amount = Number(dto.amount) || 0;
     if (dto.note !== undefined) item.note = dto.note ?? null;
+    if (dto.vehicleUserId !== undefined) {
+      const owner = await this.usersRepo.findOne({ where: { id: item.userId } });
+      await this.assertVehicleInBen(dto.vehicleUserId, this.normBen(owner?.ben));
+      item.vehicleUserId =
+        dto.vehicleUserId === null ? null : Number(dto.vehicleUserId);
+    }
 
     const saved = await this.costRepo.save(item);
 
     if (Number(saved.amount) !== oldAmount) {
-      await this.writeCostAudit(item.month, item.year, item.userId, selfId, editorName, {
+      await this.writeAudit(item.month, item.year, item.userId, selfId, editorName, {
         [item.category]: {
           old: oldAmount,
           new: Number(saved.amount) || 0,
           action: 'UPDATE',
-          itemName: saved.name,
+          itemName: await this.itemNameWithVehicle(saved),
         },
       });
     }
@@ -292,20 +533,24 @@ export class FinanceService {
       throw new ForbiddenException('Bạn không có quyền xóa khoản chi phí này');
     }
 
+    const itemName = await this.itemNameWithVehicle(item);
     await this.costRepo.remove(item);
-    await this.writeCostAudit(item.month, item.year, item.userId, selfId, editorName, {
+    await this.writeAudit(item.month, item.year, item.userId, selfId, editorName, {
       [item.category]: {
         old: Number(item.amount) || 0,
         new: 0,
         action: 'DELETE',
-        itemName: item.name,
+        itemName,
       },
     });
     return { message: 'Đã xóa khoản chi phí' };
   }
 
-  /** Ghi 1 dòng audit cho thay đổi chi phí (kèm action/itemName nếu là chi tiết). */
-  private async writeCostAudit(
+  /**
+   * Ghi 1 dòng audit cho thay đổi tài chính
+   * (chi phí legacy, chi tiết chi phí, hoặc vốn đầu tư).
+   */
+  private async writeAudit(
     month: number,
     year: number,
     userId: number,
@@ -322,20 +567,30 @@ export class FinanceService {
     await this.auditRepo.save(log);
   }
 
+  /**
+   * Ghi finance của 1 tháng.
+   *
+   * Quyền:
+   *  - chi phí (`suaChua/nhienLieu/cpKhac`): controller đã kiểm tra mật khẩu.
+   *  - vốn đầu tư (`vonXe/vonMooc/vonKhac`): admin phải nhập mật mã
+   *    (`opts.investUnlocked`); supper_admin được miễn.
+   *  - ghi cho admin khác (`dto.targetUserId`): chỉ supper_admin (`resolveUserId`).
+   */
   async upsert(
     month: number,
     year: number,
     actor: any,
     dto: UpsertFinanceDto,
     editorName: string,
+    opts: { investUnlocked?: boolean } = {},
   ): Promise<Partial<FinanceEntry>> {
     const selfId: number = actor?.sub ?? actor?.id;
     const userId = await this.resolveUserId(actor, dto.targetUserId);
 
-    // Quyền ghi vốn đầu tư: CHỈ supper_admin.
+    // Quyền ghi vốn đầu tư: admin phải nhập mật mã; supper_admin được miễn.
     const touchesInvestment = INVEST_FIELDS.some((f) => dto[f] !== undefined);
-    if (touchesInvestment && !this.isSuperAdmin(actor)) {
-      throw new ForbiddenException('Chỉ supper_admin được nhập vốn đầu tư');
+    if (touchesInvestment && !this.isSuperAdmin(actor) && !opts.investUnlocked) {
+      throw new ForbiddenException('Cần nhập mật mã để nhập vốn đầu tư');
     }
 
     // Ghi chi phí cũng yêu cầu đã xác thực mật khẩu (do controller kiểm tra).
@@ -346,10 +601,11 @@ export class FinanceService {
       entry = this.repo.create({ month, year, userId });
     }
 
-    // ── Thu thập thay đổi CHI PHÍ (trước khi áp dụng) để ghi audit ──
+    // ── Thu thập thay đổi (trước khi áp dụng) để ghi audit ──
+    // Ghi cả chi phí lẫn vốn đầu tư để admin nhập vốn vẫn có dấu vết trong lịch sử.
     const changes: Record<string, { old: number; new: number }> = {};
-    if (touchesCost) {
-      for (const f of COST_FIELDS) {
+    if (touchesCost || touchesInvestment) {
+      for (const f of [...COST_FIELDS, ...INVEST_FIELDS] as string[]) {
         if (dto[f] === undefined) continue;
         const oldVal = Number((entry as any)[f]) || 0;
         const newVal = Number(dto[f]) || 0;
@@ -365,8 +621,8 @@ export class FinanceService {
 
     const saved = await this.repo.save(entry);
 
-    // Ghi log nếu có thay đổi chi phí (cột legacy)
-    await this.writeCostAudit(month, year, userId, selfId, editorName, changes);
+    // Ghi log nếu có thay đổi (cột legacy hoặc vốn đầu tư)
+    await this.writeAudit(month, year, userId, selfId, editorName, changes);
 
     return saved;
   }

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Route } from '@/types';
 import { routesApi } from '@/lib/api-routes';
 import { Modal } from '@/components/ui/modal';
+import { confirmDelete } from '@/lib/delete-guard';
 
 interface Props {
   allRoutes: Route[];
@@ -68,12 +69,14 @@ export function RoutesTab({ allRoutes, onRefresh, toast }: Props) {
   };
 
   const deleteRoute = async (id: number, name: string) => {
-    if (!confirm(`Xóa tuyến đường "${name}"?`)) return;
-    try {
-      await routesApi.delete(id);
-      toast(`Đã xóa: ${name}`, 'success');
-      onRefresh();
-    } catch (err: any) { toast(err.message, 'error'); }
+    // Xoá luôn phải nhập mật khẩu 348 (popup của <DeleteGuardHost />).
+    const res = await confirmDelete({
+      message: `Xoá tuyến đường "${name}"?`,
+      action: () => routesApi.delete(id),
+    });
+    if (res === undefined) return;
+    toast(`Đã xóa: ${name}`, 'success');
+    onRefresh();
   };
 
   const fmtMoney = (v: number | string) => {

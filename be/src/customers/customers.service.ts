@@ -10,6 +10,7 @@ import { CustomerSurcharge } from '../database/entities/customer-surcharge.entit
 import { CustomerAuditLog } from '../database/entities/customer-audit-log.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
+import { ContainerClaim } from '../database/entities/container-claim.entity';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { CreateCustomerPriceDto } from './dto/create-customer-price.dto';
@@ -30,7 +31,41 @@ const TYPE_FIELD_MAP: Record<string, string> = {
   TIP: 'TIP',
 };
 
-const TYPE_HEADERS = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'VSL', 'TIP'];
+const TYPE_HEADERS = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'KV20', 'KV20FR', 'VSL', 'TIP'];
+
+/**
+ * Loại container → loại đơn giá KẸP tương ứng.
+ *
+ * Khi 2 container cùng loại được ghi nhận kẹp (claim CLAMP) và khách có nhập
+ * đơn giá kẹp cho loại đó → cả cặp tính 1 lần giá kẹp (thay vì 2 lần giá lẻ).
+ * Không có giá kẹp → giữ nguyên cách tính đơn lẻ.
+ *
+ * Loại không có trong map (H40, V40, V40FR, VSL, TIP...) → luôn tính đơn lẻ.
+ */
+const KEP_PRICE_TYPE: Record<string, string> = {
+  V20: 'KV20',
+  V20FR: 'KV20FR',
+};
+
+/** Nhãn hiển thị của cặp kẹp trong sheet QTSL/QT. */
+const KEP_LABEL: Record<string, string> = {
+  KV20: 'Kẹp V20',
+  KV20FR: 'Kẹp V20FR',
+};
+
+/** Loại container có thể gộp bó (khớp FR_BUNDLE_TYPES ở submissions/container-import). */
+const FR_BUNDLE_TYPES = new Set(['V20FR', 'V40FR']);
+
+/**
+ * Đơn giá V20FR / V40FR là giá cho CẢ BÓ, không phải giá từng container:
+ * - Bó ≥ 2 container  → 1 × giá V20FR / V40FR.
+ * - Bó lẻ 1 container → tính như 1 vỏ thường: V20FR → giá V20, V40FR → giá V40.
+ * Chỉ FR mới tính theo bó; các loại khác vẫn tính theo từng container.
+ */
+const FR_LONE_PRICE_TYPE: Record<string, string> = {
+  V20FR: 'V20',
+  V40FR: 'V40',
+};
 
 @Injectable()
 export class CustomersService {
@@ -43,6 +78,8 @@ export class CustomersService {
     private shippingLinesRepository: Repository<ShippingLine>,
     @InjectRepository(ContainerImport)
     private containerImportsRepository: Repository<ContainerImport>,
+    @InjectRepository(ContainerClaim)
+    private containerClaimsRepository: Repository<ContainerClaim>,
     @InjectRepository(CustomerPrice)
     private pricesRepository: Repository<CustomerPrice>,
     @InjectRepository(CustomerSurcharge)
@@ -858,6 +895,161 @@ export class CustomersService {
       return matched ? Number(matched.unitPrice) : null;
     };
 
+    // ── Cặp KẸP ───────────────────────────────────────────────────
+    // Phát hiện cặp kẹp giống bảng lương (submissions.service.ts): claim CLAMP
+    // đánh dấu container bị kẹp, container chính là container được ghi nhận ngay
+    // trước đó trong CÙNG submission. Chỉ ghép cho container lẻ (bó FR loại trừ).
+    //
+    // Chỉ "tính kẹp" khi: 2 container CÙNG loại, loại đó có giá kẹp (V20→KV20,
+    // V20FR→KV20FR) VÀ khách có nhập đơn giá kẹp cho ngày + tuyến của container
+    // chính. Ngược lại giữ nguyên cách tính đơn lẻ.
+    const containerById = new Map<number, any>();
+    for (const c of containers as any[]) containerById.set(c.id, c);
+
+    const isBundleMember = (c: any) =>
+      !!c?.bundleId && FR_BUNDLE_TYPES.has(String(c.type));
+
+    type KepInfo = {
+      active: boolean;
+      price: number | null;
+      label: string | null;
+      mainId: number;
+      role: 'main' | 'clamp';
+    };
+    const kepByContainer = new Map<number, KepInfo>();
+
+    if (containers.length > 0) {
+      const claims = await this.containerClaimsRepository
+        .createQueryBuilder('cl')
+        .where('cl.containerImportId IN (:...ids)', { ids: containers.map((c) => c.id) })
+        .orderBy('cl.createdAt', 'ASC')
+        .addOrderBy('cl.id', 'ASC')
+        .getMany();
+
+      const lastBySubmission = new Map<number, any>();
+      const seenPairs = new Set<string>();
+      // Mỗi container chỉ được thuộc MỘT cặp kẹp. Nếu không chặn, trường hợp lái xe
+      // ghi nhiều claim CLAMP liên tiếp (kẹp nối chuỗi A-B, B-C...) sẽ làm cặp
+      // trước bị "mồ côi" → sinh dòng đơn giá 0.
+      const usedInPair = new Set<number>();
+      for (const cl of claims as any[]) {
+        if (cl.claimType === 'CLAMP') {
+          const clampC = containerById.get(cl.containerImportId);
+          const mainClaim = lastBySubmission.get(cl.submissionId);
+          const mainC = mainClaim ? containerById.get(mainClaim.containerImportId) : null;
+          if (
+            clampC &&
+            mainC &&
+            mainC.id !== clampC.id &&
+            !isBundleMember(mainC) &&
+            !isBundleMember(clampC) &&
+            // FR đã tính theo BÓ (xem khối bên dưới) → tạm không ghép kẹp cho FR.
+            // Khi nào chốt quy tắc "kẹp FR" thì mở lại chỗ này.
+            !FR_BUNDLE_TYPES.has(String(mainC.type)) &&
+            !FR_BUNDLE_TYPES.has(String(clampC.type))
+          ) {
+            const pairKey = `${mainC.id}:${clampC.id}`;
+            if (
+              !seenPairs.has(pairKey) &&
+              !usedInPair.has(mainC.id) &&
+              !usedInPair.has(clampC.id)
+            ) {
+              seenPairs.add(pairKey);
+              usedInPair.add(mainC.id);
+              usedInPair.add(clampC.id);
+              const sameType = String(mainC.type) === String(clampC.type);
+              const kepType = sameType ? KEP_PRICE_TYPE[String(mainC.type)] : undefined;
+              const sl: any = mainC.shippingLineRef;
+              const price = kepType
+                ? donGiaFor(kepType, getDayOfNgay(sl), sl?.routeName || '')
+                : null;
+              const active = price !== null;
+              kepByContainer.set(mainC.id, {
+                active,
+                price,
+                label: active ? KEP_LABEL[kepType!] || kepType! : null,
+                mainId: mainC.id,
+                role: 'main',
+              });
+              kepByContainer.set(clampC.id, {
+                active,
+                price: null,
+                label: null,
+                mainId: mainC.id,
+                role: 'clamp',
+              });
+            }
+          }
+        }
+        lastBySubmission.set(cl.submissionId, cl);
+      }
+    }
+
+    // ── BÓ FR ─────────────────────────────────────────────────────
+    // Đơn giá V20FR/V40FR là giá cho CẢ BÓ:
+    //   • bó ≥ 2 container → 1 × giá V20FR/V40FR (dòng đầu mang giá, các dòng
+    //     còn lại để trống rồi merge ô ĐƠN GIÁ)
+    //   • bó lẻ 1 container → tính như 1 vỏ thường (V20FR→giá V20, V40FR→giá V40)
+    // Bó được nhận diện theo (kế hoạch + bundle_id); container FR không có
+    // bundle_id coi như bó lẻ 1 container.
+    const boByContainer = new Map<
+      number,
+      { groupId: string | null; first: boolean; price: number | null }
+    >();
+    {
+      const groups = new Map<string, any[]>();
+      for (const c of containers as any[]) {
+        if (!FR_BUNDLE_TYPES.has(String(c.type))) continue;
+        const key = c.bundleId
+          ? `bundle:${c.shippingLineId}:${c.bundleId}`
+          : `single:${c.id}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(c);
+      }
+      for (const [key, members] of groups) {
+        members.sort((a, b) =>
+          String(a.containerCode).localeCompare(String(b.containerCode)),
+        );
+        const isBo = members.length >= 2;
+        const first: any = members[0];
+        const sl: any = first.shippingLineRef;
+        const day = getDayOfNgay(sl);
+        const routeName = sl?.routeName || '';
+        const price = isBo
+          ? donGiaFor(String(first.type), day, routeName)
+          : donGiaFor(FR_LONE_PRICE_TYPE[String(first.type)], day, routeName);
+        members.forEach((m, i) => {
+          boByContainer.set(m.id, {
+            groupId: isBo ? `bo:${key}` : null,
+            first: i === 0,
+            price,
+          });
+        });
+      }
+    }
+
+    // Đưa các dòng cùng nhóm (bó FR / cặp kẹp) về LIỀN NHAU để merge ô ĐƠN GIÁ.
+    const orderRowsByMergeGroup = (rows: any[]): any[] => {
+      const groups = new Map<string, any[]>();
+      for (const r of rows) {
+        if (!r.mergeGroup) continue;
+        if (!groups.has(r.mergeGroup)) groups.set(r.mergeGroup, []);
+        groups.get(r.mergeGroup)!.push(r);
+      }
+      const out: any[] = [];
+      const emitted = new Set<string>();
+      for (const r of rows) {
+        if (!r.mergeGroup) {
+          out.push(r);
+          continue;
+        }
+        if (emitted.has(r.mergeGroup)) continue;
+        emitted.add(r.mergeGroup);
+        out.push(...groups.get(r.mergeGroup)!);
+      }
+      return out;
+    };
+
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Hệ thống New Way';
     workbook.created = new Date();
@@ -1027,6 +1219,25 @@ export class CustomersService {
         row.getCell(8).numFmt = '#,##0';
       });
 
+      // Gộp ô ĐƠN GIÁ cho các nhóm nhiều dòng (bó FR / cặp kẹp): cả nhóm chỉ
+      // tính 1 lần giá, dòng đầu mang giá, các dòng sau đã được xếp liền nhau.
+      for (let i = 0; i < rows.length; ) {
+        const g = rows[i].mergeGroup;
+        if (!g) {
+          i++;
+          continue;
+        }
+        let j = i;
+        while (j + 1 < rows.length && rows[j + 1].mergeGroup === g) j++;
+        if (j > i) {
+          ws.mergeCells(`H${dataStartRow + i}:H${dataStartRow + j}`);
+          const merged = ws.getCell(`H${dataStartRow + i}`);
+          merged.alignment = { horizontal: 'center', vertical: 'middle' };
+          merged.border = thinBorder;
+        }
+        i = j + 1;
+      }
+
       // Blank row after data
       const blankRow = dataStartRow + rows.length;
       // Totals row
@@ -1119,8 +1330,31 @@ export class CustomersService {
       const user: any = c.submissionRef?.user;
       const day = getDayOfNgay(sl);
       const type = c.type as string;
-      const dg = donGiaFor(type, day, sl?.routeName || '');
       const is20 = type.includes('20');
+
+      // Bó FR: dòng đầu của bó mang giá cho CẢ BÓ, các dòng sau để trống (merge ô ĐƠN GIÁ).
+      // Bó lẻ 1 container: giá đã quy về vỏ 20/40 trong boByContainer.
+      const bo = boByContainer.get(c.id);
+      // Cặp kẹp: dòng container chính mang giá kẹp cho CẢ CẶP.
+      const kep = bo ? undefined : kepByContainer.get(c.id);
+      const kepActive = !!kep?.active;
+
+      const dg = bo
+        ? bo.first
+          ? bo.price
+          : null
+        : kepActive
+          ? kep!.role === 'main'
+            ? kep!.price
+            : null
+          : donGiaFor(type, day, sl?.routeName || '');
+
+      const mergeGroup = bo?.groupId
+        ? bo.groupId
+        : kepActive
+          ? `kep:${kep!.mainId}`
+          : null;
+
       return {
         containerCode: c.containerCode || '',
         ngayDate: fmtDate(sl),
@@ -1131,11 +1365,14 @@ export class CustomersService {
         soXe: user?.soXe || '',
         type,
         day,
+        kepRole: kepActive ? kep!.role : null,
+        kepLabel: kepActive && kep!.role === 'main' ? kep!.label : null,
+        mergeGroup,
       };
     };
 
-    const emptyRows = emptyContainers.map(toRow);
-    const ladenRows = ladenContainers.map(toRow);
+    const emptyRows = orderRowsByMergeGroup(emptyContainers.map(toRow));
+    const ladenRows = orderRowsByMergeGroup(ladenContainers.map(toRow));
 
     // ══════════════════════════════════════════════════════════════
     // Sheet 1: Empty (Bảng kê sản lượng vận chuyển VỎ)
@@ -1220,23 +1457,34 @@ export class CustomersService {
       t === 'V20' ? "20'E" : t === 'V40' ? "40'E" :
       t === 'V20FR' ? "20'E kẹp" : t === 'V40FR' ? "40'E kẹp" : t;
 
-    const groupMap = new Map<string, Map<string, { count: number; donGia: number }>>();
+    const groupMap = new Map<string, Map<string, { label: string; count: number; donGia: number }>>();
     const routeOrder: string[] = [];
 
+    // Nhóm nhiều dòng (bó FR / cặp kẹp) chỉ tính 1 lần cho cả nhóm.
+    const qtslSeenGroups = new Set<string>();
     for (const r of allRows) {
+      if (r.mergeGroup) {
+        if (qtslSeenGroups.has(r.mergeGroup)) continue;
+        qtslSeenGroups.add(r.mergeGroup);
+      }
       const routeKey = r.routeName || 'Không rõ';
       const soXe = r.soXe || 'Không rõ';
       const key = `${routeKey} / ${soXe}`;
-      const tl = typeLabel(r.type);
+      const tl = r.kepRole === 'main' && r.kepLabel ? r.kepLabel : typeLabel(r.type);
+      // Khóa nhóm tách theo CÁCH TÍNH GIÁ (bó / cặp kẹp / vỏ lẻ) để đơn giá
+      // không bao giờ bị cộng gộp nhầm giữa các dòng khác bản chất.
+      const groupKey = r.mergeGroup
+        ? `${tl}@@${r.mergeGroup.startsWith('bo:') ? 'bo' : 'kep'}`
+        : `type:${tl}`;
       if (!groupMap.has(key)) {
         groupMap.set(key, new Map());
         routeOrder.push(key);
       }
       const typeMap = groupMap.get(key)!;
-      if (!typeMap.has(tl)) {
-        typeMap.set(tl, { count: 0, donGia: r.donGia || 0 });
+      if (!typeMap.has(groupKey)) {
+        typeMap.set(groupKey, { label: tl, count: 0, donGia: r.donGia || 0 });
       }
-      typeMap.get(tl)!.count += 1;
+      typeMap.get(groupKey)!.count += 1;
     }
 
     const routeNameOrder = new Map<string, number>();
@@ -1255,9 +1503,9 @@ export class CustomersService {
       const routePart = key.split(' / ')[0];
       const stt = routeNameOrder.get(routePart)!;
       const typeMap = groupMap.get(key)!;
-      for (const [tl, data] of typeMap) {
+      for (const data of typeMap.values()) {
         const row = wsQTSL.getRow(qtslRowNum);
-        [stt, key, tl, data.count, data.donGia].forEach((v, ci) => {
+        [stt, key, data.label, data.count, data.donGia].forEach((v, ci) => {
           row.getCell(ci + 1).value = v;
           row.getCell(ci + 1).font = tnr(false, 11);
           row.getCell(ci + 1).alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1374,18 +1622,29 @@ export class CustomersService {
     }
 
     // Group by route only
-    const qtGroupMap = new Map<string, Map<string, { count: number; donGia: number }>>();
+    const qtGroupMap = new Map<string, Map<string, { label: string; count: number; donGia: number }>>();
     const qtRouteOrder: string[] = [];
+    // Nhóm nhiều dòng (bó FR / cặp kẹp) chỉ tính 1 lần cho cả nhóm.
+    const qtSeenGroups = new Set<string>();
     for (const r of allRows) {
+      if (r.mergeGroup) {
+        if (qtSeenGroups.has(r.mergeGroup)) continue;
+        qtSeenGroups.add(r.mergeGroup);
+      }
       const routeKey = r.routeName || 'Không rõ';
-      const tl = typeLabel(r.type);
+      const tl = r.kepRole === 'main' && r.kepLabel ? r.kepLabel : typeLabel(r.type);
+      const groupKey = r.mergeGroup
+        ? `${tl}@@${r.mergeGroup.startsWith('bo:') ? 'bo' : 'kep'}`
+        : `type:${tl}`;
       if (!qtGroupMap.has(routeKey)) {
         qtGroupMap.set(routeKey, new Map());
         qtRouteOrder.push(routeKey);
       }
       const typeMap = qtGroupMap.get(routeKey)!;
-      if (!typeMap.has(tl)) typeMap.set(tl, { count: 0, donGia: r.donGia || 0 });
-      typeMap.get(tl)!.count += 1;
+      if (!typeMap.has(groupKey)) {
+        typeMap.set(groupKey, { label: tl, count: 0, donGia: r.donGia || 0 });
+      }
+      typeMap.get(groupKey)!.count += 1;
     }
 
     const qtRouteNameOrder = new Map<string, number>();
@@ -1402,9 +1661,9 @@ export class CustomersService {
     for (const routeKey of qtRouteOrder) {
       const stt = qtRouteNameOrder.get(routeKey)!;
       const typeMap = qtGroupMap.get(routeKey)!;
-      for (const [tl, data] of typeMap) {
+      for (const data of typeMap.values()) {
         const row = wsQT.getRow(qtRowNum);
-        [stt, routeKey, tl, data.count, data.donGia].forEach((v, ci) => {
+        [stt, routeKey, data.label, data.count, data.donGia].forEach((v, ci) => {
           row.getCell(ci + 1).value = v;
           row.getCell(ci + 1).font = tnr(false, 11);
           row.getCell(ci + 1).alignment = { horizontal: 'center', vertical: 'middle' };

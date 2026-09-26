@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import Modal from '../Modal';
 import Pagination from '../Pagination';
+import { confirmDelete } from '../DeleteGuard';
 import { routesApi } from '../../api/routes';
 import type { Route } from '../../types';
 
@@ -59,14 +60,14 @@ export default function RoutesTab({ allRoutes, onRefresh }: Props) {
     finally { setSaving(false); }
   };
 
-  const deleteRoute = (id: number, name: string) => {
-    Alert.alert('Xác nhận', `Xóa tuyến đường "${name}"?`, [
-      { text: 'Hủy', style: 'cancel' },
-      { text: 'Xóa', style: 'destructive', onPress: async () => {
-        try { await routesApi.delete(id); onRefresh(); }
-        catch (err: any) { Alert.alert('Lỗi', err.message); }
-      }},
-    ]);
+  const deleteRoute = async (id: number, name: string) => {
+    // Xoá luôn phải nhập mật khẩu 348 (popup <DeleteGuardHost />).
+    const ok = await confirmDelete({
+      message: `Xóa tuyến đường "${name}"?`,
+      action: () => routesApi.delete(id),
+    });
+    if (!ok) return;
+    onRefresh();
   };
 
   return (

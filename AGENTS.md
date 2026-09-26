@@ -178,15 +178,83 @@ họ là **chủ xe** của các xe đó. Khi đó, họ **chỉ xem được d�
 
 Bảng `finance_entries` (unique month+year+userId) lưu chi phí + vốn đầu tư theo tháng cho từng admin.
 
-- **Chi phí** (`sua_chua`, `nhien_lieu`, `cp_khac`): xem/sửa cần **mật khẩu** `vhun9`, kiểm tra ở backend
+- **Chi phí** (`sua_chua`, `nhien_lieu`, `cp_khac`): xem/sửa cần **mật khẩu** `348`, kiểm tra ở backend
   qua header `x-cost-password` (hoặc query `pw`). Nếu không có mật khẩu, API trả về 0 cho các trường chi phí.
   Endpoint: `GET/PUT /api/admin/finance`, `GET /api/admin/finance/history`, `POST /api/admin/finance/verify-password`.
-- **Lịch sử chỉnh sửa chi phí**: bảng `finance_audit_logs` ghi mỗi lần đổi chi phí (ai, khi nào, old→new).
+- **Lịch sử chỉnh sửa**: bảng `finance_audit_logs` ghi mỗi lần đổi chi phí **hoặc vốn đầu tư** (ai, khi nào, old→new).
   Xem qua `GET /api/admin/finance/history` (yêu cầu mật khẩu).
-- **Vốn đầu tư** (`von_xe`, `von_mooc`, `von_khac`): **chỉ `supper_admin` được ghi**. Admin khác chỉ đọc.
-- **Ô lọc admin**: `GET /api/admin/finance/admins` (chỉ supper_admin) → cho phép supper_admin nhập/xem vốn
+- **Vốn đầu tư** (`von_xe`, `von_mooc`, `von_khac`): `supper_admin` ghi không cần mật khẩu;
+  `admin` ghi được **nếu đã nhập mật khẩu** `348` (giống chi phí). Kiểm tra ở `FinanceService.upsert`
+  qua cờ `investUnlocked` do controller truyền xuống.
+- **Ô lọc admin**: `GET /api/admin/finance/admins` (chỉ supper_admin) → cho phép supper_admin nhập/xem
   thay cho admin khác qua param `targetUserId`.
 - `DashboardService.getOverview` vẫn đọc finance trực tiếp theo userId (không cần mật khẩu) cho phần tổng quan.
+
+### Xoá dữ liệu = BẮT BUỘC nhập mật khẩu `348` (chống xoá nhầm)
+
+**Mọi** request `DELETE` của API đều phải kèm mật khẩu thao tác, gửi qua header
+`x-cost-password` (hoặc query `?pw=`). Không có mật khẩu → `403 ForbiddenException`.
+
+- Nguồn duy nhất của mật khẩu: `be/src/common/security/action-password.ts` (`ACTION_PASSWORD`).
+  Đổi mật khẩu chỉ sửa 1 chỗ này (`FinanceService` cũng dùng lại hằng số đó).
+- Guard: `be/src/common/guards/delete-password.guard.ts`, đăng ký **toàn cục** bằng `APP_GUARD`
+  trong `AppModule` → tự động áp cho endpoint xoá thêm sau này, không thể quên.
+  Chỉ chặn method `DELETE`; GET/POST/PUT/PATCH đi thẳng.
+- **Không miễn trừ ai** — kể cả `supper_admin`. Mục đích là tránh xoá nhầm, không phải phân quyền.
+- Guard toàn cục chạy **trước** `JwtAuthGuard` (controller-level), nên DELETE thiếu mật khẩu trả 403
+  kể cả khi chưa đăng nhập (không lộ dữ liệu, chấp nhận được).
+- Test: `be/src/common/guards/delete-password.guard.spec.ts` (12 case, gồm cả test khẳng định guard
+  vẫn được đăng ký trong `AppModule`).
+- **FE web** (`fe/src/lib/delete-guard.tsx`): `confirmDelete({ message, action })` → mở popup
+  `<DeleteGuardHost />` (gắn 1 lần ở `fe/src/app/(dashboard)/admin/layout.tsx`) hỏi mật khẩu, tự gắn
+  header qua `setActionPassword` trong `axios-instance.ts` rồi xoá ngay sau khi xong (không nhớ mật
+  khẩu cho cả phiên). Trả về kết quả action, hoặc `undefined` nếu huỷ/lỗi → luôn có
+  `if (res === undefined) return;`.
+- **App mobile** (`app/src/components/DeleteGuard.tsx`): cùng API `confirmDelete` (trả `true/false`),
+  host gắn ở `app/app/_layout.tsx`, header gắn trong `app/src/api/axios-instance.ts`.
+- Luồng "Xoá tất cả dữ liệu nhập liệu" trước đây gate bằng mật khẩu `091281` kiểm tra ở FE/app
+  (không có backend kiểm tra) — **đã bỏ**, dùng chung popup `348` và được backend kiểm tra thật.
+
+### Tách bên New Way A / New Way B + gắn chi phí vào xe
+
+Mỗi bên có **sổ chi phí riêng**; xe quyết định khoản chi thuộc bên nào.
+
+- `users.ben` (`'A' | 'B' | NULL`) = bên của **tài khoản chủ vốn**. Xe thừa hưởng bên từ
+  chủ vốn sở hữu nó qua `users.visible_driver_ids`; xe không thuộc chủ vốn nào → mặc định `'A'`.
+  Hiện tại: `user 6 (Mr Bach) = A`, `user 30 (NwB/Boss) = B` (sở hữu xe `15H 10090` / lái xe `Dũng`).
+- `finance_cost_items.vehicle_user_id` = xe mà khoản chi thuộc về (id lái xe đại diện xe).
+  `NULL` = chi phí chung, không gắn xe.
+- **Chọn nhiều xe cho 1 khoản chi** → mỗi xe 1 dòng, mỗi dòng 1 số tiền riêng
+  (`POST /api/admin/finance/cost-items/bulk`, body `{ category, itemDate, name, note, vehicles:[{vehicleUserId, amount}] }`).
+- **Tách biệt hoàn toàn**: `GET /api/admin/finance/vehicles` chỉ trả xe **thuộc bên đang xem**, và
+  `addCostItemsBulk` ném `BadRequestException` nếu chọn xe của bên khác → không nhập xe bên B vào sổ bên A.
+- Chỉ `supper_admin` xem/nhập được cả 2 bên (qua `targetUserId`); admin và tài khoản chủ vốn chỉ thấy bên mình.
+- `GET /api/admin/finance` trả thêm `ben`, `benLabel` ("Bên A"), `ownerName` để FE hiện nhãn bên.
+- Migration: `deploy/migrate-add-finance-vehicle-ben.sql` (idempotent, chạy tay trên VPS).
+
+### Xoá container = trừ sản lượng của lái xe (link 2 chiều)
+
+Xoá container ở tab **Mã số container** (`ContainerCodesTab`) nay **trừ luôn sản lượng** của lái xe
+đã ghi nhận nó — trước đây chỉ mất dòng container, còn `submissions.vo40…` vẫn nguyên nên lái xe
+bị giữ sản lượng ảo.
+
+- Trừ **đúng ô mà container đã cộng**, theo từng dòng `container_claims` (mỗi dòng = 1 lần cộng):
+  `CLAIM` / `CLAMP` / `KD2` / `REGO` / `CLASSIFY` → ô theo **loại container** (`TYPE_FIELD_MAP`);
+  `VSL` → luôn `veSinhLai`; `KV` → luôn `keoVe`. Xem `CLAIM_FIELD_OVERRIDE` trong
+  `be/src/container-import/container-import.service.ts`.
+- Nút **"Xoá toàn bộ container của kế hoạch"** cũng trừ sản lượng, như xoá từng cont.
+- Container thuộc kế hoạch **đã hoàn thành** → **chặn** (`BadRequestException`); phải bỏ trạng thái
+  "hoàn thành" trước, vì đó là số liệu đã chốt bảng kê / lương.
+- Không bao giờ trừ xuống dưới 0. Mỗi lần trừ ghi 1 dòng `edit_history`
+  (`{"vo40":{"old":"12","new":"11"}}`, `editedById` = người xoá) và +1 `edit_count`.
+- Trừ sản lượng + xoá `container_claims` + xoá container nằm trong **1 transaction** (không có
+  trạng thái nửa vời, không để lại claim mồ côi). Audit ghi vào `container_audit_logs`
+  (`claim_count` / `claim_types` của lúc TRƯỚC khi xoá).
+- Hàm `assertNoClaims` cũ (chặn xoá khi có claim) **đã bỏ**.
+- ⚠️ Vì thế "xoá hết rồi import lại" nay **mất** phần sản lượng đã ghi nhận — xem mục "replace import"
+  còn treo trong `AGENTS.md`/skill.
+- Test: `be/src/container-import/container-import-reversal.spec.ts` (11 ca).
+  Kiểm chứng trên dump thật: `be/scripts/verify-delete-reversal.mjs [planId]`.
 
 ### Auth Flow
 
@@ -253,6 +321,18 @@ Bảng `finance_entries` (unique month+year+userId) lưu chi phí + vốn đầu
 - Header fill: màu `#1E3A5F`, chữ trắng, border `#CCCCCC`
 - Định dạng ngày: locale `vi-VN`
 - File name: `SanLuongXeNewWay_YYYY-MM-DD.xlsx`
+
+### Đơn giá khách hàng & cách tính KẸP
+
+- Bảng `customer_prices`: đơn giá theo khách + tháng + khoảng ngày (`from_day`→`to_day`) + tuyến (`route_name`, rỗng = mọi tuyến) + loại container.
+- Loại đơn giá hợp lệ (`PRICE_CONTAINER_TYPES`): `H20, H40, V20, V40, V20FR, V40FR, KV20, KV20FR, VSL, TIP`.
+  - `KV20` / `KV20FR` = đơn giá cho **CẢ CẶP KẸP** (UI hiển thị "Kẹp V20" / "Kẹp V20FR").
+- Quy tắc tính kẹp khi xuất file thanh toán (`exportPaymentDossier`):
+  1. Nhận diện cặp kẹp giống bảng lương: claim `CLAMP` = container bị kẹp, container chính là container được ghi nhận ngay trước đó trong **cùng `submission`**. Bỏ qua container thuộc bó FR.
+  2. Chỉ "tính kẹp" khi: 2 container **cùng loại**, loại đó map được sang giá kẹp (`V20 → KV20`, `V20FR → KV20FR`), **và** khách có nhập đơn giá kẹp cho ngày + tuyến của container chính.
+  3. Khi tính kẹp: cả cặp = **1 lần giá kẹp** (không phải 2 lần giá lẻ). Sheet `Empty`/`Laden`: 2 dòng liền nhau — dòng container chính mang giá kẹp, dòng bị kẹp để trống và **merge ô ĐƠN GIÁ**. Sheet `QTSL`/`QT`: gộp 1 dòng nhãn "Kẹp V20"/"Kẹp V20FR", số cont = 1, đơn giá = giá kẹp.
+  4. Không đủ điều kiện (khác loại / loại không có giá kẹp / khách không nhập giá kẹp) → **tính đơn lẻ** như bình thường.
+  5. H40/V40/V40FR/VSL/TIP không có loại giá kẹp → luôn tính đơn lẻ.
 
 ## API Endpoints
 

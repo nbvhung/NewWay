@@ -6,6 +6,7 @@ import Modal from '../Modal';
 import StatsCard from '../StatsCard';
 import Pagination from '../Pagination';
 import NumericInput from '../NumericInput';
+import { confirmDelete } from '../DeleteGuard';
 import { submissionsApi } from '../../api/submissions';
 import { fmtNgay, fmtDate, FIELD_LABELS, ROLE_LABELS } from '../../utils';
 import type { Submission, User, ShippingLine, EditHistory } from '../../types';
@@ -110,19 +111,31 @@ export default function DataTab({ user, allUsers, allShippingLines, onRefresh }:
     }
   };
 
-  const deleteSub = (id: number) => {
-    Alert.alert('Xác nhận', 'Bạn chắc chắn muốn XÓA bản ghi này?', [
-      { text: 'Hủy', style: 'cancel' },
-      { text: 'Xóa', style: 'destructive', onPress: async () => {
-        try { await submissionsApi.delete(id); loadSubmissions(); }
-        catch (err: any) { Alert.alert('Lỗi', err.message); }
-      }},
-    ]);
+  const deleteSub = async (id: number) => {
+    // Xoá luôn phải nhập mật khẩu 348 (popup <DeleteGuardHost />).
+    const ok = await confirmDelete({
+      message: 'Bạn chắc chắn muốn XÓA bản ghi này?',
+      action: () => submissionsApi.delete(id),
+    });
+    if (!ok) return;
+    loadSubmissions();
   };
 
-  // Delete all
-  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
-  const [deletePassword, setDeletePassword] = useState('');
+  /**
+   * Xoá TẤT CẢ dữ liệu nhập liệu — thao tác nguy hiểm nhất.
+   * Trước đây gate bằng mật khẩu 091281 kiểm tra ở app; nay dùng chung popup
+   * mật khẩu xoá 348 và được backend (`DeletePasswordGuard`) kiểm tra thật.
+   */
+  const deleteAllSubs = async () => {
+    const ok = await confirmDelete({
+      title: '⚠️ Xác nhận xóa tất cả',
+      confirmLabel: 'Xóa tất cả',
+      message: `Bạn có chắc muốn XÓA TẤT CẢ ${submissions.length} bản ghi dữ liệu nhập liệu?`,
+      action: () => submissionsApi.deleteAll(),
+    });
+    if (!ok) return;
+    loadSubmissions();
+  };
 
   // Export
   const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -363,7 +376,7 @@ export default function DataTab({ user, allUsers, allShippingLines, onRefresh }:
 
           {/* Delete All */}
           {user?.role === 'supper_admin' && submissions.length > 0 && (
-            <TouchableOpacity style={styles.deleteAllBtn} onPress={() => setDeleteAllOpen(true)}>
+            <TouchableOpacity style={styles.deleteAllBtn} onPress={deleteAllSubs}>
               <Text style={styles.deleteAllBtnText}>🗑️ Xóa tất cả dữ liệu</Text>
             </TouchableOpacity>
           )}
@@ -481,40 +494,6 @@ export default function DataTab({ user, allUsers, allShippingLines, onRefresh }:
             ))}
           </View>
         )}
-      </Modal>
-
-      {/* Delete All Modal */}
-      <Modal
-        visible={deleteAllOpen}
-        onClose={() => { setDeleteAllOpen(false); setDeletePassword(''); }}
-        title="⚠️ Xóa tất cả dữ liệu"
-        footer={
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => { setDeleteAllOpen(false); setDeletePassword(''); }}>
-              <Text style={styles.cancelBtnText}>Hủy</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.dangerBtn} onPress={async () => {
-              if (deletePassword !== '091281') { Alert.alert('Lỗi', 'Sai mật khẩu'); return; }
-              setDeleteAllOpen(false); setDeletePassword('');
-              try { await submissionsApi.deleteAll(); loadSubmissions(); } catch {}
-            }}>
-              <Text style={styles.dangerBtnText}>🗑️ Xóa tất cả</Text>
-            </TouchableOpacity>
-          </View>
-        }
-      >
-        <Text style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
-          Bạn có chắc muốn xóa tất cả dữ liệu? Hành động này không thể hoàn tác.
-        </Text>
-        <Text style={styles.fieldLabel}>Nhập mật khẩu xác nhận</Text>
-        <TextInput
-          style={styles.passwordInput}
-          value={deletePassword}
-          onChangeText={setDeletePassword}
-          secureTextEntry
-          placeholder="Nhập mật khẩu..."
-          placeholderTextColor="#94a3b8"
-        />
       </Modal>
 
       {/* Export Confirmation Modal */}

@@ -5,6 +5,7 @@ import { ShippingLine } from '@/types';
 import { fmtNgay } from '@/lib/utils';
 import { containerImportApi, ContainerImport } from '@/lib/api-container-import';
 import { Modal } from '@/components/ui/modal';
+import { confirmDelete } from '@/lib/delete-guard';
 
 interface Props {
   open: boolean;
@@ -87,27 +88,43 @@ export function ContainerImportModal({ open, onClose, plan, toast }: Props) {
     }
   };
 
+  /**
+   * Xoá container — nay trừ luôn sản lượng của lái xe đã ghi nhận cont đó.
+   */
   const removeOne = async (item: ContainerImport) => {
-    if (!confirm(`Xóa container ${item.containerCode}?`)) return;
-    try {
-      await containerImportApi.remove(item.id);
-      toast('Đã xóa container', 'success');
-      await load(plan!.id);
-    } catch (err: any) {
-      toast(err.message, 'error');
-    }
+    const tags = [
+      item.hasVsl ? 'Vệ sinh lại' : '',
+      item.hasKv ? 'Kéo về' : '',
+      item.hasKd2 ? 'Kéo lần 2' : '',
+    ].filter(Boolean).join(', ');
+    const warn = item.submissionId
+      ? `⚠️ Container này đã được ghi nhận cho ${item.recordedBy || 'một lái xe'}${tags ? ` (${tags})` : ''}.\nXoá sẽ TRỪ sản lượng của lái xe đó tương ứng.`
+      : 'Container chưa có ghi nhận nào — sản lượng của lái xe không đổi.';
+    const res = await confirmDelete({
+      title: 'Xác nhận xoá container',
+      message: `Xóa container ${item.containerCode} (${item.type})?\n\n${warn}`,
+      action: () => containerImportApi.remove(item.id),
+    });
+    if (res === undefined) return;
+    toast(res.data.message, 'success');
+    await load(plan!.id);
   };
 
   const removeAll = async () => {
     if (!plan) return;
-    if (!confirm(`Xóa toàn bộ ${items.length} container của kế hoạch?`)) return;
-    try {
-      await containerImportApi.removeByPlan(plan.id);
-      toast('Đã xóa toàn bộ container', 'success');
-      await load(plan.id);
-    } catch (err: any) {
-      toast(err.message, 'error');
-    }
+    const withClaims = items.filter(i => i.submissionId).length;
+    const warn = withClaims > 0
+      ? `⚠️ Trong đó ${withClaims} container đã có ghi nhận — sẽ TRỪ sản lượng của các lái xe đã chạy.`
+      : 'Không có container nào đã ghi nhận — sản lượng của lái xe không đổi.';
+    const res = await confirmDelete({
+      title: 'Xác nhận xoá toàn bộ container',
+      message: `Xóa toàn bộ ${items.length} container của kế hoạch?\n\n${warn}`,
+      confirmLabel: `Xoá ${items.length} container`,
+      action: () => containerImportApi.removeByPlan(plan.id),
+    });
+    if (res === undefined) return;
+    toast(res.data.message, 'success');
+    await load(plan.id);
   };
 
   return (

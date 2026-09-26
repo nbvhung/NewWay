@@ -42,6 +42,6 @@ export class UsersController {
   @Delete(':id')
   @Permissions('user.manage')
   remove(@Param('id') id: string, @Query('mode') mode: string, @CurrentUser() user: any) {
-    return this.usersService.remove(+id, user.role, user.id, mode);
+    return this.usersService.remove(+id, user.role, user.id, mode, user.fullName);
   }
 }

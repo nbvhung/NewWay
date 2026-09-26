@@ -8,10 +8,25 @@ const api = axios.create({
 
 let refreshPromise: Promise<boolean> | null = null;
 
+/**
+ * Mật khẩu thao tác xoá. Backend (`DeletePasswordGuard`) BẮT BUỘC mọi request
+ * DELETE phải kèm header `x-cost-password`. `confirmDelete()`
+ * (components/DeleteGuard) đặt giá trị này ngay trước khi xoá và xoá lại ngay
+ * sau khi xong — mỗi lần xoá đều phải nhập lại.
+ */
+let actionPassword = '';
+
+export function setActionPassword(pw: string) {
+  actionPassword = pw;
+}
+
 api.interceptors.request.use(async (config) => {
   const token = await storage.getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  if ((config.method || '').toLowerCase() === 'delete' && actionPassword) {
+    config.headers['x-cost-password'] = actionPassword;
   }
   return config;
 });

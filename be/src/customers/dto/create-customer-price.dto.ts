@@ -1,6 +1,14 @@
 import { IsInt, IsIn, IsNumber, IsOptional, IsString, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
+/**
+ * Loại container được phép đặt đơn giá.
+ *
+ * - H20/H40/V20/V40/V20FR/V40FR/VSL/TIP: đơn giá theo từng container (đơn lẻ).
+ * - KV20/KV20FR: đơn giá cho CẢ CẶP KẸP (2 container kẹp nhau = 1 lần giá kẹp).
+ *   Chỉ áp dụng khi container thực sự được ghi nhận kẹp (claim CLAMP) và khách
+ *   có nhập giá kẹp; không nhập thì vẫn tính đơn lẻ như bình thường.
+ */
 export const PRICE_CONTAINER_TYPES = [
   'H20',
   'H40',
@@ -8,6 +16,8 @@ export const PRICE_CONTAINER_TYPES = [
   'V40',
   'V20FR',
   'V40FR',
+  'KV20',
+  'KV20FR',
   'VSL',
   'TIP',
 ];

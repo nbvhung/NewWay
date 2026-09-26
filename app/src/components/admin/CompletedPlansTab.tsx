@@ -5,6 +5,7 @@ import {
 import { shippingLinesApi } from '../../api/shipping-lines';
 import { submissionsApi } from '../../api/submissions';
 import { fmtNgay } from '../../utils';
+import { confirmDelete } from '../DeleteGuard';
 import type { ShippingLine } from '../../types';
 
 interface Props {
@@ -56,17 +57,15 @@ export default function CompletedPlansTab({ user, onRefresh }: Props) {
     ]);
   };
 
-  const deletePlan = (p: ShippingLine) => {
-    Alert.alert('Xác nhận', `Xoá kế hoạch "${planDisplayName(p)}"?`, [
-      { text: 'Hủy', style: 'cancel' },
-      { text: 'Xóa', style: 'destructive', onPress: async () => {
-        try {
-          await shippingLinesApi.delete(p.id);
-          setCompletedPlans(prev => prev.filter(x => x.id !== p.id));
-          onRefresh?.();
-        } catch {}
-      }},
-    ]);
+  const deletePlan = async (p: ShippingLine) => {
+    // Xoá luôn phải nhập mật khẩu 348 (popup <DeleteGuardHost />).
+    const ok = await confirmDelete({
+      message: `Xoá kế hoạch "${planDisplayName(p)}"?`,
+      action: () => shippingLinesApi.delete(p.id),
+    });
+    if (!ok) return;
+    setCompletedPlans(prev => prev.filter(x => x.id !== p.id));
+    onRefresh?.();
   };
 
   const filteredPlans = completedPlans.filter(p => {

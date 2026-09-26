@@ -129,6 +129,7 @@ export class UsersService {
       role: validRole,
       permissions,
       visibleDriverIds: dto.visibleDriverIds?.length ? dto.visibleDriverIds : null,
+      ben: dto.ben?.trim() || null,
       soXe: dto.soXe?.trim() || '',
       soMooc: dto.soMooc?.trim() || '',
       stt: dto.stt?.trim() || '',
@@ -182,6 +183,9 @@ export class UsersService {
     }
     if (dto.visibleDriverIds !== undefined) {
       target.visibleDriverIds = dto.visibleDriverIds?.length ? dto.visibleDriverIds : null;
+    }
+    if (dto.ben !== undefined) {
+      target.ben = dto.ben.trim() || null;
     }
     if (dto.password) {
       target.passwordHash = bcrypt.hashSync(dto.password, 10);
@@ -245,7 +249,7 @@ export class UsersService {
 
   /**
    * mode='force': xóa luôn dữ liệu liên quan (submissions, container_imports,
-   *   edit_history) rồi xóa tài khoản.
+   *   container_claims, edit_history) rồi xóa tài khoản.
    * mode='block': đổi role sang 'disabled' để chặn đăng nhập, giữ nguyên lịch sử.
    * Không có mode: xóa bình thường; nếu có dữ liệu sẽ từ chối để tránh mất dữ liệu.
    */
@@ -254,6 +258,7 @@ export class UsersService {
     currentRole: string,
     currentUserId: number,
     mode?: string,
+    currentUserName?: string,
   ) {
     if (id === currentUserId) {
       throw new BadRequestException('Không thể xóa tài khoản đang đăng nhập');
@@ -286,7 +291,39 @@ export class UsersService {
 
     if (mode === 'force' && hasData) {
       const conn = this.usersRepository.manager.connection;
+
+      // Ảnh chụp các container sắp bị xoá (đọc TRƯỚC khi xoá) để ghi audit.
+      // Bọc try/catch: bảng audit có thể chưa được migrate → không chặn xoá.
+      let doomedContainers: any[] = [];
+      try {
+        doomedContainers = await conn.query(
+          `SELECT c.id, c.container_code, c.type, c.shipping_line_id,
+                  c.submission_id, c.bundle_id, c.created_at,
+                  (SELECT COUNT(*) FROM container_claims cl
+                    WHERE cl.container_import_id = c.id) AS claim_count
+             FROM container_imports c
+            WHERE c.submission_id IN (
+                    SELECT id FROM submissions WHERE user_id = $1)`,
+          [id],
+        );
+      } catch {
+        doomedContainers = [];
+      }
+
       await conn.transaction(async (manager) => {
+        // container_claims KHÔNG có khoá ngoại tới container_imports:
+        // phải xoá claim trước, nếu không sẽ để lại claim mồ côi khiến bảng kê
+        // Excel "Container - Người chạy" mất dấu Vệ sinh lại / Kéo Về / Kéo lần 2
+        // mà không có cách nào truy lại.
+        await manager.query(
+          `DELETE FROM container_claims
+            WHERE submission_id IN (SELECT id FROM submissions WHERE user_id = $1)
+               OR container_import_id IN (
+                    SELECT id FROM container_imports
+                     WHERE submission_id IN (
+                             SELECT id FROM submissions WHERE user_id = $1))`,
+          [id],
+        );
         // Xóa container_imports gắn với submissions của tài khoản
         await manager.query(
           `DELETE FROM container_imports
@@ -302,6 +339,39 @@ export class UsersService {
         await manager.query('DELETE FROM submissions WHERE user_id = $1', [id]);
         await manager.query('DELETE FROM users WHERE id = $1', [id]);
       });
+
+      // Audit xoá container (best-effort, chạy SAU khi transaction đã commit).
+      for (const c of doomedContainers) {
+        try {
+          await conn.query(
+            `INSERT INTO container_audit_logs
+               (container_import_id, container_code, container_type,
+                shipping_line_id, shipping_line_name, submission_id, bundle_id,
+                claim_count, claim_types, action, performed_by_id,
+                performed_by_name, changes)
+             VALUES ($1,$2,$3,$4,'',$5,$6,$7,'','DELETE_USER_FORCE',$8,$9,$10)`,
+            [
+              c.id,
+              c.container_code,
+              c.type,
+              c.shipping_line_id,
+              c.submission_id,
+              c.bundle_id,
+              Number(c.claim_count) || 0,
+              currentUserId,
+              currentUserName || '',
+              JSON.stringify({
+                reason: `Xoá toàn bộ dữ liệu của tài khoản #${id} (${target.fullName})`,
+                snapshot: c,
+              }),
+            ],
+          );
+        } catch {
+          // Bảng audit chưa migrate → bỏ qua, không làm hỏng việc xoá.
+          break;
+        }
+      }
+
       await this.redisService.removeRefreshToken(id);
       return { message: 'Đã xóa tài khoản và toàn bộ dữ liệu liên quan' };
     }

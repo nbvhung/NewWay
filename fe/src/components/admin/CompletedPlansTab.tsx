@@ -6,6 +6,7 @@ import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { submissionsApi } from '@/lib/api-submissions';
 import { fmtNgay } from '@/lib/utils';
 import { hasPerm } from '@/lib/permissions';
+import { confirmDelete } from '@/lib/delete-guard';
 
 interface Props {
   user?: any;
@@ -65,12 +66,14 @@ export function CompletedPlansTab({ user, onRefresh }: Props) {
   }, [onRefresh]);
 
   const deletePlan = useCallback(async (p: ShippingLine) => {
-    if (!confirm(`Xoá kế hoạch "${planDisplayName(p)}"? Hành động này không thể hoàn tác!`)) return;
-    try {
-      await shippingLinesApi.delete(p.id);
-      setCompletedPlans(prev => prev.filter(x => x.id !== p.id));
-      onRefresh?.();
-    } catch {}
+    // Xoá luôn phải nhập mật khẩu 348 (popup của <DeleteGuardHost />).
+    const res = await confirmDelete({
+      message: `Xoá kế hoạch "${planDisplayName(p)}"?`,
+      action: () => shippingLinesApi.delete(p.id),
+    });
+    if (res === undefined) return;
+    setCompletedPlans(prev => prev.filter(x => x.id !== p.id));
+    onRefresh?.();
   }, [onRefresh]);
 
   const planDisplayName = (p: ShippingLine) => {

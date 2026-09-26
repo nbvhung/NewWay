@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import Modal from '../Modal';
 import Pagination from '../Pagination';
+import { confirmDelete } from '../DeleteGuard';
 import { usersApi } from '../../api/users';
 import { ROLE_LABELS } from '../../utils';
 import type { User } from '../../types';
@@ -77,13 +78,14 @@ export default function UsersTab({ currentUser, allUsers, onRefresh }: Props) {
     } catch (err: any) { Alert.alert('Lỗi', err.message || 'Cập nhật thất bại'); }
   };
 
-  const deleteUser = (id: number) => {
-    Alert.alert('Xác nhận', 'Bạn chắc chắn muốn XÓA tài khoản này?', [
-      { text: 'Hủy', style: 'cancel' },
-      { text: 'Xóa', style: 'destructive', onPress: async () => {
-        try { await usersApi.delete(id); onRefresh(); } catch (err: any) { Alert.alert('Lỗi', err.message); }
-      }},
-    ]);
+  const deleteUser = async (id: number) => {
+    // Xoá luôn phải nhập mật khẩu 348 (popup <DeleteGuardHost />).
+    const ok = await confirmDelete({
+      message: 'Bạn chắc chắn muốn XÓA tài khoản này?',
+      action: () => usersApi.delete(id),
+    });
+    if (!ok) return;
+    onRefresh();
   };
 
   const roleOptions = roleOptionsFor(currentUser.role);

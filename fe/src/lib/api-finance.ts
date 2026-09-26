@@ -12,10 +12,27 @@ export interface FinanceEntry {
   vonMooc: number;
   vonKhac: number;
   note?: string | null;
+  /** Bên của bản ghi này: 'A' | 'B' */
+  ben?: string;
+  /** Nhãn hiển thị, vd "Bên A" */
+  benLabel?: string;
+  /** Tên tài khoản chủ vốn của bên này */
+  ownerName?: string;
   /** Chi tiết từng khoản chi phí, nhóm theo category */
   costItems?: Record<string, FinanceCostItem[]>;
   /** Tổng của mỗi nhóm = giá trị legacy + Σ chi tiết */
   costTotals?: { suaChua: number; nhienLieu: number; cpKhac: number };
+}
+
+/** 1 xe để chọn khi nhập chi phí (1 xe = 1 tài khoản lái xe). */
+export interface FinanceVehicle {
+  id: number;
+  fullName: string;
+  username: string;
+  soXe: string;
+  soMooc: string;
+  stt: string;
+  ben: string;
 }
 
 export interface FinanceCostItem {
@@ -24,6 +41,8 @@ export interface FinanceCostItem {
   year: number;
   userId: number;
   category: string;
+  /** Xe mà khoản chi thuộc về (id lái xe); null = chi phí chung */
+  vehicleUserId: number | null;
   itemDate: string | null;
   name: string;
   amount: number;
@@ -40,6 +59,16 @@ export interface CostItemInput {
   name?: string;
   amount?: number;
   note?: string | null;
+  vehicleUserId?: number | null;
+}
+
+/** Nhập 1 khoản chi cho nhiều xe: mỗi xe 1 số tiền riêng. */
+export interface BulkCostItemInput {
+  category: string;
+  itemDate?: string | null;
+  name?: string;
+  note?: string | null;
+  vehicles: { vehicleUserId: number; amount: number }[];
 }
 
 export interface FinanceAdmin {
@@ -47,6 +76,7 @@ export interface FinanceAdmin {
   fullName: string;
   username: string;
   role: string;
+  ben: string;
 }
 
 export interface FinanceAuditChange {
@@ -92,6 +122,14 @@ export const financeApi = {
   /** Danh sách admin cho ô lọc "nhập vốn cho ai" (chỉ supper_admin). */
   listAdmins: () => axios.get<FinanceAdmin[]>('/admin/finance/admins'),
 
+  /**
+   * Danh sách XE để chọn khi nhập chi phí — chỉ xe thuộc bên đang xem.
+   */
+  listVehicles: (opts?: { targetUserId?: number }) =>
+    axios.get<FinanceVehicle[]>('/admin/finance/vehicles', {
+      params: { ...(opts?.targetUserId ? { targetUserId: opts.targetUserId } : {}) },
+    }),
+
   /** Lịch sử chỉnh sửa chi phí (yêu cầu mật khẩu). */
   getHistory: (
     month: number,
@@ -132,6 +170,18 @@ export const financeApi = {
     opts: { password: string },
   ) =>
     axios.post<FinanceCostItem>('/admin/finance/cost-items', data, {
+      params: { month, year },
+      ...pwHeader(opts.password),
+    }),
+
+  /** Thêm 1 khoản chi cho nhiều xe — mỗi xe 1 dòng. */
+  addCostItemsBulk: (
+    month: number,
+    year: number,
+    data: BulkCostItemInput,
+    opts: { password: string },
+  ) =>
+    axios.post<FinanceCostItem[]>('/admin/finance/cost-items/bulk', data, {
       params: { month, year },
       ...pwHeader(opts.password),
     }),

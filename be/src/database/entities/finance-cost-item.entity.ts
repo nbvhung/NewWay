@@ -32,6 +32,14 @@ export class FinanceCostItem {
   @Column({ type: 'varchar', length: 20 })
   category: string;
 
+  /**
+   * Xe mà khoản chi này thuộc về (id tài khoản lái xe đại diện xe đó).
+   * NULL = chi phí chung, không gắn xe cụ thể.
+   * Chọn nhiều xe cho 1 khoản → mỗi xe 1 dòng riêng.
+   */
+  @Column({ name: 'vehicle_user_id', type: 'int', nullable: true })
+  vehicleUserId: number | null;
+
   /** Ngày phát sinh chi phí */
   @Column({ name: 'item_date', type: 'date', nullable: true })
   itemDate: string | null;

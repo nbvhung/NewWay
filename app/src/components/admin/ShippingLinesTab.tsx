@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import Modal from '../Modal';
 import Pagination from '../Pagination';
+import { confirmDelete } from '../DeleteGuard';
 import { shippingLinesApi } from '../../api/shipping-lines';
 import { fmtNgay } from '../../utils';
 import type { ShippingLine, Route, User } from '../../types';
@@ -96,14 +97,14 @@ export default function ShippingLinesTab({ user, allShippingLines, allRoutes, al
     ]);
   };
 
-  const deletePlan = (id: number, display: string) => {
-    Alert.alert('Xác nhận', `Xóa kế hoạch "${display}"?`, [
-      { text: 'Hủy', style: 'cancel' },
-      { text: 'Xóa', style: 'destructive', onPress: async () => {
-        try { await shippingLinesApi.delete(id); onRefresh(); }
-        catch (err: any) { Alert.alert('Lỗi', err.message); }
-      }},
-    ]);
+  const deletePlan = async (id: number, display: string) => {
+    // Xoá luôn phải nhập mật khẩu 348 (popup <DeleteGuardHost />).
+    const ok = await confirmDelete({
+      message: `Xóa kế hoạch "${display}"?`,
+      action: () => shippingLinesApi.delete(id),
+    });
+    if (!ok) return;
+    onRefresh();
   };
 
   const driversText = (p: ShippingLine) => {

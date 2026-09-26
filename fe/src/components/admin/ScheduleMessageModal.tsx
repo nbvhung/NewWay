@@ -9,6 +9,7 @@ import {
 } from '@/lib/api-zalo-messages';
 import { fmtDateTime } from '@/lib/utils';
 import { User } from '@/types';
+import { confirmDelete } from '@/lib/delete-guard';
 
 interface Props {
   open: boolean;
@@ -199,14 +200,18 @@ export function ScheduleMessageModal({ open, onClose, allUsers, toast }: Props) 
   };
 
   const cancelBatch = async (batchId: string) => {
-    try {
-      const res = await zaloMessagesApi.cancelScheduled(batchId);
-      if (res.data?.data?.ok) {
-        toast('Đã hủy tin nhắn hẹn giờ');
-        loadBatches();
-      }
-    } catch {
-      toast('Hủy thất bại', 'error');
+    // Huỷ tin hẹn giờ = thao tác xoá → phải nhập mật khẩu 348.
+    const res = await confirmDelete({
+      title: 'Xác nhận huỷ tin hẹn giờ',
+      confirmLabel: 'Huỷ tin hẹn giờ',
+      message: 'Huỷ các tin nhắn đang chờ gửi của lần hẹn này?',
+      note: 'Tin đã gửi vẫn được giữ trong lịch sử.',
+      action: () => zaloMessagesApi.cancelScheduled(batchId),
+    });
+    if (res === undefined) return;
+    if (res.data?.data?.ok) {
+      toast('Đã hủy tin nhắn hẹn giờ');
+      loadBatches();
     }
   };
 

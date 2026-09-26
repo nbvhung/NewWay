@@ -9,6 +9,7 @@ import { customersApi } from '@/lib/api-customers';
 import { User, ShippingLine, Route, Customer } from '@/types';
 import { AdminSidebar, MobileAdminNav } from '@/components/layout/admin-sidebar';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { DeleteGuardHost } from '@/lib/delete-guard';
 import { hasAnyPerm } from '@/lib/permissions';
 
 const STAFF_PERMS = [
@@ -125,6 +126,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {children}
         </main>
       </div>
+      {/* Popup xác nhận xoá (bắt buộc mật khẩu 348) — dùng chung cho mọi tab admin */}
+      <DeleteGuardHost />
     </AdminDataContext.Provider>
   );
 }

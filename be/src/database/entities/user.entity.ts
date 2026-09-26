@@ -28,6 +28,14 @@ export class User {
   @Column({ name: 'visible_driver_ids', type: 'text', array: true, nullable: true, default: null })
   visibleDriverIds: number[] | null;
 
+  /**
+   * Bên của TÀI KHOẢN CHỦ VỐN: 'A' | 'B' (NULL với lái xe / tài khoản thường).
+   * Xe thừa hưởng bên từ chủ vốn sở hữu nó (`visible_driver_ids`); xe không
+   * thuộc chủ vốn nào → mặc định 'A'.
+   */
+  @Column({ name: 'ben', type: 'varchar', length: 10, nullable: true, default: null })
+  ben: string | null;
+
   @Column({ name: 'so_xe', length: 50, default: '' })
   soXe: string;
 

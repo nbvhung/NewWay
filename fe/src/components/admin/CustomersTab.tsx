@@ -10,6 +10,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/use-pagination';
 import { fmtDateTime } from '@/lib/utils';
 import { hasPerm, hasAnyPerm } from '@/lib/permissions';
+import { confirmDelete } from '@/lib/delete-guard';
 
 interface Props {
   onRefresh?: () => void;
@@ -254,15 +255,15 @@ export function CustomersTab({ onRefresh, toast }: Props) {
   };
 
   const remove = async (c: Customer) => {
-    if (!confirm(`Xóa khách hàng "${c.name}"?`)) return;
-    try {
-      const res = await customersApi.remove(c.id);
-      toast(res.data.message, 'success');
-      if (selected?.id === c.id) setSelected(null);
-      await load();
-    } catch (err: any) {
-      toast(err?.response?.data?.message || err?.message || 'Xóa thất bại', 'error');
-    }
+    // Xoá luôn phải nhập mật khẩu 348 (popup của <DeleteGuardHost />).
+    const res = await confirmDelete({
+      message: `Xóa khách hàng "${c.name}"?`,
+      action: () => customersApi.remove(c.id),
+    });
+    if (res === undefined) return;
+    toast(res.data.message, 'success');
+    if (selected?.id === c.id) setSelected(null);
+    await load();
   };
 
   const setStatus = async (c: Customer, status: 'active' | 'inactive') => {
@@ -390,14 +391,14 @@ export function CustomersTab({ onRefresh, toast }: Props) {
     const p = group[0];
     const rn = p.routeName || '';
     const rnLabel = rn ? `tuyến "${rn}" ` : '(mọi tuyến) ';
-    if (!confirm(`Xóa toàn bộ đơn giá ${rnLabel}khoảng ${p.fromDay}-${p.toDay}/${p.month}/${p.year}?`)) return;
-    try {
-      await customersApi.deletePricesPeriod(selected.id, p.month, p.year, p.fromDay, p.toDay, rn);
-      toast('Đã xóa khoảng đơn giá', 'success');
-      await loadPrices(selected.id, month, year);
-    } catch (err: any) {
-      toast(err?.message || 'Xóa thất bại', 'error');
-    }
+    const res = await confirmDelete({
+      message: `Xóa toàn bộ đơn giá ${rnLabel}khoảng ${p.fromDay}-${p.toDay}/${p.month}/${p.year}?`,
+      action: () =>
+        customersApi.deletePricesPeriod(selected.id, p.month, p.year, p.fromDay, p.toDay, rn),
+    });
+    if (res === undefined) return;
+    toast('Đã xóa khoảng đơn giá', 'success');
+    await loadPrices(selected.id, month, year);
   };
 
   const priceGroups = useMemo(() => {
@@ -488,14 +489,13 @@ export function CustomersTab({ onRefresh, toast }: Props) {
 
   const removeSur = async (s: CustomerSurcharge) => {
     if (!selected) return;
-    if (!confirm(`Xóa phụ phí "${s.name}"?`)) return;
-    try {
-      await customersApi.deleteSurcharge(selected.id, s.id);
-      toast('Đã xóa phụ phí', 'success');
-      await loadSurcharges(selected.id, month, year);
-    } catch (err: any) {
-      toast(err?.message || 'Xóa thất bại', 'error');
-    }
+    const res = await confirmDelete({
+      message: `Xóa phụ phí "${s.name}"?`,
+      action: () => customersApi.deleteSurcharge(selected.id, s.id),
+    });
+    if (res === undefined) return;
+    toast('Đã xóa phụ phí', 'success');
+    await loadSurcharges(selected.id, month, year);
   };
 
   // ── Lịch sử ────────────────────────────────────────────────────
@@ -925,7 +925,7 @@ export function CustomersTab({ onRefresh, toast }: Props) {
                         <div className="p-2 flex flex-wrap gap-1.5">
                           {g.map(p => (
                             <span key={p.id} className="px-2 py-1 rounded bg-[#f9f9f8] border border-[#e7e5e4] text-[11px]">
-                              <b className="text-[#1c1917]">{p.containerType}</b>{' '}
+                              <b className="text-[#1c1917]">{priceLabel(p.containerType)}</b>{' '}
                               <span className="text-[#d97706] font-semibold">{Number(p.unitPrice).toLocaleString('vi-VN')} ₫</span>
                             </span>
                           ))}
@@ -1154,6 +1154,10 @@ export function CustomersTab({ onRefresh, toast }: Props) {
           <p className="text-[10px] text-[#a8a29e]">
             Nhập đơn giá cho từng loại container (bỏ trống = loại đó không áp dụng). Áp dụng tháng {month}/{year}
             {priceForm.routeName ? ` cho tuyến "${priceForm.routeName}"` : ' cho mọi tuyến'}.
+          </p>
+          <p className="text-[10px] text-[#d97706] bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.25)] rounded-lg px-2 py-1.5">
+            <b>Kẹp V20 / Kẹp V20FR</b> là giá cho <b>cả cặp kẹp</b> (2 container kẹp nhau = 1 lần giá).
+            Chỉ áp dụng khi container được ghi nhận kẹp; để trống thì vẫn tính đơn lẻ theo giá từng container.
           </p>
           <div className="grid grid-cols-2 gap-2">
             {PRICE_TYPES.map(t => (

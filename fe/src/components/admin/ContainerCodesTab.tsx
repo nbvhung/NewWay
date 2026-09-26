@@ -5,6 +5,7 @@ import { ShippingLine, User } from '@/types';
 import { fmtNgay, fmtDateTime } from '@/lib/utils';
 import { containerImportApi, ContainerImport, ContainerSearchResult } from '@/lib/api-container-import';
 import { hasPerm } from '@/lib/permissions';
+import { confirmDelete } from '@/lib/delete-guard';
 
 interface Props {
   allShippingLines: ShippingLine[];
@@ -156,15 +157,28 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
     }
   };
 
+  /**
+   * Xoá container — nay trừ luôn sản lượng của lái xe đã ghi nhận cont đó.
+   * Confirm phải nói rõ sẽ trừ cho ai, vì đây là thao tác ảnh hưởng tiền lương.
+   */
   const removeOne = async (item: ContainerImport) => {
-    if (!confirm(`Xóa container ${item.containerCode}?`)) return;
-    try {
-      await containerImportApi.remove(item.id);
-      toast('Đã xóa container', 'success');
-      await load(item.shippingLineId!);
-    } catch (err: any) {
-      toast(err.message, 'error');
-    }
+    const tags = [
+      item.hasVsl ? 'Vệ sinh lại' : '',
+      item.hasKv ? 'Kéo về' : '',
+      item.hasKd2 ? 'Kéo lần 2' : '',
+    ].filter(Boolean).join(', ');
+    const warn = item.submissionId
+      ? `⚠️ Container này đã được ghi nhận cho ${item.recordedBy || 'một lái xe'}${tags ? ` (${tags})` : ''}.\nXoá sẽ TRỪ sản lượng của lái xe đó tương ứng.`
+      : 'Container chưa có ghi nhận nào — sản lượng của lái xe không đổi.';
+    const res = await confirmDelete({
+      title: 'Xác nhận xoá container',
+      message: `Xóa container ${item.containerCode} (${item.type})?\n\n${warn}`,
+      action: () => containerImportApi.remove(item.id),
+    });
+    if (res === undefined) return;
+    toast(res.data.message, 'success');
+    if (item.shippingLineId) await load(item.shippingLineId);
+    if (searchResults) await doSearch();
   };
 
   const downloadTemplate = async () => {
@@ -188,14 +202,19 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
 
   const removeAll = async () => {
     if (!selectedPlan) return;
-    if (!confirm(`Xóa toàn bộ ${items.length} container của kế hoạch?`)) return;
-    try {
-      await containerImportApi.removeByPlan(selectedPlan.id);
-      toast('Đã xóa toàn bộ container', 'success');
-      await load(selectedPlan.id);
-    } catch (err: any) {
-      toast(err.message, 'error');
-    }
+    const withClaims = items.filter(i => i.submissionId).length;
+    const warn = withClaims > 0
+      ? `⚠️ Trong đó ${withClaims} container đã có ghi nhận — sẽ TRỪ sản lượng của các lái xe đã chạy.`
+      : 'Không có container nào đã ghi nhận — sản lượng của lái xe không đổi.';
+    const res = await confirmDelete({
+      title: 'Xác nhận xoá toàn bộ container',
+      message: `Xóa toàn bộ ${items.length} container của kế hoạch?\n\n${warn}`,
+      confirmLabel: `Xoá ${items.length} container`,
+      action: () => containerImportApi.removeByPlan(selectedPlan.id),
+    });
+    if (res === undefined) return;
+    toast(res.data.message, 'success');
+    await load(selectedPlan.id);
   };
 
   const types = useMemo(() => {
@@ -267,6 +286,10 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
   const inputCls = "w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]";
   const btnPrimary = "px-4 py-2.5 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_15px_rgba(245,158,11,0.4)] disabled:opacity-50 cursor-pointer";
 
+  const searchTrim = searchQuery.trim();
+  const searchIsDigits = /^\d+$/.test(searchTrim);
+  const searchTooShort = searchIsDigits && searchTrim.length < 3;
+
   return (
     <div className="flex flex-col gap-5">
       {/* Tra cứu mã container */}
@@ -278,15 +301,23 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') doSearch(); }}
-            placeholder="Nhập 7 số cuối hoặc mã đầy đủ (vd: 6823203 hoặc BMOU6823203)..."
+            placeholder="Nhập từ 3 số cuối trở lên hoặc mã container (vd: 815, 8668815, WHSU8668815)..."
             className={inputCls}
           />
-          <button onClick={() => doSearch()} disabled={searching} className={`${btnPrimary} shrink-0`}>
+          <button onClick={() => doSearch()} disabled={searching || searchTooShort} className={`${btnPrimary} shrink-0`}>
             {searching ? 'Đang tìm...' : 'Tra cứu'}
           </button>
         </div>
-        {searchQuery.trim() && searchQuery.trim().length <= 7 && searchQuery.trim().match(/^\d+$/) && (
-          <p className="text-[10px] text-[#78716c] mb-2">Nhập 7 số cuối → hiện ra danh sách mã đầy đủ để chọn.</p>
+        {searchTooShort && (
+          <p className="text-[10px] text-[#b45309] mb-2">Nhập ít nhất 3 số cuối để tra cứu (vd: 815).</p>
+        )}
+        {searchIsDigits && !searchTooShort && (
+          <p className="text-[10px] text-[#78716c] mb-2">
+            Đang tra theo {searchTrim.length} số cuối · tìm ở tất cả kế hoạch, kể cả kế hoạch đã hoàn thành.
+          </p>
+        )}
+        {!searchIsDigits && searchTrim.length > 0 && (
+          <p className="text-[10px] text-[#78716c] mb-2">Tìm theo mã container · tìm ở tất cả kế hoạch, kể cả kế hoạch đã hoàn thành.</p>
         )}
 
         {searchResults && (
@@ -329,11 +360,14 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
                       </>
                     )}
                     <button onClick={() => removeOne({ ...r, shippingLineId: r.plan?.id ?? null, importedById: null } as ContainerImport)}
-                      className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer">✕</button>
+                      disabled={!!r.plan?.completed}
+                      title={r.plan?.completed ? 'Kế hoạch đã hoàn thành — phải bỏ trạng thái hoàn thành trước khi xoá' : 'Xoá container (sẽ trừ sản lượng của lái xe đã ghi nhận)'}
+                      className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer disabled:opacity-40">✕</button>
                   </div>
                 </div>
                 <div className="text-[10px] text-[#78716c] mt-1">
-                  Kế hoạch: {r.plan ? `${r.plan.name}${r.plan.completed ? ' (đã hoàn thành)' : ''}` : '—'}
+                  Kế hoạch: <span className="text-[#44403c] font-medium">{r.planDisplayName || r.plan?.name || '—'}</span>
+                  {r.plan?.completed && <span className="text-emerald-700 font-medium"> · đã hoàn thành</span>}
                   {r.phatSinh && r.importedByName && <span> · Tài xế: {r.importedByName}</span>}
                   {r.recorded && <span> · Người ghi: {r.recordedBy || '—'}</span>}
                   {r.recorded && r.claimedAt && <span> · Lúc: {fmtDateTime(r.claimedAt)}</span>}
@@ -500,6 +534,7 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
                               </button>
                             )}
                             <button onClick={() => removeOne(item)} disabled={isLocked}
+                              title="Xoá container (sẽ trừ sản lượng của lái xe đã ghi nhận)"
                               className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer disabled:opacity-40">✕</button>
                           </div>
                         </td>

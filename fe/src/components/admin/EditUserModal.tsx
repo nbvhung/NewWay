@@ -78,6 +78,23 @@ export function EditUserModal({ open, onClose, editUserData, setEditUserData, on
           <p className="text-[9px] text-[#a8a29e] mt-1">Tài khoản Xem vốn chỉ thấy dữ liệu của những xe được chọn.</p>
         </div>
 
+        <div>
+          <label className="text-xs font-medium text-[#78716c] mb-1 block">
+            🏷️ Bên chủ vốn <span className="text-[#a8a29e] font-normal">(dùng cho trang Tài chính)</span>
+          </label>
+          <select
+            value={editUserData?.ben || ''}
+            onChange={e => setEditUserData({ ...editUserData, ben: e.target.value })}
+            className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer">
+            <option value="">— Không thuộc bên nào —</option>
+            <option value="A">Bên A — New Way A</option>
+            <option value="B">Bên B — New Way B</option>
+          </select>
+          <p className="text-[9px] text-[#a8a29e] mt-1">
+            Các xe ở trên thuộc bên này. Chi phí nhập cho xe đó vào sổ Tài chính của bên.
+          </p>
+        </div>
+
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="text-xs font-medium text-[#78716c] mb-1 block">Số xe</label>
