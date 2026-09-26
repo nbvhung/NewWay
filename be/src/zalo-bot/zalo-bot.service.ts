@@ -2049,6 +2049,9 @@ export class ZaloBotService {
 
       const planName = this.planDisplayName(plan);
       let confirmText: string;
+      const isFrBundle =
+        members.length > 1 &&
+        (container.type === 'V20FR' || container.type === 'V40FR');
       if (fromClamp && clampMainCode) {
         confirmText = `✅ ${container.containerCode} - ${planName} — ${label}: ${newTotal}\n(Kẹp với con trên)`;
       } else if (members.length > 1) {
@@ -2057,7 +2060,12 @@ export class ZaloBotService {
       } else {
         confirmText = `✅ ${container.containerCode} - ${planName} — ${label}: ${newTotal}`;
       }
-      await this.replySilent(zaloUserId, confirmText);
+      // Bó FR: gửi tin xác nhận thật về Zalo (lái xe đọc 1 mã nhưng cả bó được ghi)
+      if (isFrBundle) {
+        await this.reply(chatId, zaloUserId, confirmText);
+      } else {
+        await this.replySilent(zaloUserId, confirmText);
+      }
 
       // Sau khi ghi V20/V20FR (lần đi thường) → vẫn nhận kẹp nếu lái xe tự nhắn, nhưng không hỏi
       if (
