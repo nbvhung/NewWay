@@ -69,6 +69,7 @@ export const ROLE_PRESETS: Record<string, string[]> = {
     'customer.view', 'customer.dossier',
     'route.view',
     'export.data',
+    'user.view',
     'settings.entry_lock',
     'zalo.chat', 'zalo.send', 'zalo.schedule',
   ],

@@ -59,9 +59,9 @@ export class UsersService {
     const { role: currentRole, visibleDriverIds } = currentUser;
 
     // Chế độ phân công kế hoạch: bỏ qua giới hạn xe → trả về đủ lái xe để
-    // admin chọn từng người. Chỉ admin / supper_admin được dùng chế độ này;
+    // admin/ops chọn từng người. admin / supper_admin / ops được dùng chế độ này;
     // các role khác rơi xuống logic thường bên dưới.
-    const canAssign = currentRole === 'admin' || currentRole === 'supper_admin';
+    const canAssign = currentRole === 'admin' || currentRole === 'supper_admin' || currentRole === 'ops';
     if (opts.forAssignment && canAssign) {
       const users = await this.usersRepository.find({ order: { createdAt: 'DESC' } });
       return users.map(({ passwordHash, ...rest }) => rest);
