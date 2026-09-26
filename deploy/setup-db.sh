@@ -5,6 +5,17 @@ set -euo pipefail
 # setup-db.sh — 1-command setup for company DB server
 # Chạy với quyền root trên máy chủ của khách hàng
 # =============================================================
+#
+# ⛔ LỖI THỜI TỪ 26/09/2026 — KHÔNG CHẠY SCRIPT NÀY NỮA.
+#
+#   Script này dựng PostgreSQL trên SERVER CÔNG TY + tunnel WireGuard,
+#   và tạo các role `newway_app` / `newway_migrate` + backup mã hoá GPG.
+#   Cách làm đó đã bị bỏ: database nay chạy trong container `postgres`
+#   NGAY TRÊN VPS, dùng user `postgres`, backup là file .dump không mã hoá.
+#
+#   👉 Thay thế bằng: deploy/GUIDE-VPS-AZDIGI.md (Bước 6, 8, 10)
+#      và deploy/restore-guide.md
+# =============================================================
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 info()  { echo -e "${GREEN}[✓]${NC} $1"; }

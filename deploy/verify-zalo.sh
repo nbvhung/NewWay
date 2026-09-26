@@ -7,7 +7,9 @@
 set -e
 
 # Đọc domain từ biến môi trường hoặc file .env
-if [ -f /opt/newway/deploy/.env ]; then
+if [ -f /opt/newway/.env ]; then
+  source /opt/newway/.env
+elif [ -f /opt/newway/deploy/.env ]; then
   source /opt/newway/deploy/.env
 fi
 
@@ -20,7 +22,7 @@ fi
 
 if [ -z "$DOMAIN" ]; then
   echo "❌ Thiếu domain. Dùng: bash verify-zalo.sh <domain>"
-  echo "   VD: bash verify-zalo.sh newway.congty.vn"
+  echo "   VD: bash verify-zalo.sh newwaytraco.com"
   exit 1
 fi
 

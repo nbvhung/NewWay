@@ -5,6 +5,15 @@ set -euo pipefail
 # setup-vps.sh — 1-command VPS setup for New Way production
 # Chạy với quyền root: curl -L <url> | bash
 # =============================================================
+#
+# ⚠️ CẨN THẬN — script này dựng VPS theo kiến trúc CŨ (3 container, DB nối
+#    qua WireGuard tới server công ty). Kiến trúc hiện tại có 4 container
+#    (thêm `postgres` chạy ngay trên VPS).
+#
+#    👉 Ưu tiên làm theo deploy/GUIDE-VPS-AZDIGI.md (bản 3.0) — từng bước, an toàn hơn.
+#    Nếu vẫn dùng script này: nhớ thêm service `postgres` vào docker-compose.yml
+#    và sửa DATABASE_HOST=postgres, DATABASE_USER=postgres trong .env.
+# =============================================================
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 info()  { echo -e "${GREEN}[✓]${NC} $1"; }

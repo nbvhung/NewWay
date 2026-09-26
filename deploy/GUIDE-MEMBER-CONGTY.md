@@ -1,5 +1,30 @@
+> # ⛔ TÀI LIỆU NÀY ĐÃ HẾT HIỆU LỰC — KHÔNG LÀM THEO
+>
+> **Ngày hết hiệu lực: 26/09/2026.**
+>
+> Trước đây hệ thống dùng 1 máy ảo Ubuntu (VirtualBox) đặt tại **văn phòng công ty** để chạy database,
+> rồi nối với VPS qua mạng riêng **WireGuard** (`10.8.0.2`). Hướng dẫn dưới đây mô tả cách dựng máy đó.
+>
+> **Cách làm này KHÔNG còn được dùng nữa:**
+>
+> - Database đã **chuyển hẳn lên VPS** — nay là container **`newway-postgres-1`**, không còn ở công ty.
+> - Đường truyền WireGuard tới `10.8.0.2` **không còn kết nối**.
+> - Role `newway_app` / `newway_migrate` và passphrase GPG **không còn tồn tại**.
+> - Server công ty (máy ảo VirtualBox) **có thể tắt hẳn** — không cần bật, không cần bảo trì.
+>
+> 👉 **Tài liệu đúng để đọc thay thế:**
+> - `deploy/HANDBOOK.md` — mục **4.7** (server công ty cũ đã ngừng dùng) và mục 5 (backup)
+> - `deploy/GUIDE-VPS-AZDIGI.md` — hướng dẫn dựng VPS (bản 3.0, đã bỏ toàn bộ phần WireGuard)
+> - `deploy/restore-guide.md` — khôi phục dữ liệu từ backup trên VPS
+>
+> Phần nội dung bên dưới được **giữ lại chỉ để tham khảo lịch sử**.
+
+---
+
 # 🖥️ HƯỚNG DẪN TỪNG BƯỚC — Setup DB trên Server công ty (Windows + VirtualBox)
 
+> ⛔ **ĐÃ HẾT HIỆU LỰC — xem cảnh báo ở đầu tài liệu.**
+>
 > Dành cho **người thao tác qua UltraVNC** trên máy server công ty.
 > **Phương án:** Giữ nguyên Windows → cài **Ubuntu Server trong VirtualBox** → chạy database trong máy ảo.
 > Windows của bạn vẫn dùng bình thường, không cài lại gì cả.
@@ -238,4 +263,10 @@ Trên điện thoại: mở web do quản lý gửi → thấy **trang đăng nh
 
 ---
 
+> # ⛔ NHẮC LẠI: TÀI LIỆU NÀY ĐÃ HẾT HIỆU LỰC (26/09/2026)
+>
+> Database **không còn ở server công ty**. Không cần làm bất cứ bước nào trong tài liệu này.
+> Đọc `deploy/HANDBOOK.md` (mục 4.7) và `deploy/GUIDE-VPS-AZDIGI.md` (bản 3.0) thay thế.
+
 *Phiên bản: 1.1 — Windows + VirtualBox (08/2026)*
+*⛔ Hết hiệu lực từ 26/09/2026 — server công ty đã ngừng dùng.*

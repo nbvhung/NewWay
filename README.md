@@ -186,13 +186,16 @@ Xem thư mục `deploy/`:
 
 | File | Mô tả |
 |---|---|
-| `setup-vps.sh` | Script 1 lệnh cài VPS (Docker, Nginx, SSL, monitoring) |
-| `setup-db.sh` | Script 1 lệnh cài database server (PostgreSQL, WireGuard, backup) |
-| `docker-compose.yml` | Docker compose cho VPS |
+| `GUIDE-VPS-AZDIGI.md` | **⭐ Hướng dẫn dựng VPS từ đầu** (bản 3.0 — DB chạy trên VPS) |
+| `HANDBOOK.md` | **⭐ Tài liệu bàn giao cho khách hàng** (không IT) — bản 2.0 |
+| `restore-guide.md` | Hướng dẫn khôi phục dữ liệu từ backup (bản 2.0) |
+| `docker-compose.yml` | Docker compose mẫu cho VPS |
 | `nginx.conf` | Reverse proxy + SSL |
 | `.env.production` | Template biến môi trường production |
-| `HANDBOOK.md` | Tài liệu bàn giao cho khách hàng (không IT) |
-| `restore-guide.md` | Hướng dẫn khôi phục dữ liệu từ backup |
+| `migrate-*.sql` | Các file migration — **phải chạy tay trên VPS** trước khi build |
+| ⛔ `setup-vps.sh` | **LỖI THỜI** — script cũ, xem `GUIDE-VPS-AZDIGI.md` |
+| ⛔ `setup-db.sh` | **LỖI THỜI** — cài DB ở server công ty + WireGuard, không dùng nữa |
+| ⛔ `GUIDE-MEMBER-CONGTY.md` | **LỖI THỜI** — server công ty đã ngừng dùng |
 
 ### Kiến trúc production
 
@@ -200,27 +203,30 @@ Xem thư mục `deploy/`:
 Internet (tài xế) ─── Mobile App (Expo APK)
     │
     ▼
-VPS (Hetzner $6/th)
+VPS AZDIGI (103.221.223.230) — https://newwaytraco.com
 ├── Nginx (80→443, SSL Let's Encrypt)
 ├── Frontend (Next.js, :3000)
 ├── Backend API (NestJS, :4000)  ← Mobile gọi thẳng API
-└── Redis (:6379)
-    │
-    └── WireGuard tunnel ─── Server công ty
-                                └── PostgreSQL (:5432, không expose internet)
+├── Redis (:6379)
+└── PostgreSQL 15 (:5432, chỉ trong mạng docker — không expose internet)
 ```
+
+> ⚠️ **Kiến trúc đã thay đổi (26/09/2026):** database nay chạy **trên VPS** trong container
+> `newway-postgres-1`. Không còn **WireGuard** và không còn database ở server công ty.
+> Xem `deploy/HANDBOOK.md` mục 4 và `deploy/GUIDE-VPS-AZDIGI.md`.
 
 ### Bảo mật
 
-- Database **cách ly hoàn toàn** khỏi internet — chỉ kết nối qua WireGuard
-- User DB quyền tối thiểu (`newway_app`: SELECT/INSERT/UPDATE/DELETE)
+- Database **cách ly hoàn toàn** khỏi internet — chỉ kết nối trong mạng docker nội bộ
+- Firewall VPS chỉ mở 80/443/22 (không mở 5432)
 - Password mã hoá bcrypt (salt rounds = 10)
 - JWT 15 phút, refresh token rotation
 - Rate limiting (100 requests/phút)
 - Helmet (security headers: CSP, HSTS, X-Frame-Options...)
 - CORS exact match (Set.has)
 - Tự động tắt TypeORM synchronize khi `NODE_ENV=production`
-- Backup database hàng ngày, mã hoá GPG
+- **Mọi request DELETE đều phải kèm mật khẩu thao tác** (`x-cost-password: 348`) — chống xoá nhầm
+- Backup database: 30 phút/lần (khi có thay đổi) + 02:00 hàng ngày, lưu trên VPS
 
 ## Cấu trúc thư mục
 

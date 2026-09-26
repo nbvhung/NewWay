@@ -1,8 +1,6 @@
 -- Migration: Tiền gửi xe tại HPH 2 (tab Lương Tháng / BANG LUONG LX)
--- Chạy trên DB production (server công ty qua WireGuard / container VPS):
---   docker exec newway-postgres-1 psql -U postgres -d newway -f - < migrate-add-parking-hph2.sql
--- Hoặc chạy trực tiếp trên DB server:
---   psql -U newway_app -d newway -f migrate-add-parking-hph2.sql
+-- Chạy trên VPS (container newway-postgres-1, user `postgres`):
+--   docker exec -i newway-postgres-1 psql -U postgres -d newway -v ON_ERROR_STOP=1 < migrate-add-parking-hph2.sql
 --
 -- QUAN TRỌNG: phải chạy migration NÀY trước khi deploy code backend mới,
 -- nếu không tab Thành phần Lương sẽ báo "Lỗi server nội bộ".

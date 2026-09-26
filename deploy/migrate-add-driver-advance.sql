@@ -1,5 +1,5 @@
 -- Migration: Add driver advance salary (tạm ứng) feature
--- Chạy lệnh: psql -U newway_app -d newway -f migrate-add-driver-advance.sql
+-- Chạy lệnh (trên VPS): docker exec -i newway-postgres-1 psql -U postgres -d newway -v ON_ERROR_STOP=1 < migrate-add-driver-advance.sql
 
 -- 1. Bảng tạm ứng
 CREATE TABLE IF NOT EXISTS driver_advances (

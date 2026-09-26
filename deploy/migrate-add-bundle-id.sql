@@ -1,6 +1,6 @@
 -- Migration: thêm cột bundle_id cho tính năng "Bó container"
--- Chạy trên DB production (server công ty) bằng user newway_migrate:
---   psql "postgres://newway_migrate:...@.../newway" -f migrate-add-bundle-id.sql
+-- Chạy trên VPS (container newway-postgres-1, user `postgres`):
+--   docker exec -i newway-postgres-1 psql -U postgres -d newway -v ON_ERROR_STOP=1 < migrate-add-bundle-id.sql
 
 ALTER TABLE container_imports ADD COLUMN IF NOT EXISTS bundle_id VARCHAR(50) NULL;
 

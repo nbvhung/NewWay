@@ -1,8 +1,6 @@
 -- Migration: BHXH - NLD (giá trị chung) + Chi hộ (theo lái xe) trong tab Thành phần Lương
--- Chạy trên DB production (server công ty qua WireGuard / container VPS):
---   docker exec newway-postgres-1 psql -U postgres -d newway -f - < migrate-add-salary-bhxh-chiho.sql
--- Hoặc chạy trực tiếp trên DB server:
---   psql -U newway_app -d newway -f migrate-add-salary-bhxh-chiho.sql
+-- Chạy trên VPS (container newway-postgres-1, user `postgres`):
+--   docker exec -i newway-postgres-1 psql -U postgres -d newway -v ON_ERROR_STOP=1 < migrate-add-salary-bhxh-chiho.sql
 --
 -- QUAN TRỌNG: phải chạy migration NÀY trước khi deploy code backend mới,
 -- nếu không tab Thành phần Lương sẽ báo "Lỗi server nội bộ".

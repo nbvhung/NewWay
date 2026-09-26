@@ -44,14 +44,21 @@ D:\WebLab\NewWay\
 Internet (tài xế) ─── Mobile App (Expo APK)
     │
     ▼
-VPS (Hetzner $6/th)
-├── Nginx (80→443, SSL Let's Encrypt)
+VPS AZDIGI (103.221.223.230) — https://newwaytraco.com
+├── Nginx (80→443, SSL Let's Encrypt, tự gia hạn)
 ├── Frontend (Next.js, :3000)
 ├── Backend API (NestJS, :4000)  ← Mobile gọi thẳng API
-└── Redis (:6379)
-    │
-    └── WireGuard tunnel ─── Server công ty (PostgreSQL, không expose internet)
+├── Redis (:6379)
+└── PostgreSQL 15 (:5432)  ← container newway-postgres-1, CHỈ trong mạng docker
 ```
+
+> ⚠️ **Cập nhật 26/09/2026:** database nay nằm **trên VPS** (container `newway-postgres-1`),
+> user `postgres`. **Không còn WireGuard**, không còn DB ở server công ty.
+> Backup: 30 phút/lần (khi có thay đổi) vào `/opt/backups/incr/` + 02:00 hàng ngày vào
+> `/opt/backups/`. Chi tiết: `deploy/HANDBOOK.md` mục 4–5, `deploy/GUIDE-VPS-AZDIGI.md`.
+>
+> ⚠️ **Production KHÔNG có migration runner** (`synchronize: !isProd`). Thay đổi schema phải chạy
+> file `.sql` bằng tay trên VPS trước khi `docker compose up -d --build`.
 
 ## Backend Module Map
 

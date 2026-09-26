@@ -1,9 +1,7 @@
 -- Migration: Khoản lương động (tab Lương Tháng — phần Lương và Phụ cấp)
 -- Cho phép định nghĩa thêm các khoản cộng thêm / khấu trừ theo từng lái xe.
--- Chạy trên DB production (server công ty qua WireGuard / container VPS):
---   docker exec newway-postgres-1 psql -U postgres -d newway -f - < migrate-add-salary-items.sql
--- Hoặc chạy trực tiếp trên DB server:
---   psql -U newway_app -d newway -f migrate-add-salary-items.sql
+-- Chạy trên VPS (container newway-postgres-1, user `postgres`):
+--   docker exec -i newway-postgres-1 psql -U postgres -d newway -v ON_ERROR_STOP=1 < migrate-add-salary-items.sql
 --
 -- QUAN TRỌNG: phải chạy migration NÀY trước khi deploy code backend mới,
 -- nếu không tab Lương Tháng sẽ báo "Lỗi server nội bộ".
