@@ -20,8 +20,54 @@ interface DriverTotals {
   tip: number;
 }
 
-const OPS_PHONE = '0902051708';
-const DUONG_PHONE = '0902051708';
+// ═══════════════════════════════════════════════════════════════════════════
+//  📝 MẪU TIN NHẮN GỬI CHO LÁI XE — SỬA LỜI VĂN Ở ĐÚNG KHỐI NÀY
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//  Trong mỗi dòng, phần trong dấu { } là BIẾN do hệ thống tự điền.
+//    → Chỉ sửa phần chữ thường. KHÔNG xoá, KHÔNG đổi tên các biến { }.
+//    → Thêm / bớt / đổi thứ tự dòng tuỳ ý. Mỗi dòng trong mảng = 1 dòng tin nhắn.
+//
+//  Các biến dùng được:
+//    {planName}   tên kế hoạch         VD: VSL / 12 / Nội bộ / 23-09-2026
+//    {sanLuong}   danh sách sản lượng  VD: H20: 5, H40: 3, V20: 2
+//                 (không có sản lượng nào → chữ "không có sản lượng")
+//    {luong}      lương chuyến (chưa gồm TIP)  VD: 5040K
+//    {sdt}        số điện thoại liên hệ            — chỉ tin KẾT THÚC
+//    {tipPhan}    ". TIP: 200K" hoặc rỗng (khi TIP = 0) — chỉ tin HOÀN THÀNH
+//
+//  Hai tin này gửi riêng cho TỪNG lái xe có trong kế hoạch:
+//    🏁 Kết thúc   (nút màu vàng)  → nhờ lái xe rà soát sản lượng + báo lương
+//    ✅ Hoàn thành (nút màu xanh)  → chốt kế hoạch + báo tiền lương
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Số điện thoại hiển thị trong tin 🏁 Kết thúc. */
+const PHONE_KET_THUC = '0902051708'; // hiển thị là "liên hệ DƯƠNG"
+
+/** 🏁 Tin gửi khi bấm nút "Kết thúc" — nhờ lái xe rà soát sản lượng + báo lương. */
+const MSG_KET_THUC: string[] = [
+  '🏁 {planName}',
+  'Sản lượng của Sếp là: {sanLuong}',
+  '💰Tổng lương: {luong}',
+  'Nếu có sai sót, vui lòng điền thêm mã Cont hoặc liên hệ DƯƠNG (SĐT: {sdt})',
+  'Sau 24h nếu không có thắc mắc, thông tin mặc định ĐÚNG',
+];
+
+/** ✅ Tin gửi khi bấm nút "Hoàn thành" — chốt kế hoạch + báo lương. */
+const MSG_HOAN_THANH: string[] = [
+  '✅{planName} đã hoàn thành',
+  'Sản lượng của Sếp: {sanLuong}',
+  '💰Tổng lương: {luong}{tipPhan}',
+];
+
+/** Điền biến {tên} vào mẫu tin. Biến lạ (không có trong `vars`) thì giữ nguyên. */
+function renderTemplate(lines: string[], vars: Record<string, string>): string {
+  return lines
+    .map((line) =>
+      line.replace(/\{(\w+)\}/g, (match, key: string) => vars[key] ?? match),
+    )
+    .join('\n');
+}
 
 @Injectable()
 export class ZaloPlanCompletedNotifierService {
@@ -148,6 +194,9 @@ export class ZaloPlanCompletedNotifierService {
       }
 
       const planName = this.planDisplayName(plan);
+      const donGia = await this.resolveDonGia(plan);
+      const heSo = plan.leTet ? 3 : plan.tangCuong ? 1.15 : 1;
+
       for (const [userId, entry] of byDriver) {
         if (!entry.zaloId) {
           this.logger.log(
@@ -155,7 +204,12 @@ export class ZaloPlanCompletedNotifierService {
           );
           continue;
         }
-        const text = this.buildEndMessage(planName, entry.totals);
+        const text = this.buildEndMessage(
+          planName,
+          entry.totals,
+          donGia,
+          heSo,
+        );
         const sent = await this.zaloApi.sendMessage(
           entry.zaloId,
           text,
@@ -172,26 +226,50 @@ export class ZaloPlanCompletedNotifierService {
     }
   }
 
-  private buildEndMessage(planName: string, t: DriverTotals): string {
+  /** Ghép chuỗi sản lượng, VD "H20: 5, H40: 3". Không có gì thì trả "không có sản lượng". */
+  private sanLuongText(t: DriverTotals, sep: string, includeTip: boolean): string {
     const parts: string[] = [];
-    if (t.h20 > 0) parts.push(`H20: ${t.h20}`);
-    if (t.h40 > 0) parts.push(`H40: ${t.h40}`);
-    if (t.v20 > 0) parts.push(`V20: ${t.v20}`);
-    if (t.v40 > 0) parts.push(`V40: ${t.v40}`);
-    if (t.v20fr > 0) parts.push(`V20FR: ${t.v20fr}`);
-    if (t.v40fr > 0) parts.push(`V40FR: ${t.v40fr}`);
-    if (t.vsl > 0) parts.push(`Vệ sinh lại: ${t.vsl}`);
-    if (t.kv > 0) parts.push(`Kéo về: ${t.kv}`);
-    if (t.tip > 0) parts.push(`TIP: ${t.tip}`);
+    if (t.h20 > 0) parts.push(`H20${sep}${t.h20}`);
+    if (t.h40 > 0) parts.push(`H40${sep}${t.h40}`);
+    if (t.v20 > 0) parts.push(`V20${sep}${t.v20}`);
+    if (t.v40 > 0) parts.push(`V40${sep}${t.v40}`);
+    if (t.v20fr > 0) parts.push(`V20FR${sep}${t.v20fr}`);
+    if (t.v40fr > 0) parts.push(`V40FR${sep}${t.v40fr}`);
+    if (t.vsl > 0) parts.push(`Vệ sinh lại${sep}${t.vsl}`);
+    if (t.kv > 0) parts.push(`Kéo về${sep}${t.kv}`);
+    if (includeTip && t.tip > 0) parts.push(`TIP${sep}${t.tip}`);
+    return parts.length ? parts.join(', ') : 'không có sản lượng';
+  }
 
-    return [
-      `🏁 ${planName}`,
-      parts.length
-        ? `Sản lượng của Sếp là: ${parts.join(', ')}`
-        : 'Sản lượng của Sếp là: không có sản lượng',
-      `Nếu có sai sót, vui lòng điền thêm mã Cont hoặc liên hệ DƯƠNG (SĐT: ${DUONG_PHONE})`,
-      'Nếu không có thắc mắc, thông tin mặc định ĐÚNG',
-    ].join('\n');
+  private buildEndMessage(
+    planName: string,
+    t: DriverTotals,
+    donGia: number,
+    heSo: number,
+  ): string {
+    return renderTemplate(MSG_KET_THUC, {
+      planName,
+      sanLuong: this.sanLuongText(t, ': ', true),
+      luong: this.formatK(this.salaryOf(t, donGia, heSo)),
+      sdt: PHONE_KET_THUC,
+    });
+  }
+
+  /**
+   * Lương chuyến = đơn giá × số container quy đổi × hệ số
+   *              + số chuyến vệ sinh lại × 40.000đ × hệ số
+   *              + số chuyến kéo về × đơn giá × hệ số.
+   * Chưa gồm TIP — TIP được cộng riêng ở dòng tiền của tin "Hoàn thành".
+   */
+  private salaryOf(t: DriverTotals, donGia: number, heSo: number): number {
+    const tong =
+      t.h20 +
+      t.h40 +
+      Math.ceil(t.v20 / 2) +
+      t.v40 +
+      Math.ceil(t.v20fr / 8) +
+      Math.ceil(t.v40fr / 4);
+    return donGia * tong * heSo + t.vsl * 40000 * heSo + t.kv * donGia * heSo;
   }
 
   private zeroTotals(): DriverTotals {
@@ -214,38 +292,12 @@ export class ZaloPlanCompletedNotifierService {
     donGia: number,
     heSo: number,
   ): string {
-    const parts: string[] = [];
-    if (t.h20 > 0) parts.push(`H20=${t.h20}`);
-    if (t.h40 > 0) parts.push(`H40=${t.h40}`);
-    if (t.v20 > 0) parts.push(`V20=${t.v20}`);
-    if (t.v40 > 0) parts.push(`V40=${t.v40}`);
-    if (t.v20fr > 0) parts.push(`V20FR=${t.v20fr}`);
-    if (t.v40fr > 0) parts.push(`V40FR=${t.v40fr}`);
-    if (t.vsl > 0) parts.push(`Vệ sinh lại=${t.vsl}`);
-    if (t.kv > 0) parts.push(`Kéo về=${t.kv}`);
-
-    const tong =
-      t.h20 +
-      t.h40 +
-      Math.ceil(t.v20 / 2) +
-      t.v40 +
-      Math.ceil(t.v20fr / 8) +
-      Math.ceil(t.v40fr / 4);
-    const salary =
-      donGia * tong * heSo + t.vsl * 40000 * heSo + t.kv * donGia * heSo;
-    let moneyLine = `💰Tổng lương: ${this.formatK(salary)}`;
-    if (t.tip > 0) {
-      moneyLine += `. TIP: ${this.formatK(t.tip * 1000)}`;
-    }
-
-    return [
-      `✅${planName} đã hoàn thành`,
-      parts.length
-        ? `Sản lượng của Sếp: ${parts.join(', ')}`
-        : `Sản lượng của Sếp: không có sản lượng`,
-      moneyLine,
-      `Mọi sai lệch về thông tin liên hệ OPS (SĐT: ${OPS_PHONE})`,
-    ].join('\n');
+    return renderTemplate(MSG_HOAN_THANH, {
+      planName,
+      sanLuong: this.sanLuongText(t, '=', false),
+      luong: this.formatK(this.salaryOf(t, donGia, heSo)),
+      tipPhan: t.tip > 0 ? `. TIP: ${this.formatK(t.tip * 1000)}` : '',
+    });
   }
 
   private formatK(n: number): string {
