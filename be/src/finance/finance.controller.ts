@@ -76,7 +76,11 @@ export class FinanceController {
     @Req() req: any,
   ) {
     const { m, y } = this.monthYear(month, year);
-    const includeCost = this.financeService.verifyCostPassword(pw ?? headerPw);
+    // supper_admin xem được chi phí của mọi admin mà không cần mật khẩu,
+    // để chỉnh lại các số admin đã nhập sai.
+    const includeCost =
+      req.user?.role === 'supper_admin' ||
+      this.financeService.verifyCostPassword(pw ?? headerPw);
     return this.financeService.getOrCreate(m, y, req.user, {
       targetUserId: this.targetUserId(targetUserId),
       includeCost,
@@ -107,7 +111,9 @@ export class FinanceController {
       body.suaChua !== undefined ||
       body.nhienLieu !== undefined ||
       body.cpKhac !== undefined;
-    if (touchesCost && !pwOk) {
+    // supper_admin được sửa chi phí (kể cả của admin khác) KHÔNG cần mật khẩu;
+    // các role khác vẫn bắt buộc để tránh sửa nhầm.
+    if (touchesCost && !pwOk && req.user?.role !== 'supper_admin') {
       throw new UnauthorizedException('Mật khẩu xem chi phí không đúng');
     }
     const editorName = req.user?.fullName || req.user?.username || '';
@@ -128,7 +134,10 @@ export class FinanceController {
     @Req() req: any,
   ) {
     const password = pw ?? headerPw;
-    if (!this.financeService.verifyCostPassword(password)) {
+    if (
+      req.user?.role !== 'supper_admin' &&
+      !this.financeService.verifyCostPassword(password)
+    ) {
       throw new UnauthorizedException('Mật khẩu xem chi phí không đúng');
     }
     const { m, y } = this.monthYear(month, year);
@@ -149,7 +158,9 @@ export class FinanceController {
 
   // ── Chi tiết chi phí (mỗi dòng = 1 khoản phát sinh) ──────────────
 
-  private assertPw(pw?: string, headerPw?: string): void {
+  private assertPw(pw?: string, headerPw?: string, user?: any): void {
+    // supper_admin được thêm/sửa chi phí (kể cả của admin khác) không cần mật khẩu.
+    if (user?.role === 'supper_admin') return;
     if (!this.financeService.verifyCostPassword(pw ?? headerPw)) {
       throw new UnauthorizedException('Mật khẩu xem chi phí không đúng');
     }
@@ -166,7 +177,7 @@ export class FinanceController {
     @Headers('x-cost-password') headerPw: string,
     @Req() req: any,
   ) {
-    this.assertPw(pw, headerPw);
+    this.assertPw(pw, headerPw, req.user);
     const { m, y } = this.monthYear(month, year);
     return this.financeService.listCostItems(m, y, req.user, this.targetUserId(targetUserId));
   }
@@ -182,7 +193,7 @@ export class FinanceController {
     @Req() req: any,
     @Body() body: CostItemDto,
   ) {
-    this.assertPw(pw, headerPw);
+    this.assertPw(pw, headerPw, req.user);
     const { m, y } = this.monthYear(month, year);
     const editorName = req.user?.fullName || req.user?.username || '';
     return this.financeService.addCostItem(m, y, req.user, body, editorName);
@@ -202,7 +213,7 @@ export class FinanceController {
     @Req() req: any,
     @Body() body: BulkCostItemDto,
   ) {
-    this.assertPw(pw, headerPw);
+    this.assertPw(pw, headerPw, req.user);
     const { m, y } = this.monthYear(month, year);
     const editorName = req.user?.fullName || req.user?.username || '';
     return this.financeService.addCostItemsBulk(m, y, req.user, body, editorName);
@@ -218,7 +229,7 @@ export class FinanceController {
     @Req() req: any,
     @Body() body: CostItemDto,
   ) {
-    this.assertPw(pw, headerPw);
+    this.assertPw(pw, headerPw, req.user);
     const editorName = req.user?.fullName || req.user?.username || '';
     return this.financeService.updateCostItem(+id, req.user, body, editorName);
   }
@@ -232,7 +243,7 @@ export class FinanceController {
     @Headers('x-cost-password') headerPw: string,
     @Req() req: any,
   ) {
-    this.assertPw(pw, headerPw);
+    this.assertPw(pw, headerPw, req.user);
     const editorName = req.user?.fullName || req.user?.username || '';
     return this.financeService.deleteCostItem(+id, req.user, editorName);
   }

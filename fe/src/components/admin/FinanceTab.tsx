@@ -51,6 +51,60 @@ const NAME_SUGGESTIONS: Record<string, string[]> = {
   vonKhac: ['Mua thiết bị', 'Công cụ dụng cụ', 'Cải tạo', 'Nhà xưởng', 'Khác'],
 };
 
+/** Ô nhập số tiền cho "số tổng cũ" (cột legacy trên finance_entries). */
+function NumInput({ label, value, onChange, disabled }: { label: string; value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  return (
+    <div>
+      <label className="text-[11px] font-medium text-[#78716c] mb-1 block">{label}</label>
+      <div className="relative">
+        <input
+          type="number" min="0" value={value} disabled={disabled}
+          onChange={e => onChange(e.target.value)}
+          placeholder="0"
+          className="w-full px-3 py-2 bg-white border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#d97706] placeholder:text-[#c4c0bb] disabled:bg-[#f5f5f4] disabled:text-[#a8a29e]"
+        />
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#a8a29e]">₫</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Khối "Số tổng cũ" — mở lại 3 ô tổng nhập tay (chi phí hoặc vốn đầu tư).
+ * Số ở đây được CỘNG THÊM vào các khoản chi tiết; sửa về 0 để xoá số nhập test.
+ */
+function LegacyTotals({
+  fields, form, onChange, readOnly,
+}: {
+  fields: readonly string[];
+  form: Record<string, string>;
+  onChange: (k: string, v: string) => void;
+  readOnly?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasValue = fields.some(f => Number(form[f] || 0) !== 0);
+  return (
+    <div className="mb-4 rounded-xl border border-[#e7e5e4] bg-[#faf9f7]">
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold text-[#78716c] hover:text-[#d97706] cursor-pointer text-left">
+        {open ? '▾' : '▸'} Số tổng cũ (sửa tay)
+        {hasValue && <span className="ml-auto text-[9px] font-normal text-[#a8a29e]">đang có số</span>}
+      </button>
+      {open && (
+        <div className="px-3 pb-3 space-y-3">
+          {fields.map(f => (
+            <NumInput key={f} label={GROUP_META[f].label} value={form[f] ?? ''} onChange={v => onChange(f, v)} disabled={readOnly} />
+          ))}
+          <p className="text-[10px] text-[#a8a29e] leading-snug">
+            Đây là các <strong>số tổng nhập tay</strong> từ trước, được cộng thêm vào các khoản chi tiết bên dưới.
+            Muốn xoá số đã test thì sửa về <strong>0</strong> rồi bấm Lưu.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Widget 1 nhóm: tổng (chỉ đọc) + nút thêm/thu gọn chi tiết. Dùng cho cả chi phí và vốn đầu tư. */
 function CostGroup({
   category, label, icon, total, items, onAdd, onEdit, onDelete, vehicleLabel,
@@ -149,6 +203,8 @@ export function FinanceTab(_props: Props) {
 
   // Admin phải mở khoá bằng mật khẩu mới nhập được vốn đầu tư; supper_admin được miễn.
   const canEditInvest = isSuperAdmin || unlocked;
+  // supper_admin cũng được sửa CHI PHÍ (kể cả của admin khác) không cần mật khẩu.
+  const canEditCost = isSuperAdmin || unlocked;
 
   // ── Ô lọc admin (chỉ supper_admin) ────────────────────
   const [admins, setAdmins] = useState<FinanceAdmin[]>([]);
@@ -169,10 +225,12 @@ export function FinanceTab(_props: Props) {
   const [investTotals, setInvestTotals] = useState({ vonXe: 0, vonMooc: 0, vonKhac: 0 });
 
   /**
-   * Sửa/thêm/xoá TỪNG KHOẢN (cả chi phí lẫn vốn) đều phải có mật khẩu:
-   * backend yêu cầu mật khẩu ở mọi endpoint `cost-items` kể cả supper_admin.
+   * Sửa/thêm/xoá TỪNG KHOẢN (cả chi phí lẫn vốn):
+   * - admin thường phải mở khoá bằng mật khẩu 348.
+   * - supper_admin được miễn (sửa được sổ của mọi admin để chỉnh số nhập sai).
+   * (Riêng XOÁ vẫn luôn hỏi mật khẩu 348 qua popup chống xoá nhầm.)
    */
-  const canEditItems = unlocked;
+  const canEditItems = isSuperAdmin || unlocked;
 
   // ── Bên A / Bên B ────────────────────────────────────
   // Bên là thuộc tính của tài khoản chủ vốn; mỗi bên có sổ chi phí riêng.
@@ -256,7 +314,7 @@ export function FinanceTab(_props: Props) {
   }, [isSuperAdmin]);
 
   const loadHistory = useCallback(async () => {
-    if (!unlocked) return;
+    if (!unlocked && !isSuperAdmin) return;
     try {
       const r = await financeApi.getHistory(month, year, {
         password: costPassword,
@@ -285,9 +343,9 @@ export function FinanceTab(_props: Props) {
     setSaving(true); setError('');
     try {
       await financeApi.upsert(month, year, {
-        suaChua:   unlocked ? Number(form.suaChua   || 0) : undefined,
-        nhienLieu: unlocked ? Number(form.nhienLieu || 0) : undefined,
-        cpKhac:    unlocked ? Number(form.cpKhac    || 0) : undefined,
+        suaChua:   canEditCost ? Number(form.suaChua   || 0) : undefined,
+        nhienLieu: canEditCost ? Number(form.nhienLieu || 0) : undefined,
+        cpKhac:    canEditCost ? Number(form.cpKhac    || 0) : undefined,
         vonXe:     canEditInvest ? Number(form.vonXe   || 0) : undefined,
         vonMooc:   canEditInvest ? Number(form.vonMooc || 0) : undefined,
         vonKhac:   canEditInvest ? Number(form.vonKhac || 0) : undefined,
@@ -445,8 +503,8 @@ export function FinanceTab(_props: Props) {
         <div className="text-[12px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-2">{error}</div>
       )}
 
-      {/* ── Khoá chi phí: yêu cầu mật khẩu ────────────────── */}
-      {!unlocked && (
+      {/* ── Khoá chi phí: yêu cầu mật khẩu (supper_admin được miễn) ── */}
+      {!unlocked && !isSuperAdmin && (
         <div className="bg-white border border-[#e7e5e4] rounded-xl p-5">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-[16px]">🔒</div>
@@ -484,17 +542,25 @@ export function FinanceTab(_props: Props) {
                 <p className="text-[13px] font-bold text-[#1c1917]">Chi Phí</p>
                 <p className="text-[10px] text-[#78716c]">Sửa chữa, nhiên liệu, chi phí khác</p>
               </div>
-              {unlocked && (
-                <span className="ml-auto text-[10px] font-medium text-green-700 bg-green-50 border border-green-200 rounded px-2 py-0.5">Đã mở khoá</span>
+              {canEditCost && (
+                <span className="ml-auto text-[10px] font-medium text-green-700 bg-green-50 border border-green-200 rounded px-2 py-0.5">
+                  {isSuperAdmin && !unlocked ? 'Quyền supper_admin' : 'Đã mở khoá'}
+                </span>
               )}
             </div>
 
-            {!unlocked ? (
+            {!canEditCost ? (
               <div className="py-8 text-center text-[12px] text-[#a8a29e]">
                 🔒 Nhập mật khẩu phía trên để xem chi phí
               </div>
             ) : (
               <>
+                <LegacyTotals
+                  fields={COST_FIELDS}
+                  form={form}
+                  onChange={(k, v) => setForm(f => ({ ...f, [k]: v }))}
+                  readOnly={!canEditCost}
+                />
                 <div className="space-y-3">
                   {COST_FIELDS.map(cat => (
                     <CostGroup
@@ -542,9 +608,14 @@ export function FinanceTab(_props: Props) {
               </p>
             )}
 
-            {/* Chỉ nhập chi tiết theo khoản. Ô "nhập nhanh theo ô (số tổng)" đã bỏ;
-                các số tổng cũ (`form.vonXe/vonMooc/vonKhac`) vẫn được giữ nguyên và
-                cộng vào tổng vốn ở backend để dữ liệu nhập trước đây không bị mất. */}
+            {/* Số tổng cũ (cột legacy) — mở lại để sửa/xoá số đã nhập test */}
+            <LegacyTotals
+              fields={INVEST_FIELDS}
+              form={form}
+              onChange={(k, v) => setForm(f => ({ ...f, [k]: v }))}
+              readOnly={!canEditInvest}
+            />
+
             {/* ── Chi tiết từng khoản (giống hệt Chi Phí) ─────────── */}
             <p className="text-[11px] font-semibold text-[#78716c] mb-2">Chi tiết theo khoản</p>
             <div className="space-y-3">
@@ -578,7 +649,7 @@ export function FinanceTab(_props: Props) {
           </div>
 
           {/* Lịch sử chỉnh sửa chi phí & vốn đầu tư */}
-          {unlocked && showHistory && (
+          {canEditCost && showHistory && (
             <div className="lg:col-span-2 bg-white border border-[#e7e5e4] rounded-xl p-5">
               <p className="text-[13px] font-bold text-[#1c1917] mb-3">🕘 Lịch sử chỉnh sửa chi phí &amp; vốn đầu tư — {MONTHS_VI[month]}/{year}</p>
               {history.length === 0 ? (
