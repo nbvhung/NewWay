@@ -51,26 +51,6 @@ const NAME_SUGGESTIONS: Record<string, string[]> = {
   vonKhac: ['Mua thiết bị', 'Công cụ dụng cụ', 'Cải tạo', 'Nhà xưởng', 'Khác'],
 };
 
-function NumInput({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
-  return (
-    <div>
-      <label className="text-[11px] font-medium text-[#78716c] mb-1 block">{label}</label>
-      <div className="relative">
-        <input
-          type="number" min="0" value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder ?? '0'}
-          className="w-full px-3 py-2 bg-white border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#d97706] placeholder:text-[#c4c0bb]"
-        />
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#a8a29e]">₫</span>
-      </div>
-      {value && Number(value) > 0 && (
-        <p className="text-[10px] text-[#a8a29e] mt-0.5">{fmt(Number(value))} ₫</p>
-      )}
-    </div>
-  );
-}
-
 /** Widget 1 nhóm: tổng (chỉ đọc) + nút thêm/thu gọn chi tiết. Dùng cho cả chi phí và vốn đầu tư. */
 function CostGroup({
   category, label, icon, total, items, onAdd, onEdit, onDelete, vehicleLabel,
@@ -187,8 +167,6 @@ export function FinanceTab(_props: Props) {
   // ── Chi tiết VỐN ĐẦU TƯ (cùng cơ chế với chi phí) ────
   const [investItems, setInvestItems] = useState<Record<string, FinanceCostItem[]>>({ vonXe: [], vonMooc: [], vonKhac: [] });
   const [investTotals, setInvestTotals] = useState({ vonXe: 0, vonMooc: 0, vonKhac: 0 });
-  /** Thu gọn 3 ô nhập nhanh (số tổng cũ) để đỡ rối mắt. */
-  const [showQuick, setShowQuick] = useState(true);
 
   /**
    * Sửa/thêm/xoá TỪNG KHOẢN (cả chi phí lẫn vốn) đều phải có mật khẩu:
@@ -323,8 +301,6 @@ export function FinanceTab(_props: Props) {
       setError(e?.response?.data?.message || e?.message || 'Lỗi lưu dữ liệu');
     } finally { setSaving(false); }
   };
-
-  const setF = (k: keyof typeof form) => (v: string) => setForm(f => ({ ...f, [k]: v }));
 
   // ── Popup thêm/sửa khoản chi phí ─────────────────────
   const openAddItem = (category: string) => {
@@ -566,29 +542,10 @@ export function FinanceTab(_props: Props) {
               </p>
             )}
 
-            {/* ── 1. Nhập nhanh: 3 ô tổng cũ (giữ nguyên) ──────────────
-                Số ở đây được CỘNG THÊM vào tổng các khoản chi tiết bên dưới,
-                nên dữ liệu vốn đã nhập trước đây vẫn hiển thị đúng. */}
-            {canEditInvest && (
-              <div className="mb-4">
-                <button onClick={() => setShowQuick(v => !v)}
-                  className="flex items-center gap-1 text-[11px] font-semibold text-[#78716c] hover:text-[#d97706] cursor-pointer mb-2">
-                  {showQuick ? '▾' : '▸'} Nhập nhanh theo ô (số tổng)
-                </button>
-                {showQuick && (
-                  <div className="rounded-xl border border-[#e7e5e4] bg-[#faf9f7] p-3 space-y-3">
-                    <NumInput label="Xe"   value={form.vonXe}   onChange={setF('vonXe')} />
-                    <NumInput label="Mooc" value={form.vonMooc} onChange={setF('vonMooc')} />
-                    <NumInput label="Khác" value={form.vonKhac} onChange={setF('vonKhac')} />
-                    <p className="text-[10px] text-[#a8a29e] leading-snug">
-                      Số nhập ở đây được <strong>cộng thêm</strong> vào các khoản chi tiết bên dưới.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── 2. Chi tiết từng khoản (giống hệt Chi Phí) ─────────── */}
+            {/* Chỉ nhập chi tiết theo khoản. Ô "nhập nhanh theo ô (số tổng)" đã bỏ;
+                các số tổng cũ (`form.vonXe/vonMooc/vonKhac`) vẫn được giữ nguyên và
+                cộng vào tổng vốn ở backend để dữ liệu nhập trước đây không bị mất. */}
+            {/* ── Chi tiết từng khoản (giống hệt Chi Phí) ─────────── */}
             <p className="text-[11px] font-semibold text-[#78716c] mb-2">Chi tiết theo khoản</p>
             <div className="space-y-3">
               {INVEST_FIELDS.map(cat => (

@@ -71,6 +71,10 @@ export interface CustomerRevenue {
   planCount: number;
   totalCont: number;
   contByType: Record<string, number>;  // sản lượng theo loại container
+  // Chi tiết theo tuyến đường của khách này (giống `DriverRevenue.routes`,
+  // chỉ khác: lọc theo khách hàng thay vì theo lái xe). Doanh thu KHÔNG chia
+  // đều như bên lái xe — đây là toàn bộ tiền khách trả cho tuyến đó.
+  routes: { routeName: string; revenue: number; planCount: number; contCount: number; contByType: Record<string, number> }[];
 }
 
 export interface DailyRevenue {
@@ -296,7 +300,7 @@ export class DashboardService {
     }
 
     // ─── Accumulation maps ───────────────────────────────────────
-    const customerRevenueMap = new Map<number, { name: string; revenue: number; planCount: number; totalCont: number; contByType: Record<string, number> }>();
+    const customerRevenueMap = new Map<number, { name: string; revenue: number; planCount: number; totalCont: number; contByType: Record<string, number>; routes: Map<string, { revenue: number; planCount: number; contCount: number; contByType: Record<string, number> }> }>();
     const driverRevenueMap   = new Map<number, { revenue: number; luongKhoan: number; planCount: number; totalCont: number; routes: Map<string, { revenue: number; planCount: number; contCount: number; contByType: Record<string, number> }> }>();
     const dailyRevenueMap    = new Map<number, { revenue: number; planCount: number }>(); // day → revenue
 
@@ -365,13 +369,24 @@ export class DashboardService {
       if (plan.customerId) {
         const cust  = customerMap.get(plan.customerId);
         const entry = customerRevenueMap.get(plan.customerId)
-          ?? { name: cust?.name ?? `KH#${plan.customerId}`, revenue: 0, planCount: 0, totalCont: 0, contByType: {} };
+          ?? { name: cust?.name ?? `KH#${plan.customerId}`, revenue: 0, planCount: 0, totalCont: 0, contByType: {}, routes: new Map() };
         entry.revenue   += revenue;
         entry.planCount += 1;
         entry.totalCont += conts.length;
         for (const [t, n] of Object.entries(contByType)) {
           entry.contByType[t] = (entry.contByType[t] ?? 0) + n;
         }
+
+        // Chi tiết theo tuyến đường của khách này
+        const cRoute = entry.routes.get(plan.routeName) ?? { revenue: 0, planCount: 0, contCount: 0, contByType: {} };
+        cRoute.revenue   += revenue;
+        cRoute.planCount += 1;
+        cRoute.contCount += conts.length;
+        for (const [t, n] of Object.entries(contByType)) {
+          cRoute.contByType[t] = (cRoute.contByType[t] ?? 0) + n;
+        }
+        entry.routes.set(plan.routeName, cRoute);
+
         customerRevenueMap.set(plan.customerId, entry);
       }
 
@@ -463,6 +478,9 @@ export class DashboardService {
         planCount:  e.planCount,
         totalCont:  e.totalCont,
         contByType: e.contByType,
+        routes: Array.from(e.routes.entries())
+          .map(([routeName, r]) => ({ routeName, revenue: Math.round(r.revenue), planCount: r.planCount, contCount: r.contCount, contByType: r.contByType }))
+          .sort((a, b) => b.revenue - a.revenue),
       }))
       .sort((a, b) => b.revenue - a.revenue);
 

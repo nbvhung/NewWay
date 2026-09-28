@@ -192,9 +192,10 @@ function DriverSheet({ d, totalP, onClose }: { d: DriverRevenue; totalP: number;
 function CustomerSheet({ c, onClose }: { c: CustomerRevenue; onClose: () => void }) {
   const types = Object.entries(c.contByType).sort((a, b) => b[1] - a[1]);
   const total = types.reduce((s, [, n]) => s + n, 0);
+  const routes = c.routes ?? [];
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/25" onClick={onClose}>
-      <div className="dsh bg-white w-full sm:max-w-[420px] sm:rounded-xl rounded-t-xl overflow-hidden shadow-xl"
+      <div className="dsh bg-white w-full sm:max-w-[560px] sm:rounded-xl rounded-t-xl overflow-hidden shadow-xl"
         onClick={e => e.stopPropagation()} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="px-5 pt-5 pb-3 flex justify-between gap-3" style={{ background: C.surface }}>
           <div className="min-w-0">
@@ -216,7 +217,7 @@ function CustomerSheet({ c, onClose }: { c: CustomerRevenue; onClose: () => void
           </div>
         </div>
         {types.length > 0 && (
-          <div className="px-5 py-4">
+          <div className="px-5 py-4 border-b" style={{ borderColor: C.faint }}>
             <p className="text-[11px] font-semibold mb-3">Sản lượng theo loại</p>
             <div className="space-y-2">
               {types.map(([t, n]) => (
@@ -230,6 +231,47 @@ function CustomerSheet({ c, onClose }: { c: CustomerRevenue; onClose: () => void
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+        {/* Chi tiết theo tuyến đường — giống popup lái xe, chỉ khác là lọc theo khách hàng */}
+        {routes.length > 0 && (
+          <div className="px-5 py-4">
+            <p className="text-[12px] font-bold mb-3">Tuyến đường</p>
+            <div className="space-y-3">
+              {routes.slice(0, 12).map((r, i) => {
+                const rTypes = Object.entries(r.contByType ?? {}).sort((a, b) => b[1] - a[1]);
+                return (
+                  <div key={i} className="rounded-lg p-3" style={{ background: i === 0 ? C.amberLt : C.surface, border: `1px solid ${i === 0 ? '#fcd34d' : C.faint}` }}>
+                    {/* Tên tuyến + doanh thu + số cont */}
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="min-w-0">
+                        <span className="text-[13px] font-semibold leading-snug" style={{ color: i === 0 ? C.amberDk : C.ink }}>{r.routeName || '—'}</span>
+                        <p className="text-[10px] mt-0.5" style={{ color: C.muted }}>{r.planCount} kế hoạch</p>
+                      </div>
+                      <div className="text-right flex-shrink-0 ml-2">
+                        <p className="text-[13px] font-bold" style={{ color: C.amber }}>{fmt(r.revenue)} ₫</p>
+                        <p className="text-[10px]" style={{ color: C.muted }}>{r.contCount} cont</p>
+                      </div>
+                    </div>
+                    {/* Loại container */}
+                    {rTypes.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {rTypes.map(([t, n]) => (
+                          <span key={t} className="px-2 py-0.5 rounded text-[11px] font-semibold"
+                            style={{ background: '#fff7ed', color: C.amberDk, border: `1px solid #fcd34d` }}>
+                            {t} ×{n}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {/* Tỉ lệ sản lượng của tuyến này trên tổng của khách */}
+                    <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: '#e7e5e4' }}>
+                      <div className="h-full rounded-full" style={{ width: `${pc(r.contCount, c.totalCont || 1)}%`, background: i === 0 ? C.amber : '#fcd34d' }} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

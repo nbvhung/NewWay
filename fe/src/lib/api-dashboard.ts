@@ -41,6 +41,8 @@ export interface CustomerRevenue {
   planCount: number;
   totalCont: number;
   contByType: Record<string, number>;  // sản lượng theo loại container
+  // Chi tiết tuyến đường của khách này (giống byDriver.routes, lọc theo khách hàng)
+  routes: { routeName: string; revenue: number; planCount: number; contCount: number; contByType: Record<string, number> }[];
 }
 
 export interface DailyRevenue {
