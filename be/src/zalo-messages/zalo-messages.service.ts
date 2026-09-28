@@ -7,6 +7,7 @@ import { ZaloScheduledMessage } from '../database/entities/zalo-scheduled-messag
 import { ZaloGroup } from '../database/entities/zalo-group.entity';
 import { User } from '../database/entities/user.entity';
 import { ZaloApiService } from '../zalo-bot/zalo-api.service';
+import { resolveVisibleDriverIds } from '../common/permissions/permissions';
 
 @Injectable()
 export class ZaloMessagesService {
@@ -81,9 +82,16 @@ export class ZaloMessagesService {
       .leftJoin('users', 'u', 'u.id = m.user_id')
       .where('m.user_id IS NOT NULL');
 
-    // Nếu có giới hạn xe cụ thể → ưu tiên lọc theo ID xe, bỏ qua lọc theo role
-    if (visibleDriverIds && visibleDriverIds.length > 0) {
-      qb.andWhere('m.user_id IN (:...driverIds)', { driverIds: visibleDriverIds });
+    // Giới hạn xe: null = không giới hạn, [] = không xe nào, [ids] = đúng các xe đó.
+    const visible = resolveVisibleDriverIds({ visibleDriverIds });
+    if (visible !== null) {
+      if (visible.length === 0) {
+        // Bị khoá hoàn toàn → không hiện cuộc trò chuyện nào
+        qb.andWhere('1=0');
+      } else {
+        // Có giới hạn xe cụ thể → ưu tiên lọc theo ID xe, bỏ qua lọc theo role
+        qb.andWhere('m.user_id IN (:...driverIds)', { driverIds: visible });
+      }
     } else if (allowedRoles) {
       qb.andWhere('u.role IN (:...roles)', { roles: allowedRoles });
     }

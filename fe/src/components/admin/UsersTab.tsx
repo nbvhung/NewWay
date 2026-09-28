@@ -83,14 +83,14 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
       ...prev,
       role: 'admin',
       permissions: VIEW_ONLY_PERMS.filter((k) => grantableSet.has(k)),
-      visibleDriverIds: prev.visibleDriverIds || [],
+      visibleDriverIds: prev.visibleDriverIds ?? null,
     }));
   };
 
   const [newUser, setNewUser] = useState<any>({
     username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', zaloId: '', zaloBot: 0,
     permissions: presetFor('laixe'),
-    visibleDriverIds: [],
+    visibleDriverIds: null,
     ben: '',
   });
   const [editUserData, setEditUserData] = useState<any>(null);
@@ -151,11 +151,14 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
       await usersApi.create({
         ...newUser,
         permissions: (newUser.permissions || []).filter((p: string) => PERMISSION_KEYS.includes(p)),
-        visibleDriverIds: (newUser.visibleDriverIds || []).map(Number),
+        // null = xem tất cả xe; [] = không xe nào. Không được ép null thành [].
+        visibleDriverIds: Array.isArray(newUser.visibleDriverIds)
+          ? newUser.visibleDriverIds.map(Number)
+          : null,
         ben: newUser.ben || '',
       });
       toast(`Đã thêm tài khoản: ${newUser.username}`, 'success');
-      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', zaloId: '', zaloBot: 0, permissions: presetFor('laixe'), visibleDriverIds: [], ben: '' });
+      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', zaloId: '', zaloBot: 0, permissions: presetFor('laixe'), visibleDriverIds: null, ben: '' });
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
   };
@@ -164,7 +167,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
     const perms = Array.isArray(u.permissions) && u.permissions.length > 0
       ? u.permissions.filter((p) => PERMISSION_KEYS.includes(p))
       : presetFor(u.role);
-    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, permissions: perms, visibleDriverIds: Array.isArray(u.visibleDriverIds) ? u.visibleDriverIds.map(Number) : [], soXe: u.soXe, soMooc: u.soMooc || '', stt: u.stt, sdt: u.sdt, zaloId: u.zaloId || '', zaloBot: u.zaloBot ?? 0, password: '', ben: u.ben || '' });
+    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, permissions: perms, visibleDriverIds: Array.isArray(u.visibleDriverIds) ? u.visibleDriverIds.map(Number) : null, soXe: u.soXe, soMooc: u.soMooc || '', stt: u.stt, sdt: u.sdt, zaloId: u.zaloId || '', zaloBot: u.zaloBot ?? 0, password: '', ben: u.ben || '' });
     setEditUserModalOpen(true);
   };
 
@@ -175,7 +178,10 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         fullName: editUserData.fullName,
         role: editUserData.role,
         permissions: (editUserData.permissions || []).filter((p: string) => PERMISSION_KEYS.includes(p)),
-        visibleDriverIds: (editUserData.visibleDriverIds || []).map(Number),
+        // null = xem tất cả xe; [] = không xe nào. Không được ép null thành [].
+        visibleDriverIds: Array.isArray(editUserData.visibleDriverIds)
+          ? editUserData.visibleDriverIds.map(Number)
+          : null,
         ben: editUserData.ben || '',
         soXe: editUserData.soXe || '',
         soMooc: editUserData.soMooc || '',
@@ -428,7 +434,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
             <div className="p-3">
               <VehicleSelect
                 drivers={drivers}
-                selected={newUser.visibleDriverIds || []}
+                selected={newUser.visibleDriverIds ?? null}
                 onChange={(ids) => setNewUser({ ...newUser, visibleDriverIds: ids })}
               />
               <p className="text-[9px] text-[#a8a29e] mt-2">Dành cho tài khoản <b>Xem vốn</b>: người góp vốn chỉ thấy dữ liệu của những xe được chọn (Data, Kế hoạch, Container, Xuất Excel, Dashboard).</p>

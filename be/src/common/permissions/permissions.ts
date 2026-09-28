@@ -155,13 +155,14 @@ export function hasAnyPermission(
 
 /**
  * Danh sách lái xe (userId) mà tài khoản này được phép xem dữ liệu.
- * null/[] = xem tất cả (không giới hạn).
+ * - null / undefined  → không giới hạn (xem tất cả)
+ * - []  (mảng rỗng)  → không xe nào (bị khoá hoàn toàn)
+ * - [id, ...]         → chỉ xem đúng những xe trong danh sách
  */
 export function resolveVisibleDriverIds(user: {
   visibleDriverIds?: number[] | null;
 } | null | undefined): number[] | null {
-  if (Array.isArray(user?.visibleDriverIds) && user.visibleDriverIds.length > 0) {
-    return user.visibleDriverIds;
-  }
-  return null;
+  if (!Array.isArray(user?.visibleDriverIds)) return null; // null/undefined → xem tất cả
+  if (user.visibleDriverIds.length === 0) return []; // rỗng → không xe nào
+  return user.visibleDriverIds;
 }

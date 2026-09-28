@@ -69,10 +69,10 @@ export function EditUserModal({ open, onClose, editUserData, setEditUserData, on
         />
 
         <div>
-          <label className="text-xs font-medium text-[#78716c] mb-1 block">🚗 Xe được xem dữ liệu <span className="text-[#a8a29e] font-normal">(để trống = xem tất cả)</span></label>
+          <label className="text-xs font-medium text-[#78716c] mb-1 block">🚗 Xe được xem dữ liệu <span className="text-[#a8a29e] font-normal">(tick &quot;Xem tất cả&quot; = không giới hạn)</span></label>
           <VehicleSelect
             drivers={drivers}
-            selected={editUserData?.visibleDriverIds || []}
+            selected={editUserData?.visibleDriverIds ?? null}
             onChange={(ids) => setEditUserData({ ...editUserData, visibleDriverIds: ids })}
           />
           <p className="text-[9px] text-[#a8a29e] mt-1">Tài khoản Xem vốn chỉ thấy dữ liệu của những xe được chọn.</p>

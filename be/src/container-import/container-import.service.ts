@@ -442,8 +442,13 @@ export class ContainerImportService {
       .leftJoin('c.importedByRef', 'imp')
       .addSelect(['imp.id', 'imp.fullName']);
     const visible = resolveVisibleDriverIds(user);
-    if (visible) {
-      qb.andWhere('sub.id IS NULL OR u.id IN (:...visible)', { visible });
+    if (visible !== null) {
+      if (visible.length === 0) {
+        // Không có xe nào được phép → chỉ hiện container chưa ghi nhận
+        qb.andWhere('sub.id IS NULL');
+      } else {
+        qb.andWhere('sub.id IS NULL OR u.id IN (:...visible)', { visible });
+      }
     }
     qb.orderBy('c.createdAt', 'DESC')
       .take(5000);
@@ -964,8 +969,12 @@ export class ContainerImportService {
     }
 
     const visible = resolveVisibleDriverIds(user);
-    if (visible) {
-      qb.andWhere('sub.id IS NULL OR u.id IN (:...visible)', { visible });
+    if (visible !== null) {
+      if (visible.length === 0) {
+        qb.andWhere('sub.id IS NULL');
+      } else {
+        qb.andWhere('sub.id IS NULL OR u.id IN (:...visible)', { visible });
+      }
     }
     qb.orderBy('c.containerCode', 'ASC')
       .take(300);

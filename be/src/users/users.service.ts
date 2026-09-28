@@ -68,7 +68,7 @@ export class UsersService {
     }
 
     // Nếu tài khoản có giới hạn xe cụ thể → chỉ trả về đúng những ID đó (+ bản thân)
-    if (visibleDriverIds && visibleDriverIds.length > 0) {
+    if (Array.isArray(visibleDriverIds) && visibleDriverIds.length > 0) {
       const users = await this.usersRepository.findBy({ id: In(visibleDriverIds) });
       return users.map(({ passwordHash, ...rest }) => rest);
     }
@@ -128,7 +128,7 @@ export class UsersService {
       fullName: dto.fullName.trim(),
       role: validRole,
       permissions,
-      visibleDriverIds: dto.visibleDriverIds?.length ? dto.visibleDriverIds : null,
+      visibleDriverIds: dto.visibleDriverIds ?? null,
       ben: dto.ben?.trim() || null,
       soXe: dto.soXe?.trim() || '',
       soMooc: dto.soMooc?.trim() || '',
@@ -182,7 +182,8 @@ export class UsersService {
       target.permissions = this.validateGrantablePermissions(dto.permissions, actor);
     }
     if (dto.visibleDriverIds !== undefined) {
-      target.visibleDriverIds = dto.visibleDriverIds?.length ? dto.visibleDriverIds : null;
+      // [] (rỗng) = không được xem xe nào; null = xem tất cả (không giới hạn)
+      target.visibleDriverIds = dto.visibleDriverIds ?? null;
     }
     if (dto.ben !== undefined) {
       target.ben = dto.ben.trim() || null;

@@ -59,12 +59,17 @@ export class ShippingLinesService {
     // hoặc kế hoạch áp dụng cho all_drivers (khi đó admin/ops được xem nhưng số liệu
     // sẽ bị filter tại lần lấy container)
     const visible = resolveVisibleDriverIds(user);
-    if (visible && visible.length > 0) {
-      // Kế hoạch được hiện nếu: allDrivers = true HOẶC driver_ids chứa ít nhất 1 ID visible
-      const conditions = visible.map((_, i) => `CAST(sl.driver_ids AS JSONB) @> CAST(:vid${i} AS JSONB)`).join(' OR ');
-      const params: Record<string, string> = {};
-      visible.forEach((id, i) => { params[`vid${i}`] = JSON.stringify([id]); });
-      qb.andWhere(`(sl.all_drivers = true OR ${conditions})`, params);
+    if (visible !== null) {
+      if (visible.length === 0) {
+        // Không xe nào → không hiện kế hoạch nào
+        qb.andWhere('1=0');
+      } else {
+        // Kế hoạch được hiện nếu: allDrivers = true HOẶC driver_ids chứa ít nhất 1 ID visible
+        const conditions = visible.map((_, i) => `CAST(sl.driver_ids AS JSONB) @> CAST(:vid${i} AS JSONB)`).join(' OR ');
+        const params: Record<string, string> = {};
+        visible.forEach((id, i) => { params[`vid${i}`] = JSON.stringify([id]); });
+        qb.andWhere(`(sl.all_drivers = true OR ${conditions})`, params);
+      }
     }
     return qb.getMany();
   }

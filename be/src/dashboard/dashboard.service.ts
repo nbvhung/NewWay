@@ -151,19 +151,23 @@ export class DashboardService {
     //     mà CÓ xe của họ tham gia (driverIds chứa ≥1 id visible). Kế hoạch
     //     "allDrivers" (áp dụng mọi xe) vẫn được giữ vì xe của họ có thể tham gia;
     //     phần doanh thu/sản lượng bên dưới đã được lọc theo đúng xe của họ.
-    if (visible && visible.length > 0) {
-      const planDriverIds = (sl: ShippingLine): number[] => {
-        try {
-          const raw = sl.driverIds ? JSON.parse(sl.driverIds) : [];
-          return Array.isArray(raw) ? raw.map(Number) : [];
-        } catch {
-          return [];
-        }
-      };
-      const visibleSet = new Set(visible);
-      plans = plans.filter(
-        (sl) => sl.allDrivers || planDriverIds(sl).some((id) => visibleSet.has(id)),
-      );
+    if (visible !== null) {
+      if (visible.length === 0) {
+        plans = [];
+      } else {
+        const planDriverIds = (sl: ShippingLine): number[] => {
+          try {
+            const raw = sl.driverIds ? JSON.parse(sl.driverIds) : [];
+            return Array.isArray(raw) ? raw.map(Number) : [];
+          } catch {
+            return [];
+          }
+        };
+        const visibleSet = new Set(visible);
+        plans = plans.filter(
+          (sl) => sl.allDrivers || planDriverIds(sl).some((id) => visibleSet.has(id)),
+        );
+      }
     }
 
     const planIds = plans.map(p => p.id);
@@ -183,10 +187,8 @@ export class DashboardService {
           .where('ci.shippingLineId IN (:...ids)', { ids: planIds })
           .andWhere('u.role = :laixeRole', { laixeRole: 'laixe' })
           .andWhere(
-            visible
-              ? 'u.id IN (:...visible)'
-              : '1=1',
-            visible ? { visible } : {},
+            visible === null ? '1=1' : visible.length === 0 ? '1=0' : 'u.id IN (:...visible)',
+            visible && visible.length > 0 ? { visible } : {},
           )
           .getMany()
       : [];
@@ -199,10 +201,8 @@ export class DashboardService {
           .where('sub.shippingLineId IN (:...ids)', { ids: planIds })
           .andWhere('u.role = :laixeRole', { laixeRole: 'laixe' })
           .andWhere(
-            visible
-              ? 'sub.userId IN (:...visible)'
-              : '1=1',
-            visible ? { visible } : {},
+            visible === null ? '1=1' : visible.length === 0 ? '1=0' : 'sub.userId IN (:...visible)',
+            visible && visible.length > 0 ? { visible } : {},
           )
           .getMany()
       : [];

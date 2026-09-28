@@ -712,7 +712,10 @@ export function FinanceTab(_props: Props) {
             <VehicleSelect
               drivers={vehicles}
               selected={itemVehicles}
-              onChange={(ids) => {
+              onChange={(raw) => {
+                // Ở tab Tài chính, "trống" = chi phí chung (không gắn xe),
+                // nên null (xem tất cả) quy về [] để giữ đúng hành vi cũ.
+                const ids = raw ?? [];
                 const next = itemEditing ? ids.slice(-1) : ids;
                 setItemVehicles(next);
                 setItemAmounts(prev => {

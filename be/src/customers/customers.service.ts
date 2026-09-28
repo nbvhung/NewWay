@@ -101,7 +101,8 @@ export class CustomersService {
     user?: { visibleDriverIds?: number[] | null } | null,
   ): Promise<number[] | null> {
     const visible = resolveVisibleDriverIds(user);
-    if (!visible || visible.length === 0) return null;
+    if (visible === null) return null; // không giới hạn → thấy tất cả
+    if (visible.length === 0) return []; // không xe nào → không thấy khách hàng nào
     const visibleSet = new Set(visible);
 
     const plans = await this.shippingLinesRepository.find({
@@ -247,7 +248,8 @@ export class CustomersService {
     user?: { visibleDriverIds?: number[] | null } | null,
   ): Promise<ShippingLine[]> {
     const visible = resolveVisibleDriverIds(user);
-    if (!visible || visible.length === 0) return plans;
+    if (visible === null) return plans; // không giới hạn
+    if (visible.length === 0) return []; // không xe nào
     const visibleSet = new Set(visible);
     const planDriverIds = (sl: ShippingLine): number[] => {
       try {
@@ -268,11 +270,12 @@ export class CustomersService {
     user?: { visibleDriverIds?: number[] | null } | null,
   ): Promise<number> {
     const visible = resolveVisibleDriverIds(user);
-    if (!visible || visible.length === 0) {
+    if (visible === null) {
       return this.containerImportsRepository.count({
         where: { shippingLineId: In(planIds) },
       });
     }
+    if (visible.length === 0) return 0;
     const rows = await this.containerImportsRepository
       .createQueryBuilder('ci')
       .leftJoin('ci.submissionRef', 'sub')
@@ -309,11 +312,15 @@ export class CustomersService {
         .select('ci.shipping_line_id', 'planId')
         .addSelect('COUNT(*)::int', 'cnt')
         .where('ci.shipping_line_id IN (:...ids)', { ids: planIds });
-      if (visible && visible.length > 0) {
-        qb.leftJoin('ci.submissionRef', 'sub').andWhere(
-          'sub.user_id IN (:...visible)',
-          { visible },
-        );
+      if (visible !== null) {
+        if (visible.length === 0) {
+          qb.andWhere('1=0');
+        } else {
+          qb.leftJoin('ci.submissionRef', 'sub').andWhere(
+            'sub.user_id IN (:...visible)',
+            { visible },
+          );
+        }
       }
       const rows = await qb.groupBy('ci.shipping_line_id').getRawMany();
       for (const r of rows) counts.set(Number(r.planId), Number(r.cnt));
@@ -347,11 +354,15 @@ export class CustomersService {
         .select('ci.shipping_line_id', 'planId')
         .addSelect('COUNT(*)::int', 'cnt')
         .where('ci.shipping_line_id IN (:...ids)', { ids: planIds });
-      if (visible && visible.length > 0) {
-        qb.leftJoin('ci.submissionRef', 'sub').andWhere(
-          'sub.user_id IN (:...visible)',
-          { visible },
-        );
+      if (visible !== null) {
+        if (visible.length === 0) {
+          qb.andWhere('1=0');
+        } else {
+          qb.leftJoin('ci.submissionRef', 'sub').andWhere(
+            'sub.user_id IN (:...visible)',
+            { visible },
+          );
+        }
       }
       const rows = await qb.groupBy('ci.shipping_line_id').getRawMany();
       for (const r of rows) counts.set(Number(r.planId), Number(r.cnt));

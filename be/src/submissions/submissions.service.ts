@@ -531,8 +531,12 @@ export class SubmissionsService {
     }
 
     const visible = resolveVisibleDriverIds(user);
-    if (visible) {
-      query.andWhere('s.userId IN (:...visibleDriverIds)', { visibleDriverIds: visible });
+    if (visible !== null) {
+      if (visible.length === 0) {
+        query.andWhere('1=0');
+      } else {
+        query.andWhere('s.userId IN (:...visibleDriverIds)', { visibleDriverIds: visible });
+      }
     }
 
     if (filter.userId) {
