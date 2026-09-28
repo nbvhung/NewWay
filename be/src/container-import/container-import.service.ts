@@ -965,8 +965,11 @@ export class ContainerImportService {
       }
       qb.where('RIGHT(TRIM(c.container_code), :len) = :q', { q, len: q.length });
     } else {
+      // Bọc ngoặc cả cụm OR: nếu không, `andWhere(visible)` phía dưới thành
+      // `WHERE TRIM = q OR code LIKE ... AND (visible)` → điều kiện visible chỉ
+      // dính vào vế LIKE, vế khớp chính xác sẽ bỏ qua giới hạn xe.
       qb.where(
-        'TRIM(c.container_code) = :q OR c.container_code LIKE :like',
+        '(TRIM(c.container_code) = :q OR c.container_code LIKE :like)',
         { q, like: `%${q}%` },
       );
     }
