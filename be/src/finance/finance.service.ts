@@ -278,6 +278,7 @@ export class FinanceService {
     const userId = await this.resolveUserId(actor, opts.targetUserId);
     const owner = await this.usersRepo.findOne({ where: { id: userId } });
     const ben = this.normBen(owner?.ben);
+    // Bản ghi của THÁNG đang chọn — nơi nhập/sửa "số tổng cũ" của tháng này.
     let entry = await this.repo.findOne({ where: { month, year, userId } });
     if (!entry) {
       entry = this.repo.create({ month, year, userId });
@@ -285,19 +286,27 @@ export class FinanceService {
     }
     const includeCost = opts.includeCost !== false;
 
-    // Nạp TẤT CẢ dòng chi tiết rồi mới tách theo nhóm:
-    //  - CHI PHÍ     : chỉ trả về khi đã mở khoá bằng mật khẩu (`includeCost`).
-    //  - VỐN ĐẦU TƯ  : luôn trả về — 3 cột vốn cũ vốn đã hiện khi chưa mở khoá.
+    // Nạp MỌI dòng chi tiết của userId (gồm cả tháng khác) để tách theo nhóm:
+    //  - CHI PHÍ    : chỉ lấy của ĐÚNG tháng đang chọn; ẩn khi chưa mở khoá.
+    //  - VỐN ĐẦU TƯ : CỘNG DỒN xuyên tháng — lấy mọi tháng ≤ tháng đang chọn,
+    //                 nên mở tháng 10 vẫn thấy vốn đã nhập từ tháng 9 trở về trước.
+    const scopeWhere: any = userId ? { userId } : {};
     const allItems = await this.costRepo.find({
-      where: { month, year, userId },
+      where: scopeWhere,
       order: { itemDate: 'DESC', id: 'DESC' },
     });
     const isInvest = (c: string) =>
       (INVEST_CATEGORIES as readonly string[]).includes(c);
+    const inThisMonth = (it: FinanceCostItem) =>
+      it.month === month && it.year === year;
+    const upToThisMonth = (it: FinanceCostItem) =>
+      it.year < year || (it.year === year && it.month <= month);
 
-    const investRows = allItems.filter((it) => isInvest(it.category));
+    const investRows = allItems.filter(
+      (it) => isInvest(it.category) && upToThisMonth(it),
+    );
     const costRows = includeCost
-      ? allItems.filter((it) => !isInvest(it.category))
+      ? allItems.filter((it) => !isInvest(it.category) && inThisMonth(it))
       : [];
 
     const groupBy = (rows: FinanceCostItem[], keys: readonly string[]) => {
@@ -318,6 +327,18 @@ export class FinanceService {
     const sum = (g: Record<string, FinanceCostItem[]>, cat: string) =>
       g[cat].reduce((s, i) => s + (Number(i.amount) || 0), 0);
 
+    // Vốn đầu tư cộng dồn: cộng 3 cột legacy của MỌI tháng ≤ tháng đang chọn.
+    // (`base` ở trên chỉ là số tổng cũ của riêng tháng đang chọn, để nhập/sửa.)
+    const cumLegacy = { vonXe: 0, vonMooc: 0, vonKhac: 0 };
+    const allEntries = await this.repo.find({ where: scopeWhere });
+    for (const e of allEntries) {
+      if (e.year < year || (e.year === year && e.month <= month)) {
+        cumLegacy.vonXe   += num((e as any).vonXe);
+        cumLegacy.vonMooc += num((e as any).vonMooc);
+        cumLegacy.vonKhac += num((e as any).vonKhac);
+      }
+    }
+
     return {
       ...base,
       ben,
@@ -330,12 +351,12 @@ export class FinanceService {
         nhienLieu: num(base.nhienLieu) + sum(costGrouped, 'nhienLieu'),
         cpKhac: num(base.cpKhac) + sum(costGrouped, 'cpKhac'),
       },
-      // ── Vốn đầu tư (3 nhóm) — chi tiết hoá giống chi phí ──
+      // ── Vốn đầu tư (3 nhóm) — CỘNG DỒN xuyên tháng ──
       investItems: investGrouped,
       investTotals: {
-        vonXe: num(base.vonXe) + sum(investGrouped, 'vonXe'),
-        vonMooc: num(base.vonMooc) + sum(investGrouped, 'vonMooc'),
-        vonKhac: num(base.vonKhac) + sum(investGrouped, 'vonKhac'),
+        vonXe:   cumLegacy.vonXe   + sum(investGrouped, 'vonXe'),
+        vonMooc: cumLegacy.vonMooc + sum(investGrouped, 'vonMooc'),
+        vonKhac: cumLegacy.vonKhac + sum(investGrouped, 'vonKhac'),
       },
     };
   }

@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import {
-  dashboardApi, DashboardOverview, PlanSummary, DriverRevenue, CustomerRevenue,
+  dashboardApi, DashboardOverview, PlanSummary, DriverRevenue, CustomerRevenue, CostItemDetail,
 } from '@/lib/api-dashboard';
+
+const COST_LABEL: Record<string, string> = { suaChua: 'Sửa chữa', nhienLieu: 'Nhiên liệu', cpKhac: 'CP Khác' };
 
 /* ───────────────────────────────────────────────────────────────
    FONTS
@@ -281,6 +283,55 @@ function CustomerSheet({ c, onClose }: { c: CustomerRevenue; onClose: () => void
 }
 
 /* ───────────────────────────────────────────────────────────────
+   COST ITEMS MODAL — lịch sử từng khoản chi phí theo nhóm
+   ─────────────────────────────────────────────────────────────── */
+function CostItemsSheet({ category, items, month, year, onClose }: {
+  category: string; items: CostItemDetail[]; month: number; year: number; onClose: () => void;
+}) {
+  const total = items.reduce((s, i) => s + Number(i.amount || 0), 0);
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/25" onClick={onClose}>
+      <div className="dsh bg-white w-full sm:max-w-[520px] sm:rounded-xl rounded-t-xl overflow-hidden shadow-xl"
+        onClick={e => e.stopPropagation()} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+        <div className="px-5 pt-5 pb-3 flex justify-between gap-3" style={{ background: C.surface }}>
+          <div className="min-w-0">
+            <p className="text-[11px]" style={{ color: C.muted }}>Lịch sử chi phí · {MONTHS_VN[month]}/{year}</p>
+            <h3 className="text-[16px] font-bold mt-0.5">{COST_LABEL[category] || category}</h3>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded hover:bg-white/60 cursor-pointer text-stone-400 flex-shrink-0">✕</button>
+        </div>
+        <div className="px-5 py-3 border-b flex justify-between items-center" style={{ borderColor: C.faint }}>
+          <span className="text-[11px]" style={{ color: C.muted }}>{items.length} khoản</span>
+          <span className="text-[15px] font-bold" style={{ color: C.red }}>{fmt(total)} ₫</span>
+        </div>
+        {items.length === 0 ? (
+          <div className="py-10 text-center text-[12px]" style={{ color: C.muted }}>Chưa có khoản chi phí nào trong tháng</div>
+        ) : (
+          <div className="px-5 py-3 space-y-2">
+            {items.map(it => (
+              <div key={it.id} className="rounded-lg p-3" style={{ background: C.surface, border: `1px solid ${C.faint}` }}>
+                <div className="flex justify-between items-start gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-semibold truncate">{it.name || '(không tên)'}</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: C.muted }}>
+                      {it.itemDate ? new Date(it.itemDate).toLocaleDateString('vi-VN') : '—'}
+                      {it.vehicleLabel ? ` · 🚛 ${it.vehicleLabel}` : ''}
+                    </p>
+                  </div>
+                  <p className="text-[12px] font-bold whitespace-nowrap" style={{ color: C.red }}>{fmt(it.amount)} ₫</p>
+                </div>
+                {it.note && <p className="text-[10px] mt-1" style={{ color: C.muted }}>📝 {it.note}</p>}
+                {it.createdByName && <p className="text-[9px] mt-0.5" style={{ color: '#a8a29e' }}>nhập bởi {it.createdByName}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────────────────────────────────────────────
    MAIN COMPONENT
    ─────────────────────────────────────────────────────────────── */
 export function DashboardTab() {
@@ -298,6 +349,7 @@ export function DashboardTab() {
   const [selP, setSelP] = useState<PlanSummary | null>(null);
   const [selD, setSelD] = useState<DriverRevenue | null>(null);
   const [selC, setSelC] = useState<CustomerRevenue | null>(null);
+  const [selCost, setSelCost] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true); setError('');
@@ -523,15 +575,19 @@ export function DashboardTab() {
             <p className="text-[14px] font-bold mb-4">💸 Chi tiết Chi Phí</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {([
-                ['Lương lái xe', data.cost.luongChuyen, C.amber, '(tính từ kế hoạch)'],
-                ['Subvendor',    data.cost.subvendor,   C.red,   '(phí thuê ngoài)'],
-                ['Sửa chữa',    data.cost.suaChua,      '#7c3aed', '(nhập ở tab Tài Chính)'],
-                ['Nhiên liệu',   data.cost.nhienLieu,   '#0891b2', '(nhập ở tab Tài Chính)'],
-                ['CP Khác',      data.cost.cpKhac,      '#059669', '(nhập ở tab Tài Chính)'],
-              ] as [string, number, string, string][]).map(([lbl, val, c, hint]) => {
+                ['Lương lái xe', data.cost.luongChuyen, C.amber, '(tính từ kế hoạch)', ''],
+                ['Subvendor',    data.cost.subvendor,   C.red,   '(phí thuê ngoài)', ''],
+                ['Sửa chữa',    data.cost.suaChua,      '#7c3aed', '(bấm để xem chi tiết)', 'suaChua'],
+                ['Nhiên liệu',   data.cost.nhienLieu,   '#0891b2', '(bấm để xem chi tiết)', 'nhienLieu'],
+                ['CP Khác',      data.cost.cpKhac,      '#059669', '(bấm để xem chi tiết)', 'cpKhac'],
+              ] as [string, number, string, string, string][]).map(([lbl, val, c, hint, cat]) => {
                 const pct = pc(val, totalCost || 1);
+                const clickable = !!cat;
                 return (
-                  <div key={lbl} className="rounded-xl p-4" style={{ border: `1px solid ${C.faint}`, background: C.surface }}>
+                  <div key={lbl}
+                    onClick={clickable ? () => setSelCost(cat) : undefined}
+                    className={clickable ? 'rounded-xl p-4 cursor-pointer transition-colors hover:brightness-[0.98]' : 'rounded-xl p-4'}
+                    style={{ border: `1px solid ${C.faint}`, background: C.surface }}>
                     <p className="text-[11px] font-semibold mb-1" style={{ color: C.muted }}>{lbl}</p>
                     <p className="text-[22px] font-extrabold leading-none" style={{ color: c }}>{fmt(val)}</p>
                     <p className="text-[9px] mt-0.5 mb-2" style={{ color: C.muted }}>₫ · {pct}% tổng chi phí</p>
@@ -629,6 +685,15 @@ export function DashboardTab() {
       {selP && <PlanSheet plan={selP} onClose={() => setSelP(null)} />}
       {selD && <DriverSheet d={selD} totalP={data.plans.total} onClose={() => setSelD(null)} />}
       {selC && <CustomerSheet c={selC} onClose={() => setSelC(null)} />}
+      {selCost && (
+        <CostItemsSheet
+          category={selCost}
+          items={data.cost.items?.[selCost] ?? []}
+          month={data.month}
+          year={data.year}
+          onClose={() => setSelCost(null)}
+        />
+      )}
     </div>
   );
 }

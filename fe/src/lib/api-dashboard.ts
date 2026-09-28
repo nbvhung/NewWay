@@ -51,6 +51,17 @@ export interface DailyRevenue {
   planCount: number;
 }
 
+/** 1 khoản chi phí chi tiết (hiện khi bấm card ở tab Tổng quan). */
+export interface CostItemDetail {
+  id: number;
+  itemDate: string | null;
+  vehicleLabel: string;
+  name: string;
+  amount: number;
+  note: string | null;
+  createdByName: string;
+}
+
 export interface DashboardOverview {
   month: number;
   year: number;
@@ -74,6 +85,9 @@ export interface DashboardOverview {
     cpKhac: number;
     total: number;
     profit: number;
+    // Chi tiết từng khoản chi phí của tháng, nhóm theo category
+    // (Sửa chữa / Nhiên liệu / CP Khác) — để bấm card hiện danh sách.
+    items: Record<string, CostItemDetail[]>;
   };
   investment: {
     vonXe: number;

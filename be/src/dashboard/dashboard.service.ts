@@ -106,6 +106,17 @@ export interface DashboardOverview {
     cpKhac: number;
     total: number;
     profit: number;
+    // Chi tiết từng khoản chi phí của tháng, nhóm theo category
+    // (để bấm card Sửa chữa / Nhiên liệu / CP Khác hiện danh sách).
+    items: Record<string, {
+      id: number;
+      itemDate: string | null;
+      vehicleLabel: string;
+      name: string;
+      amount: number;
+      note: string | null;
+      createdByName: string;
+    }[]>;
   };
   investment: {
     vonXe: number;
@@ -491,35 +502,79 @@ export class DashboardService {
 
     // ─── Finance entries (chi phí + vốn đầu tư) — mỗi admin xem của mình ─
     const userId = user?.sub ?? user?.id ?? null;
-    const financeWhere: any = { month, year };
-    if (userId) financeWhere.userId = userId;
-    const finance = await this.financeRepo.findOne({ where: financeWhere });
+    const scopeWhere: any = userId ? { userId } : {};
+
+    // Bản ghi của ĐÚNG tháng đang chọn (dùng cho 3 cột chi phí legacy).
+    const finance = await this.financeRepo.findOne({
+      where: userId ? { month, year, userId } : { month, year },
+    });
+
+    // MỌI bản ghi finance của user → để cộng dồn VỐN ĐẦU TƯ xuyên tháng.
+    const allFinance = await this.financeRepo.find({ where: scopeWhere });
 
     // Chi tiết từng khoản — dùng CHUNG bảng `finance_cost_items` cho cả chi phí
-    // và vốn đầu tư (phân biệt bằng `category`).
-    // Tổng 1 nhóm = cột legacy trên `finance_entries` + tổng các dòng chi tiết,
-    // nên phải cộng thêm; nếu không Tổng Quan sẽ thiếu so với tab Tài Chính.
-    const itemWhere: any = { month, year };
-    if (userId) itemWhere.userId = userId;
-    const itemRows = await this.costItemRepo.find({ where: itemWhere });
-    const sumByCategories = (cats: readonly string[]): Record<string, number> => {
-      const out: Record<string, number> = {};
-      for (const c of cats) out[c] = 0;
-      for (const it of itemRows) {
-        if (out[it.category] !== undefined) out[it.category] += Number(it.amount) || 0;
-      }
-      return out;
-    };
-    const costItemSums = sumByCategories(COST_CATEGORIES);
-    const investItemSums = sumByCategories(INVEST_CATEGORIES);
+    // và vốn đầu tư (phân biệt bằng `category`):
+    //  - CHI PHÍ    : lấy của ĐÚNG tháng đang chọn.
+    //  - VỐN ĐẦU TƯ : CỘNG DỒN — mọi tháng ≤ tháng đang chọn.
+    const itemRows = await this.costItemRepo.find({ where: scopeWhere });
+    const isInvestCat = (c: string) =>
+      (INVEST_CATEGORIES as readonly string[]).includes(c);
+    const inThisMonth = (it: FinanceCostItem) =>
+      it.month === month && it.year === year;
+    const upToThisMonth = (it: FinanceCostItem) =>
+      it.year < year || (it.year === year && it.month <= month);
 
-    const suaChua   = Number(finance?.suaChua   ?? 0) + costItemSums.suaChua;
-    const nhienLieu = Number(finance?.nhienLieu ?? 0) + costItemSums.nhienLieu;
-    const cpKhac    = Number(finance?.cpKhac    ?? 0) + costItemSums.cpKhac;
-    const vonXe     = Number(finance?.vonXe     ?? 0) + investItemSums.vonXe;
-    const vonMooc   = Number(finance?.vonMooc   ?? 0) + investItemSums.vonMooc;
-    const vonKhac   = Number(finance?.vonKhac   ?? 0) + investItemSums.vonKhac;
+    const sumItems = (cat: string, rows: FinanceCostItem[]): number =>
+      rows
+        .filter((i) => i.category === cat)
+        .reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    const costRows = itemRows.filter(
+      (i) => !isInvestCat(i.category) && inThisMonth(i),
+    );
+    const investRows = itemRows.filter(
+      (i) => isInvestCat(i.category) && upToThisMonth(i),
+    );
+
+    // Vốn legacy cộng dồn mọi tháng ≤ tháng đang chọn.
+    const cumLegacy = { vonXe: 0, vonMooc: 0, vonKhac: 0 };
+    for (const e of allFinance) {
+      if (e.year < year || (e.year === year && e.month <= month)) {
+        cumLegacy.vonXe   += Number((e as any).vonXe)   || 0;
+        cumLegacy.vonMooc += Number((e as any).vonMooc) || 0;
+        cumLegacy.vonKhac += Number((e as any).vonKhac) || 0;
+      }
+    }
+
+    const suaChua   = Number(finance?.suaChua   ?? 0) + sumItems('suaChua', costRows);
+    const nhienLieu = Number(finance?.nhienLieu ?? 0) + sumItems('nhienLieu', costRows);
+    const cpKhac    = Number(finance?.cpKhac    ?? 0) + sumItems('cpKhac', costRows);
+    const vonXe     = cumLegacy.vonXe   + sumItems('vonXe', investRows);
+    const vonMooc   = cumLegacy.vonMooc + sumItems('vonMooc', investRows);
+    const vonKhac   = cumLegacy.vonKhac + sumItems('vonKhac', investRows);
     const totalChiPhi = Math.round(totalSubvendor + totalLuongChuyen + suaChua + nhienLieu + cpKhac);
+
+    // Chi tiết từng khoản chi phí của tháng (hiện khi bấm card ở tab Tổng quan):
+    // ngày, xe, tên khoản, số tiền, ghi chú, người nhập.
+    const vehicleLabelOf = (vehicleUserId: number | null): string => {
+      if (!vehicleUserId) return '';
+      const v: any = userMap.get(Number(vehicleUserId));
+      return v?.soXe || v?.fullName || `#${vehicleUserId}`;
+    };
+    const detailOf = (cat: string) =>
+      costRows
+        .filter((i) => i.category === cat)
+        .map((i) => ({
+          id: i.id,
+          itemDate: i.itemDate,
+          vehicleLabel: vehicleLabelOf(i.vehicleUserId),
+          name: i.name,
+          amount: Number(i.amount) || 0,
+          note: i.note,
+          createdByName: i.createdByName,
+        }))
+        .sort((a, b) => String(b.itemDate || '').localeCompare(String(a.itemDate || '')));
+    const costItemsDetail: Record<string, ReturnType<typeof detailOf>> = {};
+    for (const c of COST_CATEGORIES) costItemsDetail[c] = detailOf(c);
 
     return {
       month,
@@ -544,6 +599,8 @@ export class DashboardService {
         cpKhac:       Math.round(cpKhac),
         total:        totalChiPhi,
         profit:       Math.round(totalRevenue - totalChiPhi),
+        // Chi tiết từng khoản theo nhóm (để bấm card hiện danh sách)
+        items: costItemsDetail,
       },
       investment: {
         vonXe:   Math.round(vonXe),

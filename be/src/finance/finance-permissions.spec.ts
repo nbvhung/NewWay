@@ -4,7 +4,7 @@ import { FinanceController } from './finance.controller';
 
 /**
  * Ma trận quyền của khu Tài Chính:
- *  - chi phí    (suaChua/nhienLieu/cpKhac): BẮT BUỘC mật khẩu, mọi role
+ *  - chi phí    (suaChua/nhienLieu/cpKhac): admin cần mật khẩu; supper_admin được miễn
  *  - vốn đầu tư (vonXe/vonMooc/vonKhac)   : admin cần mật khẩu, supper_admin được miễn
  *  - ghi cho admin khác (targetUserId)    : chỉ supper_admin
  */
@@ -89,17 +89,16 @@ describe('Tài chính — mật khẩu & quyền nhập vốn đầu tư', () =>
     expect(saved.vonXe).toBe(700);
   });
 
-  it('chi phí: mọi role đều phải nhập mật mã', async () => {
+  it('chi phí: admin phải nhập mật mã, supper_admin được miễn', async () => {
     const { ctrl } = build();
     await expectThrow(
       () => put(ctrl, ADMIN, { suaChua: 100 }),
       UnauthorizedException,
     );
-    await expectThrow(
-      () => put(ctrl, SUPER, { suaChua: 100 }),
-      UnauthorizedException,
-    );
-    const ok: any = await put(ctrl, SUPER, { suaChua: 100 }, PW);
+    // supper_admin sửa chi phí (kể cả của admin khác) KHÔNG cần mật mã
+    const superOk: any = await put(ctrl, SUPER, { suaChua: 100 });
+    expect(superOk.suaChua).toBe(100);
+    const ok: any = await put(ctrl, ADMIN, { suaChua: 100 }, PW);
     expect(ok.suaChua).toBe(100);
   });
 

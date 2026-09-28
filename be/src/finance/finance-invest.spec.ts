@@ -7,9 +7,10 @@ import { FinanceService } from './finance.service';
  * Luật:
  *  - 3 nhóm vốn (vonXe | vonMooc | vonKhac) dùng CHUNG bảng `finance_cost_items`
  *    với 3 nhóm chi phí (suaChua | nhienLieu | cpKhac), phân biệt bằng `category`.
+ *  - CHI PHÍ là theo TỪNG THÁNG.
+ *  - VỐN ĐẦU TƯ là CỘNG DỒN xuyên tháng: mở tháng M thấy cả vốn của mọi tháng ≤ M.
  *  - Tổng 1 nhóm = cột legacy trên `finance_entries` + Σ các dòng chi tiết.
  *  - `includeCost=false` (chưa nhập mật khẩu) chỉ ẩn CHI PHÍ; VỐN vẫn hiện đủ.
- *  - Chi phí và vốn KHÔNG được lẫn sang nhóm của nhau.
  */
 
 // ── Dữ liệu mẫu lấy từ production (finance_entries id=3) ─────────
@@ -37,16 +38,21 @@ const USERS: any[] = [
 
 const NWB = { sub: 30, role: 'admin', fullName: 'Boss' };
 
-function build(opts: { entry?: any; items?: any[] } = {}) {
+function build(opts: { entry?: any; items?: any[]; entries?: any[] } = {}) {
   const entry = opts.entry === undefined ? ENTRY : opts.entry;
   const items = opts.items ?? ITEMS;
+  // Mọi bản ghi finance của user (để cộng dồn vốn legacy). Mặc định = [entry].
+  const entries = opts.entries ?? (entry ? [entry] : []);
   let nextId = 1000;
 
   const repo = {
     findOne: jest.fn(async () => entry),
     create: jest.fn((v: any) => ({ ...v })),
     save: jest.fn(async (v: any) => v),
-    find: jest.fn(async (): Promise<any[]> => []),
+    // getOrCreate gọi `repo.find({ where: { userId } })` để cộng dồn vốn.
+    find: jest.fn(async (o?: any): Promise<any[]> =>
+      entries.filter((e) => !o?.where?.userId || e.userId === o.where.userId),
+    ),
   };
   const auditRepo = {
     create: jest.fn((v: any) => ({ ...v })),
@@ -54,13 +60,9 @@ function build(opts: { entry?: any; items?: any[] } = {}) {
     find: jest.fn(async () => []),
   };
   const costRepo = {
+    // getOrCreate nạp MỌI dòng của user (không lọc tháng) rồi tự tách.
     find: jest.fn(async (o?: any): Promise<any[]> =>
-      items.filter(
-        (i) =>
-          i.month === o?.where?.month &&
-          i.year === o?.where?.year &&
-          i.userId === o?.where?.userId,
-      ),
+      items.filter((i) => !o?.where?.userId || i.userId === o.where.userId),
     ),
     findOne: jest.fn(async (..._a: any[]): Promise<any> => null),
     create: jest.fn((v: any) => ({ ...v })),
@@ -102,24 +104,25 @@ describe('Tài chính — Vốn đầu tư chi tiết hoá giống chi phí', ()
     expect(Object.keys(d.investItems).sort()).toEqual(['vonKhac', 'vonMooc', 'vonXe']);
     expect(Object.keys(d.costItems).sort()).toEqual(['cpKhac', 'nhienLieu', 'suaChua']);
 
-    // Chi phí KHÔNG lẫn vào nhóm vốn và ngược lại
-    expect(d.investItems.vonXe.map((i: any) => i.id)).toEqual([1]);
+    // Chi phí KHÔNG lẫn vào nhóm vốn và ngược lại.
+    // Vốn CỘNG DỒN nên gồm cả dòng tháng 8 (id=5, vonXe 99tr).
+    expect(d.investItems.vonXe.map((i: any) => i.id)).toEqual([1, 5]);
     expect(d.investItems.vonMooc.map((i: any) => i.id)).toEqual([2]);
     expect(d.investItems.vonKhac).toEqual([]);
     expect(d.costItems.suaChua.map((i: any) => i.id)).toEqual([3]);
     expect(d.costItems.nhienLieu.map((i: any) => i.id)).toEqual([4]);
   });
 
-  it('tổng vốn = cột legacy + Σ chi tiết, đúng theo từng nhóm', async () => {
+  it('tổng vốn = legacy cộng dồn + Σ chi tiết cộng dồn, đúng theo từng nhóm', async () => {
     const { svc } = build();
     const d: any = await svc.getOrCreate(9, 2026, NWB);
 
     expect(d.investTotals).toEqual({
-      vonXe:   315_000_000, // 310.000.000 + 5.000.000
+      vonXe:   414_000_000, // 310.000.000 (legacy t9) + 5.000.000 (t9) + 99.000.000 (t8)
       vonMooc:  67_000_000, //  65.000.000 + 2.000.000
       vonKhac:  39_800_000, //  39.800.000 + 0
     });
-    // Chi phí cũng cộng chi tiết (không đổi hành vi cũ)
+    // Chi phí vẫn theo TỪNG THÁNG (không cộng dồn)
     expect(d.costTotals).toEqual({
       suaChua:   1_700_000, // 1.000.000 + 700.000
       nhienLieu: 2_900_000, // 2.000.000 + 900.000
@@ -127,12 +130,24 @@ describe('Tài chính — Vốn đầu tư chi tiết hoá giống chi phí', ()
     });
   });
 
-  it('dòng của tháng khác không bị tính vào tổng', async () => {
+  it('vốn cộng dồn: mở tháng 9 vẫn thấy vốn đã nhập từ tháng 8', async () => {
     const { svc } = build();
     const d: any = await svc.getOrCreate(9, 2026, NWB);
-    // id=5 là tháng 8 (99.000.000) — không được xuất hiện
-    expect(d.investItems.vonXe.map((i: any) => i.id)).not.toContain(5);
-    expect(d.investTotals.vonXe).toBe(315_000_000);
+    // id=5 là tháng 8 (99.000.000) — ĐƯỢC tính vào tổng vốn cộng dồn
+    expect(d.investItems.vonXe.map((i: any) => i.id)).toContain(5);
+    expect(d.investTotals.vonXe).toBe(414_000_000);
+  });
+
+  it('vốn KHÔNG tính dòng của tháng TƯƠNG LAI', async () => {
+    const { svc } = build({
+      items: [
+        ...ITEMS,
+        { id: 6, month: 10, year: 2026, userId: 30, category: 'vonXe', vehicleUserId: 31, itemDate: '2026-10-01', name: 'Tháng 10', amount: 7_000_000 },
+      ],
+    });
+    const d: any = await svc.getOrCreate(9, 2026, NWB);
+    expect(d.investItems.vonXe.map((i: any) => i.id)).not.toContain(6);
+    expect(d.investTotals.vonXe).toBe(414_000_000);
   });
 
   it('chưa mở khoá (includeCost=false): ẩn CHI PHÍ nhưng VỐN vẫn hiện đủ', async () => {
@@ -142,13 +157,13 @@ describe('Tài chính — Vốn đầu tư chi tiết hoá giống chi phí', ()
     expect(d.costTotals).toEqual({ suaChua: 0, nhienLieu: 0, cpKhac: 0 });
     expect(d.costItems.suaChua).toEqual([]);
 
-    // Vốn KHÔNG bị ẩn — kể cả phần chi tiết
+    // Vốn KHÔNG bị ẩn — kể cả phần chi tiết (cộng dồn)
     expect(d.investTotals).toEqual({
-      vonXe:   315_000_000,
+      vonXe:   414_000_000,
       vonMooc:  67_000_000,
       vonKhac:  39_800_000,
     });
-    expect(d.investItems.vonXe).toHaveLength(1);
+    expect(d.investItems.vonXe).toHaveLength(2);
   });
 
   it('nhận cả 3 nhóm vốn khi thêm khoản chi tiết', async () => {
