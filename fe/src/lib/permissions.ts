@@ -41,6 +41,20 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: 'export.data', group: 'Xuất dữ liệu', label: 'Xuất Excel dữ liệu', desc: 'Xuất Excel sản lượng theo filter' },
   { key: 'export.salary_col', group: 'Xuất dữ liệu', label: 'Xem cột / phiếu lương', desc: 'Xem & xuất cột lương trong dữ liệu' },
   { key: 'dashboard.view', group: 'Tổng quan', label: 'Xem tổng quan doanh thu', desc: 'Dashboard doanh thu/lợi nhuận' },
+  { key: 'finance.view', group: 'Tài chính', label: 'Xem chi phí & vốn đầu tư', desc: 'Vào tab Tài chính, xem chi phí / vốn (cần mật khẩu 348 cho chi phí)' },
+  { key: 'finance.manage', group: 'Tài chính', label: 'Nhập / sửa chi phí & vốn đầu tư', desc: 'Thêm, sửa, xoá khoản chi phí và vốn đầu tư' },
+  { key: 'tab.overview',   group: 'Hiển thị tab', label: 'Tab Tổng Quan',         desc: 'Hiện tab Tổng Quan trong menu' },
+  { key: 'tab.finance',    group: 'Hiển thị tab', label: 'Tab Tài Chính',         desc: 'Hiện tab Tài Chính trong menu' },
+  { key: 'tab.data',       group: 'Hiển thị tab', label: 'Tab Dữ liệu / Thống kê', desc: 'Hiện tab Tất cả dữ liệu (Thống kê) trong menu' },
+  { key: 'tab.plans',      group: 'Hiển thị tab', label: 'Tab Kế hoạch',          desc: 'Hiện tab Kế hoạch trong menu' },
+  { key: 'tab.monthly',    group: 'Hiển thị tab', label: 'Tab Kế hoạch theo tháng', desc: 'Hiện tab Kế hoạch theo tháng trong menu' },
+  { key: 'tab.completed',  group: 'Hiển thị tab', label: 'Tab Đã hoàn thành',     desc: 'Hiện tab Đã hoàn thành trong menu' },
+  { key: 'tab.containers', group: 'Hiển thị tab', label: 'Tab Mã số container',   desc: 'Hiện tab Mã số container trong menu' },
+  { key: 'tab.chat',       group: 'Hiển thị tab', label: 'Tab Lịch sử chat',      desc: 'Hiện tab Lịch sử chat trong menu' },
+  { key: 'tab.customers',  group: 'Hiển thị tab', label: 'Tab Khách hàng',        desc: 'Hiện tab Khách hàng trong menu' },
+  { key: 'tab.routes',     group: 'Hiển thị tab', label: 'Tab Tuyến đường',       desc: 'Hiện tab Tuyến đường trong menu' },
+  { key: 'tab.salary',     group: 'Hiển thị tab', label: 'Tab Lương Tháng',       desc: 'Hiện tab Lương Tháng trong menu' },
+  { key: 'tab.users',      group: 'Hiển thị tab', label: 'Tab Tài khoản',         desc: 'Hiện tab Tài khoản trong menu' },
   { key: 'user.view', group: 'Hệ thống', label: 'Xem danh sách tài khoản', desc: 'Vào trang quản lý tài khoản' },
   { key: 'user.manage', group: 'Hệ thống', label: 'Tạo / sửa / xóa tài khoản', desc: 'Thêm, sửa, xóa, phân quyền tài khoản' },
   { key: 'settings.entry_lock', group: 'Hệ thống', label: 'Khóa nhập liệu', desc: 'Bật/tắt khóa nhập liệu toàn hệ thống' },
@@ -72,6 +86,8 @@ export const ROLE_PRESETS: Record<string, string[]> = {
     'user.view',
     'settings.entry_lock',
     'zalo.chat', 'zalo.send', 'zalo.schedule',
+    'tab.data', 'tab.plans', 'tab.monthly', 'tab.completed',
+    'tab.containers', 'tab.chat', 'tab.customers', 'tab.routes', 'tab.users',
   ],
   hr: [
     'plan.view', 'plan.approve_price',
@@ -80,6 +96,7 @@ export const ROLE_PRESETS: Record<string, string[]> = {
     'route.view', 'route.manage',
     'salary.view', 'salary.manage', 'salary.pay', 'salary.export',
     'export.data', 'export.salary_col',
+    'tab.data', 'tab.plans', 'tab.completed', 'tab.customers', 'tab.routes', 'tab.salary',
   ],
   admin: PERMISSION_KEYS.filter((k) => k !== 'entry.delete_all'),
   supper_admin: PERMISSION_KEYS,
@@ -112,4 +129,29 @@ export function hasAnyPerm(u?: PermUser | null, perms?: string[]): boolean {
   if (isSuperUser(u)) return true;
   const own = new Set(resolvePermissions(u));
   return perms.some((p) => own.has(p));
+}
+
+/**
+ * Quyết định 1 tab admin có hiện không.
+ *
+ * - Nếu tài khoản đã được cấu hình quyền tab (`tab.*`) → chỉ hiện đúng tab được tick.
+ * - Nếu CHƯA có quyền tab nào (tài khoản cũ) → fallback theo quyền chức năng,
+ *   giữ nguyên hành vi trước đây (không làm mất tab của tài khoản đang dùng).
+ */
+export function canSeeTab(
+  u: PermUser | null | undefined,
+  tabKey: string,
+  fallbackPerms: string[],
+): boolean {
+  if (!u) return false;
+  if (isSuperUser(u)) return true;
+  const own = resolvePermissions(u);
+  const hasTabPerms = own.some((p) => p.startsWith('tab.'));
+  if (hasTabPerms) return own.includes(tabKey);
+  return fallbackPerms.some((p) => own.includes(p));
+}
+
+/** Ai được cấp / sửa quyền nhỏ: chỉ supper_admin và admin. */
+export function canGrantPermissions(u?: PermUser | null): boolean {
+  return !!u && (u.role === 'supper_admin' || u.role === 'admin');
 }

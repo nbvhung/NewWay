@@ -51,15 +51,26 @@ export interface DailyRevenue {
   planCount: number;
 }
 
-/** 1 khoản chi phí chi tiết (hiện khi bấm card ở tab Tổng quan). */
+/** 1 khoản chi phí/ vốn chi tiết (hiện khi bấm card ở tab Tổng quan). */
 export interface CostItemDetail {
   id: number;
   itemDate: string | null;
+  /** Xe (id lái xe) mà khoản này gắn vào; null = chi phí chung. */
+  vehicleUserId: number | null;
   vehicleLabel: string;
   name: string;
   amount: number;
   note: string | null;
   createdByName: string;
+}
+
+/** Xe thuộc sở hữu của tài khoản đang xem (để lọc theo xe). */
+export interface OwnedDriver {
+  id: number;
+  fullName: string;
+  soXe: string;
+  soMooc: string;
+  stt: string;
 }
 
 export interface DashboardOverview {
@@ -94,7 +105,11 @@ export interface DashboardOverview {
     vonMooc: number;
     vonKhac: number;
     total: number;
+    // Chi tiết vốn đầu tư (cộng dồn) theo nhóm — để lọc theo xe.
+    items: Record<string, CostItemDetail[]>;
   };
+  /** Xe thuộc sở hữu của tài khoản đang xem (để lọc theo xe). */
+  ownedDrivers: OwnedDriver[];
 }
 
 export const dashboardApi = {

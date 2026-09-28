@@ -2,13 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { hasPerm } from '@/lib/permissions';
+import { canSeeTab } from '@/lib/permissions';
 
 interface NavItem {
   href: string;
   label: string;
   icon: string;
-  perm: string;
+  /** Quyền hiển thị tab (tab.*) */
+  tab: string;
+  /** Quyền chức năng fallback cho tài khoản chưa cấu hình quyền tab */
+  fallback: string[];
 }
 
 interface NavGroup {
@@ -22,43 +25,40 @@ const GROUPS: NavGroup[] = [
     label: 'Tổng Quan',
     icon: '📊',
     items: () => [
-      { href: '/admin/overview', label: 'Tổng Quan', icon: '📊', perm: 'dashboard.view' },
-      { href: '/admin/finance',  label: 'Tài Chính',  icon: '💰', perm: 'dashboard.view' },
+      { href: '/admin/overview', label: 'Tổng Quan', icon: '📊', tab: 'tab.overview', fallback: ['dashboard.view'] },
+      { href: '/admin/finance',  label: 'Tài Chính',  icon: '💰', tab: 'tab.finance',  fallback: ['finance.view', 'dashboard.view'] },
     ],
   },
   {
     label: 'Vận hành',
     icon: '🚛',
-    items: (role) => {
-      if (role === 'hr') return [{ href: '/admin/plans', label: 'Kế hoạch', icon: '🚢', perm: 'plan.view' }];
-      return [
-        { href: '/admin/data', label: role === 'ops' ? 'Thống kê' : 'Tất cả dữ liệu', icon: '📊', perm: 'entry.view_all' },
-        { href: '/admin/plans', label: 'Kế hoạch', icon: '🚢', perm: 'plan.view' },
-        { href: '/admin/monthly', label: 'Kế hoạch theo tháng', icon: '📅', perm: 'entry.view_all' },
-        { href: '/admin/completed', label: 'Đã hoàn thành', icon: '✅', perm: 'plan.view' },
-        { href: '/admin/containers', label: 'Mã Số Container', icon: '🗃️', perm: 'container.view' },
-        { href: '/admin/chat', label: 'Lịch sử chat', icon: '💬', perm: 'zalo.chat' },
-      ];
-    },
+    items: (role) => [
+      { href: '/admin/data', label: role === 'ops' ? 'Thống kê' : 'Tất cả dữ liệu', icon: '📊', tab: 'tab.data', fallback: ['entry.view_all'] },
+      { href: '/admin/plans', label: 'Kế hoạch', icon: '🚢', tab: 'tab.plans', fallback: ['plan.view'] },
+      { href: '/admin/monthly', label: 'Kế hoạch theo tháng', icon: '📅', tab: 'tab.monthly', fallback: ['entry.view_all'] },
+      { href: '/admin/completed', label: 'Đã hoàn thành', icon: '✅', tab: 'tab.completed', fallback: ['plan.view'] },
+      { href: '/admin/containers', label: 'Mã Số Container', icon: '🗃️', tab: 'tab.containers', fallback: ['container.view'] },
+      { href: '/admin/chat', label: 'Lịch sử chat', icon: '💬', tab: 'tab.chat', fallback: ['zalo.chat'] },
+    ],
   },
   {
     label: 'Khách hàng & Doanh thu',
     icon: '💼',
-    items: () => [{ href: '/admin/customers', label: 'Khách hàng', icon: '👥', perm: 'customer.view' }],
+    items: () => [{ href: '/admin/customers', label: 'Khách hàng', icon: '👥', tab: 'tab.customers', fallback: ['customer.view'] }],
   },
   {
     label: 'Nhân sự & Lương',
     icon: '🧑‍💼',
     items: (role) => [
-      ...(role === 'hr' ? [{ href: '/admin/data', label: 'Lương chuyến', icon: '📊', perm: 'entry.view_all' }] : []),
-      { href: '/admin/routes', label: 'Tuyến đường', icon: '🛤️', perm: 'route.view' },
-      { href: '/admin/salary', label: 'Lương Tháng', icon: '💵', perm: 'salary.view' },
+      ...(role === 'hr' ? [{ href: '/admin/data', label: 'Lương chuyến', icon: '📊', tab: 'tab.data', fallback: ['entry.view_all'] }] : []),
+      { href: '/admin/routes', label: 'Tuyến đường', icon: '🛤️', tab: 'tab.routes', fallback: ['route.view'] },
+      { href: '/admin/salary', label: 'Lương Tháng', icon: '💵', tab: 'tab.salary', fallback: ['salary.view'] },
     ],
   },
   {
     label: 'Hệ thống',
     icon: '⚙️',
-    items: () => [{ href: '/admin/users', label: 'Tài khoản', icon: '🧑‍💼', perm: 'user.view' }],
+    items: () => [{ href: '/admin/users', label: 'Tài khoản', icon: '🧑‍💼', tab: 'tab.users', fallback: ['user.view'] }],
   },
 ];
 
@@ -68,7 +68,7 @@ export function AdminSidebar({ user }: { user: any }) {
 
   const groups = GROUPS.map((g) => ({
     ...g,
-    items: g.items(user.role).filter((item) => hasPerm(user, item.perm)),
+    items: g.items(user.role).filter((item) => canSeeTab(user, item.tab, item.fallback)),
   })).filter((g) => g.items.length > 0);
 
   return (
@@ -110,7 +110,7 @@ export function MobileAdminNav({ user }: { user: any }) {
   if (!user) return null;
   const groups = GROUPS.map((g) => ({
     ...g,
-    items: g.items(user.role).filter((item) => hasPerm(user, item.perm)),
+    items: g.items(user.role).filter((item) => canSeeTab(user, item.tab, item.fallback)),
   })).filter((g) => g.items.length > 0);
   return (
     <div className="lg:hidden flex flex-col gap-1 mb-4">

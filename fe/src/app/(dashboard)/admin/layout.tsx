@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import { usersApi } from '@/lib/api-users';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
@@ -10,7 +11,7 @@ import { User, ShippingLine, Route, Customer } from '@/types';
 import { AdminSidebar, MobileAdminNav } from '@/components/layout/admin-sidebar';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { DeleteGuardHost } from '@/lib/delete-guard';
-import { hasAnyPerm } from '@/lib/permissions';
+import { hasAnyPerm, canSeeTab } from '@/lib/permissions';
 
 const STAFF_PERMS = [
   'entry.view_all',
@@ -20,7 +21,28 @@ const STAFF_PERMS = [
   'route.view',
   'salary.view',
   'dashboard.view',
+  'finance.view',
   'user.view',
+  'zalo.chat',
+  'tab.overview', 'tab.finance', 'tab.data', 'tab.plans', 'tab.monthly',
+  'tab.completed', 'tab.containers', 'tab.chat', 'tab.customers',
+  'tab.routes', 'tab.salary', 'tab.users',
+];
+
+/** Đường dẫn admin → quyền tab tương ứng (chặn gõ URL trực tiếp). */
+const PATH_TAB: { path: string; tab: string; fallback: string[] }[] = [
+  { path: '/admin/overview',   tab: 'tab.overview',   fallback: ['dashboard.view'] },
+  { path: '/admin/finance',    tab: 'tab.finance',    fallback: ['finance.view', 'dashboard.view'] },
+  { path: '/admin/data',       tab: 'tab.data',       fallback: ['entry.view_all'] },
+  { path: '/admin/plans',      tab: 'tab.plans',      fallback: ['plan.view'] },
+  { path: '/admin/monthly',    tab: 'tab.monthly',    fallback: ['entry.view_all'] },
+  { path: '/admin/completed',  tab: 'tab.completed',  fallback: ['plan.view'] },
+  { path: '/admin/containers', tab: 'tab.containers', fallback: ['container.view'] },
+  { path: '/admin/chat',       tab: 'tab.chat',       fallback: ['zalo.chat'] },
+  { path: '/admin/customers',  tab: 'tab.customers',  fallback: ['customer.view'] },
+  { path: '/admin/routes',     tab: 'tab.routes',     fallback: ['route.view'] },
+  { path: '/admin/salary',     tab: 'tab.salary',     fallback: ['salary.view'] },
+  { path: '/admin/users',      tab: 'tab.users',      fallback: ['user.view'] },
 ];
 
 interface AdminData {
@@ -108,6 +130,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       loadCustomers(),
     ]).finally(() => setLoading(false));
   }, []);
+
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // Chặn gõ URL trực tiếp vào tab không có quyền → chuyển sang tab đầu tiên được phép.
+  useEffect(() => {
+    if (!user) return;
+    const here = PATH_TAB.find((e) => e.path === pathname);
+    if (!here || canSeeTab(user, here.tab, here.fallback)) return;
+    const first = PATH_TAB.find((e) => canSeeTab(user, e.tab, e.fallback));
+    router.replace(first ? first.path : '/');
+  }, [user, pathname, router]);
 
   if (authLoading) return <LoadingSpinner className="min-h-[60vh]" />;
   if (!user) return null;

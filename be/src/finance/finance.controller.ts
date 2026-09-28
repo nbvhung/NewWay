@@ -39,7 +39,7 @@ export class FinanceController {
 
   /** Danh sách admin cho ô lọc "nhập vốn cho ai" (chỉ supper_admin dùng). */
   @Get('admins')
-  @Permissions('dashboard.view')
+  @Permissions('finance.view')
   listAdmins(@Req() req: any) {
     if (req.user?.role !== 'supper_admin') return [];
     return this.financeService.listFinanceAdmins();
@@ -50,7 +50,7 @@ export class FinanceController {
    * đang xem (bên A không thấy xe bên B).
    */
   @Get('vehicles')
-  @Permissions('dashboard.view')
+  @Permissions('finance.view')
   listVehicles(
     @Query('targetUserId') targetUserId: string,
     @Req() req: any,
@@ -66,7 +66,7 @@ export class FinanceController {
    * (query `pw` hoặc header `x-cost-password`).
    */
   @Get()
-  @Permissions('dashboard.view')
+  @Permissions('finance.view')
   get(
     @Query('month') month: string,
     @Query('year') year: string,
@@ -95,7 +95,7 @@ export class FinanceController {
    *   supper_admin được miễn — service kiểm tra (cờ `investUnlocked`).
    */
   @Put()
-  @Permissions('dashboard.view')
+  @Permissions('finance.manage')
   upsert(
     @Query('month') month: string,
     @Query('year') year: string,
@@ -124,7 +124,7 @@ export class FinanceController {
 
   /** Lịch sử chỉnh sửa chi phí — yêu cầu mật khẩu. */
   @Get('history')
-  @Permissions('dashboard.view')
+  @Permissions('finance.view')
   history(
     @Query('month') month: string,
     @Query('year') year: string,
@@ -151,7 +151,7 @@ export class FinanceController {
 
   /** Xác thực mật khẩu xem chi phí (dùng cho FE mở khoá). */
   @Post('verify-password')
-  @Permissions('dashboard.view')
+  @Permissions('finance.view')
   verifyPassword(@Body() body: { password?: string }) {
     return { ok: this.financeService.verifyCostPassword(body?.password) };
   }
@@ -168,7 +168,7 @@ export class FinanceController {
 
   /** Danh sách chi tiết chi phí theo tháng — yêu cầu mật khẩu. */
   @Get('cost-items')
-  @Permissions('dashboard.view')
+  @Permissions('finance.view')
   listCostItems(
     @Query('month') month: string,
     @Query('year') year: string,
@@ -184,7 +184,7 @@ export class FinanceController {
 
   /** Thêm 1 khoản chi phí — yêu cầu mật khẩu. */
   @Post('cost-items')
-  @Permissions('dashboard.view')
+  @Permissions('finance.manage')
   addCostItem(
     @Query('month') month: string,
     @Query('year') year: string,
@@ -204,7 +204,7 @@ export class FinanceController {
    * Mỗi xe 1 số tiền riêng → mỗi xe 1 dòng chi phí.
    */
   @Post('cost-items/bulk')
-  @Permissions('dashboard.view')
+  @Permissions('finance.manage')
   addCostItemsBulk(
     @Query('month') month: string,
     @Query('year') year: string,
@@ -221,7 +221,7 @@ export class FinanceController {
 
   /** Sửa 1 khoản chi phí — yêu cầu mật khẩu. */
   @Put('cost-items/:id')
-  @Permissions('dashboard.view')
+  @Permissions('finance.manage')
   updateCostItem(
     @Param('id') id: string,
     @Query('pw') pw: string,
@@ -236,7 +236,7 @@ export class FinanceController {
 
   /** Xóa 1 khoản chi phí — yêu cầu mật khẩu. */
   @Delete('cost-items/:id')
-  @Permissions('dashboard.view')
+  @Permissions('finance.manage')
   deleteCostItem(
     @Param('id') id: string,
     @Query('pw') pw: string,

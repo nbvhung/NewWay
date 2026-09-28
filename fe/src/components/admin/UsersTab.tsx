@@ -10,7 +10,7 @@ import { User } from '@/types';
 import { usersApi } from '@/lib/api-users';
 import { ROLE_LABELS } from '@/lib/utils';
 import { Modal } from '@/components/ui/modal';
-import { ROLE_PRESETS, resolvePermissions, PERMISSION_KEYS, hasPerm } from '@/lib/permissions';
+import { ROLE_PRESETS, resolvePermissions, PERMISSION_KEYS, hasPerm, canGrantPermissions } from '@/lib/permissions';
 import { confirmDelete } from '@/lib/delete-guard';
 
 // Bộ quyền mặc định cho tài khoản "Xem vốn" (chỉ xem, không thao tác)
@@ -65,7 +65,12 @@ const ROLE_DESC: Record<string, string> = {
 };
 
 export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
-  const grantablePerms = useMemo(() => resolvePermissions(currentUser), [currentUser]);
+  // Chỉ admin / supper_admin được cấp / sửa quyền nhỏ.
+  const canGrant = canGrantPermissions(currentUser);
+  const grantablePerms = useMemo(
+    () => (canGrant ? resolvePermissions(currentUser) : []),
+    [currentUser, canGrant],
+  );
   const grantableSet = useMemo(() => new Set(grantablePerms), [grantablePerms]);
 
   const presetFor = (role: string) => (ROLE_PRESETS[role] || []).filter((k) => grantableSet.has(k));
@@ -150,7 +155,9 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
     try {
       await usersApi.create({
         ...newUser,
-        permissions: (newUser.permissions || []).filter((p: string) => PERMISSION_KEYS.includes(p)),
+        permissions: canGrant
+          ? (newUser.permissions || []).filter((p: string) => PERMISSION_KEYS.includes(p))
+          : null,
         // null = xem tất cả xe; [] = không xe nào. Không được ép null thành [].
         visibleDriverIds: Array.isArray(newUser.visibleDriverIds)
           ? newUser.visibleDriverIds.map(Number)
@@ -177,7 +184,9 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
       await usersApi.update(editUserData.id, {
         fullName: editUserData.fullName,
         role: editUserData.role,
-        permissions: (editUserData.permissions || []).filter((p: string) => PERMISSION_KEYS.includes(p)),
+        ...(canGrant
+          ? { permissions: (editUserData.permissions || []).filter((p: string) => PERMISSION_KEYS.includes(p)) }
+          : {}),
         // null = xem tất cả xe; [] = không xe nào. Không được ép null thành [].
         visibleDriverIds: Array.isArray(editUserData.visibleDriverIds)
           ? editUserData.visibleDriverIds.map(Number)
@@ -418,11 +427,15 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
                 </div>
                 <p className="text-[9px] text-[#a8a29e] mt-1.5">{ROLE_DESC[newUser.role] || ''}</p>
               </div>
-              <PermissionChecklist
-                selected={newUser.permissions || []}
-                onChange={(p) => setNewUser({ ...newUser, permissions: p })}
-                grantable={grantablePerms}
-              />
+              {canGrant ? (
+                <PermissionChecklist
+                  selected={newUser.permissions || []}
+                  onChange={(p) => setNewUser({ ...newUser, permissions: p })}
+                  grantable={grantablePerms}
+                />
+              ) : (
+                <p className="text-[10px] text-[#a8a29e]">Quyền theo <strong>vai trò mẫu</strong>. Chỉ admin / supper_admin được sửa từng quyền.</p>
+              )}
             </div>
           </div>
 

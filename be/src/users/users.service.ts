@@ -25,7 +25,8 @@ export class UsersService {
   ) {}
 
   /**
-   * Kiểm tra chống leo thang: người quản lý chỉ được gán quyền mà chính mình đang có.
+   * Kiểm tra chống leo thang: chỉ admin / supper_admin được cấp/sửa quyền;
+   * admin chỉ được gán quyền mà chính mình đang có. Các role khác bị chặn.
    */
   private validateGrantablePermissions(
     permissions: string[] | undefined,
@@ -34,6 +35,11 @@ export class UsersService {
     if (!permissions) return null;
     if (actor?.role === 'supper_admin') {
       return permissions.filter((p) => PERMISSION_KEYS.includes(p));
+    }
+    if (actor?.role !== 'admin') {
+      throw new ForbiddenException(
+        'Chỉ admin hoặc supper_admin được cấp / sửa quyền',
+      );
     }
     const own = new Set(resolvePermissions(actor));
     const granted = permissions.filter((p) => PERMISSION_KEYS.includes(p));

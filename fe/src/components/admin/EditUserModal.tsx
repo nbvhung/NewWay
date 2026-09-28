@@ -62,11 +62,17 @@ export function EditUserModal({ open, onClose, editUserData, setEditUserData, on
           <p className="text-[9px] text-[#a8a29e] mt-1">{ROLE_DESC[editUserData?.role] || ''}</p>
         </div>
 
-        <PermissionChecklist
-          selected={editUserData?.permissions || []}
-          onChange={(p) => setEditUserData({ ...editUserData, permissions: p })}
-          grantable={grantablePerms}
-        />
+        {grantablePerms.length > 0 ? (
+          <PermissionChecklist
+            selected={editUserData?.permissions || []}
+            onChange={(p) => setEditUserData({ ...editUserData, permissions: p })}
+            grantable={grantablePerms}
+          />
+        ) : (
+          <p className="text-[10px] text-[#a8a29e]">
+            Quyền của tài khoản này theo <strong>vai trò mẫu</strong>. Chỉ admin / supper_admin được sửa từng quyền.
+          </p>
+        )}
 
         <div>
           <label className="text-xs font-medium text-[#78716c] mb-1 block">🚗 Xe được xem dữ liệu <span className="text-[#a8a29e] font-normal">(tick &quot;Xem tất cả&quot; = không giới hạn)</span></label>

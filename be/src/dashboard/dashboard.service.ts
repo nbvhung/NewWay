@@ -111,6 +111,7 @@ export interface DashboardOverview {
     items: Record<string, {
       id: number;
       itemDate: string | null;
+      vehicleUserId: number | null;
       vehicleLabel: string;
       name: string;
       amount: number;
@@ -123,7 +124,26 @@ export interface DashboardOverview {
     vonMooc: number;
     vonKhac: number;
     total: number;
+    // Chi tiết vốn đầu tư (cộng dồn) theo nhóm, để lọc theo xe.
+    items: Record<string, {
+      id: number;
+      itemDate: string | null;
+      vehicleUserId: number | null;
+      vehicleLabel: string;
+      name: string;
+      amount: number;
+      note: string | null;
+      createdByName: string;
+    }[]>;
   };
+  /** Xe thuộc sở hữu của tài khoản đang xem (để lọc theo xe). */
+  ownedDrivers: {
+    id: number;
+    fullName: string;
+    soXe: string;
+    soMooc: string;
+    stt: string;
+  }[];
 }
 
 // ─── Service ────────────────────────────────────────────────────
@@ -560,12 +580,13 @@ export class DashboardService {
       const v: any = userMap.get(Number(vehicleUserId));
       return v?.soXe || v?.fullName || `#${vehicleUserId}`;
     };
-    const detailOf = (cat: string) =>
-      costRows
+    const mapDetail = (rows: FinanceCostItem[], cat: string) =>
+      rows
         .filter((i) => i.category === cat)
         .map((i) => ({
           id: i.id,
           itemDate: i.itemDate,
+          vehicleUserId: i.vehicleUserId ?? null,
           vehicleLabel: vehicleLabelOf(i.vehicleUserId),
           name: i.name,
           amount: Number(i.amount) || 0,
@@ -573,8 +594,26 @@ export class DashboardService {
           createdByName: i.createdByName,
         }))
         .sort((a, b) => String(b.itemDate || '').localeCompare(String(a.itemDate || '')));
-    const costItemsDetail: Record<string, ReturnType<typeof detailOf>> = {};
-    for (const c of COST_CATEGORIES) costItemsDetail[c] = detailOf(c);
+    const costItemsDetail: Record<string, ReturnType<typeof mapDetail>> = {};
+    for (const c of COST_CATEGORIES) costItemsDetail[c] = mapDetail(costRows, c);
+    const investItemsDetail: Record<string, ReturnType<typeof mapDetail>> = {};
+    for (const c of INVEST_CATEGORIES) investItemsDetail[c] = mapDetail(investRows, c);
+
+    // Xe thuộc sở hữu của tài khoản đang xem (để lọc chi phí / lợi nhuận / vốn theo xe).
+    // - Tài khoản bị giới hạn `visibleDriverIds` → chỉ xe của họ.
+    // - Tài khoản không giới hạn → tất cả lái xe.
+    const ownedDrivers = allUsers
+      .filter((u) => visible === null || visible.includes(u.id))
+      .map((u: any) => ({
+        id: u.id,
+        fullName: u.fullName || '',
+        soXe: u.soXe || '',
+        soMooc: u.soMooc || '',
+        stt: u.stt || '',
+      }))
+      .sort(
+        (a, b) => (parseInt(a.stt) || 999999) - (parseInt(b.stt) || 999999),
+      );
 
     return {
       month,
@@ -607,7 +646,10 @@ export class DashboardService {
         vonMooc: Math.round(vonMooc),
         vonKhac: Math.round(vonKhac),
         total:   Math.round(vonXe + vonMooc + vonKhac),
+        // Chi tiết vốn đầu tư (cộng dồn) theo nhóm, để lọc theo xe
+        items: investItemsDetail,
       },
+      ownedDrivers,
     };
   }
 }

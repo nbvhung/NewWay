@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import {
-  dashboardApi, DashboardOverview, PlanSummary, DriverRevenue, CustomerRevenue, CostItemDetail,
+  dashboardApi, DashboardOverview, PlanSummary, DriverRevenue, CustomerRevenue, CostItemDetail, OwnedDriver,
 } from '@/lib/api-dashboard';
 
 const COST_LABEL: Record<string, string> = { suaChua: 'Sửa chữa', nhienLieu: 'Nhiên liệu', cpKhac: 'CP Khác' };
@@ -332,6 +332,49 @@ function CostItemsSheet({ category, items, month, year, onClose }: {
 }
 
 /* ───────────────────────────────────────────────────────────────
+   DRIVER FILTER BAR — dùng chung cho card Chi phí / Lợi nhuận / Vốn đầu tư
+   Ô lọc nằm cùng dòng với tiêu đề (căn phải); chọn xe xong hiện ô thông tin
+   Lái xe - Biển số - Số mooc - STT căn giữa ngay dưới dòng lọc.
+   ─────────────────────────────────────────────────────────────── */
+function DriverFilterBar({ title, drivers, value, onChange }: {
+  title: string;
+  drivers: OwnedDriver[];
+  value: number | '';
+  onChange: (v: number | '') => void;
+}) {
+  const sel = value === '' ? null : drivers.find(d => d.id === value) || null;
+  return (
+    <>
+      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+        <p className="text-[14px] font-bold">{title}</p>
+        <select
+          value={value}
+          onChange={e => onChange(e.target.value === '' ? '' : Number(e.target.value))}
+          className="px-3 py-1.5 text-[12px] bg-white border rounded-lg outline-none cursor-pointer max-w-[240px]"
+          style={{ borderColor: C.faint }}
+          title="Lọc theo xe thuộc sở hữu của bạn"
+        >
+          <option value="">🚚 Tất cả xe</option>
+          {drivers.map(d => (
+            <option key={d.id} value={d.id}>
+              {[d.soXe, d.fullName].filter(Boolean).join(' – ') || `Xe #${d.id}`}
+            </option>
+          ))}
+        </select>
+      </div>
+      {sel && (
+        <div className="flex justify-center mb-4">
+          <div className="px-4 py-2 rounded-xl text-[12px] font-semibold text-center"
+            style={{ background: C.amberLt, color: C.amberDk, border: '1px solid #fcd34d' }}>
+            🚛 {[sel.fullName, sel.soXe, sel.soMooc, sel.stt ? `STT ${sel.stt}` : ''].filter(Boolean).join(' — ')}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ───────────────────────────────────────────────────────────────
    MAIN COMPONENT
    ─────────────────────────────────────────────────────────────── */
 export function DashboardTab() {
@@ -350,6 +393,10 @@ export function DashboardTab() {
   const [selD, setSelD] = useState<DriverRevenue | null>(null);
   const [selC, setSelC] = useState<CustomerRevenue | null>(null);
   const [selCost, setSelCost] = useState<string | null>(null);
+  // Lọc theo xe ở 3 card Chi phí / Lợi nhuận / Vốn đầu tư ('' = tất cả xe)
+  const [costDriver, setCostDriver] = useState<number | ''>('');
+  const [profitDriver, setProfitDriver] = useState<number | ''>('');
+  const [investDriver, setInvestDriver] = useState<number | ''>('');
 
   const load = async () => {
     setLoading(true); setError('');
@@ -383,6 +430,19 @@ export function DashboardTab() {
   const totalCost  = data.cost.total;
   const profit     = data.cost.profit;
   const totalVon   = data.investment.total;
+
+  /* ── Lọc theo xe (Chi phí / Lợi nhuận / Vốn đầu tư) ────────── */
+  const ownedDrivers = data.ownedDrivers || [];
+  const driverRev = (id: number) =>
+    data.revenue.byDriver.find(d => d.driverId === id) || null;
+  const sumCostItems = (cat: string, id: number) =>
+    (data.cost.items?.[cat] ?? [])
+      .filter(it => it.vehicleUserId === id)
+      .reduce((s, i) => s + Number(i.amount || 0), 0);
+  const sumInvestItems = (cat: string, id: number) =>
+    (data.investment.items?.[cat] ?? [])
+      .filter(it => it.vehicleUserId === id)
+      .reduce((s, i) => s + Number(i.amount || 0), 0);
 
   /* ── Card config ───────────────────────────────────────────── */
   const cards: {
@@ -570,115 +630,148 @@ export function DashboardTab() {
         )}
 
         {/* ─ Chi phí ─────────────────────────────────────────── */}
-        {activeCard === 'cost' && (
-          <div className="p-5">
-            <p className="text-[14px] font-bold mb-4">💸 Chi tiết Chi Phí</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {([
-                ['Lương lái xe', data.cost.luongChuyen, C.amber, '(tính từ kế hoạch)', ''],
-                ['Subvendor',    data.cost.subvendor,   C.red,   '(phí thuê ngoài)', ''],
-                ['Sửa chữa',    data.cost.suaChua,      '#7c3aed', '(bấm để xem chi tiết)', 'suaChua'],
-                ['Nhiên liệu',   data.cost.nhienLieu,   '#0891b2', '(bấm để xem chi tiết)', 'nhienLieu'],
-                ['CP Khác',      data.cost.cpKhac,      '#059669', '(bấm để xem chi tiết)', 'cpKhac'],
-              ] as [string, number, string, string, string][]).map(([lbl, val, c, hint, cat]) => {
-                const pct = pc(val, totalCost || 1);
-                const clickable = !!cat;
-                return (
-                  <div key={lbl}
-                    onClick={clickable ? () => setSelCost(cat) : undefined}
-                    className={clickable ? 'rounded-xl p-4 cursor-pointer transition-colors hover:brightness-[0.98]' : 'rounded-xl p-4'}
-                    style={{ border: `1px solid ${C.faint}`, background: C.surface }}>
-                    <p className="text-[11px] font-semibold mb-1" style={{ color: C.muted }}>{lbl}</p>
-                    <p className="text-[22px] font-extrabold leading-none" style={{ color: c }}>{fmt(val)}</p>
-                    <p className="text-[9px] mt-0.5 mb-2" style={{ color: C.muted }}>₫ · {pct}% tổng chi phí</p>
-                    <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: C.faint }}>
-                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: c }} />
+        {activeCard === 'cost' && (() => {
+          const sel = costDriver;
+          const isAll = sel === '';
+          const drv = isAll ? null : driverRev(sel as number);
+          const luong     = isAll ? data.cost.luongChuyen : (drv?.luongKhoan ?? 0);
+          const subvendor = isAll ? data.cost.subvendor   : 0;
+          const suaChua   = isAll ? data.cost.suaChua     : sumCostItems('suaChua', sel as number);
+          const nhienLieu = isAll ? data.cost.nhienLieu   : sumCostItems('nhienLieu', sel as number);
+          const cpKhac    = isAll ? data.cost.cpKhac      : sumCostItems('cpKhac', sel as number);
+          const sum = luong + subvendor + suaChua + nhienLieu + cpKhac;
+          const tiles: [string, number, string, string, string][] = [
+            ['Lương lái xe', luong,     C.amber,   isAll ? '(tính từ kế hoạch)' : '(lương của xe này)', ''],
+            ['Subvendor',    subvendor, C.red,     isAll ? '(phí thuê ngoài)'   : '(không gắn xe)', ''],
+            ['Sửa chữa',    suaChua,   '#7c3aed', '(bấm để xem chi tiết)', 'suaChua'],
+            ['Nhiên liệu',   nhienLieu, '#0891b2', '(bấm để xem chi tiết)', 'nhienLieu'],
+            ['CP Khác',      cpKhac,    '#059669', '(bấm để xem chi tiết)', 'cpKhac'],
+          ];
+          return (
+            <div className="p-5">
+              <DriverFilterBar title="💸 Chi tiết Chi Phí" drivers={ownedDrivers} value={costDriver} onChange={setCostDriver} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {tiles.map(([lbl, val, c, hint, cat]) => {
+                  const pct = pc(val, sum || 1);
+                  const clickable = !!cat;
+                  return (
+                    <div key={lbl}
+                      onClick={clickable ? () => setSelCost(cat) : undefined}
+                      className={clickable ? 'rounded-xl p-4 cursor-pointer transition-colors hover:brightness-[0.98]' : 'rounded-xl p-4'}
+                      style={{ border: `1px solid ${C.faint}`, background: C.surface }}>
+                      <p className="text-[11px] font-semibold mb-1" style={{ color: C.muted }}>{lbl}</p>
+                      <p className="text-[22px] font-extrabold leading-none" style={{ color: c }}>{fmt(val)}</p>
+                      <p className="text-[9px] mt-0.5 mb-2" style={{ color: C.muted }}>₫ · {pct}% tổng chi phí</p>
+                      <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: C.faint }}>
+                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: c }} />
+                      </div>
+                      <p className="text-[9px] mt-1.5" style={{ color: '#a8a29e' }}>{hint}</p>
                     </div>
-                    <p className="text-[9px] mt-1.5" style={{ color: '#a8a29e' }}>{hint}</p>
-                  </div>
-                );
-              })}
-              {/* Total */}
-              <div className="rounded-xl p-4" style={{ border: `2px solid ${C.red}20`, background: C.redLt }}>
-                <p className="text-[11px] font-semibold mb-1" style={{ color: C.red }}>Tổng chi phí</p>
-                <p className="text-[22px] font-extrabold leading-none" style={{ color: C.red }}>{fmt(totalCost)}</p>
-                <p className="text-[9px] mt-0.5" style={{ color: C.muted }}>₫</p>
+                  );
+                })}
+                {/* Total */}
+                <div className="rounded-xl p-4" style={{ border: `2px solid ${C.red}20`, background: C.redLt }}>
+                  <p className="text-[11px] font-semibold mb-1" style={{ color: C.red }}>Tổng chi phí</p>
+                  <p className="text-[22px] font-extrabold leading-none" style={{ color: C.red }}>{fmt(sum)}</p>
+                  <p className="text-[9px] mt-0.5" style={{ color: C.muted }}>₫</p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ─ Lợi nhuận ───────────────────────────────────────── */}
-        {activeCard === 'profit' && (
-          <div className="p-5">
-            <p className="text-[14px] font-bold mb-4">📈 Chi tiết Lợi Nhuận</p>
-            <div className="max-w-lg">
-              {([
-                ['(+) Doanh thu',      revenue,    C.amber],
-                ['(-) Lương lái xe',  -data.cost.luongChuyen, C.red],
-                ['(-) Subvendor',     -data.cost.subvendor,   C.red],
-                ['(-) Sửa chữa',      -data.cost.suaChua,     C.red],
-                ['(-) Nhiên liệu',    -data.cost.nhienLieu,   C.red],
-                ['(-) CP Khác',       -data.cost.cpKhac,      C.red],
-              ] as [string, number, string][]).map(([lbl, val, c], i) => (
-                <div key={i} className={`flex justify-between items-center py-2.5 ${i < 5 ? 'border-b' : ''}`}
-                  style={{ borderColor: C.faint }}>
-                  <span className="text-[13px]" style={{ color: C.muted }}>{lbl}</span>
-                  <span className="text-[13px] font-bold" style={{ color: c }}>
-                    {val >= 0 ? '' : ''}{fmt(Math.abs(val))} ₫
+        {activeCard === 'profit' && (() => {
+          const sel = profitDriver;
+          const isAll = sel === '';
+          const drv = isAll ? null : driverRev(sel as number);
+          const rev       = isAll ? revenue              : (drv?.revenue ?? 0);
+          const luong     = isAll ? data.cost.luongChuyen : (drv?.luongKhoan ?? 0);
+          const subvendor = isAll ? data.cost.subvendor   : 0;
+          const suaChua   = isAll ? data.cost.suaChua     : sumCostItems('suaChua', sel as number);
+          const nhienLieu = isAll ? data.cost.nhienLieu   : sumCostItems('nhienLieu', sel as number);
+          const cpKhac    = isAll ? data.cost.cpKhac      : sumCostItems('cpKhac', sel as number);
+          const net = rev - luong - subvendor - suaChua - nhienLieu - cpKhac;
+          const rows: [string, number, string][] = [
+            ['(+) Doanh thu',      rev,        C.amber],
+            ['(-) Lương lái xe',  -luong,      C.red],
+            ['(-) Subvendor',     -subvendor,  C.red],
+            ['(-) Sửa chữa',      -suaChua,    C.red],
+            ['(-) Nhiên liệu',     -nhienLieu,  C.red],
+            ['(-) CP Khác',       -cpKhac,     C.red],
+          ];
+          return (
+            <div className="p-5">
+              <DriverFilterBar title="📈 Chi tiết Lợi Nhuận" drivers={ownedDrivers} value={profitDriver} onChange={setProfitDriver} />
+              <div className="max-w-lg">
+                {rows.map(([lbl, val, c], i) => (
+                  <div key={i} className={`flex justify-between items-center py-2.5 ${i < 5 ? 'border-b' : ''}`}
+                    style={{ borderColor: C.faint }}>
+                    <span className="text-[13px]" style={{ color: C.muted }}>{lbl}</span>
+                    <span className="text-[13px] font-bold" style={{ color: c }}>
+                      {val < 0 ? '-' : ''}{fmt(Math.abs(val))} ₫
+                    </span>
+                  </div>
+                ))}
+                <div className="flex justify-between items-center py-3 mt-1 rounded-xl px-3"
+                  style={{ background: net >= 0 ? C.greenLt : C.redLt, border: `1px solid ${net >= 0 ? C.green : C.red}30` }}>
+                  <span className="text-[14px] font-bold" style={{ color: net >= 0 ? C.green : C.red }}>= Lợi nhuận ròng</span>
+                  <span className="text-[18px] font-extrabold" style={{ color: net >= 0 ? C.green : C.red }}>
+                    {net >= 0 ? '+' : '-'}{fmt(Math.abs(net))} ₫
                   </span>
                 </div>
-              ))}
-              <div className="flex justify-between items-center py-3 mt-1 rounded-xl px-3"
-                style={{ background: profit >= 0 ? C.greenLt : C.redLt, border: `1px solid ${profit >= 0 ? C.green : C.red}30` }}>
-                <span className="text-[14px] font-bold" style={{ color: profit >= 0 ? C.green : C.red }}>= Lợi nhuận ròng</span>
-                <span className="text-[18px] font-extrabold" style={{ color: profit >= 0 ? C.green : C.red }}>
-                  {profit >= 0 ? '+' : '-'}{fmt(Math.abs(profit))} ₫
-                </span>
+                {rev > 0 && (
+                  <p className="text-[11px] mt-3 text-center" style={{ color: C.muted }}>
+                    Biên lợi nhuận: <strong style={{ color: net >= 0 ? C.green : C.red }}>{pc(net, rev)}%</strong>
+                  </p>
+                )}
               </div>
-              {revenue > 0 && (
-                <p className="text-[11px] mt-3 text-center" style={{ color: C.muted }}>
-                  Biên lợi nhuận: <strong style={{ color: profit >= 0 ? C.green : C.red }}>{pc(profit, revenue)}%</strong>
-                </p>
-              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ─ Vốn đầu tư ──────────────────────────────────────── */}
-        {activeCard === 'investment' && (
-          <div className="p-5">
-            <p className="text-[14px] font-bold mb-4">🏗️ Chi tiết Vốn Đầu Tư</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl">
-              {([
-                ['Xe',   data.investment.vonXe,   '🚛', C.blue],
-                ['Mooc', data.investment.vonMooc, '🚜', '#7c3aed'],
-                ['Khác', data.investment.vonKhac, '📦', C.muted],
-              ] as [string, number, string, string][]).map(([lbl, val, ico, c]) => {
-                const pct = pc(val, totalVon || 1);
-                return (
-                  <div key={lbl} className="rounded-xl p-4" style={{ border: `1px solid ${C.faint}`, background: C.surface }}>
-                    <p className="text-[14px] mb-1">{ico}</p>
-                    <p className="text-[11px] font-semibold mb-1" style={{ color: C.muted }}>{lbl}</p>
-                    <p className="text-[22px] font-extrabold leading-none" style={{ color: c }}>{fmt(val)}</p>
-                    <p className="text-[9px] mt-0.5 mb-2" style={{ color: C.muted }}>₫ · {pct}%</p>
-                    <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: C.faint }}>
-                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: c }} />
+        {activeCard === 'investment' && (() => {
+          const sel = investDriver;
+          const isAll = sel === '';
+          const vonXe   = isAll ? data.investment.vonXe   : sumInvestItems('vonXe', sel as number);
+          const vonMooc = isAll ? data.investment.vonMooc : sumInvestItems('vonMooc', sel as number);
+          const vonKhac = isAll ? data.investment.vonKhac : sumInvestItems('vonKhac', sel as number);
+          const total = vonXe + vonMooc + vonKhac;
+          return (
+            <div className="p-5">
+              <DriverFilterBar title="🏗️ Chi tiết Vốn Đầu Tư" drivers={ownedDrivers} value={investDriver} onChange={setInvestDriver} />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl">
+                {([
+                  ['Xe',   vonXe,   '🚛', C.blue],
+                  ['Mooc', vonMooc, '🚜', '#7c3aed'],
+                  ['Khác', vonKhac, '📦', C.muted],
+                ] as [string, number, string, string][]).map(([lbl, val, ico, c]) => {
+                  const pct = pc(val, total || 1);
+                  return (
+                    <div key={lbl} className="rounded-xl p-4" style={{ border: `1px solid ${C.faint}`, background: C.surface }}>
+                      <p className="text-[14px] mb-1">{ico}</p>
+                      <p className="text-[11px] font-semibold mb-1" style={{ color: C.muted }}>{lbl}</p>
+                      <p className="text-[22px] font-extrabold leading-none" style={{ color: c }}>{fmt(val)}</p>
+                      <p className="text-[9px] mt-0.5 mb-2" style={{ color: C.muted }}>₫ · {pct}%</p>
+                      <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: C.faint }}>
+                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: c }} />
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+              <div className="mt-4 py-3 px-4 rounded-xl inline-flex items-center gap-3"
+                style={{ background: C.blueLt, border: `1px solid ${C.blue}20` }}>
+                <span className="text-[12px] font-semibold" style={{ color: C.blue }}>Tổng vốn đầu tư</span>
+                <span className="text-[18px] font-extrabold" style={{ color: C.blue }}>{fmt(total)} ₫</span>
+              </div>
+              <p className="text-[10px] mt-3" style={{ color: C.muted }}>
+                * Nhập và cập nhật số liệu vốn đầu tư tại tab <strong>Tài Chính</strong>.
+              </p>
             </div>
-            <div className="mt-4 py-3 px-4 rounded-xl inline-flex items-center gap-3"
-              style={{ background: C.blueLt, border: `1px solid ${C.blue}20` }}>
-              <span className="text-[12px] font-semibold" style={{ color: C.blue }}>Tổng vốn đầu tư</span>
-              <span className="text-[18px] font-extrabold" style={{ color: C.blue }}>{fmt(totalVon)} ₫</span>
-            </div>
-            <p className="text-[10px] mt-3" style={{ color: C.muted }}>
-              * Nhập và cập nhật số liệu vốn đầu tư tại tab <strong>Tài Chính</strong>.
-            </p>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Popups */}
@@ -688,7 +781,9 @@ export function DashboardTab() {
       {selCost && (
         <CostItemsSheet
           category={selCost}
-          items={data.cost.items?.[selCost] ?? []}
+          items={(data.cost.items?.[selCost] ?? []).filter(
+            it => costDriver === '' || it.vehicleUserId === costDriver,
+          )}
           month={data.month}
           year={data.year}
           onClose={() => setSelCost(null)}

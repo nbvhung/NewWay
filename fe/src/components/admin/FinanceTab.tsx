@@ -6,6 +6,7 @@ import {
   FinanceVehicle,
 } from '@/lib/api-finance';
 import { useAuth } from '@/providers/auth-provider';
+import { hasPerm } from '@/lib/permissions';
 import { Modal } from '@/components/ui/modal';
 import { VehicleSelect } from './VehicleSelect';
 import { confirmDelete } from '@/lib/delete-guard';
@@ -201,10 +202,12 @@ export function FinanceTab(_props: Props) {
   const [pwChecking, setPwChecking] = useState(false);
   const unlocked = costPassword !== '';
 
+  // Quyền nhập/sửa tài chính (BE cũng kiểm `finance.manage`).
+  const canManage = isSuperAdmin || hasPerm(user, 'finance.manage');
   // Admin phải mở khoá bằng mật khẩu mới nhập được vốn đầu tư; supper_admin được miễn.
-  const canEditInvest = isSuperAdmin || unlocked;
+  const canEditInvest = canManage && (isSuperAdmin || unlocked);
   // supper_admin cũng được sửa CHI PHÍ (kể cả của admin khác) không cần mật khẩu.
-  const canEditCost = isSuperAdmin || unlocked;
+  const canEditCost = canManage && (isSuperAdmin || unlocked);
 
   // ── Ô lọc admin (chỉ supper_admin) ────────────────────
   const [admins, setAdmins] = useState<FinanceAdmin[]>([]);
@@ -230,7 +233,7 @@ export function FinanceTab(_props: Props) {
    * - supper_admin được miễn (sửa được sổ của mọi admin để chỉnh số nhập sai).
    * (Riêng XOÁ vẫn luôn hỏi mật khẩu 348 qua popup chống xoá nhầm.)
    */
-  const canEditItems = isSuperAdmin || unlocked;
+  const canEditItems = canManage && (isSuperAdmin || unlocked);
 
   // ── Bên A / Bên B ────────────────────────────────────
   // Bên là thuộc tính của tài khoản chủ vốn; mỗi bên có sổ chi phí riêng.
