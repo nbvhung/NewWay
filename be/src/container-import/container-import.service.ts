@@ -444,10 +444,13 @@ export class ContainerImportService {
     const visible = resolveVisibleDriverIds(user);
     if (visible !== null) {
       if (visible.length === 0) {
-        // Không có xe nào được phép → chỉ hiện container chưa ghi nhận
+        // Không xe nào được phép → chỉ hiện container chưa ghi nhận
         qb.andWhere('sub.id IS NULL');
       } else {
-        qb.andWhere('sub.id IS NULL OR u.id IN (:...visible)', { visible });
+        // BẮT BUỘC bọc ngoặc: nếu không, SQL thành
+        //   `... AND sub.id IS NULL OR u.id IN (...)` → phần `u IN` mất điều kiện
+        //   kế hoạch, quét container của các xe đó ở MỌI kế hoạch (phồng lên hàng nghìn).
+        qb.andWhere('(sub.id IS NULL OR u.id IN (:...visible))', { visible });
       }
     }
     qb.orderBy('c.createdAt', 'DESC')
@@ -973,7 +976,9 @@ export class ContainerImportService {
       if (visible.length === 0) {
         qb.andWhere('sub.id IS NULL');
       } else {
-        qb.andWhere('sub.id IS NULL OR u.id IN (:...visible)', { visible });
+        // Bọc ngoặc để `u IN` vẫn nằm trong điều kiện tra cứu (mã/3 số cuối),
+        // không bị tách thành `... AND sub IS NULL OR u IN (...)`.
+        qb.andWhere('(sub.id IS NULL OR u.id IN (:...visible))', { visible });
       }
     }
     qb.orderBy('c.containerCode', 'ASC')
