@@ -15,6 +15,11 @@ import { LockNoticePopup } from '@/components/ui/lock-notice-popup';
 import { ShippingLine, Submission } from '@/types';
 import { fmtDate, FIELD_LABELS, formatMoney, fmtNgay } from '@/lib/utils';
 
+/** Rút gọn số tiền về "triệu": 16.500.000 → "16,5tr", 17.000.000 → "17tr". */
+function fmtTrieu(v: number): string {
+  return (v / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + 'tr';
+}
+
 interface EditFormData {
   shippingLine: string;
   shippingLineId?: number;
@@ -86,6 +91,9 @@ export default function MyDataPage() {
     components?: {
       fixedSalary: number;
       chuyenCan: number;
+      /** Khoảng lương chuyến để lên mức thưởng chuyên cần kế tiếp (null nếu đã tối đa). */
+      nextChuyenCanFrom?: number | null;
+      nextChuyenCanTo?: number | null;
       allowanceFarHome: number;
       allowanceWaitLoading: number;
       allowanceOldCar: number;
@@ -636,6 +644,11 @@ export default function MyDataPage() {
                   <span className="text-[#475569]">🌟 Chuyên cần:</span>
                   <span className="font-bold text-[#1c1917]">{formatMoney(c?.chuyenCan)}</span>
                 </div>
+                {c?.nextChuyenCanFrom != null && c?.nextChuyenCanTo != null && (
+                  <p className="text-[11px] text-[#d97706] -mt-1 pl-1">
+                    Mức thưởng chuyên cần tiếp theo: {fmtTrieu(c.nextChuyenCanFrom)} - {fmtTrieu(c.nextChuyenCanTo)}
+                  </p>
+                )}
 
                 {(c?.allowanceFarHome || 0) > 0 && (
                   <div className="flex items-center justify-between text-sm">

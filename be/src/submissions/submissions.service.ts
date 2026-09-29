@@ -21,7 +21,10 @@ import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateSubmissionDto } from './dto/update-submission.dto';
 import { SettingsService } from '../settings/settings.service';
 import { hasPermission, resolveVisibleDriverIds } from '../common/permissions/permissions';
-import { calculateAttendanceBonus } from '../salary/attendance-bonus';
+import {
+  calculateAttendanceBonus,
+  nextAttendanceBonusRange,
+} from '../salary/attendance-bonus';
 
 @Injectable()
 export class SubmissionsService {
@@ -335,6 +338,7 @@ export class SubmissionsService {
       fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0,
       allowanceOldCar: 0, parkingHph2: 0, hasParkingHph2: false, ngayCong: 0,
       daysOffList: [], daysOffNote: null, bhxh: 0, chiHo: 0, deductions: [], allowances: [], fixedSalaryPaid: false, salaryPaid: false,
+      nextChuyenCanFrom: null, nextChuyenCanTo: null,
     };
 
     return { totalSalary, totalTip, count, month, year, details, components };
@@ -386,6 +390,8 @@ export class SubmissionsService {
     const result = new Map<number, {
       fixedSalary: number;
       chuyenCan: number;
+      nextChuyenCanFrom: number | null;
+      nextChuyenCanTo: number | null;
       allowanceFarHome: number;
       allowanceWaitLoading: number;
       allowanceOldCar: number;
@@ -426,6 +432,7 @@ export class SubmissionsService {
       }
 
       const chuyenCan = calculateAttendanceBonus(tripSalaryByDriver.get(d.id) || 0);
+      const nextCC = nextAttendanceBonusRange(tripSalaryByDriver.get(d.id) || 0);
       const allowanceFarHome = rec
         ? rec.hasFarHome
           ? rec.allowanceFarHome != null ? Number(rec.allowanceFarHome) : farHomeCommon
@@ -466,6 +473,8 @@ export class SubmissionsService {
       result.set(d.id, {
         fixedSalary,
         chuyenCan,
+        nextChuyenCanFrom: nextCC?.from ?? null,
+        nextChuyenCanTo: nextCC?.to ?? null,
         allowanceFarHome,
         allowanceWaitLoading: waitLoadingAmount,
         allowanceOldCar: hasOldCar

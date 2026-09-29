@@ -12,6 +12,12 @@ import StatsCard from '../../src/components/StatsCard';
 import LoadingSpinner from '../../src/components/LoadingSpinner';
 import NumericInput from '../../src/components/NumericInput';
 import { fmtDate, fmtNgay, formatMoney, FIELD_LABELS, MONTHS_VI } from '../../src/utils';
+
+/** Rút gọn số tiền về "triệu": 16.500.000 → "16,5tr", 17.000.000 → "17tr". */
+const fmtTrieu = (v: number): string => {
+  const tr = Math.round(v / 100_000) / 10;
+  return (Number.isInteger(tr) ? String(tr) : String(tr).replace('.', ',')) + 'tr';
+};
 import type { ShippingLine, Submission, EditHistory } from '../../src/types';
 
 interface EditFormData {
@@ -445,7 +451,14 @@ export default function MyDataScreen() {
                 </View>
 
                 <View style={styles.salaryRow}>
-                  <Text style={styles.salaryLabel}>🌟 Chuyên cần:</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.salaryLabel}>🌟 Chuyên cần:</Text>
+                    {c?.nextChuyenCanFrom != null && c?.nextChuyenCanTo != null && (
+                      <Text style={[styles.salarySubNote, { color: '#d97706', fontWeight: '600' }]}>
+                        Mức thưởng chuyên cần tiếp theo: {fmtTrieu(c.nextChuyenCanFrom)} - {fmtTrieu(c.nextChuyenCanTo)}
+                      </Text>
+                    )}
+                  </View>
                   <Text style={styles.salaryValue}>{formatMoney(c?.chuyenCan)}</Text>
                 </View>
 
