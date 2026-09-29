@@ -80,7 +80,10 @@ export class UsersService {
 
     // Nếu tài khoản có giới hạn xe cụ thể → chỉ trả về đúng những ID đó (+ bản thân)
     if (Array.isArray(visibleDriverIds) && visibleDriverIds.length > 0) {
-      const users = await this.usersRepository.findBy({ id: In(visibleDriverIds) });
+      const ids = visibleDriverIds
+        .map((v) => Number(v))
+        .filter((n) => Number.isFinite(n));
+      const users = await this.usersRepository.findBy({ id: In(ids) });
       return users.map(({ passwordHash, ...rest }) => rest);
     }
 

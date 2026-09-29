@@ -183,9 +183,12 @@ export function hasAnyPermission(
  * - [id, ...]         → chỉ xem đúng những xe trong danh sách
  */
 export function resolveVisibleDriverIds(user: {
-  visibleDriverIds?: number[] | null;
+  visibleDriverIds?: (number | string)[] | null;
 } | null | undefined): number[] | null {
   if (!Array.isArray(user?.visibleDriverIds)) return null; // null/undefined → xem tất cả
   if (user.visibleDriverIds.length === 0) return []; // rỗng → không xe nào
-  return user.visibleDriverIds;
+  // Cột DB cũ là text[] → phần tử có thể là chuỗi; chuẩn hoá về số để so khớp id.
+  return user.visibleDriverIds
+    .map((v) => Number(v))
+    .filter((n) => Number.isFinite(n));
 }

@@ -109,6 +109,12 @@ export class AuthService {
     const refreshJti = randomUUID();
 
     const permissions = resolvePermissions(user);
+    // Cột `visible_driver_ids` là mảng; chuẩn hoá về số (DB cũ lưu text[]).
+    const visibleDriverIds = Array.isArray(user.visibleDriverIds)
+      ? user.visibleDriverIds
+          .map((v) => Number(v))
+          .filter((n) => Number.isFinite(n))
+      : null;
 
     const accessToken = this.jwtService.sign(
       {
@@ -117,7 +123,7 @@ export class AuthService {
         fullName: user.fullName,
         role: user.role,
         permissions,
-        visibleDriverIds: user.visibleDriverIds,
+        visibleDriverIds,
         jti: accessJti,
       },
       {
@@ -133,7 +139,7 @@ export class AuthService {
         fullName: user.fullName,
         role: user.role,
         permissions,
-        visibleDriverIds: user.visibleDriverIds,
+        visibleDriverIds,
         jti: refreshJti,
       },
       {
@@ -160,7 +166,7 @@ export class AuthService {
         fullName: user.fullName,
         role: user.role,
         permissions: resolvePermissions(user),
-        visibleDriverIds: user.visibleDriverIds,
+        visibleDriverIds,
       },
     };
   }

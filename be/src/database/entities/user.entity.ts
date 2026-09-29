@@ -25,7 +25,7 @@ export class User {
   @Column({ name: 'permissions', type: 'text', array: true, nullable: true, default: null })
   permissions: string[] | null;
 
-  @Column({ name: 'visible_driver_ids', type: 'text', array: true, nullable: true, default: null })
+  @Column({ name: 'visible_driver_ids', type: 'int', array: true, nullable: true, default: null })
   visibleDriverIds: number[] | null;
 
   /**
