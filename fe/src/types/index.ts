@@ -206,6 +206,9 @@ export interface SalaryRecordItem {
   fixedSalary: number;
   attendanceBonus: number;
   chuyenCan: number;
+  /** Khoảng lương chuyến để lên mức thưởng chuyên cần kế tiếp (null nếu đã tối đa). */
+  nextChuyenCanFrom?: number | null;
+  nextChuyenCanTo?: number | null;
   allowanceFarHome: number;
   allowanceFarHomeOverride: number | null;
   hasFarHome: boolean;

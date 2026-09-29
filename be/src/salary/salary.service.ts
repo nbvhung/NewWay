@@ -18,7 +18,10 @@ import {
   UpdateSalaryItemDto,
 } from './dto/update-salary-item.dto';
 import { CreateDriverAdvanceDto } from './dto/driver-advance.dto';
-import { calculateAttendanceBonus } from './attendance-bonus';
+import {
+  calculateAttendanceBonus,
+  nextAttendanceBonusRange,
+} from './attendance-bonus';
 
 const VN_TZ = 'Asia/Ho_Chi_Minh';
 
@@ -455,6 +458,8 @@ export class SalaryService {
         bhxh -
         advanceDeduct;
 
+      const nextChuyenCan = nextAttendanceBonusRange(luongKhoan);
+
       records.push({
         id: record.id,
         driverId: driver.id,
@@ -464,6 +469,8 @@ export class SalaryService {
         stt: driver.stt,
         ngayCong: this.daysInMonth(month, year) - (record.daysOff?.length || 0),
         standardDays: settings.standardDays,
+        nextChuyenCanFrom: nextChuyenCan?.from ?? null,
+        nextChuyenCanTo: nextChuyenCan?.to ?? null,
         fixedSalary: components.fixedSalary,
         attendanceBonus: Number(record.attendanceBonus) || 0,
         chuyenCan: components.chuyenCan,

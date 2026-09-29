@@ -32,6 +32,11 @@ function fmtMoney(v: number | undefined | null): string {
   return Math.floor(v).toLocaleString('vi-VN');
 }
 
+/** Rút gọn số tiền về "triệu": 16.500.000 → "16,5tr", 17.000.000 → "17tr". */
+function fmtTrieu(v: number): string {
+  return (v / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + 'tr';
+}
+
 function fmtDT(v: string): string {
   if (!v) return '—';
   const d = new Date(v);
@@ -783,6 +788,11 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                       {fmtMoney(chuyenCan)} ₫
                     </div>
                     <p className="text-[10px] text-[#78716c] mt-1">Theo lương chuyến tháng này: {fmtMoney(luongKhoan)} ₫</p>
+                    {selectedRecord?.nextChuyenCanFrom != null && selectedRecord?.nextChuyenCanTo != null && (
+                      <p className="text-[10px] text-[#d97706] mt-0.5 font-medium">
+                        Mức thưởng tiếp theo: {fmtTrieu(selectedRecord.nextChuyenCanFrom)} - {fmtTrieu(selectedRecord.nextChuyenCanTo)}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className={labelCls}>Ngày nghỉ (cách nhau dấu phẩy)</label>
