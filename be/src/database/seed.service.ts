@@ -47,12 +47,12 @@ export class SeedService implements OnModuleInit {
 
     if (process.env.DEFAULT_SUPPER_PASSWORD) {
       const existing = await this.usersRepository.findOne({
-        where: { username: 'supperadmin' },
+        where: { username: 'superadmin' },
       });
       if (!existing) {
         const hash = bcrypt.hashSync(process.env.DEFAULT_SUPPER_PASSWORD, 10);
         await this.usersRepository.save({
-          username: 'supperadmin',
+          username: 'superadmin',
           passwordHash: hash,
           fullName: 'Supper Admin',
           role: 'supper_admin',

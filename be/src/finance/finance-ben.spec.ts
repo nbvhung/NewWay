@@ -16,7 +16,7 @@ import { FinanceService } from './finance.service';
 const USERS: any[] = [
   { id: 6, username: 'admin', fullName: 'Mr Bach', role: 'admin', ben: 'A', visibleDriverIds: null },
   { id: 30, username: 'NwB', fullName: 'Boss', role: 'admin', ben: 'B', visibleDriverIds: [31] },
-  { id: 4, username: 'supperadmin', fullName: 'supper admin', role: 'supper_admin', ben: null, visibleDriverIds: null },
+  { id: 4, username: 'superadmin', fullName: 'supper admin', role: 'supper_admin', ben: null, visibleDriverIds: null },
   { id: 10, username: '07883', fullName: 'Bùi Mạnh Cường', role: 'laixe', ben: null, visibleDriverIds: null, soXe: '15H 07883', stt: '1' },
   { id: 15, username: '04717', fullName: 'Nguyễn Duy Thành B', role: 'laixe', ben: null, visibleDriverIds: null, soXe: '15C 04717', stt: '6' },
   { id: 31, username: '10090', fullName: 'Dũng', role: 'laixe', ben: null, visibleDriverIds: null, soXe: '15H 10090', stt: '13' },

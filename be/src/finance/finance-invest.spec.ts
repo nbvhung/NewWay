@@ -32,7 +32,7 @@ const ITEMS: any[] = [
 
 const USERS: any[] = [
   { id: 30, username: 'NwB', fullName: 'Boss', role: 'admin', ben: 'B', visibleDriverIds: [31] },
-  { id: 4, username: 'supperadmin', fullName: 'supper admin', role: 'supper_admin', ben: null, visibleDriverIds: null },
+  { id: 4, username: 'superadmin', fullName: 'supper admin', role: 'supper_admin', ben: null, visibleDriverIds: null },
   { id: 31, username: '10090', fullName: 'Dũng', role: 'laixe', ben: null, soXe: '15H 10090' },
 ];
 
