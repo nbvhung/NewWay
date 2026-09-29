@@ -31,6 +31,7 @@ export class UsersService {
   private validateGrantablePermissions(
     permissions: string[] | undefined,
     actor: { role?: string; permissions?: string[] | null },
+    existing?: string[] | null,
   ): string[] | null {
     if (!permissions) return null;
     if (actor?.role === 'supper_admin') {
@@ -42,8 +43,12 @@ export class UsersService {
       );
     }
     const own = new Set(resolvePermissions(actor));
+    // Quyền tài khoản đích đang có sẵn được phép giữ nguyên (không phải leo
+    // thang) — nhờ vậy tài khoản quản lý giới hạn vẫn sửa được thông tin của
+    // admin cấp cao hơn mà không vô tình gỡ quyền của họ.
+    const keep = new Set(Array.isArray(existing) ? existing : []);
     const granted = permissions.filter((p) => PERMISSION_KEYS.includes(p));
-    const over = granted.filter((p) => !own.has(p));
+    const over = granted.filter((p) => !own.has(p) && !keep.has(p));
     if (over.length > 0) {
       throw new ForbiddenException(
         `Bạn không thể gán quyền mà mình không có: ${over.join(', ')}`,
@@ -185,7 +190,11 @@ export class UsersService {
       target.role = dto.role;
     }
     if (dto.permissions !== undefined) {
-      target.permissions = this.validateGrantablePermissions(dto.permissions, actor);
+      target.permissions = this.validateGrantablePermissions(
+        dto.permissions,
+        actor,
+        target.permissions,
+      );
     }
     if (dto.visibleDriverIds !== undefined) {
       // [] (rỗng) = không được xem xe nào; null = xem tất cả (không giới hạn)
