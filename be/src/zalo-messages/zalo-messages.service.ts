@@ -83,7 +83,8 @@ export class ZaloMessagesService {
       .where('m.user_id IS NOT NULL');
 
     // Giới hạn xe: null = không giới hạn, [] = không xe nào, [ids] = đúng các xe đó.
-    const visible = resolveVisibleDriverIds({ visibleDriverIds });
+    // Chỉ role 'admin' mới bị giới hạn theo xe; ops/hr... xem tất cả.
+    const visible = resolveVisibleDriverIds({ role: currentRole, visibleDriverIds });
     if (visible !== null) {
       if (visible.length === 0) {
         // Bị khoá hoàn toàn → không hiện cuộc trò chuyện nào

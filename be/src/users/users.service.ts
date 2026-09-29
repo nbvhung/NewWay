@@ -78,12 +78,15 @@ export class UsersService {
       return users.map(({ passwordHash, ...rest }) => rest);
     }
 
-    // Nếu tài khoản có giới hạn xe cụ thể → chỉ trả về đúng những ID đó (+ bản thân)
-    if (Array.isArray(visibleDriverIds) && visibleDriverIds.length > 0) {
+    // Giới hạn theo xe CHỈ áp cho role 'admin' (chủ vốn). ops / hr / supper_admin
+    // ... làm việc với tất cả lái xe → bỏ qua, rơi xuống nhánh theo role bên dưới.
+    if (currentRole === 'admin' && Array.isArray(visibleDriverIds)) {
       const ids = visibleDriverIds
         .map((v) => Number(v))
         .filter((n) => Number.isFinite(n));
-      const users = await this.usersRepository.findBy({ id: In(ids) });
+      const users = ids.length
+        ? await this.usersRepository.findBy({ id: In(ids) })
+        : [];
       return users.map(({ passwordHash, ...rest }) => rest);
     }
 
