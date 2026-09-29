@@ -74,7 +74,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
 
   // Giá trị chung (form)
   const [fixedSalary, setFixedSalary] = useState('');
-  const [attendanceBonus, setAttendanceBonus] = useState('');
   const [standardDays, setStandardDays] = useState('');
   const [oldCarAllowance, setOldCarAllowance] = useState('');
   const [bhxhNld, setBhxhNld] = useState('');
@@ -85,7 +84,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   // Form tài xế
   const [form, setForm] = useState({
     fixedSalary: '',
-    attendanceBonus: '',
     hasFarHome: false,
     allowanceFarHome: '',
     allowanceWaitLoadingRate: '',
@@ -122,7 +120,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       setRecords(data.records || []);
       setItems(data.items || []);
       setFixedSalary(fmtMoney(data.settings?.fixedSalary));
-      setAttendanceBonus(fmtMoney(data.settings?.attendanceBonus));
       setStandardDays(String(data.settings?.standardDays ?? 26));
       setOldCarAllowance(fmtMoney(data.settings?.oldCarAllowance));
       setBhxhNld(String(data.settings?.bhxhNld ?? 10.5));
@@ -151,7 +148,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const pickDriver = (id: number | null) => {
     setSelectedId(id);
     if (id == null) {
-      setForm({ fixedSalary: '', attendanceBonus: '', hasFarHome: false, allowanceFarHome: '', allowanceWaitLoadingRate: '', daysOff: '', daysOffNote: '', hasOldCar: false, allowanceOldCar: '', hasParkingHph2: false, allowanceParking: '', hasBhxh: true, chiHo: '', advanceDeduct: '' });
+      setForm({ fixedSalary: '', hasFarHome: false, allowanceFarHome: '', allowanceWaitLoadingRate: '', daysOff: '', daysOffNote: '', hasOldCar: false, allowanceOldCar: '', hasParkingHph2: false, allowanceParking: '', hasBhxh: true, chiHo: '', advanceDeduct: '' });
       setBaseFarHome('');
       setBaseOldCar(false);
       setBaseBhxh(true);
@@ -161,7 +158,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     const drv = drivers.find(d => d.id === id);
     setForm({
       fixedSalary: fmtMoney(rec?.fixedSalary),
-      attendanceBonus: fmtMoney(rec?.attendanceBonus),
       hasFarHome: rec?.hasFarHome || false,
       allowanceFarHome: rec?.allowanceFarHomeOverride != null ? fmtMoney(rec.allowanceFarHomeOverride) : '',
       allowanceWaitLoadingRate: fmtMoney(rec?.allowanceWaitLoadingRate),
@@ -185,7 +181,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     try {
       await salaryApi.updateSettings({
         fixedSalary: Number(fixedSalary.replace(/[^\d]/g, '')) || 0,
-        attendanceBonus: Number(attendanceBonus.replace(/[^\d]/g, '')) || 0,
         standardDays: Number(standardDays) || 26,
         oldCarAllowance: Number(oldCarAllowance.replace(/[^\d]/g, '')) || 0,
         bhxhNld: Number(bhxhNld.replace(',', '.')) || 0,
@@ -210,7 +205,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     try {
       await salaryApi.updateRecord(selectedRecord.id, {
         fixedSalary: Number(fixedSalaryValue) || 0,
-        attendanceBonus: Number(attendanceBonusValue) || 0,
         allowanceFarHome: form.allowanceFarHome.trim() === '' ? null : (Number(allowanceFarHomeValue) || 0),
         hasFarHome: form.hasFarHome,
         allowanceWaitLoadingRate: Number(waitLoadingAmountValue) || 0,
@@ -564,7 +558,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   };
 
   const fixedSalaryValue = Number(form.fixedSalary.replace(/[^\d]/g, '')) || 0;
-  const attendanceBonusValue = Number(form.attendanceBonus.replace(/[^\d]/g, '')) || 0;
   const farHomeCommonValue = Number(farHomeCommon.replace(/[^\d]/g, '')) || 0;
   const allowanceFarHomeValue = form.hasFarHome
     ? (form.allowanceFarHome.trim() === '' ? farHomeCommonValue : (Number(form.allowanceFarHome.replace(/[^\d]/g, '')) || 0))
@@ -575,7 +568,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const chiHoValue = Number(form.chiHo.replace(/[^\d]/g, '')) || 0;
   const daysOffList = form.daysOff.split(',').map(s => s.trim()).filter(s => s !== '').map(s => parseInt(s)).filter(n => !isNaN(n));
 
-  const chuyenCan = (selectedRecord && selectedRecord.ngayCong >= selectedRecord.standardDays) ? attendanceBonusValue : 0;
+  const chuyenCan = selectedRecord?.chuyenCan || 0;
   const luongKhoan = selectedRecord?.luongKhoan || 0;
   const tip = selectedRecord?.tip || 0;
   const allowanceWaitLoading = waitLoadingAmountValue;
@@ -660,10 +653,6 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
           <div>
             <label className={labelCls}>Lương cứng (VNĐ/tháng)</label>
             <input value={fixedSalary} onChange={e => setFixedSalary(e.target.value)} inputMode="numeric" placeholder="7.000.000" className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Chuyên cần (VNĐ/tháng)</label>
-            <input value={attendanceBonus} onChange={e => setAttendanceBonus(e.target.value)} inputMode="numeric" placeholder="0" className={inputCls} />
           </div>
           <div>
             <label className={labelCls}>Số ngày công chuẩn</label>
@@ -790,8 +779,10 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                   </div>
                   <div>
                     <label className={labelCls}>Chuyên cần (VNĐ)</label>
-                    <input value={form.attendanceBonus} onChange={e => setForm(f => ({ ...f, attendanceBonus: e.target.value }))} inputMode="numeric" className={inputCls} />
-                    <p className="text-[10px] text-[#78716c] mt-1">Chuyên cần tháng này: {chuyenCan >= 0 ? `${fmtMoney(chuyenCan)} ₫` : ''} ({selectedRecord.ngayCong >= selectedRecord.standardDays ? 'Đủ ngày' : 'Thiếu ngày'})</p>
+                    <div className="px-3.5 py-2.5 bg-[#f5f5f4] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917]">
+                      {fmtMoney(chuyenCan)} ₫
+                    </div>
+                    <p className="text-[10px] text-[#78716c] mt-1">Theo lương chuyến tháng này: {fmtMoney(luongKhoan)} ₫</p>
                   </div>
                   <div>
                     <label className={labelCls}>Ngày nghỉ (cách nhau dấu phẩy)</label>

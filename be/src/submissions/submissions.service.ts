@@ -21,6 +21,7 @@ import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateSubmissionDto } from './dto/update-submission.dto';
 import { SettingsService } from '../settings/settings.service';
 import { hasPermission, resolveVisibleDriverIds } from '../common/permissions/permissions';
+import { calculateAttendanceBonus } from '../salary/attendance-bonus';
 
 @Injectable()
 export class SubmissionsService {
@@ -325,7 +326,11 @@ export class SubmissionsService {
       details.push({ ...sub, salary, planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine, tangCuong: sl?.tangCuong || false, leTet: sl?.leTet || false });
     }
 
-    const salaryComp = await this.loadSalaryComponents(month, year);
+    const salaryComp = await this.loadSalaryComponents(
+      month,
+      year,
+      new Map([[userId, totalSalary]]),
+    );
     const components = salaryComp.components.get(userId) || {
       fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0,
       allowanceOldCar: 0, parkingHph2: 0, hasParkingHph2: false, ngayCong: 0,
@@ -339,12 +344,15 @@ export class SubmissionsService {
    * Load salary components (lương cứng, chuyên cần, phụ cấp...) cho tháng.
    * Dùng cho cả xuất Excel và trả dữ liệu về App cho lái xe xem.
    */
-  private async loadSalaryComponents(month: number, year: number) {
+  private async loadSalaryComponents(
+    month: number,
+    year: number,
+    tripSalaryOverride?: Map<number, number>,
+  ) {
     const settings = await this.salarySettingsRepository.findOne({
       where: {},
       order: { id: 'ASC' },
     });
-    const attendanceBonusDefault = Number(settings?.attendanceBonus) || 0;
     const standardDays = Number(settings?.standardDays) || 26;
     const oldCarAllowance = Number(settings?.oldCarAllowance) || 0;
     const parkingHph2 = Number(settings?.parkingHph2) || 0;
@@ -371,6 +379,8 @@ export class SubmissionsService {
     }
 
     const daysInMonth = new Date(year, month, 0).getDate();
+    const tripSalaryByDriver = tripSalaryOverride ??
+      (await this.getMonthlyTripSalaryByDriver(month, year));
     const drivers = await this.usersRepository.find({ where: { role: 'laixe' } });
 
     const result = new Map<number, {
@@ -415,8 +425,7 @@ export class SubmissionsService {
         }
       }
 
-      const attendanceBonus = rec ? Number(rec.attendanceBonus) || 0 : attendanceBonusDefault;
-      const chuyenCan = ngayCong >= standardDays ? attendanceBonus : 0;
+      const chuyenCan = calculateAttendanceBonus(tripSalaryByDriver.get(d.id) || 0);
       const allowanceFarHome = rec
         ? rec.hasFarHome
           ? rec.allowanceFarHome != null ? Number(rec.allowanceFarHome) : farHomeCommon
@@ -510,6 +519,65 @@ export class SubmissionsService {
 
 
     return { settings, standardDays, components: result };
+  }
+
+  private async getMonthlyTripSalaryByDriver(
+    month: number,
+    year: number,
+  ): Promise<Map<number, number>> {
+    const [submissions, shippingLines, routes] = await Promise.all([
+      this.submissionsRepository.find(),
+      this.shippingLinesRepository.find(),
+      this.routesRepository.find(),
+    ]);
+    const linesById = new Map(shippingLines.map((line) => [line.id, line] as const));
+    const linesByName = new Map(shippingLines.map((line) => [line.name, line] as const));
+    const routeMoney = new Map<string, { money: number; effectiveDate: string | null }>();
+    for (const route of routes) {
+      routeMoney.set(route.name, {
+        money: Number(route.money) || 0,
+        effectiveDate: route.effectiveDate || null,
+      });
+    }
+    const totals = new Map<number, number>();
+
+    for (const submission of submissions) {
+      const line = submission.shippingLineId
+        ? linesById.get(submission.shippingLineId)
+        : linesByName.get(submission.shippingLine);
+      const planDate = line?.ngay || null;
+      const referenceDate = planDate
+        ? new Date(planDate)
+        : new Date(submission.createdAt);
+      if (referenceDate.getMonth() + 1 !== month || referenceDate.getFullYear() !== year) {
+        continue;
+      }
+
+      const routeName = submission.route || line?.routeName || '';
+      const route = routeMoney.get(routeName);
+      const frozenMoney = line?.frozenMoney;
+      const unitPrice = frozenMoney !== null && frozenMoney !== undefined
+        ? Number(frozenMoney)
+        : route && (!route.effectiveDate || !planDate || planDate >= route.effectiveDate)
+          ? route.money
+          : 0;
+      const h20 = parseFloat(submission.hang20) || 0;
+      const h40 = parseFloat(submission.hang40) || 0;
+      const v20 = parseFloat(submission.vo20) || 0;
+      const v40 = parseFloat(submission.vo40) || 0;
+      const v20fr = parseFloat(submission.vo20fr) || 0;
+      const v40fr = parseFloat(submission.vo40fr) || 0;
+      const vsl = parseFloat(submission.veSinhLai) || 0;
+      const kv = parseFloat(submission.keoVe) || 0;
+      const containerCount = h20 + h40 + Math.ceil(v20 / 2) + v40 +
+        Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+      const multiplier = line?.leTet ? 3 : line?.tangCuong ? 1.15 : 1;
+      const salary = unitPrice * containerCount * multiplier +
+        vsl * 40000 * multiplier + kv * unitPrice * multiplier;
+      totals.set(submission.userId, (totals.get(submission.userId) || 0) + salary);
+    }
+
+    return totals;
   }
 
   async findAll(filter: {
@@ -2330,7 +2398,6 @@ let sl: any;
       order: { id: 'ASC' },
     });
     const fixedSalaryDefault = Number(settings?.fixedSalary) || 0;
-    const attendanceBonusDefault = Number(settings?.attendanceBonus) || 0;
     const standardDays = Number(settings?.standardDays) || 26;
     const oldCarAllowance = Number(settings?.oldCarAllowance) || 0;
     const bhxhPercent = Number(settings?.bhxhNld) || 0;
@@ -2431,7 +2498,6 @@ let sl: any;
       const ws = workbook.addWorksheet(this.sanitizeSheetName(`${driver.fullName}${driver.soXe ? ` - ${driver.soXe}` : ''}`, usedSheetNames));
 
       const fixedSalary = rec ? Number(rec.fixedSalary) || 0 : fixedSalaryDefault;
-      const attendanceBonus = rec ? Number(rec.attendanceBonus) || 0 : attendanceBonusDefault;
       const chiHo = rec ? Number(rec.chiHo) || 0 : 0;
       const hasBhxh = rec ? rec.hasBhxh : (driver.payBhxh ?? true);
       const bhxh = hasBhxh
@@ -2570,7 +2636,7 @@ let sl: any;
 
       // --- Các tổng mục ---
       const tong4ChiHo = hasOldCar ? oldCarAllowance : 0;
-      const chuyenCan = ngayCong >= standardDays ? attendanceBonus : 0;
+      const chuyenCan = calculateAttendanceBonus(planTotalMoney);
       const tong4GuiXe = hasParkingHph2 ? parkingHph2 : 0;
       const tongPhuCap =
         tong4ChiHo +

@@ -18,6 +18,7 @@ import {
   UpdateSalaryItemDto,
 } from './dto/update-salary-item.dto';
 import { CreateDriverAdvanceDto } from './dto/driver-advance.dto';
+import { calculateAttendanceBonus } from './attendance-bonus';
 
 const VN_TZ = 'Asia/Ho_Chi_Minh';
 
@@ -294,6 +295,7 @@ export class SalaryService {
   private computeComponents(
     record: SalaryRecord,
     settings: SalarySettings,
+    tripSalary: number,
   ): {
     fixedSalary: number;
     attendanceBonus: number;
@@ -306,10 +308,7 @@ export class SalaryService {
     const ngayCong =
       this.daysInMonth(record.month, record.year) -
       (record.daysOff?.length || 0);
-    const chuyenCan =
-      ngayCong >= settings.standardDays
-        ? Number(record.attendanceBonus) || 0
-        : 0;
+    const chuyenCan = calculateAttendanceBonus(tripSalary);
     // Lương cứng theo ngày công (thang mới +1tr so với chính sách cũ)
     let fixedSalary: number;
     if (ngayCong <= 10) {
@@ -387,8 +386,8 @@ export class SalaryService {
         month,
         year,
       )) as { totalSalary: number; totalTip: number };
-      const components = this.computeComponents(record, settings);
       const luongKhoan = Number(summary.totalSalary) || 0;
+      const components = this.computeComponents(record, settings, luongKhoan);
       const tip = Number(summary.totalTip) || 0;
       const chiHo = Number(record.chiHo) || 0;
       const bhxh = record.hasBhxh
