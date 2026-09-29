@@ -12,8 +12,11 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
+  // Cho phép cả người tạo/sửa kế hoạch (vd role ops) tải danh sách để PHÂN CÔNG
+  // lái xe, kể cả khi họ không có quyền `user.view` (tab Tài khoản vẫn ẩn vì
+  // tab này kiểm `user.view`/`tab.users`). Guard là any-of.
   @Get()
-  @Permissions('user.view')
+  @Permissions('user.view', 'plan.create', 'plan.edit')
   findAll(@CurrentUser() user: any, @Query('forAssignment') forAssignment?: string) {
     return this.usersService.findAll(user, {
       forAssignment: forAssignment === 'true' || forAssignment === '1',
