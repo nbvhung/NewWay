@@ -64,6 +64,7 @@ export const PERMISSIONS: PermissionDef[] = [
   // ── Tài chính ──
   { key: 'finance.view', group: 'Tài chính', label: 'Xem chi phí & vốn đầu tư', desc: 'Vào tab Tài chính, xem chi phí / vốn (cần mật khẩu 348 cho chi phí)' },
   { key: 'finance.manage', group: 'Tài chính', label: 'Nhập / sửa chi phí & vốn đầu tư', desc: 'Thêm, sửa, xoá khoản chi phí và vốn đầu tư' },
+  { key: 'finance.all', group: 'Tài chính', label: 'Nhập tài chính cho mọi bên / admin', desc: 'Xem & nhập sổ Tài chính thay cho admin khác (cả bên A và B), không cần mật khẩu' },
 
   // ── Hiển thị tab (quyết định tab nào hiện trong menu admin) ──
   { key: 'tab.overview',   group: 'Hiển thị tab', label: 'Tab Tổng Quan',         desc: 'Hiện tab Tổng Quan trong menu' },
@@ -132,7 +133,11 @@ export const ROLE_PRESETS: Record<string, string[]> = {
     // Tab hiện trong menu cho hr
     'tab.data', 'tab.plans', 'tab.completed', 'tab.customers', 'tab.routes', 'tab.salary',
   ],
-  admin: PERMISSION_KEYS.filter((k) => k !== 'entry.delete_all'),
+  // `finance.all` KHÔNG nằm trong preset admin (phải cấp riêng) — tránh việc
+  // mọi admin mặc định đều xem/nhập được sổ Tài chính của admin khác.
+  admin: PERMISSION_KEYS.filter(
+    (k) => k !== 'entry.delete_all' && k !== 'finance.all',
+  ),
   supper_admin: PERMISSION_KEYS,
 };
 

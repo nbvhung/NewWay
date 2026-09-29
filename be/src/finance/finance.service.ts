@@ -12,6 +12,7 @@ import { FinanceAuditLog } from '../database/entities/finance-audit-log.entity';
 import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
 import { User } from '../database/entities/user.entity';
 import { ACTION_PASSWORD } from '../common/security/action-password';
+import { hasPermission } from '../common/permissions/permissions';
 
 export interface UpsertFinanceDto {
   suaChua?: number;
@@ -118,8 +119,12 @@ export class FinanceService {
     private usersRepo: Repository<User>,
   ) {}
 
+  /**
+   * Tài khoản được quản lý Tài chính như supper_admin: hoặc role supper_admin,
+   * hoặc được cấp quyền `finance.all` (xem/nhập sổ của mọi bên/admin).
+   */
   private isSuperAdmin(user: any): boolean {
-    return user?.role === 'supper_admin';
+    return user?.role === 'supper_admin' || hasPermission(user, 'finance.all');
   }
 
   /** Kiểm tra mật khẩu xem chi phí. */

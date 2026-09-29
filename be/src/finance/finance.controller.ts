@@ -17,11 +17,17 @@ import type { UpsertFinanceDto, CostItemDto, BulkCostItemDto } from './finance.s
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Permissions } from '../common/decorators/permissions.decorator';
+import { hasPermission } from '../common/permissions/permissions';
 
 @Controller('admin/finance')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class FinanceController {
   constructor(private financeService: FinanceService) {}
+
+  /** supper_admin hoặc tài khoản có quyền `finance.all` → thao tác như super. */
+  private isFinanceSuper(user: any): boolean {
+    return user?.role === 'supper_admin' || hasPermission(user, 'finance.all');
+  }
 
   private monthYear(month?: string, year?: string) {
     const now = new Date();
@@ -41,7 +47,7 @@ export class FinanceController {
   @Get('admins')
   @Permissions('finance.view')
   listAdmins(@Req() req: any) {
-    if (req.user?.role !== 'supper_admin') return [];
+    if (!this.isFinanceSuper(req.user)) return [];
     return this.financeService.listFinanceAdmins();
   }
 
@@ -79,7 +85,7 @@ export class FinanceController {
     // supper_admin xem được chi phí của mọi admin mà không cần mật khẩu,
     // để chỉnh lại các số admin đã nhập sai.
     const includeCost =
-      req.user?.role === 'supper_admin' ||
+      this.isFinanceSuper(req.user) ||
       this.financeService.verifyCostPassword(pw ?? headerPw);
     return this.financeService.getOrCreate(m, y, req.user, {
       targetUserId: this.targetUserId(targetUserId),
@@ -113,7 +119,7 @@ export class FinanceController {
       body.cpKhac !== undefined;
     // supper_admin được sửa chi phí (kể cả của admin khác) KHÔNG cần mật khẩu;
     // các role khác vẫn bắt buộc để tránh sửa nhầm.
-    if (touchesCost && !pwOk && req.user?.role !== 'supper_admin') {
+    if (touchesCost && !pwOk && !this.isFinanceSuper(req.user)) {
       throw new UnauthorizedException('Mật khẩu xem chi phí không đúng');
     }
     const editorName = req.user?.fullName || req.user?.username || '';
@@ -135,7 +141,7 @@ export class FinanceController {
   ) {
     const password = pw ?? headerPw;
     if (
-      req.user?.role !== 'supper_admin' &&
+      !this.isFinanceSuper(req.user) &&
       !this.financeService.verifyCostPassword(password)
     ) {
       throw new UnauthorizedException('Mật khẩu xem chi phí không đúng');
@@ -159,8 +165,8 @@ export class FinanceController {
   // ── Chi tiết chi phí (mỗi dòng = 1 khoản phát sinh) ──────────────
 
   private assertPw(pw?: string, headerPw?: string, user?: any): void {
-    // supper_admin được thêm/sửa chi phí (kể cả của admin khác) không cần mật khẩu.
-    if (user?.role === 'supper_admin') return;
+    // supper_admin (hoặc quyền finance.all) được thêm/sửa chi phí của admin khác không cần mật khẩu.
+    if (this.isFinanceSuper(user)) return;
     if (!this.financeService.verifyCostPassword(pw ?? headerPw)) {
       throw new UnauthorizedException('Mật khẩu xem chi phí không đúng');
     }

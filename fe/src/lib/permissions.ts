@@ -43,6 +43,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: 'dashboard.view', group: 'Tổng quan', label: 'Xem tổng quan doanh thu', desc: 'Dashboard doanh thu/lợi nhuận' },
   { key: 'finance.view', group: 'Tài chính', label: 'Xem chi phí & vốn đầu tư', desc: 'Vào tab Tài chính, xem chi phí / vốn (cần mật khẩu 348 cho chi phí)' },
   { key: 'finance.manage', group: 'Tài chính', label: 'Nhập / sửa chi phí & vốn đầu tư', desc: 'Thêm, sửa, xoá khoản chi phí và vốn đầu tư' },
+  { key: 'finance.all', group: 'Tài chính', label: 'Nhập tài chính cho mọi bên / admin', desc: 'Xem & nhập sổ Tài chính thay cho admin khác (cả bên A và B), không cần mật khẩu' },
   { key: 'tab.overview',   group: 'Hiển thị tab', label: 'Tab Tổng Quan',         desc: 'Hiện tab Tổng Quan trong menu' },
   { key: 'tab.finance',    group: 'Hiển thị tab', label: 'Tab Tài Chính',         desc: 'Hiện tab Tài Chính trong menu' },
   { key: 'tab.data',       group: 'Hiển thị tab', label: 'Tab Dữ liệu / Thống kê', desc: 'Hiện tab Tất cả dữ liệu (Thống kê) trong menu' },
@@ -98,7 +99,7 @@ export const ROLE_PRESETS: Record<string, string[]> = {
     'export.data', 'export.salary_col',
     'tab.data', 'tab.plans', 'tab.completed', 'tab.customers', 'tab.routes', 'tab.salary',
   ],
-  admin: PERMISSION_KEYS.filter((k) => k !== 'entry.delete_all'),
+  admin: PERMISSION_KEYS.filter((k) => k !== 'entry.delete_all' && k !== 'finance.all'),
   supper_admin: PERMISSION_KEYS,
 };
 

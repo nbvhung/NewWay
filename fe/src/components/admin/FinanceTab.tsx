@@ -185,7 +185,10 @@ function CostGroup({
 
 export function FinanceTab(_props: Props) {
   const { user } = useAuth();
-  const isSuperAdmin = user?.role === 'supper_admin';
+  // supper_admin HOẶC tài khoản được cấp quyền `finance.all` → nhập/xem sổ
+  // Tài chính của mọi admin/bên (cả bên A và B), không cần mật khẩu.
+  const isSuperAdmin =
+    user?.role === 'supper_admin' || hasPerm(user, 'finance.all');
 
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
