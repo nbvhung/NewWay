@@ -2049,19 +2049,18 @@ export class ZaloBotService {
 
       const planName = this.planDisplayName(plan);
       let confirmText: string;
-      const isFrBundle =
-        members.length > 1 &&
-        (container.type === 'V20FR' || container.type === 'V40FR');
+      const isBundle = members.length > 1;
       if (fromClamp && clampMainCode) {
         confirmText = `✅ ${container.containerCode} - ${planName} — ${label}: ${newTotal}\n(Kẹp với con trên)`;
-      } else if (members.length > 1) {
+      } else if (isBundle) {
         const codes = members.map((m) => m.containerCode).join(', ');
-        confirmText = `✅ ${container.bundleId} (${members.length} container: ${codes})\n${planName} — ${label}: ${newTotal}`;
+        confirmText = `🎁 Đã ghi nhận ${container.bundleId} — ${members.length} container:\n${codes}\n${planName} — ${label}: ${newTotal}`;
       } else {
         confirmText = `✅ ${container.containerCode} - ${planName} — ${label}: ${newTotal}`;
       }
-      // Bó FR: gửi tin xác nhận thật về Zalo (lái xe đọc 1 mã nhưng cả bó được ghi)
-      if (isFrBundle) {
+      // Bó container: gửi tin xác nhận thật về Zalo kèm danh sách mã cont trong bó
+      // (lái xe đọc 1 mã nhưng cả bó được ghi). Bó FR trước đây cũng đi nhánh này.
+      if (isBundle) {
         await this.reply(chatId, zaloUserId, confirmText);
       } else {
         await this.replySilent(zaloUserId, confirmText);
