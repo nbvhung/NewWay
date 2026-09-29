@@ -47,7 +47,7 @@ export class SeedService implements OnModuleInit {
 
     if (process.env.DEFAULT_SUPPER_PASSWORD) {
       const existing = await this.usersRepository.findOne({
-        where: { username: 'superadmin' },
+        where: [{ username: 'superadmin' }, { role: 'supper_admin' }],
       });
       if (!existing) {
         const hash = bcrypt.hashSync(process.env.DEFAULT_SUPPER_PASSWORD, 10);
