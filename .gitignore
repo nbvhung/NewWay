@@ -11,7 +11,8 @@ dist/
 *.err
 .DS_Store
 Thumbs.db
-package-lock.json
+# package-lock.json được commit để build tất định (Dockerfile dùng `npm ci`)
+# và để ghim các bản vá bảo mật.
 
 .agents/
 skills-lock.json
