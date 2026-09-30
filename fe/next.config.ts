@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   ...(process.env.NEXT_STANDALONE === 'true' ? { output: 'standalone' } : {}),
+  // Không lộ header `X-Powered-By: Next.js`.
+  poweredByHeader: false,
   async rewrites() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
     const backendUrl = process.env.BACKEND_URL || apiUrl.replace(/\/api$/, '');
