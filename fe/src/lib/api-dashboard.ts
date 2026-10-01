@@ -91,6 +91,10 @@ export interface DashboardOverview {
   cost: {
     subvendor: number;
     luongChuyen: number;
+    /** Tổng THỰC NHẬN của lái xe (theo bảng lương tháng). */
+    luongNguoiLai: number;
+    /** BHXH phần CÔNG TY đóng (21,5% lương cứng). */
+    bhxhCty: number;
     suaChua: number;
     nhienLieu: number;
     cpKhac: number;
@@ -99,6 +103,8 @@ export interface DashboardOverview {
     // Chi tiết từng khoản chi phí của tháng, nhóm theo category
     // (Sửa chữa / Nhiên liệu / CP Khác) — để bấm card hiện danh sách.
     items: Record<string, CostItemDetail[]>;
+    /** Chi phí lương + BHXH công ty theo từng lái xe (để lọc theo xe). */
+    byDriver?: { driverId: number; luongNguoiLai: number; bhxhCty: number }[];
   };
   investment: {
     vonXe: number;

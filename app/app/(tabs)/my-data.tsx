@@ -545,6 +545,15 @@ export default function MyDataScreen() {
                 ) : null}
               </View>
             )}
+
+            <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#e7e5e4' }}>
+              <Text style={{ fontSize: 11, color: '#78716c' }}>
+                📌 Vui lòng kiểm tra số liệu và báo lại cho Huy ( 0985124650 ) trước ngày 5 hàng tháng. Quá thời hạn trên, công ty mặc định số liệu đúng và tiến hành chi trả lương.
+              </Text>
+              <Text style={{ fontSize: 11, color: '#dc2626', fontWeight: '700', marginTop: 4 }}>
+                ⚠️ Tiết lộ LƯƠNG/THU NHẬP là TRÁI với nội quy lao động Công Ty ban hành và Bộ luật Lao động 2019 (Điều 118, Khoản 2 Điều 21).
+              </Text>
+            </View>
           </View>
         );
       })()}

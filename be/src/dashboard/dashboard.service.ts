@@ -13,11 +13,15 @@ import { Route } from '../database/entities/route.entity';
 import { FinanceEntry } from '../database/entities/finance-entry.entity';
 import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
 import { resolveVisibleDriverIds } from '../common/permissions/permissions';
+import { SalaryService } from '../salary/salary.service';
 
 // ─── Nhóm chi tiết trong `finance_cost_items` ────────────────────
 // Bảng này dùng CHUNG cho cả chi phí và vốn đầu tư, phân biệt bằng `category`.
 const COST_CATEGORIES = ['suaChua', 'nhienLieu', 'cpKhac'] as const;
 const INVEST_CATEGORIES = ['vonXe', 'vonMooc', 'vonKhac'] as const;
+
+// Tỷ lệ BHXH phần CÔNG TY đóng (trên lương cứng) — cộng THÊM vào chi phí.
+const COMPANY_BHXH_PERCENT = 21.5;
 
 // ─── Helpers ────────────────────────────────────────────────────
 function dayOfDate(d: string | Date | null | undefined): number | null {
@@ -101,11 +105,15 @@ export interface DashboardOverview {
   cost: {
     subvendor: number;
     luongChuyen: number;       // tổng lương khoán/chuyến
+    luongNguoiLai: number;     // tổng THỰC NHẬN của lái xe (theo bảng lương)
+    bhxhCty: number;           // BHXH phần CÔNG TY đóng (21,5% lương cứng)
     suaChua: number;
     nhienLieu: number;
     cpKhac: number;
     total: number;
     profit: number;
+    // Chi phí lương + BHXH công ty theo từng lái xe (để lọc ở tab Tổng quan)
+    byDriver?: { driverId: number; luongNguoiLai: number; bhxhCty: number }[];
     // Chi tiết từng khoản chi phí của tháng, nhóm theo category
     // (để bấm card Sửa chữa / Nhiên liệu / CP Khác hiện danh sách).
     items: Record<string, {
@@ -161,6 +169,7 @@ export class DashboardService {
     @InjectRepository(Route)        private routeRepo: Repository<Route>,
     @InjectRepository(FinanceEntry) private financeRepo: Repository<FinanceEntry>,
     @InjectRepository(FinanceCostItem) private costItemRepo: Repository<FinanceCostItem>,
+    private salaryService: SalaryService,
   ) {}
 
   async getOverview(month: number, year: number, user?: any): Promise<DashboardOverview> {
@@ -260,6 +269,47 @@ export class DashboardService {
     const allUsers = await this.userRepo.find({ where: { role: 'laixe' } as any });
     const userMap  = new Map<number, User>();
     for (const u of allUsers) userMap.set(u.id, u);
+
+    // 7b. Chi phí LƯƠNG LÁI XE = TỔNG THỰC NHẬN theo bảng lương tháng (đã gồm
+    //     lương chuyến + cứng + chuyên cần + phụ cấp − khấu trừ) và BHXH phần
+    //     CÔNG TY đóng (21,5% lương cứng, chỉ lái xe có đóng BHXH).
+    const scopedDrivers = allUsers.filter(
+      (u) => visible === null || visible.includes(u.id),
+    );
+    const netSalaryByDriver = new Map<number, number>();
+    const bhxhCtyByDriver = new Map<number, number>();
+    try {
+      const salRes = await this.salaryService.getRecords(month, year);
+      for (const r of salRes?.records || []) {
+        const id = Number((r as any).driverId);
+        if (!Number.isFinite(id)) continue;
+        netSalaryByDriver.set(id, Number((r as any).total) || 0);
+        bhxhCtyByDriver.set(
+          id,
+          (r as any).hasBhxh
+            ? Math.round(
+                ((Number((r as any).fixedSalary) || 0) * COMPANY_BHXH_PERCENT) / 100,
+              )
+            : 0,
+        );
+      }
+    } catch {
+      // Bảng lương lỗi → coi như 0, không làm sập dashboard.
+    }
+    const costByDriver: {
+      driverId: number;
+      luongNguoiLai: number;
+      bhxhCty: number;
+    }[] = [];
+    let totalLuongNguoiLai = 0;
+    let totalBhxhCty = 0;
+    for (const d of scopedDrivers) {
+      const net = netSalaryByDriver.get(d.id) ?? 0;
+      const bh = bhxhCtyByDriver.get(d.id) ?? 0;
+      totalLuongNguoiLai += net;
+      totalBhxhCty += bh;
+      costByDriver.push({ driverId: d.id, luongNguoiLai: net, bhxhCty: bh });
+    }
 
     // ─── Helper: Tính doanh thu theo customer price (ưu tiên đơn giá deal đã duyệt của kế hoạch) ──────────────
     const calcRevenue = (
@@ -571,7 +621,14 @@ export class DashboardService {
     const vonXe     = cumLegacy.vonXe   + sumItems('vonXe', investRows);
     const vonMooc   = cumLegacy.vonMooc + sumItems('vonMooc', investRows);
     const vonKhac   = cumLegacy.vonKhac + sumItems('vonKhac', investRows);
-    const totalChiPhi = Math.round(totalSubvendor + totalLuongChuyen + suaChua + nhienLieu + cpKhac);
+    const totalChiPhi = Math.round(
+      totalSubvendor +
+        totalLuongNguoiLai +
+        totalBhxhCty +
+        suaChua +
+        nhienLieu +
+        cpKhac,
+    );
 
     // Chi tiết từng khoản chi phí của tháng (hiện khi bấm card ở tab Tổng quan):
     // ngày, xe, tên khoản, số tiền, ghi chú, người nhập.
@@ -633,6 +690,8 @@ export class DashboardService {
       cost: {
         subvendor:    Math.round(totalSubvendor),
         luongChuyen:  Math.round(totalLuongChuyen),
+        luongNguoiLai: Math.round(totalLuongNguoiLai),
+        bhxhCty:      Math.round(totalBhxhCty),
         suaChua:      Math.round(suaChua),
         nhienLieu:    Math.round(nhienLieu),
         cpKhac:       Math.round(cpKhac),
@@ -640,6 +699,8 @@ export class DashboardService {
         profit:       Math.round(totalRevenue - totalChiPhi),
         // Chi tiết từng khoản theo nhóm (để bấm card hiện danh sách)
         items: costItemsDetail,
+        // Chi phí lương + BHXH công ty theo từng lái xe (để lọc ở tab Tổng quan)
+        byDriver: costByDriver,
       },
       investment: {
         vonXe:   Math.round(vonXe),

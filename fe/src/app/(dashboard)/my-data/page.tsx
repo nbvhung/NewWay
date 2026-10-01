@@ -738,10 +738,15 @@ export default function MyDataPage() {
                   Cám ơn Sếp, Công Ty sẽ tiến hành chi lương như số liệu đã chốt bên trên.
                 </p>
               ) : (
-                <p className="text-xs text-[#78716c] mt-1">
-                  📌 Vui lòng kiểm tra số liệu và báo lại cho Huy ( 0985124650 ) trước ngày 5/ {confirmMonth}.{' '}
-                  Quá thời hạn trên, công ty mặc định số liệu đúng và tiến hành chi trả lương.
-                </p>
+                <>
+                  <p className="text-xs text-[#78716c] mt-1">
+                    📌 Vui lòng kiểm tra số liệu và báo lại cho Huy ( 0985124650 ) trước ngày 5/ {confirmMonth}.{' '}
+                    Quá thời hạn trên, công ty mặc định số liệu đúng và tiến hành chi trả lương.
+                  </p>
+                  <p className="text-xs text-red-600 font-semibold mt-1">
+                    ⚠️ Tiết lộ LƯƠNG/THU NHẬP là TRÁI với nội quy lao động Công Ty ban hành và Bộ luật Lao động 2019 (Điều 118, Khoản 2 Điều 21).
+                  </p>
+                </>
               );
             })()}
           </div>

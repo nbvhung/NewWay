@@ -397,6 +397,7 @@ export function DashboardTab() {
   const [costDriver, setCostDriver] = useState<number | ''>('');
   const [profitDriver, setProfitDriver] = useState<number | ''>('');
   const [investDriver, setInvestDriver] = useState<number | ''>('');
+  const [revenueDriver, setRevenueDriver] = useState<number | ''>('');
 
   const load = async () => {
     setLoading(true); setError('');
@@ -463,7 +464,9 @@ export function DashboardTab() {
       key: 'profit', emoji: '📈', label: 'Lợi Nhuận',
       value: profit, color: profit >= 0 ? C.green : C.red,
       colorLt: profit >= 0 ? C.greenLt : C.redLt,
-      sub: profit >= 0 ? `${pc(profit, revenue)}% biên lợi nhuận` : '⚠️ Đang lỗ',
+      sub: totalVon > 0
+        ? `${pc(profit, totalVon)}% lợi nhuận / vốn đầu tư`
+        : '0% lợi nhuận / vốn đầu tư',
     },
     {
       key: 'investment', emoji: '🏗️', label: 'Vốn Đầu Tư',
@@ -536,9 +539,42 @@ export function DashboardTab() {
         style={{ border: `1px solid ${C.faint}` }}>
 
         {/* ─ Doanh thu ───────────────────────────────────────── */}
-        {activeCard === 'revenue' && (
+        {activeCard === 'revenue' && (() => {
+          const sel = revenueDriver;
+          const isAll = sel === '';
+          const drv = isAll ? null : driverRev(sel as number);
+          return (
           <div className="p-5">
-            <p className="text-[14px] font-bold mb-4">💰 Chi tiết Doanh Thu</p>
+            <DriverFilterBar title="💰 Chi tiết Doanh Thu" drivers={ownedDrivers} value={revenueDriver} onChange={setRevenueDriver} />
+            {!isAll && (
+              <div className="mb-4">
+                <div className="rounded-xl p-4 mb-4 flex items-center justify-between"
+                  style={{ background: C.amberLt, border: `1px solid ${C.amber}30` }}>
+                  <span className="text-[13px] font-semibold" style={{ color: C.amberDk }}>
+                    Doanh thu của {drv?.fullName || 'lái xe này'}
+                  </span>
+                  <span className="text-[20px] font-extrabold" style={{ color: C.amber }}>{fmt(drv?.revenue || 0)} ₫</span>
+                </div>
+                <p className="text-[12px] font-semibold mb-2" style={{ color: C.muted }}>Theo tuyến đường</p>
+                <div className="space-y-2 max-h-[320px] overflow-y-auto">
+                  {(drv?.routes?.length ?? 0) === 0
+                    ? <p className="text-[12px] text-center py-6" style={{ color: C.muted }}>Chưa có tuyến nào</p>
+                    : drv!.routes.map((rt, i) => (
+                        <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg"
+                          style={{ border: `1px solid ${C.faint}` }}>
+                          <span className="w-5 text-[11px] font-bold flex-shrink-0" style={{ color: C.muted }}>{i + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-semibold truncate">{rt.routeName || '(không rõ tuyến)'}</p>
+                            <p className="text-[10px] mt-0.5" style={{ color: C.muted }}>{rt.planCount} kế hoạch · {rt.contCount} cont</p>
+                          </div>
+                          <span className="text-[12px] font-bold flex-shrink-0" style={{ color: C.amber }}>{fmt(rt.revenue)}</span>
+                        </div>
+                      ))}
+                </div>
+              </div>
+            )}
+            {isAll && (
+              <>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Theo khách hàng */}
               <div>
@@ -626,22 +662,29 @@ export function DashboardTab() {
                     ))}
               </div>
             </div>
+              </>
+            )}
           </div>
-        )}
+          );
+        })()}
 
         {/* ─ Chi phí ─────────────────────────────────────────── */}
         {activeCard === 'cost' && (() => {
           const sel = costDriver;
           const isAll = sel === '';
-          const drv = isAll ? null : driverRev(sel as number);
-          const luong     = isAll ? data.cost.luongChuyen : (drv?.luongKhoan ?? 0);
+          const costDrv = isAll
+            ? null
+            : ((data.cost.byDriver ?? []).find(x => x.driverId === sel) ?? null);
+          const luong     = isAll ? data.cost.luongNguoiLai : (costDrv?.luongNguoiLai ?? 0);
+          const bhxhCty   = isAll ? data.cost.bhxhCty       : (costDrv?.bhxhCty ?? 0);
           const subvendor = isAll ? data.cost.subvendor   : 0;
           const suaChua   = isAll ? data.cost.suaChua     : sumCostItems('suaChua', sel as number);
           const nhienLieu = isAll ? data.cost.nhienLieu   : sumCostItems('nhienLieu', sel as number);
           const cpKhac    = isAll ? data.cost.cpKhac      : sumCostItems('cpKhac', sel as number);
-          const sum = luong + subvendor + suaChua + nhienLieu + cpKhac;
+          const sum = luong + bhxhCty + subvendor + suaChua + nhienLieu + cpKhac;
           const tiles: [string, number, string, string, string][] = [
-            ['Lương lái xe', luong,     C.amber,   isAll ? '(tính từ kế hoạch)' : '(lương của xe này)', ''],
+            ['Lương lái xe', luong,     C.amber,   isAll ? '(tổng thực nhận)' : '(thực nhận của xe)', ''],
+            ['BHXH (Cty đóng)', bhxhCty, '#0d9488', isAll ? '(21,5% lương cứng)' : '(xe này)', ''],
             ['Subvendor',    subvendor, C.red,     isAll ? '(phí thuê ngoài)'   : '(không gắn xe)', ''],
             ['Sửa chữa',    suaChua,   '#7c3aed', '(bấm để xem chi tiết)', 'suaChua'],
             ['Nhiên liệu',   nhienLieu, '#0891b2', '(bấm để xem chi tiết)', 'nhienLieu'],
@@ -685,16 +728,27 @@ export function DashboardTab() {
           const sel = profitDriver;
           const isAll = sel === '';
           const drv = isAll ? null : driverRev(sel as number);
+          const costDrv = isAll
+            ? null
+            : ((data.cost.byDriver ?? []).find(x => x.driverId === sel) ?? null);
           const rev       = isAll ? revenue              : (drv?.revenue ?? 0);
-          const luong     = isAll ? data.cost.luongChuyen : (drv?.luongKhoan ?? 0);
+          const luong     = isAll ? data.cost.luongNguoiLai : (costDrv?.luongNguoiLai ?? 0);
+          const bhxhCty   = isAll ? data.cost.bhxhCty       : (costDrv?.bhxhCty ?? 0);
           const subvendor = isAll ? data.cost.subvendor   : 0;
           const suaChua   = isAll ? data.cost.suaChua     : sumCostItems('suaChua', sel as number);
           const nhienLieu = isAll ? data.cost.nhienLieu   : sumCostItems('nhienLieu', sel as number);
           const cpKhac    = isAll ? data.cost.cpKhac      : sumCostItems('cpKhac', sel as number);
-          const net = rev - luong - subvendor - suaChua - nhienLieu - cpKhac;
+          const net = rev - luong - bhxhCty - subvendor - suaChua - nhienLieu - cpKhac;
+          const invSel = isAll
+            ? totalVon
+            : sumInvestItems('vonXe', sel as number) +
+              sumInvestItems('vonMooc', sel as number) +
+              sumInvestItems('vonKhac', sel as number);
+          const pctInv = invSel > 0 ? pc(net, invSel) : 0;
           const rows: [string, number, string][] = [
             ['(+) Doanh thu',      rev,        C.amber],
             ['(-) Lương lái xe',  -luong,      C.red],
+            ['(-) BHXH (Cty đóng)', -bhxhCty,  C.red],
             ['(-) Subvendor',     -subvendor,  C.red],
             ['(-) Sửa chữa',      -suaChua,    C.red],
             ['(-) Nhiên liệu',     -nhienLieu,  C.red],
@@ -703,9 +757,16 @@ export function DashboardTab() {
           return (
             <div className="p-5">
               <DriverFilterBar title="📈 Chi tiết Lợi Nhuận" drivers={ownedDrivers} value={profitDriver} onChange={setProfitDriver} />
+              {/* % lợi nhuận / vốn đầu tư — đặt ở góc phải (chỗ trước đây trống) */}
+              <div className="flex justify-end -mt-3 mb-2">
+                <span className="px-3 py-1.5 rounded-full text-[11px] font-bold"
+                  style={{ background: C.blueLt, color: C.blue, border: `1px solid ${C.blue}30` }}>
+                  {pctInv}% lợi nhuận / vốn đầu tư
+                </span>
+              </div>
               <div className="max-w-lg">
                 {rows.map(([lbl, val, c], i) => (
-                  <div key={i} className={`flex justify-between items-center py-2.5 ${i < 5 ? 'border-b' : ''}`}
+                  <div key={i} className={`flex justify-between items-center py-2.5 ${i < rows.length - 1 ? 'border-b' : ''}`}
                     style={{ borderColor: C.faint }}>
                     <span className="text-[13px]" style={{ color: C.muted }}>{lbl}</span>
                     <span className="text-[13px] font-bold" style={{ color: c }}>
@@ -720,11 +781,6 @@ export function DashboardTab() {
                     {net >= 0 ? '+' : '-'}{fmt(Math.abs(net))} ₫
                   </span>
                 </div>
-                {rev > 0 && (
-                  <p className="text-[11px] mt-3 text-center" style={{ color: C.muted }}>
-                    Biên lợi nhuận: <strong style={{ color: net >= 0 ? C.green : C.red }}>{pc(net, rev)}%</strong>
-                  </p>
-                )}
               </div>
             </div>
           );
