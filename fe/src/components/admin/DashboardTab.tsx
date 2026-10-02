@@ -343,8 +343,10 @@ function DriverSalarySheet({ rows, month, year, onClose }: {
   rows: SalaryDriverRow[]; month: number; year: number; onClose: () => void;
 }) {
   const [expanded, setExpanded] = useState<number | null>(null);
-  const totalAll = rows.reduce((s, r) => s + r.luongNguoiLai + r.bhxhCty, 0);
-  const sortedRows = [...rows].sort((a, b) => (b.luongNguoiLai + b.bhxhCty) - (a.luongNguoiLai + a.bhxhCty));
+  // Tổng Cty chi = Thực nhận (net) + BHXH NLĐ (Cty nộp hộ) + BHXH Cty đóng = gross salary + BHXH Cty
+  const calcTotal = (r: SalaryDriverRow) => r.luongNguoiLai + r.bhxhNld + r.bhxhCty;
+  const totalAll = rows.reduce((s, r) => s + calcTotal(r), 0);
+  const sortedRows = [...rows].sort((a, b) => calcTotal(b) - calcTotal(a));
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/25" onClick={onClose}>
@@ -360,14 +362,9 @@ function DriverSalarySheet({ rows, month, year, onClose }: {
         </div>
         {/* Tổng */}
         <div className="px-5 py-3 border-b" style={{ borderColor: C.faint }}>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-lg p-3" style={{ background: C.amberLt, border: `1px solid #fcd34d` }}>
-              <p className="text-[9px] mb-0.5" style={{ color: C.amberDk }}>Thực nhận (tổng)</p>
-              <p className="text-[15px] font-extrabold" style={{ color: C.amber }}>{fmt(rows.reduce((s, r) => s + r.luongNguoiLai, 0))}</p>
-              <p className="text-[9px]" style={{ color: C.muted }}>₫</p>
-            </div>
+          <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg p-3" style={{ background: '#f0fdf4', border: `1px solid #86efac` }}>
-              <p className="text-[9px] mb-0.5" style={{ color: '#15803d' }}>BHXH Cty đóng</p>
+              <p className="text-[9px] mb-0.5" style={{ color: '#15803d' }}>BHXH Cty đóng (tổng)</p>
               <p className="text-[15px] font-extrabold" style={{ color: '#16a34a' }}>{fmt(rows.reduce((s, r) => s + r.bhxhCty, 0))}</p>
               <p className="text-[9px]" style={{ color: C.muted }}>₫</p>
             </div>
@@ -377,6 +374,7 @@ function DriverSalarySheet({ rows, month, year, onClose }: {
               <p className="text-[9px]" style={{ color: C.muted }}>₫</p>
             </div>
           </div>
+          <p className="text-[9px] mt-2" style={{ color: C.muted }}>* Tổng Cty chi = Lương gross + BHXH Cty đóng (bao gồm cả phần BHXH trừ vào lương nhân viên)</p>
         </div>
         {/* Danh sách lái xe */}
         <div className="px-5 py-3 space-y-2">
@@ -386,7 +384,7 @@ function DriverSalarySheet({ rows, month, year, onClose }: {
           ) : (
             sortedRows.map((r, i) => {
               const ini = r.fullName.split(' ').map(w => w[0] ?? '').slice(-2).join('').toUpperCase();
-              const total = r.luongNguoiLai + r.bhxhCty;
+              const total = calcTotal(r);
               const isExp = expanded === r.driverId;
               const detailRows: [string, number, string, boolean][] = [
                 ['Lương khoán/chuyến', r.luongKhoan, C.amber, r.luongKhoan > 0],
@@ -396,10 +394,12 @@ function DriverSalarySheet({ rows, month, year, onClose }: {
                 ['Thưởng (tip)', r.tip, C.green, r.tip > 0],
                 ['Khoản cộng thêm', r.itemSumAdd, '#059669', r.itemSumAdd > 0],
                 ['Khoản khấu trừ', -r.itemSumDeduct, C.red, r.itemSumDeduct > 0],
-                ['BHXH NLĐ đóng', -r.bhxhNld, C.red, r.bhxhNld > 0],
                 ['Chi hộ', -r.chiHo, C.red, r.chiHo > 0],
                 ['Trừ tạm ứng', -r.advanceDeduct, C.red, r.advanceDeduct > 0],
+                ['BHXH Cty đóng', r.bhxhCty, '#16a34a', r.bhxhCty > 0],
               ];
+              // Tổng Cty chi = thực nhận (gross - khấu trừ NLĐ) + BHXH NLĐ (công ty nộp hộ) + BHXH Cty
+              const totalCty = r.luongNguoiLai + r.bhxhNld + r.bhxhCty;
               return (
                 <div key={r.driverId}>
                   <div
@@ -417,10 +417,10 @@ function DriverSalarySheet({ rows, month, year, onClose }: {
                       <p className="text-[12px] font-semibold truncate">{r.fullName}</p>
                       {r.soXe && <p className="text-[9px] mt-0.5" style={{ color: C.muted }}>🚛 {r.soXe}</p>}
                     </div>
-                    {/* Thực nhận */}
+                    {/* Tổng Cty chi */}
                     <div className="text-right flex-shrink-0">
-                      <p className="text-[12px] font-bold" style={{ color: C.amber }}>{fmt(r.luongNguoiLai)}</p>
-                      {r.bhxhCty > 0 && <p className="text-[9px]" style={{ color: '#16a34a' }}>+{fmt(r.bhxhCty)} BH</p>}
+                      <p className="text-[12px] font-bold" style={{ color: C.red }}>{fmt(total)}</p>
+                      <p className="text-[9px]" style={{ color: C.muted }}>Cty chi</p>
                     </div>
                     <span className="text-[10px] ml-1" style={{ color: C.muted }}>{isExp ? '▲' : '▼'}</span>
                   </div>
@@ -431,26 +431,19 @@ function DriverSalarySheet({ rows, month, year, onClose }: {
                         {detailRows.filter(([,, , show]) => show).map(([lbl, val]) => (
                           <div key={lbl} className="flex justify-between items-center py-1.5 border-b last:border-0" style={{ borderColor: '#fef3c7' }}>
                             <span className="text-[11px]" style={{ color: C.muted }}>{lbl}</span>
-                            <span className="text-[11px] font-semibold" style={{ color: val < 0 ? C.red : C.ink }}>
+                            <span className="text-[11px] font-semibold" style={{ color: val < 0 ? C.red : lbl === 'BHXH Cty đóng' ? '#16a34a' : C.ink }}>
                               {val < 0 ? '-' : '+'}{fmt(Math.abs(val))} ₫
                             </span>
                           </div>
                         ))}
-                        {/* Tổng thực nhận */}
-                        <div className="flex justify-between items-center pt-2.5 mt-1">
-                          <span className="text-[12px] font-bold" style={{ color: C.amberDk }}>= Thực nhận</span>
-                          <span className="text-[14px] font-extrabold" style={{ color: C.amber }}>{fmt(r.luongNguoiLai)} ₫</span>
-                        </div>
-                        {r.bhxhCty > 0 && (
-                          <div className="flex justify-between items-center pt-1">
-                            <span className="text-[11px]" style={{ color: '#15803d' }}>+ BHXH Cty đóng thêm</span>
-                            <span className="text-[11px] font-semibold" style={{ color: '#16a34a' }}>{fmt(r.bhxhCty)} ₫</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-center py-2 mt-1 px-3 rounded-lg" style={{ background: C.redLt }}>
+                        {/* Tổng Cty chi */}
+                        <div className="flex justify-between items-center py-2 mt-1.5 px-3 rounded-lg" style={{ background: C.redLt }}>
                           <span className="text-[12px] font-bold" style={{ color: C.red }}>Tổng Cty chi</span>
-                          <span className="text-[14px] font-extrabold" style={{ color: C.red }}>{fmt(total)} ₫</span>
+                          <span className="text-[14px] font-extrabold" style={{ color: C.red }}>{fmt(totalCty)} ₫</span>
                         </div>
+                        <p className="text-[9px] mt-1.5" style={{ color: C.muted }}>
+                          * Bao gồm BHXH NLĐ công ty nộp hộ ({fmt(r.bhxhNld)} ₫) + BHXH Cty đóng ({fmt(r.bhxhCty)} ₫)
+                        </p>
                       </div>
                     </div>
                   )}
@@ -535,6 +528,8 @@ export function DashboardTab() {
   const [profitDriver, setProfitDriver] = useState<number | ''>('');
   const [investDriver, setInvestDriver] = useState<number | ''>('');
   const [revenueDriver, setRevenueDriver] = useState<number | ''>('');
+  // Máy tính lợi nhuận chủ đầu tư
+  const [investorCapital, setInvestorCapital] = useState('');
 
   const load = async () => {
     setLoading(true); setError('');
@@ -909,8 +904,8 @@ export function DashboardTab() {
           ];
           return (
             <div className="p-5">
-              <DriverFilterBar title="📈 Chi tiết Lợi Nhuận" drivers={ownedDrivers} value={profitDriver} onChange={setProfitDriver} />
-              {/* % lợi nhuận / vốn đầu tư — đặt ở góc phải (chỗ trước đây trống) */}
+              <DriverFilterBar title="📈 Chi tiết Lợi Nhuận" drivers={ownedDrivers} value={profitDriver} onChange={v => { setProfitDriver(v); setInvestorCapital(''); }} />
+              {/* % lợi nhuận / vốn đầu tư */}
               <div className="flex justify-end -mt-3 mb-2">
                 <span className="px-3 py-1.5 rounded-full text-[11px] font-bold"
                   style={{ background: C.blueLt, color: C.blue, border: `1px solid ${C.blue}30` }}>
@@ -935,6 +930,91 @@ export function DashboardTab() {
                   </span>
                 </div>
               </div>
+
+              {/* Máy tính lợi nhuận chủ đầu tư — chỉ hiện khi đã chọn 1 xe */}
+              {!isAll && (() => {
+                const capRaw = Number(investorCapital.replace(/[^0-9]/g, '')) || 0;
+                const pctOwn = invSel > 0 ? Math.min(100, (capRaw / invSel) * 100) : 0;
+                const investorProfit = net * pctOwn / 100;
+                const hasResult = capRaw > 0 && invSel > 0;
+                return (
+                  <div className="mt-5 rounded-2xl overflow-hidden" style={{
+                    background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e3a5f 100%)',
+                    boxShadow: '0 8px 32px rgba(99,102,241,0.25)'
+                  }}>
+                    {/* Header */}
+                    <div className="px-5 pt-4 pb-3 flex items-center gap-2.5">
+                      <span className="text-[20px]">🧮</span>
+                      <div>
+                        <p className="text-[13px] font-bold text-white">Máy tính Chủ Đầu Tư</p>
+                        <p className="text-[9px] mt-0.5" style={{ color: '#a5b4fc' }}>Tính lợi nhuận theo phần vốn sở hữu trong xe</p>
+                      </div>
+                    </div>
+
+                    {/* Input vốn */}
+                    <div className="px-5 pb-4">
+                      <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(165,180,252,0.2)' }}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[9px] font-semibold" style={{ color: '#a5b4fc' }}>VốN CỦA BẠN TRONG XE NÀY</span>
+                          {invSel > 0 && <span className="text-[9px]" style={{ color: '#6366f1' }}>/ Tổng {fmt(invSel)} ₫</span>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={investorCapital}
+                            onChange={e => {
+                              const raw = e.target.value.replace(/[^0-9]/g, '');
+                              setInvestorCapital(raw ? Number(raw).toLocaleString('vi-VN') : '');
+                            }}
+                            placeholder="0"
+                            className="flex-1 bg-transparent text-white text-[18px] font-extrabold outline-none placeholder:text-white/20"
+                          />
+                          <span className="text-[13px] font-bold" style={{ color: '#a5b4fc' }}>₫</span>
+                        </div>
+                        {invSel === 0 && (
+                          <p className="text-[9px] mt-1" style={{ color: '#fbbf24' }}>⚠ Chưa có dữ liệu vốn đầu tư cho xe này trong tab Vốn Đầu Tư.</p>
+                        )}
+                      </div>
+
+                      {/* Progress bar phần trăm */}
+                      {hasResult && (
+                        <>
+                          <div className="mt-3 mb-1 flex justify-between items-center">
+                            <span className="text-[9px]" style={{ color: '#a5b4fc' }}>Tỷ lệ sở hữu</span>
+                            <span className="text-[13px] font-extrabold text-white">{pctOwn.toFixed(1)}%</span>
+                          </div>
+                          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                            <div className="h-full rounded-full transition-all duration-500"
+                              style={{ width: `${Math.min(pctOwn, 100)}%`, background: 'linear-gradient(90deg, #818cf8, #6366f1)' }} />
+                          </div>
+
+                          {/* Kết quả */}
+                          <div className="mt-3 rounded-xl p-4" style={{
+                            background: investorProfit >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                            border: `1px solid ${investorProfit >= 0 ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`
+                          }}>
+                            <p className="text-[9px] mb-1" style={{ color: investorProfit >= 0 ? '#6ee7b7' : '#fca5a5' }}>
+                              LỢI NHUẬN CHỦ ĐẦU TƯ ({pctOwn.toFixed(1)}% × {net >= 0 ? '+' : '-'}{fmt(Math.abs(net))} ₫)
+                            </p>
+                            <p className="text-[26px] font-extrabold leading-none"
+                              style={{ color: investorProfit >= 0 ? '#34d399' : '#f87171' }}>
+                              {investorProfit >= 0 ? '+' : '-'}{fmt(Math.abs(Math.round(investorProfit)))}
+                            </p>
+                            <p className="text-[10px] mt-0.5" style={{ color: investorProfit >= 0 ? '#6ee7b7' : '#fca5a5' }}>₫ / tháng này</p>
+                          </div>
+                        </>
+                      )}
+
+                      {!hasResult && capRaw === 0 && (
+                        <p className="text-center text-[10px] mt-3" style={{ color: 'rgba(165,180,252,0.6)' }}>
+                          ↑ Nhập số vốn bạn đã đầu tư vào chiếc xe này
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           );
         })()}
