@@ -906,115 +906,199 @@ export function DashboardTab() {
             <div className="p-5">
               <DriverFilterBar title="📈 Chi tiết Lợi Nhuận" drivers={ownedDrivers} value={profitDriver} onChange={v => { setProfitDriver(v); setInvestorCapital(''); }} />
               {/* % lợi nhuận / vốn đầu tư */}
-              <div className="flex justify-end -mt-3 mb-2">
+              <div className="flex justify-end -mt-3 mb-3">
                 <span className="px-3 py-1.5 rounded-full text-[11px] font-bold"
                   style={{ background: C.blueLt, color: C.blue, border: `1px solid ${C.blue}30` }}>
                   {pctInv}% lợi nhuận / vốn đầu tư
                 </span>
               </div>
-              <div className="max-w-lg">
-                {rows.map(([lbl, val, c], i) => (
-                  <div key={i} className={`flex justify-between items-center py-2.5 ${i < rows.length - 1 ? 'border-b' : ''}`}
-                    style={{ borderColor: C.faint }}>
-                    <span className="text-[13px]" style={{ color: C.muted }}>{lbl}</span>
-                    <span className="text-[13px] font-bold" style={{ color: c }}>
-                      {val < 0 ? '-' : ''}{fmt(Math.abs(val))} ₫
+
+              {/* Layout 2 cột khi chọn xe, 1 cột khi xem tất cả */}
+              <div className={isAll ? '' : 'flex gap-5 items-start'}>
+                {/* CỘT TRÁI — bảng lợi nhuận */}
+                <div className={isAll ? 'max-w-lg' : 'flex-1 min-w-0'}>
+                  {rows.map(([lbl, val, c], i) => (
+                    <div key={i} className={`flex justify-between items-center py-2.5 ${i < rows.length - 1 ? 'border-b' : ''}`}
+                      style={{ borderColor: C.faint }}>
+                      <span className="text-[13px]" style={{ color: C.muted }}>{lbl}</span>
+                      <span className="text-[13px] font-bold" style={{ color: c }}>
+                        {val < 0 ? '-' : ''}{fmt(Math.abs(val))} ₫
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between items-center py-3 mt-1 rounded-xl px-3"
+                    style={{ background: net >= 0 ? C.greenLt : C.redLt, border: `1px solid ${net >= 0 ? C.green : C.red}30` }}>
+                    <span className="text-[14px] font-bold" style={{ color: net >= 0 ? C.green : C.red }}>= Lợi nhuận ròng</span>
+                    <span className="text-[18px] font-extrabold" style={{ color: net >= 0 ? C.green : C.red }}>
+                      {net >= 0 ? '+' : '-'}{fmt(Math.abs(net))} ₫
                     </span>
                   </div>
-                ))}
-                <div className="flex justify-between items-center py-3 mt-1 rounded-xl px-3"
-                  style={{ background: net >= 0 ? C.greenLt : C.redLt, border: `1px solid ${net >= 0 ? C.green : C.red}30` }}>
-                  <span className="text-[14px] font-bold" style={{ color: net >= 0 ? C.green : C.red }}>= Lợi nhuận ròng</span>
-                  <span className="text-[18px] font-extrabold" style={{ color: net >= 0 ? C.green : C.red }}>
-                    {net >= 0 ? '+' : '-'}{fmt(Math.abs(net))} ₫
-                  </span>
                 </div>
+
+                {/* CỘT PHẢI — Máy tính chủ đầu tư (chỉ khi chọn 1 xe) */}
+                {!isAll && (() => {
+                  const capRaw = Number(investorCapital.replace(/[^0-9]/g, '')) || 0;
+                  const pctOwn = invSel > 0 ? Math.min(100, (capRaw / invSel) * 100) : 0;
+                  const investorProfit = net * pctOwn / 100;
+                  const hasResult = capRaw > 0 && invSel > 0;
+                  const profitColor = investorProfit >= 0 ? '#22c55e' : '#ef4444';
+                  return (
+                    <div style={{ width: 260, flexShrink: 0 }}>
+                      {/* Card container — asphalt dark */}
+                      <div style={{
+                        background: '#18181b',
+                        border: '2px solid #f59e0b',
+                        borderRadius: 12,
+                        overflow: 'hidden',
+                        boxShadow: '0 4px 24px rgba(245,158,11,0.18)',
+                        position: 'relative',
+                      }}>
+                        {/* Hazard stripes top */}
+                        <div style={{
+                          height: 8,
+                          background: 'repeating-linear-gradient(45deg, #f59e0b 0px, #f59e0b 10px, #18181b 10px, #18181b 20px)',
+                        }} />
+
+                        {/* Header bar */}
+                        <div style={{ padding: '10px 14px 6px', borderBottom: '1px solid #27272a' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#f59e0b', fontSize: 9, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase' }}>FREIGHT PROFIT CALC</span>
+                            <span style={{ color: '#3f3f46', fontSize: 9, fontWeight: 700, letterSpacing: 1 }}>SYS/v1.0</span>
+                          </div>
+                        </div>
+
+                        {/* Truck SVG illustration */}
+                        <div style={{ padding: '10px 14px 4px', borderBottom: '1px solid #27272a' }}>
+                          <svg viewBox="0 0 240 60" style={{ width: '100%', height: 44 }}>
+                            {/* Road */}
+                            <rect x="0" y="48" width="240" height="12" fill="#27272a"/>
+                            {/* Road dashes */}
+                            {[0,40,80,120,160,200].map(x => <rect key={x} x={x} y="52" width="28" height="3" fill="#f59e0b" opacity="0.5"/>)}
+                            {/* Truck cab */}
+                            <rect x="148" y="18" width="52" height="30" rx="3" fill="#3f3f46"/>
+                            <rect x="192" y="22" width="12" height="16" rx="2" fill="#52525b"/>
+                            {/* Windshield */}
+                            <rect x="190" y="20" width="10" height="10" rx="1" fill="#fbbf24" opacity="0.7"/>
+                            {/* Headlight */}
+                            <rect x="200" y="28" width="4" height="6" rx="1" fill="#fef08a"/>
+                            {/* Headlight beam */}
+                            <polygon points="204,29 230,24 230,35 204,33" fill="#fef08a" opacity="0.15"/>
+                            {/* Container body */}
+                            <rect x="24" y="20" width="128" height="28" rx="2" fill="#52525b"/>
+                            {/* Container door lines */}
+                            {[88,112].map(x => <line key={x} x1={x} y1="20" x2={x} y2="48" stroke="#3f3f46" strokeWidth="1.5"/>)}
+                            {/* Container ribbing */}
+                            {[32,48,64,80,96,112,128,144].map(x => <line key={x} x1={x} y1="22" x2={x} y2="46" stroke="#3f3f46" strokeWidth="0.7"/>)}
+                            {/* NEW WAY text on container */}
+                            <text x="52" y="37" fill="#f59e0b" fontSize="7" fontWeight="800" letterSpacing="1" opacity="0.8">NEW WAY</text>
+                            {/* Wheels */}
+                            {[44,72,156,176,196].map(cx => (
+                              <g key={cx}>
+                                <circle cx={cx} cy="48" r="7" fill="#27272a" stroke="#52525b" strokeWidth="1.5"/>
+                                <circle cx={cx} cy="48" r="3" fill="#3f3f46"/>
+                              </g>
+                            ))}
+                            {/* $ sign floating */}
+                            <text x="8" y="38" fill="#f59e0b" fontSize="20" fontWeight="900" opacity="0.9">$</text>
+                          </svg>
+                        </div>
+
+                        {/* Input section */}
+                        <div style={{ padding: '10px 14px' }}>
+                          <div style={{ marginBottom: 6 }}>
+                            <div style={{ color: '#71717a', fontSize: 8, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>
+                              VỐN ĐẦU TƯ CỦA BẠN
+                            </div>
+                            {invSel > 0 && (
+                              <div style={{ color: '#3f3f46', fontSize: 8, marginBottom: 4 }}>
+                                Tổng vốn xe: {fmt(invSel)} ₫
+                              </div>
+                            )}
+                            <div style={{
+                              display: 'flex', alignItems: 'center', gap: 6,
+                              background: '#27272a', border: '1px solid #3f3f46',
+                              borderRadius: 6, padding: '6px 10px',
+                            }}>
+                              <span style={{ color: '#f59e0b', fontSize: 16, fontWeight: 900, lineHeight: 1 }}>$</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={investorCapital}
+                                onChange={e => {
+                                  const raw = e.target.value.replace(/[^0-9]/g, '');
+                                  setInvestorCapital(raw ? Number(raw).toLocaleString('vi-VN') : '');
+                                }}
+                                placeholder="0"
+                                style={{
+                                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                                  color: '#fbbf24', fontSize: 16, fontWeight: 800,
+                                  fontFamily: 'monospace',
+                                }}
+                              />
+                              <span style={{ color: '#52525b', fontSize: 9, fontWeight: 700 }}>₫</span>
+                            </div>
+                            {invSel === 0 && (
+                              <div style={{ color: '#f59e0b', fontSize: 8, marginTop: 4 }}>
+                                ⚠ Chưa có vốn đầu tư cho xe này
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Progress — ownership % */}
+                          {hasResult && (
+                            <>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                <span style={{ color: '#71717a', fontSize: 8, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>SỞ HỮU</span>
+                                <span style={{ color: '#f59e0b', fontSize: 14, fontWeight: 900, fontFamily: 'monospace' }}>{pctOwn.toFixed(1)}%</span>
+                              </div>
+                              <div style={{ height: 5, background: '#27272a', borderRadius: 3, overflow: 'hidden', marginBottom: 10 }}>
+                                <div style={{
+                                  height: '100%', width: `${Math.min(pctOwn,100)}%`,
+                                  background: 'repeating-linear-gradient(90deg,#f59e0b 0px,#f59e0b 8px,#d97706 8px,#d97706 16px)',
+                                  transition: 'width 0.4s ease',
+                                }}/>
+                              </div>
+                            </>
+                          )}
+
+                          {/* Result */}
+                          {hasResult ? (
+                            <div style={{
+                              background: investorProfit >= 0 ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
+                              border: `1px solid ${profitColor}40`,
+                              borderRadius: 8, padding: '8px 10px',
+                            }}>
+                              <div style={{ color: '#71717a', fontSize: 7, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2 }}>
+                                INVESTOR PROFIT / THÁNG
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                                <span style={{ color: profitColor, fontSize: 9, fontWeight: 800 }}>{investorProfit >= 0 ? '+' : '-'}</span>
+                                <span style={{ color: profitColor, fontSize: 20, fontWeight: 900, fontFamily: 'monospace', lineHeight: 1 }}>
+                                  {fmt(Math.abs(Math.round(investorProfit)))}
+                                </span>
+                                <span style={{ color: profitColor, fontSize: 8, fontWeight: 700 }}>₫</span>
+                              </div>
+                              <div style={{ color: '#52525b', fontSize: 7.5, marginTop: 2 }}>
+                                {pctOwn.toFixed(1)}% × {net >= 0 ? '+' : '-'}{fmt(Math.abs(net))} ₫
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                              <div style={{ color: '#3f3f46', fontSize: 9 }}>↑ Nhập vốn để tính</div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Hazard stripes bottom */}
+                        <div style={{
+                          height: 6,
+                          background: 'repeating-linear-gradient(45deg, #f59e0b 0px, #f59e0b 8px, #18181b 8px, #18181b 16px)',
+                        }} />
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
-
-              {/* Máy tính lợi nhuận chủ đầu tư — chỉ hiện khi đã chọn 1 xe */}
-              {!isAll && (() => {
-                const capRaw = Number(investorCapital.replace(/[^0-9]/g, '')) || 0;
-                const pctOwn = invSel > 0 ? Math.min(100, (capRaw / invSel) * 100) : 0;
-                const investorProfit = net * pctOwn / 100;
-                const hasResult = capRaw > 0 && invSel > 0;
-                return (
-                  <div className="mt-5 rounded-2xl overflow-hidden" style={{
-                    background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e3a5f 100%)',
-                    boxShadow: '0 8px 32px rgba(99,102,241,0.25)'
-                  }}>
-                    {/* Header */}
-                    <div className="px-5 pt-4 pb-3 flex items-center gap-2.5">
-                      <span className="text-[20px]">🧮</span>
-                      <div>
-                        <p className="text-[13px] font-bold text-white">Máy tính Chủ Đầu Tư</p>
-                        <p className="text-[9px] mt-0.5" style={{ color: '#a5b4fc' }}>Tính lợi nhuận theo phần vốn sở hữu trong xe</p>
-                      </div>
-                    </div>
-
-                    {/* Input vốn */}
-                    <div className="px-5 pb-4">
-                      <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(165,180,252,0.2)' }}>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[9px] font-semibold" style={{ color: '#a5b4fc' }}>VốN CỦA BẠN TRONG XE NÀY</span>
-                          {invSel > 0 && <span className="text-[9px]" style={{ color: '#6366f1' }}>/ Tổng {fmt(invSel)} ₫</span>}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={investorCapital}
-                            onChange={e => {
-                              const raw = e.target.value.replace(/[^0-9]/g, '');
-                              setInvestorCapital(raw ? Number(raw).toLocaleString('vi-VN') : '');
-                            }}
-                            placeholder="0"
-                            className="flex-1 bg-transparent text-white text-[18px] font-extrabold outline-none placeholder:text-white/20"
-                          />
-                          <span className="text-[13px] font-bold" style={{ color: '#a5b4fc' }}>₫</span>
-                        </div>
-                        {invSel === 0 && (
-                          <p className="text-[9px] mt-1" style={{ color: '#fbbf24' }}>⚠ Chưa có dữ liệu vốn đầu tư cho xe này trong tab Vốn Đầu Tư.</p>
-                        )}
-                      </div>
-
-                      {/* Progress bar phần trăm */}
-                      {hasResult && (
-                        <>
-                          <div className="mt-3 mb-1 flex justify-between items-center">
-                            <span className="text-[9px]" style={{ color: '#a5b4fc' }}>Tỷ lệ sở hữu</span>
-                            <span className="text-[13px] font-extrabold text-white">{pctOwn.toFixed(1)}%</span>
-                          </div>
-                          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
-                            <div className="h-full rounded-full transition-all duration-500"
-                              style={{ width: `${Math.min(pctOwn, 100)}%`, background: 'linear-gradient(90deg, #818cf8, #6366f1)' }} />
-                          </div>
-
-                          {/* Kết quả */}
-                          <div className="mt-3 rounded-xl p-4" style={{
-                            background: investorProfit >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
-                            border: `1px solid ${investorProfit >= 0 ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`
-                          }}>
-                            <p className="text-[9px] mb-1" style={{ color: investorProfit >= 0 ? '#6ee7b7' : '#fca5a5' }}>
-                              LỢI NHUẬN CHỦ ĐẦU TƯ ({pctOwn.toFixed(1)}% × {net >= 0 ? '+' : '-'}{fmt(Math.abs(net))} ₫)
-                            </p>
-                            <p className="text-[26px] font-extrabold leading-none"
-                              style={{ color: investorProfit >= 0 ? '#34d399' : '#f87171' }}>
-                              {investorProfit >= 0 ? '+' : '-'}{fmt(Math.abs(Math.round(investorProfit)))}
-                            </p>
-                            <p className="text-[10px] mt-0.5" style={{ color: investorProfit >= 0 ? '#6ee7b7' : '#fca5a5' }}>₫ / tháng này</p>
-                          </div>
-                        </>
-                      )}
-
-                      {!hasResult && capRaw === 0 && (
-                        <p className="text-center text-[10px] mt-3" style={{ color: 'rgba(165,180,252,0.6)' }}>
-                          ↑ Nhập số vốn bạn đã đầu tư vào chiếc xe này
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
             </div>
           );
         })()}
