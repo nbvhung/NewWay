@@ -54,6 +54,10 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsString()
+  ngayHoatDong?: string;
+
+  @IsOptional()
+  @IsString()
   zaloId?: string;
 
   @IsOptional()

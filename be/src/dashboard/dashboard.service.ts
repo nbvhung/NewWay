@@ -60,6 +60,7 @@ export interface DriverRevenue {
   soMooc: string;
   stt: string;
   sdt: string;
+  ngayHoatDong: string | null;
   revenue: number;
   luongKhoan: number;   // lương khoán theo chuyến (tính đúng từ submissions)
   planCount: number;
@@ -112,8 +113,8 @@ export interface DashboardOverview {
     cpKhac: number;
     total: number;
     profit: number;
-    // Chi phí lương + BHXH công ty theo từng lái xe (để lọc ở tab Tổng quan)
-    byDriver?: { driverId: number; luongNguoiLai: number; bhxhCty: number }[];
+    /** Chi phí lương + BHXH công ty theo từng lái xe (để lọc ở tab Tổng quan và popup chi tiết lương) */
+    byDriver?: { driverId: number; fullName: string; soXe: string; luongNguoiLai: number; bhxhCty: number; luongKhoan: number; luongCung: number; chuyenCan: number; tip: number; phuCap: number; itemSumAdd: number; itemSumDeduct: number; bhxhNld: number; chiHo: number; advanceDeduct: number }[];
     // Chi tiết từng khoản chi phí của tháng, nhóm theo category
     // (để bấm card Sửa chữa / Nhiên liệu / CP Khác hiện danh sách).
     items: Record<string, {
@@ -151,6 +152,7 @@ export interface DashboardOverview {
     soXe: string;
     soMooc: string;
     stt: string;
+    ngayHoatDong: string | null;
   }[];
 }
 
@@ -278,6 +280,8 @@ export class DashboardService {
     );
     const netSalaryByDriver = new Map<number, number>();
     const bhxhCtyByDriver = new Map<number, number>();
+    // Lưu toàn bộ record lương chi tiết để đưa vào byDriver
+    const salaryRecordMap = new Map<number, any>();
     try {
       const salRes = await this.salaryService.getRecords(month, year);
       for (const r of salRes?.records || []) {
@@ -292,14 +296,28 @@ export class DashboardService {
               )
             : 0,
         );
+        salaryRecordMap.set(id, r);
       }
     } catch {
       // Bảng lương lỗi → coi như 0, không làm sập dashboard.
     }
     const costByDriver: {
       driverId: number;
+      fullName: string;
+      soXe: string;
       luongNguoiLai: number;
       bhxhCty: number;
+      // Chi tiết các thành phần lương
+      luongKhoan: number;
+      luongCung: number;
+      chuyenCan: number;
+      tip: number;
+      phuCap: number;     // tổng phụ cấp (xa nhà, chờ hàng, xe cũ, bãi)
+      itemSumAdd: number;
+      itemSumDeduct: number;
+      bhxhNld: number;    // BHXH người lao động tự đóng
+      chiHo: number;
+      advanceDeduct: number;
     }[] = [];
     let totalLuongNguoiLai = 0;
     let totalBhxhCty = 0;
@@ -308,7 +326,27 @@ export class DashboardService {
       const bh = bhxhCtyByDriver.get(d.id) ?? 0;
       totalLuongNguoiLai += net;
       totalBhxhCty += bh;
-      costByDriver.push({ driverId: d.id, luongNguoiLai: net, bhxhCty: bh });
+      const rec = salaryRecordMap.get(d.id);
+      costByDriver.push({
+        driverId: d.id,
+        fullName: d.fullName || '',
+        soXe: (d as any).soXe || '',
+        luongNguoiLai: net,
+        bhxhCty: bh,
+        luongKhoan: Number(rec?.luongKhoan) || 0,
+        luongCung: Number(rec?.fixedSalary) || 0,
+        chuyenCan: Number(rec?.chuyenCan) || 0,
+        tip: Number(rec?.tip) || 0,
+        phuCap: (Number(rec?.allowanceFarHome) || 0) +
+                (Number(rec?.allowanceWaitLoading) || 0) +
+                (Number(rec?.allowanceOldCar) || 0) +
+                (Number(rec?.parkingHph2) || 0),
+        itemSumAdd: Number(rec?.itemSumAdd) || 0,
+        itemSumDeduct: Number(rec?.itemSumDeduct) || 0,
+        bhxhNld: Number(rec?.bhxh) || 0,
+        chiHo: Number(rec?.chiHo) || 0,
+        advanceDeduct: Number(rec?.advanceDeduct) || 0,
+      });
     }
 
     // ─── Helper: Tính doanh thu theo customer price (ưu tiên đơn giá deal đã duyệt của kế hoạch) ──────────────
@@ -537,6 +575,7 @@ export class DashboardService {
         soMooc:    u?.soMooc ?? '',
         stt:       u?.stt ?? '',
         sdt:       u?.sdt ?? '',
+        ngayHoatDong: u?.ngayHoatDong ?? null,
         revenue:   Math.round(entry.revenue),
         luongKhoan: Math.round(entry.luongKhoan),
         planCount:  entry.planCount,
@@ -667,6 +706,7 @@ export class DashboardService {
         soXe: u.soXe || '',
         soMooc: u.soMooc || '',
         stt: u.stt || '',
+        ngayHoatDong: u.ngayHoatDong ?? null,
       }))
       .sort(
         (a, b) => (parseInt(a.stt) || 999999) - (parseInt(b.stt) || 999999),

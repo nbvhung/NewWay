@@ -26,6 +26,7 @@ export interface DriverRevenue {
   soMooc: string;
   stt: string;
   sdt: string;
+  ngayHoatDong?: string | null;
   revenue: number;
   luongKhoan: number;    // lương khoán/chuyến thực tế
   planCount: number;
@@ -71,6 +72,7 @@ export interface OwnedDriver {
   soXe: string;
   soMooc: string;
   stt: string;
+  ngayHoatDong?: string | null;
 }
 
 export interface DashboardOverview {
@@ -103,8 +105,8 @@ export interface DashboardOverview {
     // Chi tiết từng khoản chi phí của tháng, nhóm theo category
     // (Sửa chữa / Nhiên liệu / CP Khác) — để bấm card hiện danh sách.
     items: Record<string, CostItemDetail[]>;
-    /** Chi phí lương + BHXH công ty theo từng lái xe (để lọc theo xe). */
-    byDriver?: { driverId: number; luongNguoiLai: number; bhxhCty: number }[];
+    /** Chi phí lương + BHXH công ty theo từng lái xe (để lọc theo xe và xem chi tiết lương). */
+    byDriver?: { driverId: number; fullName: string; soXe: string; luongNguoiLai: number; bhxhCty: number; luongKhoan: number; luongCung: number; chuyenCan: number; tip: number; phuCap: number; itemSumAdd: number; itemSumDeduct: number; bhxhNld: number; chiHo: number; advanceDeduct: number }[];
   };
   investment: {
     vonXe: number;

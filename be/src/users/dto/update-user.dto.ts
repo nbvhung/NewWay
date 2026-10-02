@@ -51,6 +51,10 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
+  ngayHoatDong?: string;
+
+  @IsOptional()
+  @IsString()
   zaloId?: string;
 
   @IsOptional()

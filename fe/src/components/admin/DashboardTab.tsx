@@ -120,6 +120,7 @@ function DriverSheet({ d, totalP, onClose }: { d: DriverRevenue; totalP: number;
             <div className="flex gap-2 mt-1.5 flex-wrap">
               {d.soXe  && <span className="text-[10px] px-2 py-0.5 rounded font-medium" style={{ background: C.amberLt, color: C.amberDk }}>{d.soXe}</span>}
               {d.soMooc && <span className="text-[10px] px-2 py-0.5 rounded font-medium" style={{ background: '#f5f5f4', color: C.muted }}>{d.soMooc}</span>}
+              {d.ngayHoatDong && <span className="text-[10px] px-2 py-0.5 rounded font-medium" style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' }}>📅 {d.ngayHoatDong}</span>}
             </div>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded hover:bg-white/60 cursor-pointer text-stone-400 flex-shrink-0">✕</button>
@@ -332,11 +333,144 @@ function CostItemsSheet({ category, items, month, year, onClose }: {
 }
 
 /* ───────────────────────────────────────────────────────────────
+   DRIVER SALARY SHEET — popup chi tiết lương từng lái xe
+   Hiển thị danh sách lái xe + tổng thu nhập cty phải trả
+   Bấm vào từng dòng → expand chi tiết các khoản
+   ─────────────────────────────────────────────────────────────── */
+type SalaryDriverRow = NonNullable<DashboardOverview['cost']['byDriver']>[number];
+
+function DriverSalarySheet({ rows, month, year, onClose }: {
+  rows: SalaryDriverRow[]; month: number; year: number; onClose: () => void;
+}) {
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const totalAll = rows.reduce((s, r) => s + r.luongNguoiLai + r.bhxhCty, 0);
+  const sortedRows = [...rows].sort((a, b) => (b.luongNguoiLai + b.bhxhCty) - (a.luongNguoiLai + a.bhxhCty));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/25" onClick={onClose}>
+      <div className="dsh bg-white w-full sm:max-w-[580px] sm:rounded-xl rounded-t-xl overflow-hidden shadow-xl"
+        onClick={e => e.stopPropagation()} style={{ maxHeight: '92vh', overflowY: 'auto' }}>
+        {/* Header */}
+        <div className="px-5 pt-5 pb-4 flex justify-between gap-3" style={{ background: C.surface }}>
+          <div className="min-w-0">
+            <p className="text-[11px]" style={{ color: C.muted }}>Chi phí lương · {MONTHS_VN[month]}/{year}</p>
+            <h3 className="text-[16px] font-bold mt-0.5">👥 Lương Lái Xe</h3>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded hover:bg-white/60 cursor-pointer text-stone-400 flex-shrink-0">✕</button>
+        </div>
+        {/* Tổng */}
+        <div className="px-5 py-3 border-b" style={{ borderColor: C.faint }}>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-lg p-3" style={{ background: C.amberLt, border: `1px solid #fcd34d` }}>
+              <p className="text-[9px] mb-0.5" style={{ color: C.amberDk }}>Thực nhận (tổng)</p>
+              <p className="text-[15px] font-extrabold" style={{ color: C.amber }}>{fmt(rows.reduce((s, r) => s + r.luongNguoiLai, 0))}</p>
+              <p className="text-[9px]" style={{ color: C.muted }}>₫</p>
+            </div>
+            <div className="rounded-lg p-3" style={{ background: '#f0fdf4', border: `1px solid #86efac` }}>
+              <p className="text-[9px] mb-0.5" style={{ color: '#15803d' }}>BHXH Cty đóng</p>
+              <p className="text-[15px] font-extrabold" style={{ color: '#16a34a' }}>{fmt(rows.reduce((s, r) => s + r.bhxhCty, 0))}</p>
+              <p className="text-[9px]" style={{ color: C.muted }}>₫</p>
+            </div>
+            <div className="rounded-lg p-3" style={{ background: C.redLt, border: `1px solid ${C.red}30` }}>
+              <p className="text-[9px] mb-0.5" style={{ color: C.red }}>Tổng Cty chi</p>
+              <p className="text-[15px] font-extrabold" style={{ color: C.red }}>{fmt(totalAll)}</p>
+              <p className="text-[9px]" style={{ color: C.muted }}>₫</p>
+            </div>
+          </div>
+        </div>
+        {/* Danh sách lái xe */}
+        <div className="px-5 py-3 space-y-2">
+          <p className="text-[11px] font-semibold mb-2" style={{ color: C.muted }}>{rows.length} lái xe · bấm để xem chi tiết</p>
+          {sortedRows.length === 0 ? (
+            <p className="text-center py-8 text-[12px]" style={{ color: C.muted }}>Chưa có dữ liệu lương tháng này</p>
+          ) : (
+            sortedRows.map((r, i) => {
+              const ini = r.fullName.split(' ').map(w => w[0] ?? '').slice(-2).join('').toUpperCase();
+              const total = r.luongNguoiLai + r.bhxhCty;
+              const isExp = expanded === r.driverId;
+              const detailRows: [string, number, string, boolean][] = [
+                ['Lương khoán/chuyến', r.luongKhoan, C.amber, r.luongKhoan > 0],
+                ['Lương cứng', r.luongCung, C.ink, r.luongCung > 0],
+                ['Chuyên cần', r.chuyenCan, '#0891b2', r.chuyenCan > 0],
+                ['Phụ cấp khác', r.phuCap, '#7c3aed', r.phuCap > 0],
+                ['Thưởng (tip)', r.tip, C.green, r.tip > 0],
+                ['Khoản cộng thêm', r.itemSumAdd, '#059669', r.itemSumAdd > 0],
+                ['Khoản khấu trừ', -r.itemSumDeduct, C.red, r.itemSumDeduct > 0],
+                ['BHXH NLĐ đóng', -r.bhxhNld, C.red, r.bhxhNld > 0],
+                ['Chi hộ', -r.chiHo, C.red, r.chiHo > 0],
+                ['Trừ tạm ứng', -r.advanceDeduct, C.red, r.advanceDeduct > 0],
+              ];
+              return (
+                <div key={r.driverId}>
+                  <div
+                    onClick={() => setExpanded(isExp ? null : r.driverId)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors hover:bg-stone-50"
+                    style={{ border: `1px solid ${isExp ? C.amber : C.faint}`, background: isExp ? C.amberLt : undefined }}
+                  >
+                    {/* Rank */}
+                    <span className="w-5 text-[11px] font-bold flex-shrink-0" style={{ color: i === 0 ? C.amber : i === 1 ? '#9ca3af' : C.muted }}>{i + 1}</span>
+                    {/* Avatar */}
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+                      style={{ background: `linear-gradient(135deg,#fbbf24,${C.amber})` }}>{ini}</div>
+                    {/* Name + xe */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-semibold truncate">{r.fullName}</p>
+                      {r.soXe && <p className="text-[9px] mt-0.5" style={{ color: C.muted }}>🚛 {r.soXe}</p>}
+                    </div>
+                    {/* Thực nhận */}
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-[12px] font-bold" style={{ color: C.amber }}>{fmt(r.luongNguoiLai)}</p>
+                      {r.bhxhCty > 0 && <p className="text-[9px]" style={{ color: '#16a34a' }}>+{fmt(r.bhxhCty)} BH</p>}
+                    </div>
+                    <span className="text-[10px] ml-1" style={{ color: C.muted }}>{isExp ? '▲' : '▼'}</span>
+                  </div>
+                  {/* Chi tiết mở rộng */}
+                  {isExp && (
+                    <div className="mx-1 mb-2 rounded-b-xl overflow-hidden" style={{ border: `1px solid ${C.amber}40`, borderTop: 'none', background: '#fffbf0' }}>
+                      <div className="px-4 py-3 space-y-0">
+                        {detailRows.filter(([,, , show]) => show).map(([lbl, val]) => (
+                          <div key={lbl} className="flex justify-between items-center py-1.5 border-b last:border-0" style={{ borderColor: '#fef3c7' }}>
+                            <span className="text-[11px]" style={{ color: C.muted }}>{lbl}</span>
+                            <span className="text-[11px] font-semibold" style={{ color: val < 0 ? C.red : C.ink }}>
+                              {val < 0 ? '-' : '+'}{fmt(Math.abs(val))} ₫
+                            </span>
+                          </div>
+                        ))}
+                        {/* Tổng thực nhận */}
+                        <div className="flex justify-between items-center pt-2.5 mt-1">
+                          <span className="text-[12px] font-bold" style={{ color: C.amberDk }}>= Thực nhận</span>
+                          <span className="text-[14px] font-extrabold" style={{ color: C.amber }}>{fmt(r.luongNguoiLai)} ₫</span>
+                        </div>
+                        {r.bhxhCty > 0 && (
+                          <div className="flex justify-between items-center pt-1">
+                            <span className="text-[11px]" style={{ color: '#15803d' }}>+ BHXH Cty đóng thêm</span>
+                            <span className="text-[11px] font-semibold" style={{ color: '#16a34a' }}>{fmt(r.bhxhCty)} ₫</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center py-2 mt-1 px-3 rounded-lg" style={{ background: C.redLt }}>
+                          <span className="text-[12px] font-bold" style={{ color: C.red }}>Tổng Cty chi</span>
+                          <span className="text-[14px] font-extrabold" style={{ color: C.red }}>{fmt(total)} ₫</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────────────────────────────────────────────
    DRIVER FILTER BAR — dùng chung cho card Chi phí / Lợi nhuận / Vốn đầu tư
    Ô lọc nằm cùng dòng với tiêu đề (căn phải); chọn xe xong hiện ô thông tin
    Lái xe - Biển số - Số mooc - STT căn giữa ngay dưới dòng lọc.
    ─────────────────────────────────────────────────────────────── */
 function DriverFilterBar({ title, drivers, value, onChange }: {
+
   title: string;
   drivers: OwnedDriver[];
   value: number | '';
@@ -367,6 +501,7 @@ function DriverFilterBar({ title, drivers, value, onChange }: {
           <div className="px-4 py-2 rounded-xl text-[12px] font-semibold text-center"
             style={{ background: C.amberLt, color: C.amberDk, border: '1px solid #fcd34d' }}>
             🚛 {[sel.fullName, sel.soXe, sel.soMooc, sel.stt ? `STT ${sel.stt}` : ''].filter(Boolean).join(' — ')}
+            {sel.ngayHoatDong && <span className="ml-2 text-[10px] font-normal" style={{ color: '#15803d' }}>📅 {sel.ngayHoatDong}</span>}
           </div>
         </div>
       )}
@@ -393,7 +528,9 @@ export function DashboardTab() {
   const [selD, setSelD] = useState<DriverRevenue | null>(null);
   const [selC, setSelC] = useState<CustomerRevenue | null>(null);
   const [selCost, setSelCost] = useState<string | null>(null);
+  const [showDriverSalary, setShowDriverSalary] = useState(false);
   // Lọc theo xe ở 3 card Chi phí / Lợi nhuận / Vốn đầu tư ('' = tất cả xe)
+
   const [costDriver, setCostDriver] = useState<number | ''>('');
   const [profitDriver, setProfitDriver] = useState<number | ''>('');
   const [investDriver, setInvestDriver] = useState<number | ''>('');
@@ -559,17 +696,32 @@ export function DashboardTab() {
                 <div className="space-y-2 max-h-[320px] overflow-y-auto">
                   {(drv?.routes?.length ?? 0) === 0
                     ? <p className="text-[12px] text-center py-6" style={{ color: C.muted }}>Chưa có tuyến nào</p>
-                    : drv!.routes.map((rt, i) => (
-                        <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg"
-                          style={{ border: `1px solid ${C.faint}` }}>
-                          <span className="w-5 text-[11px] font-bold flex-shrink-0" style={{ color: C.muted }}>{i + 1}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[12px] font-semibold truncate">{rt.routeName || '(không rõ tuyến)'}</p>
-                            <p className="text-[10px] mt-0.5" style={{ color: C.muted }}>{rt.planCount} kế hoạch · {rt.contCount} cont</p>
+                    : drv!.routes.map((rt, i) => {
+                        const types = Object.entries(rt.contByType ?? {}).sort((a, b) => b[1] - a[1]);
+                        return (
+                          <div key={i} className="rounded-lg"
+                            style={{ border: `1px solid ${C.faint}` }}>
+                            <div className="flex items-center gap-3 px-3 py-2">
+                              <span className="w-5 text-[11px] font-bold flex-shrink-0" style={{ color: C.muted }}>{i + 1}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[12px] font-semibold truncate">{rt.routeName || '(không rõ tuyến)'}</p>
+                                <p className="text-[10px] mt-0.5" style={{ color: C.muted }}>{rt.planCount} kế hoạch · {rt.contCount} cont</p>
+                                {types.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {types.map(([t, n]) => (
+                                      <span key={t} className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                                        style={{ background: '#fff7ed', color: C.amberDk, border: `1px solid #fcd34d` }}>
+                                        {t} ×{n}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="text-[12px] font-bold flex-shrink-0" style={{ color: C.amber }}>{fmt(rt.revenue)}</span>
+                            </div>
                           </div>
-                          <span className="text-[12px] font-bold flex-shrink-0" style={{ color: C.amber }}>{fmt(rt.revenue)}</span>
-                        </div>
-                      ))}
+                        );
+                      })}
                 </div>
               </div>
             )}
@@ -683,13 +835,14 @@ export function DashboardTab() {
           const cpKhac    = isAll ? data.cost.cpKhac      : sumCostItems('cpKhac', sel as number);
           const sum = luong + bhxhCty + subvendor + suaChua + nhienLieu + cpKhac;
           const tiles: [string, number, string, string, string][] = [
-            ['Lương lái xe', luong,     C.amber,   isAll ? '(tổng thực nhận)' : '(thực nhận của xe)', ''],
+            ['Lương lái xe', luong, C.amber, isAll ? '(bấm để xem chi tiết từng LX)' : '(thực nhận của xe)', isAll ? 'driverSalary' : ''],
             ['BHXH (Cty đóng)', bhxhCty, '#0d9488', isAll ? '(21,5% lương cứng)' : '(xe này)', ''],
             ['Subvendor',    subvendor, C.red,     isAll ? '(phí thuê ngoài)'   : '(không gắn xe)', ''],
             ['Sửa chữa',    suaChua,   '#7c3aed', '(bấm để xem chi tiết)', 'suaChua'],
             ['Nhiên liệu',   nhienLieu, '#0891b2', '(bấm để xem chi tiết)', 'nhienLieu'],
             ['CP Khác',      cpKhac,    '#059669', '(bấm để xem chi tiết)', 'cpKhac'],
           ];
+
           return (
             <div className="p-5">
               <DriverFilterBar title="💸 Chi tiết Chi Phí" drivers={ownedDrivers} value={costDriver} onChange={setCostDriver} />
@@ -699,9 +852,9 @@ export function DashboardTab() {
                   const clickable = !!cat;
                   return (
                     <div key={lbl}
-                      onClick={clickable ? () => setSelCost(cat) : undefined}
+                      onClick={cat === 'driverSalary' ? () => setShowDriverSalary(true) : (clickable ? () => setSelCost(cat) : undefined)}
                       className={clickable ? 'rounded-xl p-4 cursor-pointer transition-colors hover:brightness-[0.98]' : 'rounded-xl p-4'}
-                      style={{ border: `1px solid ${C.faint}`, background: C.surface }}>
+                      style={{ border: `1px solid ${clickable && cat === 'driverSalary' ? C.amber : C.faint}`, background: clickable && cat === 'driverSalary' ? C.amberLt : C.surface }}>
                       <p className="text-[11px] font-semibold mb-1" style={{ color: C.muted }}>{lbl}</p>
                       <p className="text-[22px] font-extrabold leading-none" style={{ color: c }}>{fmt(val)}</p>
                       <p className="text-[9px] mt-0.5 mb-2" style={{ color: C.muted }}>₫ · {pct}% tổng chi phí</p>
@@ -843,6 +996,14 @@ export function DashboardTab() {
           month={data.month}
           year={data.year}
           onClose={() => setSelCost(null)}
+        />
+      )}
+      {showDriverSalary && (
+        <DriverSalarySheet
+          rows={data.cost.byDriver ?? []}
+          month={data.month}
+          year={data.year}
+          onClose={() => setShowDriverSalary(false)}
         />
       )}
     </div>

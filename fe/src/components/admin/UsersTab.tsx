@@ -93,7 +93,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
   };
 
   const [newUser, setNewUser] = useState<any>({
-    username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', zaloId: '', zaloBot: 0,
+    username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', ngayHoatDong: '', zaloId: '', zaloBot: 0,
     permissions: presetFor('laixe'),
     visibleDriverIds: null,
     ben: '',
@@ -165,7 +165,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         ben: newUser.ben || '',
       });
       toast(`Đã thêm tài khoản: ${newUser.username}`, 'success');
-      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', zaloId: '', zaloBot: 0, permissions: presetFor('laixe'), visibleDriverIds: null, ben: '' });
+      setNewUser({ username: '', fullName: '', password: '', role: 'laixe', soXe: '', soMooc: '', stt: '', sdt: '', ngayHoatDong: '', zaloId: '', zaloBot: 0, permissions: presetFor('laixe'), visibleDriverIds: null, ben: '' });
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
   };
@@ -174,7 +174,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
     const perms = Array.isArray(u.permissions) && u.permissions.length > 0
       ? u.permissions.filter((p) => PERMISSION_KEYS.includes(p))
       : presetFor(u.role);
-    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, permissions: perms, visibleDriverIds: Array.isArray(u.visibleDriverIds) ? u.visibleDriverIds.map(Number) : null, soXe: u.soXe, soMooc: u.soMooc || '', stt: u.stt, sdt: u.sdt, zaloId: u.zaloId || '', zaloBot: u.zaloBot ?? 0, password: '', ben: u.ben || '' });
+    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, permissions: perms, visibleDriverIds: Array.isArray(u.visibleDriverIds) ? u.visibleDriverIds.map(Number) : null, soXe: u.soXe, soMooc: u.soMooc || '', stt: u.stt, sdt: u.sdt, ngayHoatDong: u.ngayHoatDong || '', zaloId: u.zaloId || '', zaloBot: u.zaloBot ?? 0, password: '', ben: u.ben || '' });
     setEditUserModalOpen(true);
   };
 
@@ -196,6 +196,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
         soMooc: editUserData.soMooc || '',
         stt: editUserData.stt || '',
         sdt: editUserData.sdt || '',
+        ngayHoatDong: editUserData.ngayHoatDong || '',
         zaloId: editUserData.zaloId || '',
         zaloBot: editUserData.zaloBot ?? 0,
         ...(editUserData.password ? { password: editUserData.password } : {}),
@@ -313,6 +314,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
                     {u.stt && <span className="text-[10px] text-[#78716c] font-medium">#{u.stt}</span>}
                     {u.soXe && <span className="px-1.5 py-0.5 rounded text-[9px] bg-[#f0f0ee] text-[#78716c]">🚛 {u.soXe}</span>}
                     {u.sdt && <span className="text-[9px] text-[#a8a29e]">📞 {u.sdt}</span>}
+                    {u.ngayHoatDong && <span className="px-1.5 py-0.5 rounded text-[9px] bg-[rgba(16,185,129,0.1)] text-emerald-700">📅 {u.ngayHoatDong}</span>}
                   </div>
                 </div>
                 {canManageUser(currentUser.role, u.role) && (
@@ -397,6 +399,11 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
                 <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Số điện thoại</label>
                 <input type="text" value={newUser.sdt} onChange={e => setNewUser({ ...newUser, sdt: e.target.value })} placeholder="0912237755"
                   className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">📅 Ngày đi vào hoạt động</label>
+                <input type="date" value={newUser.ngayHoatDong} onChange={e => setNewUser({ ...newUser, ngayHoatDong: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
               </div>
             </div>
           </div>

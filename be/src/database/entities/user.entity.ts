@@ -48,6 +48,10 @@ export class User {
   @Column({ name: 'sdt', length: 20, default: '' })
   sdt: string;
 
+  /** Ngày đi vào hoạt động (ISO date string YYYY-MM-DD). */
+  @Column({ name: 'ngay_hoat_dong', type: 'date', nullable: true, default: null })
+  ngayHoatDong: string | null;
+
   @Column({
     name: 'zalo_id',
     type: 'varchar',

@@ -151,6 +151,7 @@ export class UsersService {
       soMooc: dto.soMooc?.trim() || '',
       stt: dto.stt?.trim() || '',
       sdt: dto.sdt?.trim() || '',
+      ngayHoatDong: dto.ngayHoatDong?.trim() || null,
       zaloId: dto.zaloId?.trim() || null,
       zaloBot: dto.zaloBot ?? 0,
       oldCar: dto.oldCar ?? false,
@@ -216,6 +217,7 @@ export class UsersService {
     if (dto.soMooc !== undefined) target.soMooc = dto.soMooc.trim();
     if (dto.stt !== undefined) target.stt = dto.stt.trim();
     if (dto.sdt !== undefined) target.sdt = dto.sdt.trim();
+    if (dto.ngayHoatDong !== undefined) target.ngayHoatDong = dto.ngayHoatDong?.trim() || null;
     if (dto.zaloId !== undefined) target.zaloId = dto.zaloId.trim() || null;
     if (dto.zaloBot !== undefined) target.zaloBot = dto.zaloBot;
     if (dto.allowanceFarHome !== undefined)

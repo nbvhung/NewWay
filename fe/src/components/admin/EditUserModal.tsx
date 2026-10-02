@@ -122,6 +122,11 @@ export function EditUserModal({ open, onClose, editUserData, setEditUserData, on
             <input type="text" value={editUserData?.sdt || ''} onChange={e => setEditUserData({ ...editUserData, sdt: e.target.value })}
               className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
           </div>
+          <div className="col-span-2">
+            <label className="text-xs font-medium text-[#78716c] mb-1 block">📅 Ngày đi vào hoạt động</label>
+            <input type="date" value={editUserData?.ngayHoatDong || ''} onChange={e => setEditUserData({ ...editUserData, ngayHoatDong: e.target.value })}
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
+          </div>
           <div>
             <label className="text-xs font-medium text-[#78716c] mb-1 block">Zalo ID</label>
             <input type="text" value={editUserData?.zaloId || ''} onChange={e => setEditUserData({ ...editUserData, zaloId: e.target.value })}

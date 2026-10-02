@@ -11,6 +11,7 @@ export interface User {
   soMooc?: string;
   stt: string;
   sdt: string;
+  ngayHoatDong?: string | null;
   zaloId?: string | null;
   zaloBot?: number;
   allowanceFarHome?: number;
