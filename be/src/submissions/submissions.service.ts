@@ -101,11 +101,15 @@ export class SubmissionsService {
   }
 
   async findMy(userId: number): Promise<any[]> {
-    const submissions = await this.submissionsRepository.find({
-      where: { userId },
-      order: { createdAt: 'DESC' },
-      relations: { actualVehicle: true },
-    });
+    // Dùng QueryBuilder để join actualVehicle (xe thực chạy) tường minh.
+    // TypeORM không tự load relation khi @Column và @ManyToOne cùng tên cột.
+    const submissions = await this.submissionsRepository
+      .createQueryBuilder('sub')
+      .leftJoin('users', 'av', 'av.id = sub.actual_vehicle_id')
+      .addSelect(['av.so_xe AS av_so_xe', 'av.full_name AS av_full_name', 'av.ben AS av_ben'])
+      .where('sub.userId = :userId', { userId })
+      .orderBy('sub.createdAt', 'DESC')
+      .getRawAndEntities();
 
     const allRoutes = await this.routesRepository.find();
     const routeMap = new Map<string, { money: number; effectiveDate: string | null }>();
@@ -134,8 +138,12 @@ export class SubmissionsService {
       return [sl.name, sl.soChuyen, sl.routeName, ngay].filter(Boolean).join(' / ');
     };
 
+    const { entities: submissionList, raw: rawRows } = submissions;
+
     const result: any[] = [];
-    for (const sub of submissions) {
+    for (let i = 0; i < submissionList.length; i++) {
+      const sub = submissionList[i];
+      const raw = rawRows[i];
       const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
       const history = await this.editHistoryRepository.find({
         where: { submissionId: sub.id },
@@ -166,9 +174,11 @@ export class SubmissionsService {
         completed: sl?.completed || false,
         tangCuong: sl?.tangCuong || false,
         leTet: sl?.leTet || false,
-        // Thông tin xe thực chạy (nếu tài xế đã dùng lệnh /xe để lái thay)
+        // Thông tin xe thực chạy (từ raw join - tường minh để tránh lỗi TypeORM relation conflict)
         actualVehicleId: sub.actualVehicleId ?? null,
-        actualVehicleSoXe: (sub as any).actualVehicle?.soXe ?? null,
+        actualVehicleSoXe: raw?.av_so_xe ?? null,
+        actualVehicleOwner: raw?.av_full_name ?? null,
+        actualVehicleBen: raw?.av_ben ?? null,
       });
     }
     return result;
@@ -614,6 +624,9 @@ export class SubmissionsService {
       .createQueryBuilder('s')
       .leftJoinAndSelect('s.user', 'user')
       .leftJoinAndSelect('s.shippingLineRef', 'sl')
+      // Join xe thực chạy để lấy biển số (actualVehicleSoXe)
+      .leftJoin('users', 'av', 'av.id = s.actual_vehicle_id')
+      .addSelect(['av.so_xe AS av_so_xe', 'av.full_name AS av_full_name', 'av.ben AS av_ben'])
       .orderBy('s.createdAt', 'DESC');
 
     if (role !== 'admin' && role !== 'supper_admin') {
@@ -645,29 +658,39 @@ export class SubmissionsService {
       query.andWhere('(sl.ngay IS NOT NULL AND sl.ngay <= :toDate OR sl.ngay IS NULL AND DATE(s.createdAt) <= :toDate)', { toDate: filter.toDate });
     }
 
-    let submissions = await query.getMany();
+    const { entities: submissions, raw: rawRows } = await query.getRawAndEntities();
 
     // Filter out submissions for completed plans (web UI only)
+    let filteredPairs = submissions.map((s, i) => ({ s, raw: rawRows[i] }));
     if (filter.excludeCompleted) {
       const allShippingLines = await this.shippingLinesRepository.find();
       const completedIds = new Set(allShippingLines.filter(sl => sl.completed).map(sl => sl.id));
       const completedNames = new Set(allShippingLines.filter(sl => sl.completed).map(sl => sl.name));
-      submissions = submissions.filter(s => {
+      filteredPairs = filteredPairs.filter(({ s }) => {
         if (s.shippingLineId) return !completedIds.has(s.shippingLineId);
         return !completedNames.has(s.shippingLine);
       });
     }
 
     const result: any[] = [];
-    for (const sub of submissions) {
+    for (const { s: sub, raw } of filteredPairs) {
       const history = await this.editHistoryRepository.find({
         where: { submissionId: sub.id },
         order: { editedAt: 'DESC' },
       });
-      result.push({ ...sub, history });
+      result.push({
+        ...sub,
+        history,
+        // Xe thực chạy (lái thay) — từ raw JOIN để tránh conflict TypeORM
+        actualVehicleId: sub.actualVehicleId ?? null,
+        actualVehicleSoXe: raw?.av_so_xe ?? null,
+        actualVehicleOwner: raw?.av_full_name ?? null,
+        actualVehicleBen: raw?.av_ben ?? null,
+      });
     }
     return result;
   }
+
 
   async remove(id: number) {
     const submission = await this.submissionsRepository.findOne({ where: { id } });

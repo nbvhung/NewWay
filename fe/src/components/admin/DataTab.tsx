@@ -400,7 +400,16 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
                         <span className="ml-1 px-1 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(100,116,139,0.15)] text-[#78716c]">{ROLE_LABELS[(s as any).user.role] || (s as any).user.role}</span>
                       )}
                     </td>
-                    <td className="px-3 py-2.5 font-medium">{s.driverName}</td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-medium">{s.driverName}</span>
+                        {(s as any).actualVehicleSoXe && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(249,115,22,0.15)] text-orange-600 w-fit">
+                            🚚 Lái thay: {(s as any).actualVehicleSoXe}
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-3 py-2.5"><span className="text-sm font-semibold text-emerald-700">{getSlDisplay(s)}</span></td>
                     <td className="px-3 py-2.5">{s.hang20 || '—'}</td>
                     <td className="px-3 py-2.5">{s.hang40 || '—'}</td>
