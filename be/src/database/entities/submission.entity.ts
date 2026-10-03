@@ -77,7 +77,7 @@ export class Submission {
   @Column({ name: 'actual_vehicle_id', type: 'int', nullable: true, default: null })
   actualVehicleId: number | null;
 
-  @ManyToOne(() => User, { nullable: true })
+  @ManyToOne(() => User, { nullable: true, eager: false })
   @JoinColumn({ name: 'actual_vehicle_id' })
   actualVehicle: User | null;
 }

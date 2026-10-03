@@ -236,7 +236,6 @@ export class DashboardService {
           .createQueryBuilder('ci')
           .leftJoinAndSelect('ci.submissionRef', 'sub')
           .leftJoinAndSelect('sub.user', 'u')
-          .leftJoinAndSelect('sub.actualVehicle', 'av')
           .where('ci.shippingLineId IN (:...ids)', { ids: planIds })
           .andWhere('u.role = :laixeRole', { laixeRole: 'laixe' })
           .andWhere(
