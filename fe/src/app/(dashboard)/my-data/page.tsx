@@ -322,10 +322,17 @@ export default function MyDataPage() {
           className={`bg-[#ffffff] border border-[#e7e5e4] rounded-xl p-3 ${editable ? 'cursor-pointer active:scale-[0.99] transition-transform' : ''}`}>
           {/* Row 1: Plan name + Edit button */}
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-sm font-bold text-amber-700 leading-tight">
-                {s.planDisplayName || s.shippingLine}
-                {s.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-600">x3</span> : s.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-700">+15%</span> : null}
-              </span>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-bold text-amber-700 leading-tight">
+                  {s.planDisplayName || s.shippingLine}
+                  {s.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-600">x3</span> : s.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-700">+15%</span> : null}
+                </span>
+              {(s as any).actualVehicleSoXe && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(249,115,22,0.15)] text-orange-600 w-fit">
+                  🚚 Lái thay xe: {(s as any).actualVehicleSoXe}
+                </span>
+              )}
+            </div>
             {showEdit && !s.completed && (
               <button onClick={() => openEdit(s)} className="px-3 py-1 rounded-lg text-[11px] font-bold bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white shrink-0">✏️ Sửa</button>
             )}
@@ -389,10 +396,17 @@ export default function MyDataPage() {
           <tr key={s.id} className="border-b border-[rgba(0,0,0,0.04)] hover:bg-[rgba(0,0,0,0.03)]">
             {user?.role !== 'laixe' && <td className="px-3.5 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(148,163,184,0.15)] text-[#78716c]">{i + 1}</span></td>}
             <td className="px-3.5 py-3">
+              <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-amber-700">{s.planDisplayName || s.shippingLine}{s.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-600">x3</span> : s.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-700">+15%</span> : null}</span>
               {showEdit && !s.completed && (
                 <button onClick={() => openEdit(s)} className="px-2 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️ Sửa</button>
+              )}
+              </div>
+              {(s as any).actualVehicleSoXe && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(249,115,22,0.15)] text-orange-600 w-fit">
+                  🚚 Lái thay: {(s as any).actualVehicleSoXe}
+                </span>
               )}
               </div>
             </td>

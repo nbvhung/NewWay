@@ -104,6 +104,7 @@ export class SubmissionsService {
     const submissions = await this.submissionsRepository.find({
       where: { userId },
       order: { createdAt: 'DESC' },
+      relations: { actualVehicle: true },
     });
 
     const allRoutes = await this.routesRepository.find();
@@ -156,7 +157,19 @@ export class SubmissionsService {
       const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
       const salary = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
       const planDate = sl?.ngay || null;
-      result.push({ ...sub, history, salary, planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine, planDate, completed: sl?.completed || false, tangCuong: sl?.tangCuong || false, leTet: sl?.leTet || false });
+      result.push({
+        ...sub,
+        history,
+        salary,
+        planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine,
+        planDate,
+        completed: sl?.completed || false,
+        tangCuong: sl?.tangCuong || false,
+        leTet: sl?.leTet || false,
+        // Thông tin xe thực chạy (nếu tài xế đã dùng lệnh /xe để lái thay)
+        actualVehicleId: sub.actualVehicleId ?? null,
+        actualVehicleSoXe: (sub as any).actualVehicle?.soXe ?? null,
+      });
     }
     return result;
   }

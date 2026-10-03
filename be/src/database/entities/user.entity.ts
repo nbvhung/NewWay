@@ -88,6 +88,14 @@ export class User {
   @Column({ name: 'pay_bhxh', type: 'boolean', default: true })
   payBhxh: boolean;
 
+  /**
+   * Xe mà tài xế đang lái THỰC TẾ (khác xe gốc).
+   * NULL = đang lái xe gốc (users.id).
+   * Được set bởi lệnh Zalo `/xe XXXXX` và reset khi tài xế nhắn lại `/xe` hoặc OPS reset.
+   */
+  @Column({ name: 'current_vehicle_id', type: 'int', nullable: true, default: null })
+  currentVehicleId: number | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

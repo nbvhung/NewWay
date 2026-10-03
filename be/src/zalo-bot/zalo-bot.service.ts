@@ -385,6 +385,12 @@ export class ZaloBotService {
       return;
     }
 
+    // Lệnh đổi xe: /xe XXXXX (5 số cuối biển số xe muợn) hoặc /xe (reset về xe gốc)
+    if (lower.startsWith('/xe')) {
+      await this.handleVehicleSwitch(chatId, zaloUserId, text);
+      return;
+    }
+
     const session = (await this.sessionService.get(zaloUserId)) || {};
 
     if (!session.userId) {
@@ -663,6 +669,11 @@ export class ZaloBotService {
         '',
         '3️⃣ Nếu mã trùng → bot đưa danh sách, gửi số thứ tự để chọn.',
         '',
+        '4️⃣ Đổi xe (khi phải lái thay xe khác):',
+        '   /xe 01376  → chuyển sang lái xe 01376',
+        '   /xe        → quay về xe gốc của mình',
+        '   (Lương vẫn tính cho mình, doanh thu tính cho xe đang lái)',
+        '',
         'Hủy kế hoạch hiện tại / thao tác lại: /logout',
         'Đổi sang SĐT tài khoản khác: /doi-sdt',
         'Ghi TIP: nhắn "TIP" kèm số lượng (vd: TIP 3, típ. 3, típ ba)',
@@ -719,6 +730,91 @@ export class ZaloBotService {
       chatId,
       '🔄 Đã hủy liên kết tài khoản cũ.\nSếp gửi SĐT mới đã đăng ký trong hệ thống (vd: 0931234567) để xác nhận lại nhé.',
       this.botOf(zaloUserId),
+    );
+  }
+
+  /**
+   * Xử lý lệnh đổi xe: `/xe XXXXX` hoặc `/xe` (reset về xe gốc).
+   * Tìm xe theo 5 số cuối biển số trong danh sách lái xe.
+   * Cập nhật `users.current_vehicle_id` để các chuyến tiếp theo dùng đúng xe.
+   */
+  private async handleVehicleSwitch(
+    chatId: string,
+    zaloUserId: string,
+    rawText: string,
+  ): Promise<void> {
+    // Tìm tài xế đang nhắn
+    const driver = await this.usersRepository.findOne({
+      where: { zaloId: zaloUserId },
+    });
+    if (!driver) {
+      await this.reply(
+        chatId,
+        zaloUserId,
+        'Zalo này chưa xác nhận tài khoản. Sếp gửi SĐT đã đăng ký để kích hoạt nhé (vd: 0931234567).',
+      );
+      return;
+    }
+
+    // Parse 5 số cuối từ lệnh, ví dụ "/xe 01376" → "01376"
+    const match = rawText.trim().replace(/^\/xe\s*/i, '').replace(/\D/g, '');
+
+    // Không có số → reset về xe gốc
+    if (!match) {
+      if (!driver.currentVehicleId) {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          `🚚 Sếp ${driver.fullName} đang lái xe gốc (${driver.soXe || 'chưa có BKS'}) — không cần thay đổi gì.`,
+        );
+        return;
+      }
+      driver.currentVehicleId = null;
+      await this.usersRepository.save(driver);
+      await this.reply(
+        chatId,
+        zaloUserId,
+        `✅ Đã reset về xe gốc.\nSếp ${driver.fullName} đang lái: ${driver.soXe || '(chưa có BKS)'}.\nCác chuyến tiếp theo sẽ được ghi nhận cho xe này.`,
+      );
+      return;
+    }
+
+    // Tìm xe theo 5 số cuối trong danh sách lái xe (bỏ qua chính mình)
+    const allDrivers = await this.usersRepository.find({
+      where: { role: 'laixe' },
+    });
+    const matched = allDrivers.filter(
+      (u) => u.id !== driver.id && (u.soXe || '').replace(/\D/g, '').endsWith(match),
+    );
+
+    if (matched.length === 0) {
+      await this.reply(
+        chatId,
+        zaloUserId,
+        `❌ Không tìm thấy xe nào có số cuối "${match}" trong hệ thống.\nSếp kiểm tra lại số xe hoặc liên hệ admin nhé.`,
+      );
+      return;
+    }
+
+    if (matched.length > 1) {
+      const list = matched.map((u, i) => `${i + 1}. ${u.soXe} — ${u.fullName}`).join('\n');
+      await this.reply(
+        chatId,
+        zaloUserId,
+        `⚠️ Có ${matched.length} xe cùng số cuối "${match}":\n${list}\n\nSếp gửi số đầy đủ hơn (vd: /xe 15H 01376) để chọn đúng xe nhé.`,
+      );
+      return;
+    }
+
+    // Tìm thấy đúng 1 xe
+    const targetVehicle = matched[0];
+    driver.currentVehicleId = targetVehicle.id;
+    await this.usersRepository.save(driver);
+
+    await this.reply(
+      chatId,
+      zaloUserId,
+      `✅ Xác nhận! Sếp ${driver.fullName} đang lái thay xe:\n🚚 ${targetVehicle.soXe} — ${targetVehicle.fullName}\n\nDoanh thu các chuyến tiếp theo sẽ tính cho xe ${targetVehicle.soXe}.\nLương chuyến vẫn tính cho Sếp.\n\nNhắn /xe để quay về xe gốc (${driver.soXe || 'chưa có BKS'}).`,
     );
   }
 
@@ -1985,6 +2081,8 @@ export class ZaloBotService {
           shippingLineId: plan.id,
           route: plan.routeName || '',
           driverName: user.fullName,
+          // Snapshot xe thực chạy: nếu tài xế đang mượn xe khác, lưu lại để tính doanh thu / BKS đúng bên
+          actualVehicleId: user.currentVehicleId ?? null,
           [field]: String(increment),
         });
         newTotal = String(increment);
@@ -1993,6 +2091,10 @@ export class ZaloBotService {
         const oldVal = String((submission as any)[field] || '');
         newTotal = String((parseInt(oldVal, 10) || 0) + increment);
         (submission as any)[field] = newTotal;
+        // Cập nhật xe thực chạy nếu đang mượn xe (luôn dùng trạng thái hiện tại của tài xế)
+        if (user.currentVehicleId) {
+          submission.actualVehicleId = user.currentVehicleId;
+        }
         submission.editCount += 1;
         submission.lastEditedAt = new Date();
         await this.submissionsRepository.save(submission);

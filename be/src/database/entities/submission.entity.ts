@@ -68,4 +68,16 @@ export class Submission {
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })
   user: User;
+
+  /**
+   * Xe thực chạy khi ghi nhận (snapshot từ `users.current_vehicle_id` tại thời điểm báo).
+   * NULL = lái xế đang dùng xe gốc của mình (userId == vehicle).
+   * Dùng để tính doanh thu / BKS / Bên trong Dashboard và xuất Excel.
+   */
+  @Column({ name: 'actual_vehicle_id', type: 'int', nullable: true, default: null })
+  actualVehicleId: number | null;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'actual_vehicle_id' })
+  actualVehicle: User | null;
 }

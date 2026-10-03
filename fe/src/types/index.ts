@@ -18,6 +18,8 @@ export interface User {
   allowanceWaitLoading?: number;
   oldCar?: boolean;
   payBhxh?: boolean;
+  /** ID xe đang lái thực tế (khác xe gốc). NULL = lái xe gốc. */
+  currentVehicleId?: number | null;
   createdAt?: string;
 }
 
@@ -154,6 +156,10 @@ export interface Submission {
   planDate?: string;
   tangCuong?: boolean;
   leTet?: boolean;
+  /** ID xe thực chạy (khác userId khi lái thay). NULL = xe gốc. */
+  actualVehicleId?: number | null;
+  /** Biển số xe thực chạy (join từ actualVehicle.soXe, do BE trả về). */
+  actualVehicleSoXe?: string | null;
 }
 
 export interface EditHistory {

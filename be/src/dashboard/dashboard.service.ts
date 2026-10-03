@@ -225,15 +225,27 @@ export class DashboardService {
     //    CHỈ tính submission/container của tài khoản LÁI XE (role='laixe').
     //    Tài khoản ops nhập thay không phải sản lượng của lái xe → loại khỏi
     //    thống kê lương/doanh thu để tránh phồng số liệu.
+    //
+    //    Lọc theo "xe hiệu dụng" (effective vehicle):
+    //    - Nếu sub.actual_vehicle_id != NULL → xe thực chạy là actualVehicle (dùng để lọc bên)
+    //    - Nếu NULL → xe thực chạy chính là tài xế (user_id)
+    //    Khi bị giới hạn visible, lọc theo xe thực chạy (không phải tài xế gốc)
+    //    để doanh thu xe mượn đi đúng về bên sở hữu xe.
     const containers: ContainerImport[] = planIds.length
       ? await this.ciRepo
           .createQueryBuilder('ci')
           .leftJoinAndSelect('ci.submissionRef', 'sub')
           .leftJoinAndSelect('sub.user', 'u')
+          .leftJoinAndSelect('sub.actualVehicle', 'av')
           .where('ci.shippingLineId IN (:...ids)', { ids: planIds })
           .andWhere('u.role = :laixeRole', { laixeRole: 'laixe' })
           .andWhere(
-            visible === null ? '1=1' : visible.length === 0 ? '1=0' : 'u.id IN (:...visible)',
+            visible === null
+              ? '1=1'
+              : visible.length === 0
+              ? '1=0'
+              // Lọc theo xe thực chạy: hoặc actualVehicle nằm trong visible, hoặc user nằm trong visible và không có actualVehicle
+              : '(sub.actual_vehicle_id IN (:...visible) OR (sub.actual_vehicle_id IS NULL AND u.id IN (:...visible)))',
             visible && visible.length > 0 ? { visible } : {},
           )
           .getMany()
@@ -478,13 +490,23 @@ export class DashboardService {
       totalSubvendor   += subvendorCost;
       totalLuongChuyen += luongChuyen;
 
-      // Lái xe trong plan
-      const driverIds = new Set<number>();
+      // Xe hiệu dụng (effective vehicle): nếu tài xế đang lái thay xe khác,
+      // dùng actual_vehicle_id của submission thay vì userId để tính doanh thu.
+      // Nhờ vậy doanh thu đi về đúng bên sở hữu xe (NWA/NWB), không phải bên tài xế gốc.
+      //
+      // Gom container theo xe hiệu dụng (mỗi xe một danh sách riêng)
+      const contsByEffectiveDriver = new Map<number, ContainerImport[]>();
       for (const ci of conts) {
-        if (ci.submissionRef?.userId) driverIds.add(ci.submissionRef.userId);
+        const sub = ci.submissionRef;
+        if (!sub) continue;
+        const effectiveId = sub.actualVehicleId ?? sub.userId;
+        if (!effectiveId) continue;
+        const arr = contsByEffectiveDriver.get(effectiveId) ?? [];
+        arr.push(ci);
+        contsByEffectiveDriver.set(effectiveId, arr);
       }
 
-      // Customer accumulation
+      // Customer accumulation (toàn bộ plan, không chia)
       if (plan.customerId) {
         const cust  = customerMap.get(plan.customerId);
         const entry = customerRevenueMap.get(plan.customerId)
@@ -496,7 +518,6 @@ export class DashboardService {
           entry.contByType[t] = (entry.contByType[t] ?? 0) + n;
         }
 
-        // Chi tiết theo tuyến đường của khách này
         const cRoute = entry.routes.get(plan.routeName) ?? { revenue: 0, planCount: 0, contCount: 0, contByType: {} };
         cRoute.revenue   += revenue;
         cRoute.planCount += 1;
@@ -505,7 +526,6 @@ export class DashboardService {
           cRoute.contByType[t] = (cRoute.contByType[t] ?? 0) + n;
         }
         entry.routes.set(plan.routeName, cRoute);
-
         customerRevenueMap.set(plan.customerId, entry);
       }
 
@@ -517,32 +537,35 @@ export class DashboardService {
         dailyRevenueMap.set(day, de);
       }
 
-      // Driver accumulation (revenue chia đều, luong khoán riêng từng người)
-      const perDriverRevenue = driverIds.size ? revenue / driverIds.size : 0;
-      for (const dId of driverIds) {
-        const entry = driverRevenueMap.get(dId) ?? { revenue: 0, luongKhoan: 0, planCount: 0, totalCont: 0, routes: new Map() };
-        entry.revenue   += perDriverRevenue;
+      // Driver accumulation: mỗi xe tính DOANH THU RIÊNG dựa trên container
+      // CỦA CHÍNH XE ĐÓ (không chia đều). Xe chạy nhiều/loại đắt → nhiều hơn.
+      for (const [dId, driverConts] of contsByEffectiveDriver.entries()) {
+        // Doanh thu từ đúng container của xe này trong plan này
+        const driverRevenue = calcRevenue(plan.customerId, day, driverConts, plan);
+
+        const entry = driverRevenueMap.get(dId)
+          ?? { revenue: 0, luongKhoan: 0, planCount: 0, totalCont: 0, routes: new Map() };
+        entry.revenue   += driverRevenue;
         entry.planCount += 1;
 
-        // Lương khoán của driver này trong plan: tìm sub của họ
-        const driverSub = subs.find(s => s.userId === dId);
+        // Lương khoán: tìm submission theo xe hiệu dụng (gốc hoặc lái thay)
+        const driverSub = subs.find(s => (s.actualVehicleId ?? s.userId) === dId);
         if (driverSub) entry.luongKhoan += calcSubSalary(driverSub, plan);
 
-        // Sản lượng (container đã ghi nhận) của driver này trong plan
-        const driverConts = conts.filter(ci => ci.submissionRef?.userId === dId);
         entry.totalCont += driverConts.length;
 
-        const routeEntry = entry.routes.get(plan.routeName) ?? { revenue: 0, planCount: 0, contCount: 0, contByType: {} };
-        routeEntry.revenue    += perDriverRevenue;
+        const routeEntry = entry.routes.get(plan.routeName)
+          ?? { revenue: 0, planCount: 0, contCount: 0, contByType: {} };
+        routeEntry.revenue    += driverRevenue;
         routeEntry.planCount  += 1;
         routeEntry.contCount  += driverConts.length;
-        // Ghi nhận loại cont của lái xe này trong tuyến đường này
         for (const ci of driverConts) {
           routeEntry.contByType[ci.type] = (routeEntry.contByType[ci.type] ?? 0) + 1;
         }
         entry.routes.set(plan.routeName, routeEntry);
         driverRevenueMap.set(dId, entry);
       }
+
 
       planSummaries.push({
         id: plan.id,
@@ -558,7 +581,7 @@ export class DashboardService {
         revenue:       Math.round(revenue),
         subvendorCost: Math.round(subvendorCost),
         luongChuyen:   Math.round(luongChuyen),
-        driverCount: driverIds.size,
+        driverCount: contsByEffectiveDriver.size,
         contByType,
       });
     }
