@@ -390,6 +390,16 @@ export class ZaloBotService {
       await this.handleVehicleSwitch(chatId, zaloUserId, text);
       return;
     }
+    // Dạng linh hoạt: "/07883", "xe 07883", "đổi xe 07883", "Phạm Văn Dũng/ Xe 07883"
+    {
+      const slashNum = text.match(/^\/\s*(\d{4,5})\s*\.?$/);
+      const xeNum = normalized.match(/(?:^|[\s\/])xe\s*:?\s*(\d{4,5})\s*\.?$/);
+      const digits = slashNum?.[1] || xeNum?.[1];
+      if (digits) {
+        await this.handleVehicleSwitch(chatId, zaloUserId, `/xe ${digits}`);
+        return;
+      }
+    }
 
     const session = (await this.sessionService.get(zaloUserId)) || {};
 
