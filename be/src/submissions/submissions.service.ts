@@ -339,6 +339,34 @@ export class SubmissionsService {
       submission.shippingLineId = dto.shippingLineId;
     }
 
+    // Xe thực chạy (lái thay) — chỉ admin/ops được sửa (sửa khi tài xế quên /xe).
+    if (
+      dto.actualVehicleId !== undefined &&
+      hasPermission(user, 'entry.edit_other')
+    ) {
+      const oldId = submission.actualVehicleId ?? null;
+      const newId =
+        dto.actualVehicleId === null ? null : Number(dto.actualVehicleId);
+      if (oldId !== newId) {
+        const ids = [oldId, newId].filter(
+          (v): v is number => v !== null && Number.isFinite(v),
+        );
+        const vehicles = ids.length
+          ? await this.usersRepository.find({ where: { id: In(ids) } })
+          : [];
+        const plateOf = (id: number | null): string => {
+          if (id === null) return '';
+          const v = vehicles.find((u) => u.id === id);
+          return v?.soXe || v?.fullName || `#${id}`;
+        };
+        submission.actualVehicleId = newId;
+        changes['actualVehicleId'] = {
+          old: plateOf(oldId),
+          new: plateOf(newId),
+        };
+      }
+    }
+
     if (Object.keys(changes).length === 0) {
       return {
         message: 'Không có thay đổi',
@@ -864,9 +892,12 @@ export class SubmissionsService {
       if (visible.length === 0) {
         query.andWhere('1=0');
       } else {
-        query.andWhere('s.userId IN (:...visibleDriverIds)', {
-          visibleDriverIds: visible,
-        });
+        // Lọc theo XE THỰC CHẠY (không theo tài xế gốc) — chủ xe vẫn thấy chuyến
+        // trên xe mình kể cả khi do lái phụ (mượn xe) chạy.
+        query.andWhere(
+          '(s.actual_vehicle_id IN (:...visibleDriverIds) OR (s.actual_vehicle_id IS NULL AND s.userId IN (:...visibleDriverIds)))',
+          { visibleDriverIds: visible },
+        );
       }
     }
 
@@ -2666,12 +2697,15 @@ export class SubmissionsService {
         salary: number;
       }
     >();
+    const vehicleInfoMap = new Map(allDrivers.map((d) => [d.id, d]));
     for (const sub of filteredSubs) {
-      const uid = sub.userId;
+      // Gom theo XE THỰC CHẠY (lái thay) — cột tên/biển số hiển thị xe thực chạy.
+      const uid = sub.actualVehicleId ?? sub.userId;
+      const veh = vehicleInfoMap.get(uid);
       if (!driverDataMap.has(uid)) {
         driverDataMap.set(uid, {
-          fullName: sub.user?.fullName || sub.driverName || '',
-          username: sub.user?.username || '',
+          fullName: veh?.fullName || sub.user?.fullName || sub.driverName || '',
+          username: veh?.username || sub.user?.username || '',
           h20: 0,
           h40: 0,
           v20: 0,

@@ -48,4 +48,12 @@ export class UpdateSubmissionDto {
   @IsOptional()
   @IsString()
   keoVe?: string;
+
+  /**
+   * Xe thực chạy (lái thay). null = về xe gốc. Chỉ admin/ops (entry.edit_other)
+   * được đổi — dùng để sửa khi tài xế quên gửi lệnh /xe.
+   */
+  @IsOptional()
+  @IsNumber()
+  actualVehicleId?: number | null;
 }

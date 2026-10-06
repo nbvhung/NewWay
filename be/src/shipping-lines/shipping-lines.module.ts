@@ -8,6 +8,7 @@ import { Submission } from '../database/entities/submission.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { ContainerClaim } from '../database/entities/container-claim.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
+import { User } from '../database/entities/user.entity';
 import { ZaloBotModule } from '../zalo-bot/zalo-bot.module';
 
 @Module({
@@ -19,6 +20,7 @@ import { ZaloBotModule } from '../zalo-bot/zalo-bot.module';
       ContainerImport,
       ContainerClaim,
       EditHistory,
+      User,
     ]),
     ZaloBotModule,
   ],

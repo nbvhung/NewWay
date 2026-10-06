@@ -71,4 +71,5 @@ export const FIELD_LABELS: Record<string, string> = {
   veSinhLai: 'Vệ sinh lại',
   keoVe: 'Kéo về',
   tip: 'TIP',
+  actualVehicleId: 'Xe thực chạy',
 };

@@ -15,6 +15,7 @@ import { CustomerAuditLog } from '../database/entities/customer-audit-log.entity
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { ContainerClaim } from '../database/entities/container-claim.entity';
+import { Submission } from '../database/entities/submission.entity';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { CreateCustomerPriceDto } from './dto/create-customer-price.dto';
@@ -95,6 +96,8 @@ export class CustomersService {
     private containerImportsRepository: Repository<ContainerImport>,
     @InjectRepository(ContainerClaim)
     private containerClaimsRepository: Repository<ContainerClaim>,
+    @InjectRepository(Submission)
+    private submissionsRepository: Repository<Submission>,
     @InjectRepository(CustomerPrice)
     private pricesRepository: Repository<CustomerPrice>,
     @InjectRepository(CustomerSurcharge)
@@ -141,6 +144,21 @@ export class CustomersService {
       if (sl.allDrivers || planDriverIds(sl).some((id) => visibleSet.has(id))) {
         allowedPlanIds.add(sl.id);
       }
+    }
+
+    // Bổ sung kế hoạch có chuyến với XE THỰC CHẠY thuộc tài khoản này (kể cả
+    // khi do lái phụ mượn xe chạy) — để chủ xe thấy đúng khách hàng của mình.
+    const subRows = await this.submissionsRepository
+      .createQueryBuilder('sub')
+      .select('DISTINCT sub.shipping_line_id', 'planId')
+      .where(
+        '(sub.actual_vehicle_id IN (:...visible) OR (sub.actual_vehicle_id IS NULL AND sub.user_id IN (:...visible)))',
+        { visible },
+      )
+      .getRawMany();
+    for (const r of subRows) {
+      const id = Number(r.planId);
+      if (Number.isFinite(id)) allowedPlanIds.add(id);
     }
 
     const customerIds = new Set<number>();

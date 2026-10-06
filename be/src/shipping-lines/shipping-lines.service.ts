@@ -5,13 +5,14 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Submission } from '../database/entities/submission.entity';
 import { Route } from '../database/entities/route.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { ContainerClaim } from '../database/entities/container-claim.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
+import { User } from '../database/entities/user.entity';
 import { CreateShippingLineDto } from './dto/create-shipping-line.dto';
 import { UpdateShippingLineDto } from './dto/update-shipping-line.dto';
 import { ZaloPlanCompletedNotifierService } from '../zalo-bot/zalo-plan-completed-notifier.service';
@@ -48,6 +49,8 @@ export class ShippingLinesService {
     private containerClaimsRepository: Repository<ContainerClaim>,
     @InjectRepository(EditHistory)
     private editHistoryRepository: Repository<EditHistory>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
     private zaloPlanCompletedNotifier: ZaloPlanCompletedNotifierService,
   ) {}
 
@@ -79,17 +82,38 @@ export class ShippingLinesService {
         // Không xe nào → không hiện kế hoạch nào
         qb.andWhere('1=0');
       } else {
-        // Kế hoạch được hiện nếu: allDrivers = true HOẶC driver_ids chứa ít nhất 1 ID visible
+        // Kế hoạch hiện nếu: all_drivers = true, HOẶC driver_ids chứa xe của họ,
+        // HOẶC có submission với XE THỰC CHẠY thuộc họ (lái phụ chạy xe của họ).
+        const subs = await this.submissionsRepository
+          .createQueryBuilder('sub')
+          .select('DISTINCT sub.shipping_line_id', 'planId')
+          .where(
+            '(sub.actual_vehicle_id IN (:...visible) OR (sub.actual_vehicle_id IS NULL AND sub.user_id IN (:...visible)))',
+            { visible },
+          )
+          .getRawMany();
+        const extraPlanIds = subs
+          .map((r) => Number(r.planId))
+          .filter((n) => Number.isFinite(n));
+
         const conditions = visible
           .map(
             (_, i) => `CAST(sl.driver_ids AS JSONB) @> CAST(:vid${i} AS JSONB)`,
           )
           .join(' OR ');
-        const params: Record<string, string> = {};
+        const params: Record<string, any> = {};
         visible.forEach((id, i) => {
           params[`vid${i}`] = JSON.stringify([id]);
         });
-        qb.andWhere(`(sl.all_drivers = true OR ${conditions})`, params);
+        if (extraPlanIds.length > 0) {
+          params.extraPlanIds = extraPlanIds;
+          qb.andWhere(
+            `(sl.all_drivers = true OR ${conditions} OR sl.id IN (:...extraPlanIds))`,
+            params,
+          );
+        } else {
+          qb.andWhere(`(sl.all_drivers = true OR ${conditions})`, params);
+        }
       }
     }
     return qb.getMany();
@@ -238,9 +262,54 @@ export class ShippingLinesService {
             `notifyPlanCompleted lỗi cho plan ${saved.id}: ${(err as Error).message}`,
           ),
         );
+      // Kết thúc kế hoạch → đưa các tài xế về xe gốc, tránh ghi sai xe cho các
+      // chuyến sau khi tài xế quên gửi lệnh /xe.
+      await this.resetVehicleSwitches(saved);
     }
 
     return saved;
+  }
+
+  /**
+   * Reset `current_vehicle_id` về NULL (xe gốc) cho tài xế của kế hoạch vừa
+   * hoàn thành: gồm tài xế được phân công (`driver_ids`) và tài xế có
+   * submission trong kế hoạch.
+   */
+  private async resetVehicleSwitches(plan: ShippingLine): Promise<void> {
+    try {
+      const ids = new Set<number>();
+      try {
+        const parsed = plan.driverIds ? JSON.parse(plan.driverIds) : [];
+        if (Array.isArray(parsed)) {
+          for (const v of parsed) {
+            const id = Number(v);
+            if (Number.isFinite(id)) ids.add(id);
+          }
+        }
+      } catch {
+        // bỏ qua driver_ids hỏng
+      }
+      const subs = await this.submissionsRepository.find({
+        where: { shippingLineId: plan.id },
+        select: { userId: true },
+      });
+      for (const s of subs) {
+        const id = Number(s.userId);
+        if (Number.isFinite(id)) ids.add(id);
+      }
+      if (ids.size === 0) return;
+      await this.usersRepository.update(
+        { id: In(Array.from(ids)) },
+        { currentVehicleId: null },
+      );
+      this.logger.log(
+        `Reset xe gốc cho ${ids.size} tài xế sau khi hoàn thành plan ${plan.id}`,
+      );
+    } catch (err) {
+      this.logger.error(
+        `resetVehicleSwitches lỗi cho plan ${plan.id}: ${(err as Error).message}`,
+      );
+    }
   }
 
   /**

@@ -513,10 +513,12 @@ export class ContainerImportService {
         // Không xe nào được phép → chỉ hiện container chưa ghi nhận
         qb.andWhere('sub.id IS NULL');
       } else {
-        // BẮT BUỘC bọc ngoặc: nếu không, SQL thành
-        //   `... AND sub.id IS NULL OR u.id IN (...)` → phần `u IN` mất điều kiện
-        //   kế hoạch, quét container của các xe đó ở MỌI kế hoạch (phồng lên hàng nghìn).
-        qb.andWhere('(sub.id IS NULL OR u.id IN (:...visible))', { visible });
+        // Lọc theo XE THỰC CHẠY (không theo tài xế ghi nhận) — chủ xe tra được
+        // container mà xe mình đã chạy kể cả khi do lái phụ chạy.
+        qb.andWhere(
+          '(sub.id IS NULL OR COALESCE(sub.actual_vehicle_id, sub.user_id) IN (:...visible))',
+          { visible },
+        );
       }
     }
     qb.orderBy('c.createdAt', 'DESC').take(5000);
@@ -1053,9 +1055,12 @@ export class ContainerImportService {
       if (visible.length === 0) {
         qb.andWhere('sub.id IS NULL');
       } else {
-        // Bọc ngoặc để `u IN` vẫn nằm trong điều kiện tra cứu (mã/3 số cuối),
-        // không bị tách thành `... AND sub IS NULL OR u IN (...)`.
-        qb.andWhere('(sub.id IS NULL OR u.id IN (:...visible))', { visible });
+        // Bọc ngoặc để `COALESCE(...) IN` vẫn nằm trong điều kiện tra cứu
+        // (mã/3 số cuối). Lọc theo XE THỰC CHẠY.
+        qb.andWhere(
+          '(sub.id IS NULL OR COALESCE(sub.actual_vehicle_id, sub.user_id) IN (:...visible))',
+          { visible },
+        );
       }
     }
     qb.orderBy('c.containerCode', 'ASC').take(300);

@@ -7,6 +7,7 @@ import {
 } from '@/lib/api-dashboard';
 
 const COST_LABEL: Record<string, string> = { suaChua: 'Sửa chữa', nhienLieu: 'Nhiên liệu', cpKhac: 'CP Khác' };
+const INVEST_LABEL: Record<string, string> = { vonXe: 'Vốn xe', vonMooc: 'Vốn mooc', vonKhac: 'Vốn khác' };
 
 /* ───────────────────────────────────────────────────────────────
    FONTS
@@ -288,9 +289,12 @@ function CustomerSheet({ c, onClose }: { c: CustomerRevenue; onClose: () => void
 /* ───────────────────────────────────────────────────────────────
    COST ITEMS MODAL — lịch sử từng khoản chi phí theo nhóm
    ─────────────────────────────────────────────────────────────── */
-function CostItemsSheet({ category, items, month, year, onClose }: {
-  category: string; items: CostItemDetail[]; month: number; year: number; onClose: () => void;
+function CostItemsSheet({ category, items, month, year, onClose, variant = 'cost' }: {
+  category: string; items: CostItemDetail[]; month: number; year: number; onClose: () => void; variant?: 'cost' | 'invest';
 }) {
+  const isInvest = variant === 'invest';
+  const accent = isInvest ? C.blue : C.red;
+  const title = (isInvest ? INVEST_LABEL[category] : COST_LABEL[category]) || category;
   const total = items.reduce((s, i) => s + Number(i.amount || 0), 0);
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/25" onClick={onClose}>
@@ -298,17 +302,19 @@ function CostItemsSheet({ category, items, month, year, onClose }: {
         onClick={e => e.stopPropagation()} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="px-5 pt-5 pb-3 flex justify-between gap-3" style={{ background: C.surface }}>
           <div className="min-w-0">
-            <p className="text-[11px]" style={{ color: C.muted }}>Lịch sử chi phí · {MONTHS_VN[month]}/{year}</p>
-            <h3 className="text-[16px] font-bold mt-0.5">{COST_LABEL[category] || category}</h3>
+            <p className="text-[11px]" style={{ color: C.muted }}>
+              {isInvest ? `Lịch sử vốn đầu tư (cộng dồn đến ${MONTHS_VN[month]}/${year})` : `Lịch sử chi phí · ${MONTHS_VN[month]}/${year}`}
+            </p>
+            <h3 className="text-[16px] font-bold mt-0.5">{title}</h3>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded hover:bg-white/60 cursor-pointer text-stone-400 flex-shrink-0">✕</button>
         </div>
         <div className="px-5 py-3 border-b flex justify-between items-center" style={{ borderColor: C.faint }}>
           <span className="text-[11px]" style={{ color: C.muted }}>{items.length} khoản</span>
-          <span className="text-[15px] font-bold" style={{ color: C.red }}>{fmt(total)} ₫</span>
+          <span className="text-[15px] font-bold" style={{ color: accent }}>{fmt(total)} ₫</span>
         </div>
         {items.length === 0 ? (
-          <div className="py-10 text-center text-[12px]" style={{ color: C.muted }}>Chưa có khoản chi phí nào trong tháng</div>
+          <div className="py-10 text-center text-[12px]" style={{ color: C.muted }}>{isInvest ? 'Chưa có khoản vốn nào' : 'Chưa có khoản chi phí nào trong tháng'}</div>
         ) : (
           <div className="px-5 py-3 space-y-2">
             {items.map(it => (
@@ -321,7 +327,7 @@ function CostItemsSheet({ category, items, month, year, onClose }: {
                       {it.vehicleLabel ? ` · 🚛 ${it.vehicleLabel}` : ''}
                     </p>
                   </div>
-                  <p className="text-[12px] font-bold whitespace-nowrap" style={{ color: C.red }}>{fmt(it.amount)} ₫</p>
+                  <p className="text-[12px] font-bold whitespace-nowrap" style={{ color: accent }}>{fmt(it.amount)} ₫</p>
                 </div>
                 {it.note && <p className="text-[10px] mt-1" style={{ color: C.muted }}>📝 {it.note}</p>}
                 {it.createdByName && <p className="text-[9px] mt-0.5" style={{ color: '#a8a29e' }}>nhập bởi {it.createdByName}</p>}
@@ -345,9 +351,11 @@ function VehicleSalarySheet({ rows, month, year, onClose }: {
   rows: SalaryVehicleRow[]; month: number; year: number; onClose: () => void;
 }) {
   const [expanded, setExpanded] = useState<number | null>(null);
-  // Tổng Cty chi = Thực nhận (net) + BHXH NLĐ (Cty nộp hộ) + BHXH Cty đóng = gross salary + BHXH Cty
-  const calcTotal = (r: SalaryVehicleRow) => r.luongNguoiLai + r.bhxhNld + r.bhxhCty;
-  const driverTotal = (d: VehicleSalaryDriver) => d.luongNguoiLai + d.bhxhNld + d.bhxhCty;
+  // Lái chính: tổng phải trả = thực nhận + BHXH Cty đóng.
+  // Lái phụ (mượn xe): chỉ tính lương chuyến.
+  const calcTotal = (r: SalaryVehicleRow) => r.luongNguoiLai + r.bhxhCty;
+  const driverTotal = (d: VehicleSalaryDriver) =>
+    d.isMain ? d.luongNguoiLai + d.bhxhCty : d.luongKhoan;
   const totalAll = rows.reduce((s, r) => s + calcTotal(r), 0);
   const sortedRows = [...rows].sort((a, b) => calcTotal(b) - calcTotal(a));
 
@@ -372,12 +380,12 @@ function VehicleSalarySheet({ rows, month, year, onClose }: {
               <p className="text-[9px]" style={{ color: C.muted }}>₫</p>
             </div>
             <div className="rounded-lg p-3" style={{ background: C.redLt, border: `1px solid ${C.red}30` }}>
-              <p className="text-[9px] mb-0.5" style={{ color: C.red }}>Tổng Cty chi</p>
+              <p className="text-[9px] mb-0.5" style={{ color: C.red }}>Tổng phải trả</p>
               <p className="text-[15px] font-extrabold" style={{ color: C.red }}>{fmt(totalAll)}</p>
               <p className="text-[9px]" style={{ color: C.muted }}>₫</p>
             </div>
           </div>
-          <p className="text-[9px] mt-2" style={{ color: C.muted }}>* Mỗi xe gồm lương lái chính (chủ xe) + các lái phụ mượn xe. Tổng Cty chi = Lương gross + BHXH Cty đóng.</p>
+          <p className="text-[9px] mt-2" style={{ color: C.muted }}>* Lái chính = thực nhận + BHXH Cty đóng. Lái phụ (mượn xe) chỉ tính lương chuyến. Lương cứng của lái phụ nằm ở xe nhà (bên của họ).</p>
         </div>
         {/* Danh sách xe */}
         <div className="px-5 py-3 space-y-2">
@@ -402,8 +410,8 @@ function VehicleSalarySheet({ rows, month, year, onClose }: {
                 ['Trừ tạm ứng', -r.advanceDeduct, C.red, r.advanceDeduct > 0],
                 ['BHXH Cty đóng', r.bhxhCty, '#16a34a', r.bhxhCty > 0],
               ];
-              // Tổng Cty chi = thực nhận (gross - khấu trừ NLĐ) + BHXH NLĐ (công ty nộp hộ) + BHXH Cty
-              const totalCty = r.luongNguoiLai + r.bhxhNld + r.bhxhCty;
+              // Tổng phải trả = thực nhận + BHXH Cty đóng.
+              const totalCty = r.luongNguoiLai + r.bhxhCty;
               return (
                 <div key={r.vehicleId}>
                   <div
@@ -423,10 +431,10 @@ function VehicleSalarySheet({ rows, month, year, onClose }: {
                         {r.fullName}{subCount > 0 ? ` · ${subCount} lái phụ` : ''}
                       </p>
                     </div>
-                    {/* Tổng Cty chi */}
+                    {/* Tổng phải trả */}
                     <div className="text-right flex-shrink-0">
                       <p className="text-[12px] font-bold" style={{ color: C.red }}>{fmt(total)}</p>
-                      <p className="text-[9px]" style={{ color: C.muted }}>Cty chi</p>
+                      <p className="text-[9px]" style={{ color: C.muted }}>Phải trả</p>
                     </div>
                     <span className="text-[10px] ml-1" style={{ color: C.muted }}>{isExp ? '▲' : '▼'}</span>
                   </div>
@@ -442,13 +450,13 @@ function VehicleSalarySheet({ rows, month, year, onClose }: {
                             </span>
                           </div>
                         ))}
-                        {/* Tổng Cty chi */}
+                        {/* Tổng phải trả */}
                         <div className="flex justify-between items-center py-2 mt-1.5 px-3 rounded-lg" style={{ background: C.redLt }}>
-                          <span className="text-[12px] font-bold" style={{ color: C.red }}>Tổng Cty chi</span>
+                          <span className="text-[12px] font-bold" style={{ color: C.red }}>Tổng phải trả</span>
                           <span className="text-[14px] font-extrabold" style={{ color: C.red }}>{fmt(totalCty)} ₫</span>
                         </div>
                         <p className="text-[9px] mt-1.5" style={{ color: C.muted }}>
-                          * Bao gồm BHXH NLĐ công ty nộp hộ ({fmt(r.bhxhNld)} ₫) + BHXH Cty đóng ({fmt(r.bhxhCty)} ₫)
+                          * Lái chính: thực nhận + BHXH Cty đóng. Lái phụ: chỉ lương chuyến.
                         </p>
                         {/* Danh sách tài xế đóng góp */}
                         {r.drivers.length > 0 && (
@@ -463,7 +471,10 @@ function VehicleSalarySheet({ rows, month, year, onClose }: {
                                     {dv.isMain ? 'Lái chính' : 'Lái phụ'}
                                   </span>
                                 </span>
-                                <span className="text-[11px] font-semibold flex-shrink-0" style={{ color: C.red }}>{fmt(driverTotal(dv))} ₫</span>
+                                <span className="text-right flex-shrink-0">
+                                  <span className="text-[11px] font-semibold" style={{ color: C.red }}>{fmt(driverTotal(dv))} ₫</span>
+                                  {!dv.isMain && <span className="block text-[8px]" style={{ color: C.muted }}>lương chuyến</span>}
+                                </span>
                               </div>
                             ))}
                           </div>
@@ -545,6 +556,7 @@ export function DashboardTab() {
   const [selVehicle, setSelVehicle] = useState<VehicleRevenue | null>(null);
   const [selC, setSelC] = useState<CustomerRevenue | null>(null);
   const [selCost, setSelCost] = useState<string | null>(null);
+  const [selInvest, setSelInvest] = useState<string | null>(null);
   const [showDriverSalary, setShowDriverSalary] = useState(false);
   // Lọc theo xe ở 3 card Chi phí / Lợi nhuận / Vốn đầu tư ('' = tất cả xe)
 
@@ -1190,13 +1202,15 @@ export function DashboardTab() {
               <DriverFilterBar title="🏗️ Chi tiết Vốn Đầu Tư" drivers={ownedDrivers} value={investDriver} onChange={setInvestDriver} />
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl">
                 {([
-                  ['Xe',   vonXe,   '🚛', C.blue],
-                  ['Mooc', vonMooc, '🚜', '#7c3aed'],
-                  ['Khác', vonKhac, '📦', C.muted],
-                ] as [string, number, string, string][]).map(([lbl, val, ico, c]) => {
+                  ['Xe',   vonXe,   '🚛', C.blue, 'vonXe'],
+                  ['Mooc', vonMooc, '🚜', '#7c3aed', 'vonMooc'],
+                  ['Khác', vonKhac, '📦', C.muted, 'vonKhac'],
+                ] as [string, number, string, string, string][]).map(([lbl, val, ico, c, cat]) => {
                   const pct = pc(val, total || 1);
                   return (
-                    <div key={lbl} className="rounded-xl p-4" style={{ border: `1px solid ${C.faint}`, background: C.surface }}>
+                    <div key={lbl} onClick={() => setSelInvest(cat)}
+                      className="rounded-xl p-4 cursor-pointer transition-colors hover:brightness-[0.98]"
+                      style={{ border: `1px solid ${C.faint}`, background: C.surface }}>
                       <p className="text-[14px] mb-1">{ico}</p>
                       <p className="text-[11px] font-semibold mb-1" style={{ color: C.muted }}>{lbl}</p>
                       <p className="text-[22px] font-extrabold leading-none" style={{ color: c }}>{fmt(val)}</p>
@@ -1204,6 +1218,7 @@ export function DashboardTab() {
                       <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: C.faint }}>
                         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: c }} />
                       </div>
+                      <p className="text-[9px] mt-1.5" style={{ color: '#a8a29e' }}>(bấm để xem chi tiết)</p>
                     </div>
                   );
                 })}
@@ -1234,6 +1249,18 @@ export function DashboardTab() {
           month={data.month}
           year={data.year}
           onClose={() => setSelCost(null)}
+        />
+      )}
+      {selInvest && (
+        <CostItemsSheet
+          variant="invest"
+          category={selInvest}
+          items={(data.investment.items?.[selInvest] ?? []).filter(
+            it => investDriver === '' || it.vehicleUserId === investDriver,
+          )}
+          month={data.month}
+          year={data.year}
+          onClose={() => setSelInvest(null)}
         />
       )}
       {showDriverSalary && (

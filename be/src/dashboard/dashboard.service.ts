@@ -267,13 +267,14 @@ export class DashboardService {
     const lastDay = new Date(year, month, 0).getDate();
     const toDate = `${year}-${pad(month)}-${pad(lastDay)}`;
 
-    // 0. Danh sách xe (lái xe) mà tài khoản này được phép xem.
-    //    null = xem tất cả (admin/supper_admin hoặc tài khoản không giới hạn xe).
-    let visible = resolveVisibleDriverIds(user);
+    // 0. Phạm vi XE được phép xem.
+    //    - Tài khoản chủ xe (admin có `visible_driver_ids`) → chỉ xe của họ.
+    //    - Lọc theo BÊN → mọi xe thuộc bên đó.
+    //    - null = xem tất cả.
+    const ownerVisible = resolveVisibleDriverIds(user);
 
-    // 0b. Lọc theo BÊN (A/B) — chỉ supper_admin hoặc quyền finance.all.
-    //     Bên của xe suy ra từ chủ vốn sở hữu xe (users.ben + visible_driver_ids),
-    //     xe không thuộc chủ vốn nào → bên 'A' (giống tab Tài chính).
+    // Bên của XE = bên của chủ vốn sở hữu xe (users.ben + visible_driver_ids);
+    // xe không thuộc chủ vốn nào → bên 'A' (giống tab Tài chính).
     const canPickBen =
       user?.role === 'supper_admin' || hasPermission(user, 'finance.all');
     const normBen = (v?: string | null) =>
@@ -292,24 +293,31 @@ export class DashboardService {
     ).sort();
     const benSel =
       canPickBen && benParam && benParam.trim() ? normBen(benParam) : null;
+
+    // Map driverId → bên (chủ vốn id nhỏ thắng).
+    const driverBen = new Map<number, string>();
+    for (const o of owners) {
+      const b = (o.ben || '').trim().toUpperCase();
+      if (!b) continue;
+      for (const d of o.visibleDriverIds || []) {
+        const id = Number(d);
+        if (Number.isFinite(id) && !driverBen.has(id)) driverBen.set(id, b);
+      }
+    }
+
+    const allLaixe = await this.userRepo.find({ where: { role: 'laixe' } });
+    let allowedVehicles: number[] | null;
     let benOwnerIds: number[] | null = null;
     if (benSel) {
-      const driverBen = new Map<number, string>();
-      for (const o of owners) {
-        const b = (o.ben || '').trim().toUpperCase();
-        if (!b) continue;
-        for (const d of o.visibleDriverIds || []) {
-          const id = Number(d);
-          if (Number.isFinite(id) && !driverBen.has(id)) driverBen.set(id, b);
-        }
-      }
-      const drivers = await this.userRepo.find({ where: { role: 'laixe' } });
-      visible = drivers
+      // Bên của XE (không phải bên nhà của tài xế).
+      allowedVehicles = allLaixe
         .filter((d) => normBen(driverBen.get(d.id)) === benSel)
         .map((d) => d.id);
       benOwnerIds = owners
         .filter((o) => normBen(o.ben) === benSel)
         .map((o) => o.id);
+    } else {
+      allowedVehicles = ownerVisible;
     }
 
     // 1. Kế hoạch trong tháng
@@ -325,8 +333,8 @@ export class DashboardService {
     //     mà CÓ xe của họ tham gia (driverIds chứa ≥1 id visible). Kế hoạch
     //     "allDrivers" (áp dụng mọi xe) vẫn được giữ vì xe của họ có thể tham gia;
     //     phần doanh thu/sản lượng bên dưới đã được lọc theo đúng xe của họ.
-    if (visible !== null) {
-      if (visible.length === 0) {
+    if (allowedVehicles !== null) {
+      if (allowedVehicles.length === 0) {
         plans = [];
       } else {
         const planDriverIds = (sl: ShippingLine): number[] => {
@@ -337,10 +345,10 @@ export class DashboardService {
             return [];
           }
         };
-        const visibleSet = new Set(visible);
+        const allowedSet = new Set(allowedVehicles);
         plans = plans.filter(
           (sl) =>
-            sl.allDrivers || planDriverIds(sl).some((id) => visibleSet.has(id)),
+            sl.allDrivers || planDriverIds(sl).some((id) => allowedSet.has(id)),
         );
       }
     }
@@ -368,13 +376,15 @@ export class DashboardService {
           .where('ci.shippingLineId IN (:...ids)', { ids: planIds })
           .andWhere('u.role = :laixeRole', { laixeRole: 'laixe' })
           .andWhere(
-            visible === null
+            allowedVehicles === null
               ? '1=1'
-              : visible.length === 0
+              : allowedVehicles.length === 0
                 ? '1=0'
-                : // Lọc theo xe thực chạy: hoặc actualVehicle nằm trong visible, hoặc user nằm trong visible và không có actualVehicle
-                  '(sub.actual_vehicle_id IN (:...visible) OR (sub.actual_vehicle_id IS NULL AND u.id IN (:...visible)))',
-            visible && visible.length > 0 ? { visible } : {},
+                : // Lọc theo xe thực chạy (không phải tài xế gốc).
+                  '(sub.actual_vehicle_id IN (:...allowed) OR (sub.actual_vehicle_id IS NULL AND u.id IN (:...allowed)))',
+            allowedVehicles && allowedVehicles.length > 0
+              ? { allowed: allowedVehicles }
+              : {},
           )
           .getMany()
       : [];
@@ -387,12 +397,15 @@ export class DashboardService {
           .where('sub.shippingLineId IN (:...ids)', { ids: planIds })
           .andWhere('u.role = :laixeRole', { laixeRole: 'laixe' })
           .andWhere(
-            visible === null
+            allowedVehicles === null
               ? '1=1'
-              : visible.length === 0
+              : allowedVehicles.length === 0
                 ? '1=0'
-                : 'sub.userId IN (:...visible)',
-            visible && visible.length > 0 ? { visible } : {},
+                : // Xe thực chạy thuộc phạm vi (không lọc theo tài xế gốc).
+                  '(sub.actual_vehicle_id IN (:...allowed) OR (sub.actual_vehicle_id IS NULL AND sub.userId IN (:...allowed)))',
+            allowedVehicles && allowedVehicles.length > 0
+              ? { allowed: allowedVehicles }
+              : {},
           )
           .getMany()
       : [];
@@ -413,19 +426,14 @@ export class DashboardService {
     const customerMap = new Map<number, Customer>();
     for (const c of allCustomers) customerMap.set(c.id, c);
 
-    // 7. Users
-    const allUsers = await this.userRepo.find({
-      where: { role: 'laixe' },
-    });
+    // 7. Users (tất cả lái xe — cần đủ để phân bổ lương chuyến của lái phụ).
+    const allUsers = allLaixe;
     const userMap = new Map<number, User>();
     for (const u of allUsers) userMap.set(u.id, u);
 
     // 7b. Chi phí LƯƠNG LÁI XE = TỔNG THỰC NHẬN theo bảng lương tháng (đã gồm
     //     lương chuyến + cứng + chuyên cần + phụ cấp − khấu trừ) và BHXH phần
     //     CÔNG TY đóng (21,5% lương cứng, chỉ lái xe có đóng BHXH).
-    const scopedDrivers = allUsers.filter(
-      (u) => visible === null || visible.includes(u.id),
-    );
     const netSalaryByDriver = new Map<number, number>();
     const bhxhCtyByDriver = new Map<number, number>();
     // Lưu toàn bộ record lương chi tiết để đưa vào byVehicle
@@ -449,12 +457,9 @@ export class DashboardService {
     } catch {
       // Bảng lương lỗi → coi như 0, không làm sập dashboard.
     }
+    // Tổng lương được tính lại từ `byVehicle` bên dưới (để khớp số hiển thị).
     let totalLuongNguoiLai = 0;
     let totalBhxhCty = 0;
-    for (const d of scopedDrivers) {
-      totalLuongNguoiLai += netSalaryByDriver.get(d.id) ?? 0;
-      totalBhxhCty += bhxhCtyByDriver.get(d.id) ?? 0;
-    }
 
     // ─── Helper: Tính doanh thu theo customer price (ưu tiên đơn giá deal đã duyệt của kế hoạch) ──────────────
     const calcRevenue = (
@@ -605,7 +610,11 @@ export class DashboardService {
       // vì bao gồm cả xe của họ. Chỉ loại bỏ kế hoạch chỉ định đích danh người khác
       // (không chứa xe họ). Số liệu bên dưới đã được lọc theo đúng xe của họ nên
       // không lộ sản lượng của xe khác.
-      if (visible && visible.length > 0 && !plan.allDrivers) {
+      if (
+        allowedVehicles &&
+        allowedVehicles.length > 0 &&
+        !plan.allDrivers
+      ) {
         const planDriverIds = ((): number[] => {
           try {
             const raw = plan.driverIds ? JSON.parse(plan.driverIds) : [];
@@ -614,7 +623,7 @@ export class DashboardService {
             return [];
           }
         })();
-        if (!planDriverIds.some((id) => visible.includes(id))) {
+        if (!planDriverIds.some((id) => allowedVehicles.includes(id))) {
           continue;
         }
       }
@@ -803,10 +812,15 @@ export class DashboardService {
     byVehicle.sort((a, b) => b.revenue - a.revenue);
 
     // ─── Build cost by VEHICLE ───────────────────────────────────
-    // Mỗi XE (biển số) là 1 dòng. Lương của lái xe CHÍNH (chủ xe) và các lái
-    // xe PHỤ (mượn xe — xác định qua `submission.actual_vehicle_id`) đều gộp
-    // về xe thực chạy. Nếu 1 tài xế chạy nhiều xe: lương chuyến chia theo
-    // từng xe, phần lương cứng/chuyên cần/phụ cấp gán về xe chạy nhiều nhất.
+    // Nguyên tắc: LƯƠNG CHUYẾN đi theo XE THỰC CHẠY (bên của xe);
+    // LƯƠNG CỨNG + chuyên cần + phụ cấp + BHXH + tip + khấu trừ đi theo
+    // XE NHÀ của tài xế (bên nhà). Nhờ vậy:
+    //   - Lái chính (chủ biển): hiện full (thực nhận + BHXH Cty) trên xe mình.
+    //   - Lái phụ (mượn xe khác bên): chỉ lương chuyến sang xe đã chạy;
+    //     lương cứng vẫn ở xe nhà (bên của họ).
+    const isAllowed = (vid: number) =>
+      allowedVehicles === null || allowedVehicles.includes(vid);
+
     const planById = new Map<number, ShippingLine>();
     for (const p of plans) planById.set(p.id, p);
 
@@ -866,10 +880,12 @@ export class DashboardService {
       }
       return row;
     };
-    // Đảm bảo mọi xe trong phạm vi xem đều có dòng (kể cả chưa có lương).
-    for (const d of scopedDrivers) ensureVehicleRow(d.id);
+    // Đảm bảo mọi xe trong phạm vi xem đều có dòng (kể cả chưa có chuyến).
+    for (const d of allUsers) {
+      if (isAllowed(d.id)) ensureVehicleRow(d.id);
+    }
 
-    for (const d of scopedDrivers) {
+    for (const d of allUsers) {
       const rec = salaryRecordMap.get(d.id);
       const comp = {
         luongNguoiLai: netSalaryByDriver.get(d.id) ?? 0,
@@ -889,24 +905,26 @@ export class DashboardService {
         chiHo: Number(rec?.chiHo) || 0,
         advanceDeduct: Number(rec?.advanceDeduct) || 0,
       };
+      const homeVid = d.id;
+      // Lương cứng = phần thực nhận còn lại sau khi bỏ lương chuyến.
+      const fixedNet = comp.luongNguoiLai - comp.luongKhoan;
 
-      // Xe thực chạy của tài xế trong tháng (chỉ xe trong phạm vi xem).
+      // Các xe tài xế đã thực chạy trong phạm vi xem.
       const entries: { vid: number; count: number; salary: number }[] = [];
       const trips = driverVehicleTrips.get(d.id);
       if (trips) {
         for (const [vid, t] of trips.entries()) {
-          if (visible === null || visible.includes(vid)) {
+          if (isAllowed(vid)) {
             entries.push({ vid, count: t.count, salary: t.salary });
           }
         }
       }
 
-      // Không có chuyến → toàn bộ lương về xe gốc của tài xế.
-      if (entries.length === 0) {
-        const row = ensureVehicleRow(d.id);
-        row.luongNguoiLai += comp.luongNguoiLai;
+      // (1) Lương cứng + chuyên cần + phụ cấp + BHXH + tip + khấu trừ → XE NHÀ.
+      if (isAllowed(homeVid)) {
+        const row = ensureVehicleRow(homeVid);
+        row.luongNguoiLai += fixedNet;
         row.bhxhCty += comp.bhxhCty;
-        row.luongKhoan += comp.luongKhoan;
         row.luongCung += comp.luongCung;
         row.chuyenCan += comp.chuyenCan;
         row.tip += comp.tip;
@@ -921,72 +939,59 @@ export class DashboardService {
           fullName: d.fullName || '',
           isMain: true,
           ...comp,
+          luongNguoiLai: fixedNet,
+          luongKhoan: 0,
         });
-        continue;
       }
 
-      // Xe "chính" = xe chạy nhiều chuyến nhất (hòa → lương chuyến cao hơn → xe gốc).
-      let best = entries[0];
-      for (const e of entries) {
-        if (
-          e.count > best.count ||
-          (e.count === best.count && e.salary > best.salary) ||
-          (e.count === best.count && e.salary === best.salary && e.vid === d.id)
-        ) {
-          best = e;
-        }
-      }
-      const primaryVid = best.vid;
+      // (2) Lương chuyến → chia theo từng xe đã chạy (tỷ lệ theo lương chuyến).
+      if (entries.length > 0 && comp.luongKhoan !== 0) {
+        const totalTripSalary = entries.reduce((s, e) => s + e.salary, 0);
+        const totalCount = entries.reduce((s, e) => s + e.count, 0);
+        const parts = entries.map((e) => ({
+          vid: e.vid,
+          part:
+            totalTripSalary > 0
+              ? Math.round((comp.luongKhoan * e.salary) / totalTripSalary)
+              : Math.round((comp.luongKhoan * e.count) / (totalCount || 1)),
+        }));
+        // Dồn phần lẻ vào phần tử đầu để tổng không đổi.
+        const assigned = parts.reduce((s, p) => s + p.part, 0);
+        parts[0].part += comp.luongKhoan - assigned;
 
-      // Lương chuyến chia theo từng xe (tỷ lệ theo lương chuyến thực tế).
-      const totalTripSalary = entries.reduce((s, e) => s + e.salary, 0);
-      const parts = entries.map((e) => ({
-        vid: e.vid,
-        part:
-          totalTripSalary > 0
-            ? Math.round((comp.luongKhoan * e.salary) / totalTripSalary)
-            : 0,
-      }));
-      // Phần lẻ dồn về xe chính để tổng không đổi.
-      const assigned = parts.reduce((s, p) => s + p.part, 0);
-      const primaryPart = parts.find((p) => p.vid === primaryVid);
-      if (primaryPart) primaryPart.part += comp.luongKhoan - assigned;
-
-      const secondaryTrip = parts
-        .filter((p) => p.vid !== primaryVid)
-        .reduce((s, p) => s + p.part, 0);
-
-      for (const p of parts) {
-        const isPrimary = p.vid === primaryVid;
-        // Xe chính giữ toàn bộ lương cứng/phụ cấp/khấu trừ (trừ phần lương
-        // chuyến đã chia cho các xe phụ). Xe phụ chỉ nhận phần lương chuyến.
-        const contrib = isPrimary
-          ? {
-              ...comp,
-              luongKhoan: p.part,
-              luongNguoiLai: comp.luongNguoiLai - secondaryTrip,
+        for (const p of parts) {
+          if (p.part === 0) continue;
+          const row = ensureVehicleRow(p.vid);
+          row.luongNguoiLai += p.part;
+          row.luongKhoan += p.part;
+          if (p.vid === homeVid) {
+            // Chính xe nhà → gộp vào dòng lái chính đã tạo ở (1).
+            const main = row.drivers.find((x) => x.driverId === d.id);
+            if (main) {
+              main.luongKhoan += p.part;
+              main.luongNguoiLai += p.part;
+            } else {
+              row.drivers.push({
+                driverId: d.id,
+                fullName: d.fullName || '',
+                isMain: true,
+                ...emptyComp(),
+                luongKhoan: p.part,
+                luongNguoiLai: p.part,
+              });
             }
-          : { ...emptyComp(), luongKhoan: p.part, luongNguoiLai: p.part };
-
-        const row = ensureVehicleRow(p.vid);
-        row.luongNguoiLai += contrib.luongNguoiLai;
-        row.bhxhCty += contrib.bhxhCty;
-        row.luongKhoan += contrib.luongKhoan;
-        row.luongCung += contrib.luongCung;
-        row.chuyenCan += contrib.chuyenCan;
-        row.tip += contrib.tip;
-        row.phuCap += contrib.phuCap;
-        row.itemSumAdd += contrib.itemSumAdd;
-        row.itemSumDeduct += contrib.itemSumDeduct;
-        row.bhxhNld += contrib.bhxhNld;
-        row.chiHo += contrib.chiHo;
-        row.advanceDeduct += contrib.advanceDeduct;
-        row.drivers.push({
-          driverId: d.id,
-          fullName: d.fullName || '',
-          isMain: p.vid === d.id,
-          ...contrib,
-        });
+          } else {
+            // Lái phụ (mượn xe) → chỉ lương chuyến.
+            row.drivers.push({
+              driverId: d.id,
+              fullName: d.fullName || '',
+              isMain: false,
+              ...emptyComp(),
+              luongKhoan: p.part,
+              luongNguoiLai: p.part,
+            });
+          }
+        }
       }
     }
 
@@ -995,6 +1000,14 @@ export class DashboardService {
         (parseInt(a.stt) || 999999) - (parseInt(b.stt) || 999999) ||
         a.soXe.localeCompare(b.soXe),
     );
+
+    // Tổng lương/BHXH tính từ đúng các xe trong phạm vi xem.
+    totalLuongNguoiLai = 0;
+    totalBhxhCty = 0;
+    for (const row of costByVehicle) {
+      totalLuongNguoiLai += row.luongNguoiLai;
+      totalBhxhCty += row.bhxhCty;
+    }
 
     // ─── Build byCustomer (include ALL active customers) ─────────
     // Chỉ include customers có doanh thu, sắp xếp giảm dần
@@ -1136,9 +1149,10 @@ export class DashboardService {
 
     // Xe thuộc sở hữu của tài khoản đang xem (để lọc chi phí / lợi nhuận / vốn theo xe).
     // - Tài khoản bị giới hạn `visibleDriverIds` → chỉ xe của họ.
+    // - Lọc theo bên → xe thuộc bên đó.
     // - Tài khoản không giới hạn → tất cả lái xe.
     const ownedDrivers = allUsers
-      .filter((u) => visible === null || visible.includes(u.id))
+      .filter((u) => isAllowed(u.id))
       .map((u: any) => ({
         id: u.id,
         fullName: u.fullName || '',

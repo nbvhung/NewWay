@@ -1,7 +1,7 @@
 'use client';
 
 import { Modal } from '@/components/ui/modal';
-import { ShippingLine, Submission } from '@/types';
+import { ShippingLine, Submission, User } from '@/types';
 import { fmtDate, FIELD_LABELS, fmtNgay } from '@/lib/utils';
 
 interface Props {
@@ -10,13 +10,14 @@ interface Props {
   editForm: any;
   setEditForm: (v: any) => void;
   allShippingLines: ShippingLine[];
+  allDrivers?: User[];
   saving: boolean;
   onSave: () => void;
   submission: Submission | null;
   userRole?: string;
 }
 
-export function EditSubmissionModal({ open, onClose, editForm, setEditForm, allShippingLines, saving, onSave, submission, userRole }: Props) {
+export function EditSubmissionModal({ open, onClose, editForm, setEditForm, allShippingLines, allDrivers, saving, onSave, submission, userRole }: Props) {
   const planDisplayName = (sl: ShippingLine) => {
     return [sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ');
   };
@@ -56,6 +57,21 @@ export function EditSubmissionModal({ open, onClose, editForm, setEditForm, allS
             </label>
           ))}
         </div>
+      </div>
+      <div className="mb-4">
+        <label className="text-xs font-medium text-[#78716c] mb-1.5 block">🚛 Xe thực chạy <span className="text-[10px] text-[#a8a29e] font-normal">(lái thay — sửa khi tài xế quên lệnh /xe)</span></label>
+        <select
+          value={editForm.actualVehicleId ?? ''}
+          onChange={e => setEditForm({ ...editForm, actualVehicleId: e.target.value === '' ? null : Number(e.target.value) })}
+          className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer"
+        >
+          <option value="">— Xe gốc của lái xe (mặc định) —</option>
+          {(allDrivers || []).map(d => (
+            <option key={d.id} value={d.id}>
+              {[d.soXe, d.fullName].filter(Boolean).join(' – ') || `Xe #${d.id}`}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="h-px bg-[#e7e5e4] my-4" />
       <div className="grid grid-cols-2 gap-3">

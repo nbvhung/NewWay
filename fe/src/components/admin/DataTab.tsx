@@ -123,6 +123,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         veSinhLai: editForm.veSinhLai || '',
         keoVe: editForm.keoVe || '',
         tip: editForm.tip || '',
+        actualVehicleId: editForm.actualVehicleId ?? null,
       });
       setEditModalOpen(false);
       loadSubmissions();
@@ -461,6 +462,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         editForm={editForm}
         setEditForm={setEditForm}
         allShippingLines={allShippingLines}
+        allDrivers={allUsers}
         saving={saving}
         onSave={saveSubEdit}
         submission={editSub}

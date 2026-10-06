@@ -10,6 +10,7 @@ import { CustomerAuditLog } from '../database/entities/customer-audit-log.entity
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { ContainerClaim } from '../database/entities/container-claim.entity';
+import { Submission } from '../database/entities/submission.entity';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ContainerClaim } from '../database/entities/container-claim.entity';
       ShippingLine,
       ContainerImport,
       ContainerClaim,
+      Submission,
     ]),
   ],
   controllers: [CustomersController],
