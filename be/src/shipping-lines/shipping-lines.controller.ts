@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
 import { ShippingLinesService } from './shipping-lines.service';
 import { CreateShippingLineDto } from './dto/create-shipping-line.dto';
 import { UpdateShippingLineDto } from './dto/update-shipping-line.dto';
@@ -57,10 +66,19 @@ export class ShippingLinesController {
   @Permissions('plan.approve_price')
   approvePrice(
     @Param('id') id: string,
-    @Body() body: { action: 'approve' | 'reject'; dealedPrices?: Record<string, number> },
+    @Body()
+    body: {
+      action: 'approve' | 'reject';
+      dealedPrices?: Record<string, number>;
+    },
     @CurrentUser() actor: { id: number; fullName?: string },
   ) {
-    return this.shippingLinesService.approvePrice(+id, body?.action, actor, body?.dealedPrices);
+    return this.shippingLinesService.approvePrice(
+      +id,
+      body?.action,
+      actor,
+      body?.dealedPrices,
+    );
   }
 
   @Post('admin/shipping-lines/:id/ket-thuc')

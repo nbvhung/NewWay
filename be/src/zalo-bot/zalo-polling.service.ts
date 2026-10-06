@@ -35,8 +35,7 @@ export class ZaloPollingService
 {
   private readonly logger = new Logger(ZaloPollingService.name);
   private readonly lockTtlMs = 120_000;
-  private readonly instanceToken =
-    `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  private readonly instanceToken = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   private stopped = true;
   private leaderByBot = new Map<number, boolean>();
   private loops: Promise<void>[] = [];
@@ -86,7 +85,9 @@ export class ZaloPollingService
   }
 
   private async run(botIndex: number): Promise<void> {
-    this.logger.log(`Polling bot ${botIndex} instance ${this.instanceToken} bắt đầu`);
+    this.logger.log(
+      `Polling bot ${botIndex} instance ${this.instanceToken} bắt đầu`,
+    );
     let consecutiveErrors = 0;
 
     while (!this.stopped) {
@@ -99,12 +100,18 @@ export class ZaloPollingService
         );
         if (locked) {
           this.leaderByBot.set(botIndex, true);
-          this.logger.log(`Bot ${botIndex}: Đã giành leadership, bắt đầu long-polling`);
+          this.logger.log(
+            `Bot ${botIndex}: Đã giành leadership, bắt đầu long-polling`,
+          );
           try {
             const ok = await this.zaloApi.deleteWebhook(botIndex);
-            this.logger.log(`Bot ${botIndex}: Đã xóa webhook để dùng polling: ${ok}`);
+            this.logger.log(
+              `Bot ${botIndex}: Đã xóa webhook để dùng polling: ${ok}`,
+            );
           } catch (e: any) {
-            this.logger.warn(`Bot ${botIndex}: Không xóa được webhook: ${e.message}`);
+            this.logger.warn(
+              `Bot ${botIndex}: Không xóa được webhook: ${e.message}`,
+            );
           }
         } else {
           await this.sleep(5000);
@@ -120,7 +127,9 @@ export class ZaloPollingService
       );
       if (!renewed) {
         this.leaderByBot.set(botIndex, false);
-        this.logger.warn(`Bot ${botIndex}: Mất lock leader, chuyển sang standby`);
+        this.logger.warn(
+          `Bot ${botIndex}: Mất lock leader, chuyển sang standby`,
+        );
         await this.sleep(5000);
         continue;
       }
@@ -128,8 +137,7 @@ export class ZaloPollingService
       try {
         const updates = await this.zaloApi.getUpdates(20, botIndex);
         if (updates && updates.result) {
-          const messageId =
-            (updates.result.message as any)?.message_id || '';
+          const messageId = updates.result.message?.message_id || '';
           if (messageId) {
             const firstTime = await this.redis.markOnce(
               this.seenKey(botIndex, messageId),
@@ -158,9 +166,7 @@ export class ZaloPollingService
           );
         }
         const isRateLimit = String(err?.message || '').includes('429');
-        const backoff = isRateLimit
-          ? Math.min(60, 15 * consecutiveErrors)
-          : 3;
+        const backoff = isRateLimit ? Math.min(60, 15 * consecutiveErrors) : 3;
         this.logger.error(
           `Bot ${botIndex}: getUpdates/handleEvent lỗi (${consecutiveErrors}): ${
             err?.message || err
@@ -171,7 +177,10 @@ export class ZaloPollingService
     }
   }
 
-  private async enqueueWithBotIndex(updates: any, botIndex: number): Promise<void> {
+  private async enqueueWithBotIndex(
+    updates: any,
+    botIndex: number,
+  ): Promise<void> {
     if (updates && typeof updates === 'object') {
       updates.botIndex = botIndex;
     }

@@ -69,7 +69,10 @@ describe('Tài chính — mật khẩu & quyền nhập vốn đầu tư', () =>
 
   it('admin KHÔNG nhập mật mã => bị chặn khi ghi vốn đầu tư', async () => {
     const { ctrl } = build();
-    await expectThrow(() => put(ctrl, ADMIN, { vonXe: 500 }), ForbiddenException);
+    await expectThrow(
+      () => put(ctrl, ADMIN, { vonXe: 500 }),
+      ForbiddenException,
+    );
   });
 
   it('admin nhập mật mã => ghi được vốn đầu tư và có ghi lịch sử', async () => {
@@ -112,7 +115,12 @@ describe('Tài chính — mật khẩu & quyền nhập vốn đầu tư', () =>
 
   it('supper_admin được ghi vốn cho admin khác', async () => {
     const { ctrl } = build();
-    const saved: any = await put(ctrl, SUPER, { vonXe: 9, targetUserId: 6 }, PW);
+    const saved: any = await put(
+      ctrl,
+      SUPER,
+      { vonXe: 9, targetUserId: 6 },
+      PW,
+    );
     expect(saved.userId).toBe(6);
   });
 
@@ -126,9 +134,17 @@ describe('Tài chính — mật khẩu & quyền nhập vốn đầu tư', () =>
   it('vốn không đổi thì không sinh dòng lịch sử', async () => {
     const { svc, repo, auditRepo } = build();
     repo.findOne.mockResolvedValueOnce({
-      id: 1, month: 9, year: 2026, userId: 6,
-      suaChua: 0, nhienLieu: 0, cpKhac: 0,
-      vonXe: 500, vonMooc: 0, vonKhac: 0, note: null,
+      id: 1,
+      month: 9,
+      year: 2026,
+      userId: 6,
+      suaChua: 0,
+      nhienLieu: 0,
+      cpKhac: 0,
+      vonXe: 500,
+      vonMooc: 0,
+      vonKhac: 0,
+      note: null,
     });
     await svc.upsert(9, 2026, ADMIN, { vonXe: 500 }, 'Mr Bach', {
       investUnlocked: true,

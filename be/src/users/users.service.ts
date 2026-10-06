@@ -72,9 +72,14 @@ export class UsersService {
     // Chế độ phân công kế hoạch: bỏ qua giới hạn xe → trả về đủ lái xe để
     // admin/ops chọn từng người. admin / supper_admin / ops được dùng chế độ này;
     // các role khác rơi xuống logic thường bên dưới.
-    const canAssign = currentRole === 'admin' || currentRole === 'supper_admin' || currentRole === 'ops';
+    const canAssign =
+      currentRole === 'admin' ||
+      currentRole === 'supper_admin' ||
+      currentRole === 'ops';
     if (opts.forAssignment && canAssign) {
-      const users = await this.usersRepository.find({ order: { createdAt: 'DESC' } });
+      const users = await this.usersRepository.find({
+        order: { createdAt: 'DESC' },
+      });
       return users.map(({ passwordHash, ...rest }) => rest);
     }
 
@@ -125,7 +130,7 @@ export class UsersService {
       throw new BadRequestException('Tên đăng nhập đã tồn tại');
     }
 
-    let validRole = dto.role || 'laixe';
+    const validRole = dto.role || 'laixe';
     if (
       (currentRole === 'ops' || currentRole === 'hr') &&
       validRole !== 'laixe'
@@ -136,7 +141,10 @@ export class UsersService {
       throw new ForbiddenException('Bạn không có quyền tạo tài khoản này');
     }
 
-    const permissions = this.validateGrantablePermissions(dto.permissions, actor);
+    const permissions = this.validateGrantablePermissions(
+      dto.permissions,
+      actor,
+    );
 
     const hash = bcrypt.hashSync(dto.password, 10);
     const user = this.usersRepository.create({
@@ -217,7 +225,8 @@ export class UsersService {
     if (dto.soMooc !== undefined) target.soMooc = dto.soMooc.trim();
     if (dto.stt !== undefined) target.stt = dto.stt.trim();
     if (dto.sdt !== undefined) target.sdt = dto.sdt.trim();
-    if (dto.ngayHoatDong !== undefined) target.ngayHoatDong = dto.ngayHoatDong?.trim() || null;
+    if (dto.ngayHoatDong !== undefined)
+      target.ngayHoatDong = dto.ngayHoatDong?.trim() || null;
     if (dto.zaloId !== undefined) target.zaloId = dto.zaloId.trim() || null;
     if (dto.zaloBot !== undefined) target.zaloBot = dto.zaloBot;
     if (dto.allowanceFarHome !== undefined)

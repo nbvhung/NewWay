@@ -1,4 +1,14 @@
-import { IsString, IsNotEmpty, IsIn, IsNumber, Min, Max, IsBoolean, IsInt, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsIn,
+  IsNumber,
+  Min,
+  Max,
+  IsBoolean,
+  IsInt,
+  IsOptional,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateCustomerSurchargeDto {

@@ -70,9 +70,7 @@ export class ZaloBotController {
     const enqueued = await this.zaloQueueService.enqueue(event);
     this.logger.log(
       `[WEBHOOK] enqueued=${enqueued}, event_name=${
-        (event?.result as any)?.event_name ||
-        (event as any)?.event_name ||
-        '?'
+        (event?.result as any)?.event_name || (event as any)?.event_name || '?'
       }, userId=${
         (event?.result as any)?.message?.from?.id ||
         (event as any)?.message?.from?.id ||
@@ -132,7 +130,7 @@ export class ZaloBotController {
         void this.zaloMessagesService.upsertGroup(
           String(msg.chat.id),
           2,
-          (msg as any)?.group_name || (msg as any)?.chat?.name || undefined,
+          msg?.group_name || msg?.chat?.name || undefined,
         );
       }
     }
@@ -152,10 +150,7 @@ export class ZaloBotController {
 
   @Post('webhook/debug')
   @HttpCode(HttpStatus.OK)
-  webhookDebug(
-    @Body() body: any,
-    @Headers() headers: Record<string, string>,
-  ) {
+  webhookDebug(@Body() body: any, @Headers() headers: Record<string, string>) {
     // Không verify secret — chỉ log để xem Zalo gửi gì
     this.logger.log(
       `[WEBHOOK DEBUG] headers: ${JSON.stringify({

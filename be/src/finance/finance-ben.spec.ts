@@ -14,12 +14,60 @@ import { FinanceService } from './finance.service';
 
 // ── Dữ liệu mẫu lấy từ production ────────────────────────────────
 const USERS: any[] = [
-  { id: 6, username: 'admin', fullName: 'Mr Bach', role: 'admin', ben: 'A', visibleDriverIds: null },
-  { id: 30, username: 'NwB', fullName: 'Boss', role: 'admin', ben: 'B', visibleDriverIds: [31] },
-  { id: 4, username: 'superadmin', fullName: 'supper admin', role: 'supper_admin', ben: null, visibleDriverIds: null },
-  { id: 10, username: '07883', fullName: 'Bùi Mạnh Cường', role: 'laixe', ben: null, visibleDriverIds: null, soXe: '15H 07883', stt: '1' },
-  { id: 15, username: '04717', fullName: 'Nguyễn Duy Thành B', role: 'laixe', ben: null, visibleDriverIds: null, soXe: '15C 04717', stt: '6' },
-  { id: 31, username: '10090', fullName: 'Dũng', role: 'laixe', ben: null, visibleDriverIds: null, soXe: '15H 10090', stt: '13' },
+  {
+    id: 6,
+    username: 'admin',
+    fullName: 'Mr Bach',
+    role: 'admin',
+    ben: 'A',
+    visibleDriverIds: null,
+  },
+  {
+    id: 30,
+    username: 'NwB',
+    fullName: 'Boss',
+    role: 'admin',
+    ben: 'B',
+    visibleDriverIds: [31],
+  },
+  {
+    id: 4,
+    username: 'superadmin',
+    fullName: 'supper admin',
+    role: 'supper_admin',
+    ben: null,
+    visibleDriverIds: null,
+  },
+  {
+    id: 10,
+    username: '07883',
+    fullName: 'Bùi Mạnh Cường',
+    role: 'laixe',
+    ben: null,
+    visibleDriverIds: null,
+    soXe: '15H 07883',
+    stt: '1',
+  },
+  {
+    id: 15,
+    username: '04717',
+    fullName: 'Nguyễn Duy Thành B',
+    role: 'laixe',
+    ben: null,
+    visibleDriverIds: null,
+    soXe: '15C 04717',
+    stt: '6',
+  },
+  {
+    id: 31,
+    username: '10090',
+    fullName: 'Dũng',
+    role: 'laixe',
+    ben: null,
+    visibleDriverIds: null,
+    soXe: '15H 10090',
+    stt: '13',
+  },
 ];
 
 const MR_BACH = { sub: 6, role: 'admin', fullName: 'Mr Bach' };
@@ -53,8 +101,12 @@ function matchWhere(u: any, where: any): boolean {
 
 function makeUsersRepo(users: any[] = USERS) {
   return {
-    find: jest.fn(async (opts?: any) => users.filter((u) => matchWhere(u, opts?.where))),
-    findOne: jest.fn(async (opts?: any) => users.find((u) => u.id === opts?.where?.id) ?? null),
+    find: jest.fn(async (opts?: any) =>
+      users.filter((u) => matchWhere(u, opts?.where)),
+    ),
+    findOne: jest.fn(
+      async (opts?: any) => users.find((u) => u.id === opts?.where?.id) ?? null,
+    ),
     create: jest.fn((v: any) => ({ ...v })),
     save: jest.fn(async (v: any) => v),
   };
@@ -105,7 +157,7 @@ describe('Tài chính — tách bên A/B và gắn chi phí vào xe', () => {
   it('bên của xe suy ra từ chủ vốn sở hữu xe', async () => {
     const { svc } = build();
     const map = await svc.loadDriverBenMap();
-    expect(map.get(31)).toBe('B');   // xe của NwB (chủ vốn bên B)
+    expect(map.get(31)).toBe('B'); // xe của NwB (chủ vốn bên B)
     expect(map.get(15)).toBeUndefined(); // không chủ vốn nào nhận → bên A mặc định
     expect(map.get(10)).toBeUndefined();
   });
@@ -127,7 +179,9 @@ describe('Tài chính — tách bên A/B và gắn chi phí vào xe', () => {
   it('chọn nhiều xe → mỗi xe 1 dòng, mỗi xe 1 số tiền riêng', async () => {
     const { svc, costRepo, auditRepo } = build();
     const saved = await svc.addCostItemsBulk(
-      9, 2026, MR_BACH,
+      9,
+      2026,
+      MR_BACH,
       bulk([
         { vehicleUserId: 10, amount: 500000 },
         { vehicleUserId: 15, amount: 600000 },
@@ -151,14 +205,26 @@ describe('Tài chính — tách bên A/B và gắn chi phí vào xe', () => {
   it('chặn nhập xe bên B vào sổ bên A', async () => {
     const { svc } = build();
     await expect(
-      svc.addCostItemsBulk(9, 2026, MR_BACH, bulk([{ vehicleUserId: 31, amount: 1 }]), 'Mr Bach'),
+      svc.addCostItemsBulk(
+        9,
+        2026,
+        MR_BACH,
+        bulk([{ vehicleUserId: 31, amount: 1 }]),
+        'Mr Bach',
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('chặn nhập xe bên A vào sổ bên B', async () => {
     const { svc } = build();
     await expect(
-      svc.addCostItemsBulk(9, 2026, NWB, bulk([{ vehicleUserId: 15, amount: 1 }]), 'Boss'),
+      svc.addCostItemsBulk(
+        9,
+        2026,
+        NWB,
+        bulk([{ vehicleUserId: 15, amount: 1 }]),
+        'Boss',
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -172,10 +238,14 @@ describe('Tài chính — tách bên A/B và gắn chi phí vào xe', () => {
   it('NwB nhập chi phí cho xe bên B thì OK', async () => {
     const { svc } = build();
     const saved = await svc.addCostItemsBulk(
-      9, 2026, NWB, bulk([{ vehicleUserId: 31, amount: 250000 }]), 'Boss',
+      9,
+      2026,
+      NWB,
+      bulk([{ vehicleUserId: 31, amount: 250000 }]),
+      'Boss',
     );
     expect(saved).toHaveLength(1);
-    expect(saved[0].userId).toBe(30);       // ghi vào sổ của bên B
+    expect(saved[0].userId).toBe(30); // ghi vào sổ của bên B
     expect(saved[0].vehicleUserId).toBe(31);
   });
 
@@ -195,8 +265,12 @@ describe('Tài chính — tách bên A/B và gắn chi phí vào xe', () => {
   it('supper_admin xem được sổ của cả 2 bên qua targetUserId', async () => {
     const { svc } = build();
     const superAdmin = { sub: 4, role: 'supper_admin' };
-    const a: any = await svc.getOrCreate(9, 2026, superAdmin, { targetUserId: 6 });
-    const b: any = await svc.getOrCreate(9, 2026, superAdmin, { targetUserId: 30 });
+    const a: any = await svc.getOrCreate(9, 2026, superAdmin, {
+      targetUserId: 6,
+    });
+    const b: any = await svc.getOrCreate(9, 2026, superAdmin, {
+      targetUserId: 30,
+    });
     expect([a.ben, b.ben]).toEqual(['A', 'B']);
   });
 });

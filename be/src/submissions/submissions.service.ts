@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import * as ExcelJS from 'exceljs';
@@ -20,7 +25,10 @@ import { DriverAdvance } from '../database/entities/driver-advance.entity';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateSubmissionDto } from './dto/update-submission.dto';
 import { SettingsService } from '../settings/settings.service';
-import { hasPermission, resolveVisibleDriverIds } from '../common/permissions/permissions';
+import {
+  hasPermission,
+  resolveVisibleDriverIds,
+} from '../common/permissions/permissions';
 import {
   calculateAttendanceBonus,
   nextAttendanceBonusRange,
@@ -56,16 +64,32 @@ export class SubmissionsService {
     private settingsService: SettingsService,
   ) {}
 
-  async create(dto: CreateSubmissionDto, userId: number, fullName: string, user: any) {
-    if (user?.role === 'laixe' && (await this.settingsService.isEntryLocked())) {
-      throw new ForbiddenException('Hệ thống đang tạm khóa nhập liệu. Vui lòng quay lại sau.');
+  async create(
+    dto: CreateSubmissionDto,
+    userId: number,
+    fullName: string,
+    user: any,
+  ) {
+    if (
+      user?.role === 'laixe' &&
+      (await this.settingsService.isEntryLocked())
+    ) {
+      throw new ForbiddenException(
+        'Hệ thống đang tạm khóa nhập liệu. Vui lòng quay lại sau.',
+      );
     }
 
     let targetUserId = userId;
     let targetFullName = fullName;
 
-    if (dto.driverId && dto.driverId !== userId && hasPermission(user, 'entry.enter_for_other')) {
-      const driver = await this.usersRepository.findOne({ where: { id: dto.driverId } });
+    if (
+      dto.driverId &&
+      dto.driverId !== userId &&
+      hasPermission(user, 'entry.enter_for_other')
+    ) {
+      const driver = await this.usersRepository.findOne({
+        where: { id: dto.driverId },
+      });
       if (!driver || driver.role !== 'laixe') {
         throw new BadRequestException('Lái xe không hợp lệ');
       }
@@ -79,7 +103,9 @@ export class SubmissionsService {
         : { userId: targetUserId, shippingLine: dto.shippingLine },
     });
     if (existing) {
-      throw new BadRequestException('Lái xe này đã nhập liệu cho kế hoạch này rồi.');
+      throw new BadRequestException(
+        'Lái xe này đã nhập liệu cho kế hoạch này rồi.',
+      );
     }
     const submission = new Submission();
     submission.userId = targetUserId;
@@ -106,18 +132,33 @@ export class SubmissionsService {
     const submissions = await this.submissionsRepository
       .createQueryBuilder('sub')
       .leftJoin('users', 'av', 'av.id = sub.actual_vehicle_id')
-      .addSelect(['av.so_xe AS av_so_xe', 'av.full_name AS av_full_name', 'av.ben AS av_ben'])
+      .addSelect([
+        'av.so_xe AS av_so_xe',
+        'av.full_name AS av_full_name',
+        'av.ben AS av_ben',
+      ])
       .where('sub.userId = :userId', { userId })
       .orderBy('sub.createdAt', 'DESC')
       .getRawAndEntities();
 
     const allRoutes = await this.routesRepository.find();
-    const routeMap = new Map<string, { money: number; effectiveDate: string | null }>();
+    const routeMap = new Map<
+      string,
+      { money: number; effectiveDate: string | null }
+    >();
     for (const r of allRoutes) {
-      routeMap.set(r.name, { money: Number(r.money) || 0, effectiveDate: r.effectiveDate || null });
+      routeMap.set(r.name, {
+        money: Number(r.money) || 0,
+        effectiveDate: r.effectiveDate || null,
+      });
     }
-    const getRouteMoney = (name: string, planDate: string | null | undefined, frozenMoney?: number | null): number => {
-      if (frozenMoney !== null && frozenMoney !== undefined) return Number(frozenMoney);
+    const getRouteMoney = (
+      name: string,
+      planDate: string | null | undefined,
+      frozenMoney?: number | null,
+    ): number => {
+      if (frozenMoney !== null && frozenMoney !== undefined)
+        return Number(frozenMoney);
       const rt = routeMap.get(name);
       if (!rt) return 0;
       if (rt.effectiveDate && planDate && planDate < rt.effectiveDate) return 0;
@@ -135,7 +176,9 @@ export class SubmissionsService {
     }
     const planDisplayName = (sl: ShippingLine) => {
       const ngay = sl.ngay ? sl.ngay.split('-').reverse().join('-') : '';
-      return [sl.name, sl.soChuyen, sl.routeName, ngay].filter(Boolean).join(' / ');
+      return [sl.name, sl.soChuyen, sl.routeName, ngay]
+        .filter(Boolean)
+        .join(' / ');
     };
 
     const { entities: submissionList, raw: rawRows } = submissions;
@@ -144,7 +187,9 @@ export class SubmissionsService {
     for (let i = 0; i < submissionList.length; i++) {
       const sub = submissionList[i];
       const raw = rawRows[i];
-      const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
+      const sl = sub.shippingLineId
+        ? slMap.get(sub.shippingLineId)
+        : slNameMap.get(sub.shippingLine);
       const history = await this.editHistoryRepository.find({
         where: { submissionId: sub.id },
         order: { editedAt: 'DESC' },
@@ -161,9 +206,16 @@ export class SubmissionsService {
       const vsl = parseFloat(sub.veSinhLai) || 0;
       const kv = parseFloat(sub.keoVe) || 0;
       const tip = parseFloat(sub.tip) || 0;
-      const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+      const tong =
+        h20 +
+        h40 +
+        Math.ceil(v20 / 2) +
+        v40 +
+        Math.ceil(v20fr / 8) +
+        Math.ceil(v40fr / 4);
       const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
-      const salary = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
+      const salary =
+        donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
       const planDate = sl?.ngay || null;
       result.push({
         ...sub,
@@ -202,7 +254,9 @@ export class SubmissionsService {
   }
 
   async findByIdWithHistory(id: number): Promise<any> {
-    const submission = await this.submissionsRepository.findOne({ where: { id } });
+    const submission = await this.submissionsRepository.findOne({
+      where: { id },
+    });
     if (!submission) return null;
     const history = await this.editHistoryRepository.find({
       where: { submissionId: id },
@@ -211,38 +265,73 @@ export class SubmissionsService {
     return { ...submission, history };
   }
 
-  async updateMy(id: number, dto: UpdateSubmissionDto, userId: number, user: any, fullName: string): Promise<any> {
-    if (user?.role === 'laixe' && (await this.settingsService.isEntryLocked())) {
-      throw new ForbiddenException('Hệ thống đang tạm khóa nhập liệu. Vui lòng quay lại sau.');
+  async updateMy(
+    id: number,
+    dto: UpdateSubmissionDto,
+    userId: number,
+    user: any,
+    fullName: string,
+  ): Promise<any> {
+    if (
+      user?.role === 'laixe' &&
+      (await this.settingsService.isEntryLocked())
+    ) {
+      throw new ForbiddenException(
+        'Hệ thống đang tạm khóa nhập liệu. Vui lòng quay lại sau.',
+      );
     }
 
-    const submission = await this.submissionsRepository.findOne({ where: { id } });
+    const submission = await this.submissionsRepository.findOne({
+      where: { id },
+    });
     if (!submission) {
       throw new NotFoundException('Không tìm thấy bản ghi');
     }
-    if (submission.userId !== userId && !hasPermission(user, 'entry.edit_other')) {
+    if (
+      submission.userId !== userId &&
+      !hasPermission(user, 'entry.edit_other')
+    ) {
       throw new ForbiddenException('Bạn không có quyền sửa bản ghi này');
     }
 
     // Prevent editing if the plan is completed (chỉ admin/supper_admin bypass)
     if (!['admin', 'supper_admin'].includes(user?.role)) {
       const plan = submission.shippingLineId
-        ? await this.shippingLinesRepository.findOne({ where: { id: submission.shippingLineId } })
+        ? await this.shippingLinesRepository.findOne({
+            where: { id: submission.shippingLineId },
+          })
         : null;
       if (plan?.completed) {
-        throw new ForbiddenException('Kế hoạch đã hoàn thành, không được phép sửa');
+        throw new ForbiddenException(
+          'Kế hoạch đã hoàn thành, không được phép sửa',
+        );
       }
     }
 
     const changes: Record<string, { old: string; new: string }> = {};
-    const fields = ['shippingLine', 'route', 'hang20', 'hang40', 'vo20', 'vo40', 'vo20fr', 'vo40fr', 'veSinhLai', 'tip', 'keoVe'];
+    const fields = [
+      'shippingLine',
+      'route',
+      'hang20',
+      'hang40',
+      'vo20',
+      'vo40',
+      'vo20fr',
+      'vo40fr',
+      'veSinhLai',
+      'tip',
+      'keoVe',
+    ];
 
     for (const field of fields) {
       const oldVal = String((submission as any)[field] || '');
-      const newVal = String((dto as any)[field] ?? (submission as any)[field] ?? '');
+      const newVal = String(
+        (dto as any)[field] ?? (submission as any)[field] ?? '',
+      );
       if (oldVal !== newVal) {
         changes[field] = { old: oldVal, new: newVal };
-        (submission as any)[field] = (dto as any)[field] ?? (submission as any)[field];
+        (submission as any)[field] =
+          (dto as any)[field] ?? (submission as any)[field];
       }
     }
 
@@ -251,7 +340,10 @@ export class SubmissionsService {
     }
 
     if (Object.keys(changes).length === 0) {
-      return { message: 'Không có thay đổi', submission: { ...submission, history: [] } };
+      return {
+        message: 'Không có thay đổi',
+        submission: { ...submission, history: [] },
+      };
     }
 
     submission.editCount += 1;
@@ -268,14 +360,29 @@ export class SubmissionsService {
     return this.findByIdWithHistory(submission.id);
   }
 
-  async getSalarySummary(userId: number, month: number, year: number): Promise<any> {
+  async getSalarySummary(
+    userId: number,
+    month: number,
+    year: number,
+  ): Promise<any> {
     const allRoutes = await this.routesRepository.find();
-    const routeMap = new Map<string, { money: number; effectiveDate: string | null }>();
+    const routeMap = new Map<
+      string,
+      { money: number; effectiveDate: string | null }
+    >();
     for (const r of allRoutes) {
-      routeMap.set(r.name, { money: Number(r.money) || 0, effectiveDate: r.effectiveDate || null });
+      routeMap.set(r.name, {
+        money: Number(r.money) || 0,
+        effectiveDate: r.effectiveDate || null,
+      });
     }
-    const getRouteMoney = (name: string, planDate: string | null | undefined, frozenMoney?: number | null): number => {
-      if (frozenMoney !== null && frozenMoney !== undefined) return Number(frozenMoney);
+    const getRouteMoney = (
+      name: string,
+      planDate: string | null | undefined,
+      frozenMoney?: number | null,
+    ): number => {
+      if (frozenMoney !== null && frozenMoney !== undefined)
+        return Number(frozenMoney);
       const rt = routeMap.get(name);
       if (!rt) return 0;
       if (rt.effectiveDate && planDate && planDate < rt.effectiveDate) return 0;
@@ -291,7 +398,9 @@ export class SubmissionsService {
     }
     const planDisplayName = (sl: ShippingLine) => {
       const ngay = sl.ngay ? sl.ngay.split('-').reverse().join('-') : '';
-      return [sl.name, sl.soChuyen, sl.routeName, ngay].filter(Boolean).join(' / ');
+      return [sl.name, sl.soChuyen, sl.routeName, ngay]
+        .filter(Boolean)
+        .join(' / ');
     };
 
     // Fetch all submissions, then filter by plan date (sl.ngay) instead of createdAt.
@@ -307,10 +416,22 @@ export class SubmissionsService {
         year,
         details: [],
         components: {
-          fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0,
-          allowanceOldCar: 0, parkingHph2: 0, hasParkingHph2: false, ngayCong: 0,
-          daysOffList: [], daysOffNote: null, bhxh: 0, chiHo: 0,
-          deductions: [], allowances: [], fixedSalaryPaid: false, salaryPaid: false,
+          fixedSalary: 0,
+          chuyenCan: 0,
+          allowanceFarHome: 0,
+          allowanceWaitLoading: 0,
+          allowanceOldCar: 0,
+          parkingHph2: 0,
+          hasParkingHph2: false,
+          ngayCong: 0,
+          daysOffList: [],
+          daysOffNote: null,
+          bhxh: 0,
+          chiHo: 0,
+          deductions: [],
+          allowances: [],
+          fixedSalaryPaid: false,
+          salaryPaid: false,
         },
       };
     }
@@ -326,11 +447,16 @@ export class SubmissionsService {
     const details: any[] = [];
 
     for (const sub of submissions) {
-      const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
+      const sl = sub.shippingLineId
+        ? slMap.get(sub.shippingLineId)
+        : slNameMap.get(sub.shippingLine);
       // Use plan date (sl.ngay) for month grouping; fallback to createdAt if plan has no date
       const planDateStr = sl?.ngay || null;
-      const refDate = planDateStr ? new Date(planDateStr) : new Date(sub.createdAt);
-      if (refDate.getMonth() + 1 !== month || refDate.getFullYear() !== year) continue;
+      const refDate = planDateStr
+        ? new Date(planDateStr)
+        : new Date(sub.createdAt);
+      if (refDate.getMonth() + 1 !== month || refDate.getFullYear() !== year)
+        continue;
 
       const tenTuyen = sub.route || sl?.routeName || '';
       const donGia = getRouteMoney(tenTuyen, sl?.ngay, sl?.frozenMoney);
@@ -343,13 +469,26 @@ export class SubmissionsService {
       const vsl = parseFloat(sub.veSinhLai) || 0;
       const kv = parseFloat(sub.keoVe) || 0;
       const tip = parseFloat(sub.tip) || 0;
-      const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+      const tong =
+        h20 +
+        h40 +
+        Math.ceil(v20 / 2) +
+        v40 +
+        Math.ceil(v20fr / 8) +
+        Math.ceil(v40fr / 4);
       const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
-      const salary = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
+      const salary =
+        donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
       totalSalary += salary;
       totalTip += tip * 1000;
       count++;
-      details.push({ ...sub, salary, planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine, tangCuong: sl?.tangCuong || false, leTet: sl?.leTet || false });
+      details.push({
+        ...sub,
+        salary,
+        planDisplayName: sl ? planDisplayName(sl) : sub.shippingLine,
+        tangCuong: sl?.tangCuong || false,
+        leTet: sl?.leTet || false,
+      });
     }
 
     const salaryComp = await this.loadSalaryComponents(
@@ -358,10 +497,24 @@ export class SubmissionsService {
       new Map([[userId, totalSalary]]),
     );
     const components = salaryComp.components.get(userId) || {
-      fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0,
-      allowanceOldCar: 0, parkingHph2: 0, hasParkingHph2: false, ngayCong: 0,
-      daysOffList: [], daysOffNote: null, bhxh: 0, chiHo: 0, deductions: [], allowances: [], fixedSalaryPaid: false, salaryPaid: false,
-      nextChuyenCanFrom: null, nextChuyenCanTo: null,
+      fixedSalary: 0,
+      chuyenCan: 0,
+      allowanceFarHome: 0,
+      allowanceWaitLoading: 0,
+      allowanceOldCar: 0,
+      parkingHph2: 0,
+      hasParkingHph2: false,
+      ngayCong: 0,
+      daysOffList: [],
+      daysOffNote: null,
+      bhxh: 0,
+      chiHo: 0,
+      deductions: [],
+      allowances: [],
+      fixedSalaryPaid: false,
+      salaryPaid: false,
+      nextChuyenCanFrom: null,
+      nextChuyenCanTo: null,
     };
 
     return { totalSalary, totalTip, count, month, year, details, components };
@@ -386,7 +539,9 @@ export class SubmissionsService {
     const farHomeCommon = Number(settings?.allowanceFarHome) || 0;
     const bhxhPercent = Number(settings?.bhxhNld) || 10.5;
 
-    const records = await this.salaryRecordsRepository.find({ where: { month, year } });
+    const records = await this.salaryRecordsRepository.find({
+      where: { month, year },
+    });
     const recordMap = new Map<number, SalaryRecord>();
     for (const r of records) recordMap.set(r.driverId, r);
 
@@ -395,41 +550,51 @@ export class SubmissionsService {
       where: { isActive: true },
       order: { sortOrder: 'ASC', id: 'ASC' },
     });
-    const recordIds = records.map(r => r.id);
-    const allRecordItems = recordIds.length > 0
-      ? await this.salaryRecordItemsRepository.find({ where: { recordId: In(recordIds) } })
-      : [];
+    const recordIds = records.map((r) => r.id);
+    const allRecordItems =
+      recordIds.length > 0
+        ? await this.salaryRecordItemsRepository.find({
+            where: { recordId: In(recordIds) },
+          })
+        : [];
     const recordItemsMap = new Map<number, Map<number, SalaryRecordItem>>();
     for (const ri of allRecordItems) {
-      if (!recordItemsMap.has(ri.recordId)) recordItemsMap.set(ri.recordId, new Map());
+      if (!recordItemsMap.has(ri.recordId))
+        recordItemsMap.set(ri.recordId, new Map());
       recordItemsMap.get(ri.recordId)!.set(ri.itemId, ri);
     }
 
     const daysInMonth = new Date(year, month, 0).getDate();
-    const tripSalaryByDriver = tripSalaryOverride ??
+    const tripSalaryByDriver =
+      tripSalaryOverride ??
       (await this.getMonthlyTripSalaryByDriver(month, year));
-    const drivers = await this.usersRepository.find({ where: { role: 'laixe' } });
+    const drivers = await this.usersRepository.find({
+      where: { role: 'laixe' },
+    });
 
-    const result = new Map<number, {
-      fixedSalary: number;
-      chuyenCan: number;
-      nextChuyenCanFrom: number | null;
-      nextChuyenCanTo: number | null;
-      allowanceFarHome: number;
-      allowanceWaitLoading: number;
-      allowanceOldCar: number;
-      parkingHph2: number;
-      hasParkingHph2: boolean;
-      ngayCong: number;
-      daysOffList: number[];  // mảng ngày nghỉ (vd: [3, 15, 22])
-      daysOffNote: string | null; // ghi chú ngày nghỉ (nhập tay bởi HR)
-      bhxh: number;           // tiền BHXH phải đóng
-      chiHo: number;          // chi hộ
-      fixedSalaryPaid: boolean; // lương cứng đã thanh toán chưa
-      salaryPaid: boolean;      // toàn bộ lương tháng đã thanh toán chưa
-      deductions: { name: string; amount: number }[]; // các khoản khấu trừ khác
-      allowances: { name: string; amount: number }[]; // các khoản phụ cấp động (kind='add')
-    }>();
+    const result = new Map<
+      number,
+      {
+        fixedSalary: number;
+        chuyenCan: number;
+        nextChuyenCanFrom: number | null;
+        nextChuyenCanTo: number | null;
+        allowanceFarHome: number;
+        allowanceWaitLoading: number;
+        allowanceOldCar: number;
+        parkingHph2: number;
+        hasParkingHph2: boolean;
+        ngayCong: number;
+        daysOffList: number[]; // mảng ngày nghỉ (vd: [3, 15, 22])
+        daysOffNote: string | null; // ghi chú ngày nghỉ (nhập tay bởi HR)
+        bhxh: number; // tiền BHXH phải đóng
+        chiHo: number; // chi hộ
+        fixedSalaryPaid: boolean; // lương cứng đã thanh toán chưa
+        salaryPaid: boolean; // toàn bộ lương tháng đã thanh toán chưa
+        deductions: { name: string; amount: number }[]; // các khoản khấu trừ khác
+        allowances: { name: string; amount: number }[]; // các khoản phụ cấp động (kind='add')
+      }
+    >();
 
     for (const d of drivers) {
       const rec = recordMap.get(d.id);
@@ -454,32 +619,43 @@ export class SubmissionsService {
         }
       }
 
-      const chuyenCan = calculateAttendanceBonus(tripSalaryByDriver.get(d.id) || 0);
-      const nextCC = nextAttendanceBonusRange(tripSalaryByDriver.get(d.id) || 0);
+      const chuyenCan = calculateAttendanceBonus(
+        tripSalaryByDriver.get(d.id) || 0,
+      );
+      const nextCC = nextAttendanceBonusRange(
+        tripSalaryByDriver.get(d.id) || 0,
+      );
       const allowanceFarHome = rec
         ? rec.hasFarHome
-          ? rec.allowanceFarHome != null ? Number(rec.allowanceFarHome) : farHomeCommon
+          ? rec.allowanceFarHome != null
+            ? Number(rec.allowanceFarHome)
+            : farHomeCommon
           : 0
         : 0;
-      const waitLoadingAmount = rec ? Number(rec.allowanceWaitLoadingRate) || 0 : 0;
+      const waitLoadingAmount = rec
+        ? Number(rec.allowanceWaitLoadingRate) || 0
+        : 0;
       const hasOldCar = rec ? rec.hasOldCar : d.oldCar;
       const hasParkingHph2 = rec ? rec.hasParkingHph2 : false;
       const chiHo = Number(rec?.chiHo) || 0;
 
       // Tính BHXH — chỉ trừ nếu lái xe đóng bảo hiểm
-      const hasBhxh = rec ? rec.hasBhxh : d.payBhxh ?? true;
-      const bhxh = hasBhxh
-        ? Math.round(fixedSalary * bhxhPercent / 100)
-        : 0;
+      const hasBhxh = rec ? rec.hasBhxh : (d.payBhxh ?? true);
+      const bhxh = hasBhxh ? Math.round((fixedSalary * bhxhPercent) / 100) : 0;
 
       // Tính các khoản khấu trừ từ SalaryItems (kind='deduct')
-      const riMap = rec ? (recordItemsMap.get(rec.id) || new Map()) : new Map<number, SalaryRecordItem>();
+      const riMap = rec
+        ? recordItemsMap.get(rec.id) || new Map()
+        : new Map<number, SalaryRecordItem>();
       const deductions: { name: string; amount: number }[] = [];
       for (const item of allItems) {
         if (item.kind !== 'deduct') continue;
         const ri = riMap.get(item.id);
         if (!ri?.enabled) continue;
-        const amount = ri.amount != null ? Number(ri.amount) : Number(item.defaultAmount) || 0;
+        const amount =
+          ri.amount != null
+            ? Number(ri.amount)
+            : Number(item.defaultAmount) || 0;
         if (amount > 0) deductions.push({ name: item.name, amount });
       }
 
@@ -489,7 +665,10 @@ export class SubmissionsService {
         if (item.kind !== 'add') continue;
         const ri = riMap.get(item.id);
         if (!ri?.enabled) continue;
-        const amount = ri.amount != null ? Number(ri.amount) : Number(item.defaultAmount) || 0;
+        const amount =
+          ri.amount != null
+            ? Number(ri.amount)
+            : Number(item.defaultAmount) || 0;
         if (amount > 0) allowances.push({ name: item.name, amount });
       }
 
@@ -501,10 +680,14 @@ export class SubmissionsService {
         allowanceFarHome,
         allowanceWaitLoading: waitLoadingAmount,
         allowanceOldCar: hasOldCar
-          ? rec?.oldCarAllowance != null ? Number(rec.oldCarAllowance) : oldCarAllowance
+          ? rec?.oldCarAllowance != null
+            ? Number(rec.oldCarAllowance)
+            : oldCarAllowance
           : 0,
         parkingHph2: hasParkingHph2
-          ? rec?.parkingHph2 != null ? Number(rec.parkingHph2) : parkingHph2
+          ? rec?.parkingHph2 != null
+            ? Number(rec.parkingHph2)
+            : parkingHph2
           : 0,
         hasParkingHph2,
         ngayCong,
@@ -527,28 +710,37 @@ export class SubmissionsService {
     const targetYM = year * 100 + month;
     // advanceDeduct per driver
     for (const [driverId, comp] of result.entries()) {
-      const driverAdvances = allActiveAdvances.filter(a => a.driverId === driverId);
+      const driverAdvances = allActiveAdvances.filter(
+        (a) => a.driverId === driverId,
+      );
       // Chỉ tính advance đã tới ngày bắt đầu khấu trừ
       const eligibleAmount = driverAdvances
-        .filter(a => {
+        .filter((a) => {
           const ds = a.deductStart || a.date;
           const [y, m] = ds.split('-').map(Number);
-          return (y * 100 + m) <= targetYM;
+          return y * 100 + m <= targetYM;
         })
         .reduce((s, a) => s + Number(a.amount), 0);
       const rec = recordMap.get(driverId);
       const advanceDeduct = Number(rec?.advanceDeduct) || 0;
       // Tổng đã trừ ở các tháng TRƯỚC (không gồm tháng này)
       const deductedBefore = allRecordsList
-        .filter(r => r.driverId === driverId && r.id !== rec?.id && (r.year * 100 + r.month) <= targetYM)
+        .filter(
+          (r) =>
+            r.driverId === driverId &&
+            r.id !== rec?.id &&
+            r.year * 100 + r.month <= targetYM,
+        )
         .reduce((s, r) => s + (Number(r.advanceDeduct) || 0), 0);
       const remainingBefore = Math.max(0, eligibleAmount - deductedBefore);
-      const advanceRemainingAfter = Math.max(0, remainingBefore - advanceDeduct);
+      const advanceRemainingAfter = Math.max(
+        0,
+        remainingBefore - advanceDeduct,
+      );
       (comp as any).advanceDeduct = advanceDeduct;
       (comp as any).totalRemainingAdvance = remainingBefore;
       (comp as any).advanceRemainingAfter = advanceRemainingAfter;
     }
-
 
     return { settings, standardDays, components: result };
   }
@@ -562,9 +754,16 @@ export class SubmissionsService {
       this.shippingLinesRepository.find(),
       this.routesRepository.find(),
     ]);
-    const linesById = new Map(shippingLines.map((line) => [line.id, line] as const));
-    const linesByName = new Map(shippingLines.map((line) => [line.name, line] as const));
-    const routeMoney = new Map<string, { money: number; effectiveDate: string | null }>();
+    const linesById = new Map(
+      shippingLines.map((line) => [line.id, line] as const),
+    );
+    const linesByName = new Map(
+      shippingLines.map((line) => [line.name, line] as const),
+    );
+    const routeMoney = new Map<
+      string,
+      { money: number; effectiveDate: string | null }
+    >();
     for (const route of routes) {
       routeMoney.set(route.name, {
         money: Number(route.money) || 0,
@@ -581,18 +780,25 @@ export class SubmissionsService {
       const referenceDate = planDate
         ? new Date(planDate)
         : new Date(submission.createdAt);
-      if (referenceDate.getMonth() + 1 !== month || referenceDate.getFullYear() !== year) {
+      if (
+        referenceDate.getMonth() + 1 !== month ||
+        referenceDate.getFullYear() !== year
+      ) {
         continue;
       }
 
       const routeName = submission.route || line?.routeName || '';
       const route = routeMoney.get(routeName);
       const frozenMoney = line?.frozenMoney;
-      const unitPrice = frozenMoney !== null && frozenMoney !== undefined
-        ? Number(frozenMoney)
-        : route && (!route.effectiveDate || !planDate || planDate >= route.effectiveDate)
-          ? route.money
-          : 0;
+      const unitPrice =
+        frozenMoney !== null && frozenMoney !== undefined
+          ? Number(frozenMoney)
+          : route &&
+              (!route.effectiveDate ||
+                !planDate ||
+                planDate >= route.effectiveDate)
+            ? route.money
+            : 0;
       const h20 = parseFloat(submission.hang20) || 0;
       const h40 = parseFloat(submission.hang40) || 0;
       const v20 = parseFloat(submission.vo20) || 0;
@@ -601,36 +807,56 @@ export class SubmissionsService {
       const v40fr = parseFloat(submission.vo40fr) || 0;
       const vsl = parseFloat(submission.veSinhLai) || 0;
       const kv = parseFloat(submission.keoVe) || 0;
-      const containerCount = h20 + h40 + Math.ceil(v20 / 2) + v40 +
-        Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+      const containerCount =
+        h20 +
+        h40 +
+        Math.ceil(v20 / 2) +
+        v40 +
+        Math.ceil(v20fr / 8) +
+        Math.ceil(v40fr / 4);
       const multiplier = line?.leTet ? 3 : line?.tangCuong ? 1.15 : 1;
-      const salary = unitPrice * containerCount * multiplier +
-        vsl * 40000 * multiplier + kv * unitPrice * multiplier;
-      totals.set(submission.userId, (totals.get(submission.userId) || 0) + salary);
+      const salary =
+        unitPrice * containerCount * multiplier +
+        vsl * 40000 * multiplier +
+        kv * unitPrice * multiplier;
+      totals.set(
+        submission.userId,
+        (totals.get(submission.userId) || 0) + salary,
+      );
     }
 
     return totals;
   }
 
-  async findAll(filter: {
-    userId?: number;
-    shippingLine?: string;
-    shippingLineId?: number;
-    fromDate?: string;
-    toDate?: string;
-    excludeCompleted?: boolean;
-  }, role?: string, user?: any): Promise<any[]> {
+  async findAll(
+    filter: {
+      userId?: number;
+      shippingLine?: string;
+      shippingLineId?: number;
+      fromDate?: string;
+      toDate?: string;
+      excludeCompleted?: boolean;
+    },
+    role?: string,
+    user?: any,
+  ): Promise<any[]> {
     const query = this.submissionsRepository
       .createQueryBuilder('s')
       .leftJoinAndSelect('s.user', 'user')
       .leftJoinAndSelect('s.shippingLineRef', 'sl')
       // Join xe thực chạy để lấy biển số (actualVehicleSoXe)
       .leftJoin('users', 'av', 'av.id = s.actual_vehicle_id')
-      .addSelect(['av.so_xe AS av_so_xe', 'av.full_name AS av_full_name', 'av.ben AS av_ben'])
+      .addSelect([
+        'av.so_xe AS av_so_xe',
+        'av.full_name AS av_full_name',
+        'av.ben AS av_ben',
+      ])
       .orderBy('s.createdAt', 'DESC');
 
     if (role !== 'admin' && role !== 'supper_admin') {
-      query.andWhere('user.role NOT IN (:...excludedRoles)', { excludedRoles: ['admin', 'supper_admin'] });
+      query.andWhere('user.role NOT IN (:...excludedRoles)', {
+        excludedRoles: ['admin', 'supper_admin'],
+      });
     }
 
     const visible = resolveVisibleDriverIds(user);
@@ -638,7 +864,9 @@ export class SubmissionsService {
       if (visible.length === 0) {
         query.andWhere('1=0');
       } else {
-        query.andWhere('s.userId IN (:...visibleDriverIds)', { visibleDriverIds: visible });
+        query.andWhere('s.userId IN (:...visibleDriverIds)', {
+          visibleDriverIds: visible,
+        });
       }
     }
 
@@ -646,26 +874,41 @@ export class SubmissionsService {
       query.andWhere('s.userId = :userId', { userId: filter.userId });
     }
     if (filter.shippingLineId) {
-      query.andWhere('s.shippingLineId = :shippingLineId', { shippingLineId: filter.shippingLineId });
+      query.andWhere('s.shippingLineId = :shippingLineId', {
+        shippingLineId: filter.shippingLineId,
+      });
     }
     if (filter.shippingLine) {
-      query.andWhere('s.shippingLine = :shippingLine', { shippingLine: filter.shippingLine });
+      query.andWhere('s.shippingLine = :shippingLine', {
+        shippingLine: filter.shippingLine,
+      });
     }
     if (filter.fromDate) {
-      query.andWhere('(sl.ngay IS NOT NULL AND sl.ngay >= :fromDate OR sl.ngay IS NULL AND DATE(s.createdAt) >= :fromDate)', { fromDate: filter.fromDate });
+      query.andWhere(
+        '(sl.ngay IS NOT NULL AND sl.ngay >= :fromDate OR sl.ngay IS NULL AND DATE(s.createdAt) >= :fromDate)',
+        { fromDate: filter.fromDate },
+      );
     }
     if (filter.toDate) {
-      query.andWhere('(sl.ngay IS NOT NULL AND sl.ngay <= :toDate OR sl.ngay IS NULL AND DATE(s.createdAt) <= :toDate)', { toDate: filter.toDate });
+      query.andWhere(
+        '(sl.ngay IS NOT NULL AND sl.ngay <= :toDate OR sl.ngay IS NULL AND DATE(s.createdAt) <= :toDate)',
+        { toDate: filter.toDate },
+      );
     }
 
-    const { entities: submissions, raw: rawRows } = await query.getRawAndEntities();
+    const { entities: submissions, raw: rawRows } =
+      await query.getRawAndEntities();
 
     // Filter out submissions for completed plans (web UI only)
     let filteredPairs = submissions.map((s, i) => ({ s, raw: rawRows[i] }));
     if (filter.excludeCompleted) {
       const allShippingLines = await this.shippingLinesRepository.find();
-      const completedIds = new Set(allShippingLines.filter(sl => sl.completed).map(sl => sl.id));
-      const completedNames = new Set(allShippingLines.filter(sl => sl.completed).map(sl => sl.name));
+      const completedIds = new Set(
+        allShippingLines.filter((sl) => sl.completed).map((sl) => sl.id),
+      );
+      const completedNames = new Set(
+        allShippingLines.filter((sl) => sl.completed).map((sl) => sl.name),
+      );
       filteredPairs = filteredPairs.filter(({ s }) => {
         if (s.shippingLineId) return !completedIds.has(s.shippingLineId);
         return !completedNames.has(s.shippingLine);
@@ -691,9 +934,10 @@ export class SubmissionsService {
     return result;
   }
 
-
   async remove(id: number) {
-    const submission = await this.submissionsRepository.findOne({ where: { id } });
+    const submission = await this.submissionsRepository.findOne({
+      where: { id },
+    });
     if (!submission) {
       throw new NotFoundException('Không tìm thấy bản ghi');
     }
@@ -704,12 +948,17 @@ export class SubmissionsService {
   async removeAll() {
     await this.submissionsRepository.query('DELETE FROM edit_history');
     await this.submissionsRepository.query('DELETE FROM submissions');
-    await this.submissionsRepository.query("ALTER SEQUENCE submissions_id_seq RESTART WITH 1");
+    await this.submissionsRepository.query(
+      'ALTER SEQUENCE submissions_id_seq RESTART WITH 1',
+    );
     return { message: 'Đã xóa tất cả dữ liệu' };
   }
 
   private sanitizeSheetName(raw: string, usedNames: Set<string>): string {
-    let s = raw.replace(/[\\\/\?\*\[\]\:]/g, ' ').replace(/\s+/g, ' ').trim();
+    let s = raw
+      .replace(/[\\\/\?\*\[\]\:]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
     s = s.substring(0, 31);
     if (!s) s = 'Sheet';
     let unique = s;
@@ -749,19 +998,23 @@ export class SubmissionsService {
     }).format(d);
   }
 
-  async exportExcel(res: Response, user: any, filter: {
-    userId?: number;
-    shippingLine?: string;
-    shippingLineId?: number;
-    fromDate?: string;
-    toDate?: string;
-    vendorKhac?: string;
-    tenNguoiNhap?: string;
-    done?: boolean;
-    mode?: string;
-    month?: number;
-    year?: number;
-  }) {
+  async exportExcel(
+    res: Response,
+    user: any,
+    filter: {
+      userId?: number;
+      shippingLine?: string;
+      shippingLineId?: number;
+      fromDate?: string;
+      toDate?: string;
+      vendorKhac?: string;
+      tenNguoiNhap?: string;
+      done?: boolean;
+      mode?: string;
+      month?: number;
+      year?: number;
+    },
+  ) {
     const isMonthly = filter.mode === 'monthly';
     if (isMonthly && filter.month && filter.year) {
       filter.fromDate = `${filter.year}-${String(filter.month).padStart(2, '0')}-01`;
@@ -777,10 +1030,14 @@ export class SubmissionsService {
       month: '2-digit',
       year: 'numeric',
     }).formatToParts(new Date());
-    const vnMonth = Number(vnParts.find(p => p.type === 'month')?.value);
-    const vnYear = Number(vnParts.find(p => p.type === 'year')?.value);
-    const salaryMonth = filter.month || (filter.fromDate ? new Date(filter.fromDate).getMonth() + 1 : vnMonth);
-    const salaryYear = filter.year || (filter.fromDate ? new Date(filter.fromDate).getFullYear() : vnYear);
+    const vnMonth = Number(vnParts.find((p) => p.type === 'month')?.value);
+    const vnYear = Number(vnParts.find((p) => p.type === 'year')?.value);
+    const salaryMonth =
+      filter.month ||
+      (filter.fromDate ? new Date(filter.fromDate).getMonth() + 1 : vnMonth);
+    const salaryYear =
+      filter.year ||
+      (filter.fromDate ? new Date(filter.fromDate).getFullYear() : vnYear);
     const salaryComp = await this.loadSalaryComponents(salaryMonth, salaryYear);
 
     // Persist vendor/người nhập do ops nhập khi export để tái sử dụng về sau
@@ -793,25 +1050,41 @@ export class SubmissionsService {
       } catch {}
     }
 
-    const allShippingLines = await this.shippingLinesRepository.find({ relations: { route: true } });
+    const allShippingLines = await this.shippingLinesRepository.find({
+      relations: { route: true },
+    });
     const slMap = new Map<number, ShippingLine>();
     const slNameMap = new Map<string, ShippingLine>();
     for (const sl of allShippingLines) {
       slMap.set(sl.id, sl);
       slNameMap.set(sl.name, sl);
     }
-    const fmtNgay = (d: string | null | undefined) => d ? d.split('-').reverse().join('-') : '';
+    const fmtNgay = (d: string | null | undefined) =>
+      d ? d.split('-').reverse().join('-') : '';
     const planDisplayName = (sl: ShippingLine) => {
-      return [sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ');
+      return [sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)]
+        .filter(Boolean)
+        .join(' / ');
     };
 
     const allRoutes = await this.routesRepository.find();
-    const routeMap = new Map<string, { money: number; effectiveDate: string | null }>();
+    const routeMap = new Map<
+      string,
+      { money: number; effectiveDate: string | null }
+    >();
     for (const r of allRoutes) {
-      routeMap.set(r.name, { money: Number(r.money) || 0, effectiveDate: r.effectiveDate || null });
+      routeMap.set(r.name, {
+        money: Number(r.money) || 0,
+        effectiveDate: r.effectiveDate || null,
+      });
     }
-    const getRouteMoney = (name: string, planDate: string | null | undefined, frozenMoney?: number | null): number => {
-      if (frozenMoney !== null && frozenMoney !== undefined) return Number(frozenMoney);
+    const getRouteMoney = (
+      name: string,
+      planDate: string | null | undefined,
+      frozenMoney?: number | null,
+    ): number => {
+      if (frozenMoney !== null && frozenMoney !== undefined)
+        return Number(frozenMoney);
       const rt = routeMap.get(name);
       if (!rt) return 0;
       if (rt.effectiveDate && planDate && planDate < rt.effectiveDate) return 0;
@@ -823,13 +1096,35 @@ export class SubmissionsService {
     workbook.created = new Date();
     const usedSheetNames = new Set<string>();
 
-    const allDrivers = await this.usersRepository.find({ where: { role: 'laixe' } });
-    allDrivers.sort((a, b) => (parseInt(a.stt) || 0) - (parseInt(b.stt) || 0) || a.fullName.localeCompare(b.fullName));
+    const allDrivers = await this.usersRepository.find({
+      where: { role: 'laixe' },
+    });
+    allDrivers.sort(
+      (a, b) =>
+        (parseInt(a.stt) || 0) - (parseInt(b.stt) || 0) ||
+        a.fullName.localeCompare(b.fullName),
+    );
 
-    const headerFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
-    const headerFont: Partial<ExcelJS.Font> = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
-    const borderStyle: ExcelJS.Border = { style: 'thin', color: { argb: 'FFCCCCCC' } };
-    const allBorder: Partial<ExcelJS.Borders> = { top: borderStyle, left: borderStyle, bottom: borderStyle, right: borderStyle };
+    const headerFill: ExcelJS.Fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1E3A5F' },
+    };
+    const headerFont: Partial<ExcelJS.Font> = {
+      bold: true,
+      color: { argb: 'FFFFFFFF' },
+      size: 11,
+    };
+    const borderStyle: ExcelJS.Border = {
+      style: 'thin',
+      color: { argb: 'FFCCCCCC' },
+    };
+    const allBorder: Partial<ExcelJS.Borders> = {
+      top: borderStyle,
+      left: borderStyle,
+      bottom: borderStyle,
+      right: borderStyle,
+    };
 
     const fmtDate = (d: string) => {
       if (!d) return '';
@@ -840,7 +1135,7 @@ export class SubmissionsService {
     // For OPS: create per-ship sheets first (so main sheet appears at bottom)
     if (role === 'ops') {
       const groupedBySl = new Map<string, any[]>();
-      for (const sub of submissions as any[]) {
+      for (const sub of submissions) {
         const key = sub.shippingLineId
           ? `id:${sub.shippingLineId}`
           : `${sub.shippingLine}||${sub.route || ''}`;
@@ -860,11 +1155,18 @@ export class SubmissionsService {
           leTet: false,
         };
 
-        const driverSubs = subs.filter((s: any) => s.user && s.user.role === 'laixe');
+        const driverSubs = subs.filter(
+          (s: any) => s.user && s.user.role === 'laixe',
+        );
         const opsSub = subs.find((s: any) => s.userId === user.id) || null;
 
         // Build sheet name from plan info; replace chars not allowed by Excel
-        const sheetName = this.sanitizeSheetName([slSafe.name, slSafe.soChuyen, slSafe.routeName, fmtNgay(slSafe.ngay)].filter(Boolean).join(' - '), usedSheetNames);
+        const sheetName = this.sanitizeSheetName(
+          [slSafe.name, slSafe.soChuyen, slSafe.routeName, fmtNgay(slSafe.ngay)]
+            .filter(Boolean)
+            .join(' - '),
+          usedSheetNames,
+        );
         const ws2 = workbook.addWorksheet(sheetName);
 
         const titleFont: Partial<ExcelJS.Font> = { bold: true, size: 11 };
@@ -898,7 +1200,8 @@ export class SubmissionsService {
         // Row 3: XE VẬN TẢI + Tàu Lễ, Tết
         ws2.mergeCells(3, 1, 3, 7);
         const r3 = ws2.getRow(3);
-        r3.getCell(1).value = `XE VẬN TẢI: NW, ${filter.vendorKhac || slSafe.vendorKhac || ''}`;
+        r3.getCell(1).value =
+          `XE VẬN TẢI: NW, ${filter.vendorKhac || slSafe.vendorKhac || ''}`;
         r3.getCell(1).font = titleFont;
         ws2.mergeCells(3, 10, 3, 12);
         r3.getCell(10).value = 'Tàu Lễ, Tết';
@@ -922,16 +1225,16 @@ export class SubmissionsService {
         r5.height = 28;
 
         // Set column widths
-        ws2.getColumn(1).width = 5;   // STT
-        ws2.getColumn(2).width = 14;  // SỐ XE
-        ws2.getColumn(3).width = 16;  // TÊN
-        ws2.getColumn(4).width = 14;  // SĐT
-        ws2.getColumn(5).width = 8;   // HÀNG 20'
-        ws2.getColumn(6).width = 8;   // HÀNG 40'
-        ws2.getColumn(7).width = 8;   // VỎ 20'
-        ws2.getColumn(8).width = 8;   // VỎ 40'
-        ws2.getColumn(9).width = 8;   // VỎ 20FR
-        ws2.getColumn(10).width = 8;  // VỎ 40FR
+        ws2.getColumn(1).width = 5; // STT
+        ws2.getColumn(2).width = 14; // SỐ XE
+        ws2.getColumn(3).width = 16; // TÊN
+        ws2.getColumn(4).width = 14; // SĐT
+        ws2.getColumn(5).width = 8; // HÀNG 20'
+        ws2.getColumn(6).width = 8; // HÀNG 40'
+        ws2.getColumn(7).width = 8; // VỎ 20'
+        ws2.getColumn(8).width = 8; // VỎ 40'
+        ws2.getColumn(9).width = 8; // VỎ 20FR
+        ws2.getColumn(10).width = 8; // VỎ 40FR
         ws2.getColumn(11).width = 10; // VỆ SINH LẠI
         ws2.getColumn(12).width = 10; // KÉO VỀ
         ws2.getColumn(13).width = 10; // TIP
@@ -939,40 +1242,113 @@ export class SubmissionsService {
 
         // Row 6: Main header
         const hRow = ws2.getRow(6);
-        const hCells = ['STT', 'SỐ XE', 'TÊN', 'SĐT', 'HÀNG', '', 'VỎ', '', '', '', 'VỆ SINH LẠI', 'KÉO VỀ', 'TIP', 'NGƯỜI NHẬP'];
-        hCells.forEach((v, i) => { hRow.getCell(i + 1).value = v; });
-        ws2.mergeCells(6, 5, 6, 6);   // HÀNG spans row 6, cols 5-6
-        ws2.mergeCells(6, 7, 6, 10);  // VỎ spans row 6, cols 7-10
+        const hCells = [
+          'STT',
+          'SỐ XE',
+          'TÊN',
+          'SĐT',
+          'HÀNG',
+          '',
+          'VỎ',
+          '',
+          '',
+          '',
+          'VỆ SINH LẠI',
+          'KÉO VỀ',
+          'TIP',
+          'NGƯỜI NHẬP',
+        ];
+        hCells.forEach((v, i) => {
+          hRow.getCell(i + 1).value = v;
+        });
+        ws2.mergeCells(6, 5, 6, 6); // HÀNG spans row 6, cols 5-6
+        ws2.mergeCells(6, 7, 6, 10); // VỎ spans row 6, cols 7-10
         hRow.eachCell((cell) => {
           cell.font = { bold: true, size: 10 };
           cell.alignment = { horizontal: 'center', vertical: 'middle' };
           cell.border = allBorder;
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F0FE' } } as ExcelJS.Fill;
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE8F0FE' },
+          };
         });
         hRow.height = 18;
 
         // Row 7: Sub-header
         const shRow = ws2.getRow(7);
-        const shCells = ['', '', '', '', '20\'', '40\'', '20\'', '40\'', 'V20FR', 'V40FR', '(Chuyến)', '(Chuyến)', '(x 1.000đ)', ''];
-        shCells.forEach((v, i) => { shRow.getCell(i + 1).value = v; });
+        const shCells = [
+          '',
+          '',
+          '',
+          '',
+          "20'",
+          "40'",
+          "20'",
+          "40'",
+          'V20FR',
+          'V40FR',
+          '(Chuyến)',
+          '(Chuyến)',
+          '(x 1.000đ)',
+          '',
+        ];
+        shCells.forEach((v, i) => {
+          shRow.getCell(i + 1).value = v;
+        });
         shRow.eachCell((cell) => {
           cell.font = { bold: true, size: 9 };
           cell.alignment = { horizontal: 'center', vertical: 'middle' };
           cell.border = allBorder;
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F0FE' } } as ExcelJS.Fill;
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE8F0FE' },
+          };
         });
         shRow.height = 16;
 
         // Data rows — group by user, sum quantities, include all drivers
-        let dataStartRow = 8;
-        let totalH20 = 0, totalH40 = 0, totalV20 = 0, totalV40 = 0, totalV20fr = 0, totalV40fr = 0;
-        let totalVsl = 0, totalTip = 0, totalKv = 0;
+        const dataStartRow = 8;
+        let totalH20 = 0,
+          totalH40 = 0,
+          totalV20 = 0,
+          totalV40 = 0,
+          totalV20fr = 0,
+          totalV40fr = 0;
+        let totalVsl = 0,
+          totalTip = 0,
+          totalKv = 0;
 
         // Build map of driver data from submissions
-        const shipDriverMap = new Map<number, { h20: number; h40: number; v20: number; v40: number; v20fr: number; v40fr: number; vsl: number; tip: number; kv: number }>();
+        const shipDriverMap = new Map<
+          number,
+          {
+            h20: number;
+            h40: number;
+            v20: number;
+            v40: number;
+            v20fr: number;
+            v40fr: number;
+            vsl: number;
+            tip: number;
+            kv: number;
+          }
+        >();
         for (const sub of driverSubs) {
           const uid = sub.userId;
-          if (!shipDriverMap.has(uid)) shipDriverMap.set(uid, { h20: 0, h40: 0, v20: 0, v40: 0, v20fr: 0, v40fr: 0, vsl: 0, tip: 0, kv: 0 });
+          if (!shipDriverMap.has(uid))
+            shipDriverMap.set(uid, {
+              h20: 0,
+              h40: 0,
+              v20: 0,
+              v40: 0,
+              v20fr: 0,
+              v40fr: 0,
+              vsl: 0,
+              tip: 0,
+              kv: 0,
+            });
           const d = shipDriverMap.get(uid)!;
           d.h20 += parseFloat(sub.hang20) || 0;
           d.h40 += parseFloat(sub.hang40) || 0;
@@ -998,8 +1374,15 @@ export class SubmissionsService {
           const tip = d?.tip || 0;
           const kv = d?.kv || 0;
 
-          totalH20 += h20; totalH40 += h40; totalV20 += v20; totalV40 += v40; totalV20fr += v20fr; totalV40fr += v40fr;
-          totalVsl += vsl; totalTip += tip; totalKv += kv;
+          totalH20 += h20;
+          totalH40 += h40;
+          totalV20 += v20;
+          totalV40 += v40;
+          totalV20fr += v20fr;
+          totalV40fr += v40fr;
+          totalVsl += vsl;
+          totalTip += tip;
+          totalKv += kv;
 
           const row = ws2.getRow(dataStartRow + rowIdx);
           row.getCell(1).value = driver.stt || '';
@@ -1055,7 +1438,11 @@ export class SubmissionsService {
           const opsRow = ws2.getRow(opsRowNum);
           ws2.mergeCells(opsRowNum, 1, opsRowNum, 4);
           opsRow.getCell(1).value = 'SL TỔNG TÀU';
-          opsRow.getCell(1).font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+          opsRow.getCell(1).font = {
+            bold: true,
+            size: 10,
+            color: { argb: 'FFFFFFFF' },
+          };
           opsRow.getCell(5).value = opsSub?.hang20 || '';
           opsRow.getCell(6).value = opsSub?.hang40 || '';
           opsRow.getCell(7).value = opsSub?.vo20 || '';
@@ -1065,16 +1452,20 @@ export class SubmissionsService {
           opsRow.getCell(11).value = opsSub?.veSinhLai || '';
           opsRow.getCell(12).value = opsSub?.keoVe || '';
           opsRow.getCell(13).value = opsSub?.tip || '';
-          opsRow.getCell(14).value = filter.tenNguoiNhap || slSafe.tenNguoiNhap || '';
+          opsRow.getCell(14).value =
+            filter.tenNguoiNhap || slSafe.tenNguoiNhap || '';
           opsRow.eachCell((cell) => {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } } as ExcelJS.Fill;
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFDC2626' },
+            };
             cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
             cell.border = allBorder;
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
           });
           opsRow.height = 22;
         }
-
       }
     }
 
@@ -1086,22 +1477,25 @@ export class SubmissionsService {
         .createQueryBuilder('c')
         .leftJoinAndSelect('c.shippingLineRef', 'sl');
       if (filter.shippingLineId) {
-        qb.where('c.shippingLineId = :planId', { planId: filter.shippingLineId });
+        qb.where('c.shippingLineId = :planId', {
+          planId: filter.shippingLineId,
+        });
       }
       qb.orderBy('c.containerCode', 'ASC');
       const containers = await qb.getMany();
 
-      const claims = containers.length > 0
-        ? await this.containerClaimsRepository
-            .createQueryBuilder('cl')
-            .leftJoinAndSelect('cl.submissionRef', 'sub')
-            .leftJoinAndSelect('sub.user', 'u')
-            .where('cl.containerImportId IN (:...ids)', {
-              ids: containers.map((c) => c.id),
-            })
-            .orderBy('cl.createdAt', 'ASC')
-            .getMany()
-        : [];
+      const claims =
+        containers.length > 0
+          ? await this.containerClaimsRepository
+              .createQueryBuilder('cl')
+              .leftJoinAndSelect('cl.submissionRef', 'sub')
+              .leftJoinAndSelect('sub.user', 'u')
+              .where('cl.containerImportId IN (:...ids)', {
+                ids: containers.map((c) => c.id),
+              })
+              .orderBy('cl.createdAt', 'ASC')
+              .getMany()
+          : [];
       const claimsByContainer = new Map<number, any[]>();
       for (const cl of claims as any[]) {
         if (!claimsByContainer.has(cl.containerImportId)) {
@@ -1138,7 +1532,10 @@ export class SubmissionsService {
       const clampContainerIds = new Set<number>();
       const kepUnits = new Set<string>();
       const pairs: { mainId: number; clampId: number }[] = [];
-      const pairByContainer = new Map<number, { mainId: number; clampId: number }>();
+      const pairByContainer = new Map<
+        number,
+        { mainId: number; clampId: number }
+      >();
       {
         const sortedClaims = [...(claims as any[])].sort(
           (a, b) =>
@@ -1162,7 +1559,10 @@ export class SubmissionsService {
                 mainUnit.startsWith('single:') &&
                 clampUnit.startsWith('single:')
               ) {
-                const p = { mainId: main.containerImportId, clampId: cl.containerImportId };
+                const p = {
+                  mainId: main.containerImportId,
+                  clampId: cl.containerImportId,
+                };
                 pairs.push(p);
                 pairByContainer.set(p.mainId, p);
                 pairByContainer.set(p.clampId, p);
@@ -1339,7 +1739,9 @@ export class SubmissionsService {
                 containerCode: main.containerCode,
                 type: `${main.type} / ${clamp.type}`,
                 plan: planNameFor(main),
-                driver: mSub ? mSub.user?.fullName || mSub.driverName || '' : '',
+                driver: mSub
+                  ? mSub.user?.fullName || mSub.driverName || ''
+                  : '',
                 plate: mSub?.user?.soXe || '',
                 claimedAt: this.fmtVN(mainClaims[0].createdAt),
                 vsl: mainClaims[0].claimType === 'VSL' ? 'x' : '',
@@ -1441,7 +1843,7 @@ export class SubmissionsService {
     // For Monthly: per-driver sheets without Đơn giá & Lương, no totals
     if (isMonthly) {
       const driverSubsMap = new Map<number, any[]>();
-      for (const sub of submissions as any[]) {
+      for (const sub of submissions) {
         const uid = sub.userId;
         if (!driverSubsMap.has(uid)) driverSubsMap.set(uid, []);
         driverSubsMap.get(uid)!.push(sub);
@@ -1449,7 +1851,12 @@ export class SubmissionsService {
 
       for (const driver of allDrivers) {
         const subs = driverSubsMap.get(driver.id) || [];
-        const wsDriver = workbook.addWorksheet(this.sanitizeSheetName(`${driver.fullName} - ${driver.soXe || ''}`, usedSheetNames));
+        const wsDriver = workbook.addWorksheet(
+          this.sanitizeSheetName(
+            `${driver.fullName} - ${driver.soXe || ''}`,
+            usedSheetNames,
+          ),
+        );
 
         wsDriver.columns = [
           { header: 'STT', key: 'stt', width: 5 },
@@ -1487,7 +1894,26 @@ export class SubmissionsService {
         headerRow.height = 28;
 
         if (subs.length === 0) {
-          wsDriver.addRow({ stt: '', plan: 'Không có dữ liệu', route: '', donGia: '', hang20: '', hang40: '', vo20: '', vo40: '', vo20fr: '', vo40fr: '', veSinhLai: '', keoVe: '', tip: '', soChuyen: '', luong: '', tongThanhToan: '', tangCuong: '', leTet: '' });
+          wsDriver.addRow({
+            stt: '',
+            plan: 'Không có dữ liệu',
+            route: '',
+            donGia: '',
+            hang20: '',
+            hang40: '',
+            vo20: '',
+            vo40: '',
+            vo20fr: '',
+            vo40fr: '',
+            veSinhLai: '',
+            keoVe: '',
+            tip: '',
+            soChuyen: '',
+            luong: '',
+            tongThanhToan: '',
+            tangCuong: '',
+            leTet: '',
+          });
         } else {
           const planGroups = new Map<string, { sl: any; subs: any[] }>();
           for (const sub of subs) {
@@ -1507,14 +1933,39 @@ export class SubmissionsService {
           }
 
           let rowIdx = 0;
-          let sumH20 = 0, sumH40 = 0, sumV20 = 0, sumV40 = 0, sumV20fr = 0, sumV40fr = 0, sumVsl = 0, sumKv = 0, sumTip = 0, sumSoChuyen = 0, sumLuong = 0, sumTongThanhToan = 0;
-          const comp = salaryComp.components.get(driver.id) || { fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0, allowanceOldCar: 0 };
+          let sumH20 = 0,
+            sumH40 = 0,
+            sumV20 = 0,
+            sumV40 = 0,
+            sumV20fr = 0,
+            sumV40fr = 0,
+            sumVsl = 0,
+            sumKv = 0,
+            sumTip = 0,
+            sumSoChuyen = 0,
+            sumLuong = 0,
+            sumTongThanhToan = 0;
+          const comp = salaryComp.components.get(driver.id) || {
+            fixedSalary: 0,
+            chuyenCan: 0,
+            allowanceFarHome: 0,
+            allowanceWaitLoading: 0,
+            allowanceOldCar: 0,
+          };
 
           for (const [planName, group] of planGroups) {
             const sl = group.sl;
             const tenTuyen = group.subs[0].route || sl?.routeName || '';
             const donGia = getRouteMoney(tenTuyen, sl?.ngay, sl?.frozenMoney);
-            let h20 = 0, h40 = 0, v20 = 0, v40 = 0, v20fr = 0, v40fr = 0, vsl = 0, kv = 0, tip = 0;
+            let h20 = 0,
+              h40 = 0,
+              v20 = 0,
+              v40 = 0,
+              v20fr = 0,
+              v40fr = 0,
+              vsl = 0,
+              kv = 0,
+              tip = 0;
 
             for (const sub of group.subs) {
               h20 += parseFloat(sub.hang20) || 0;
@@ -1528,17 +1979,40 @@ export class SubmissionsService {
               tip += parseFloat(sub.tip) || 0;
             }
 
-            const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+            const tong =
+              h20 +
+              h40 +
+              Math.ceil(v20 / 2) +
+              v40 +
+              Math.ceil(v20fr / 8) +
+              Math.ceil(v40fr / 4);
             const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
-            const luong = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
+            const luong =
+              donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
             const tongThanhToan = luong + tip * 1000;
 
-            sumH20 += h20; sumH40 += h40; sumV20 += v20; sumV40 += v40; sumV20fr += v20fr; sumV40fr += v40fr; sumVsl += vsl; sumKv += kv; sumTip += tip; sumSoChuyen += tong; sumLuong += luong; sumTongThanhToan += tongThanhToan;
+            sumH20 += h20;
+            sumH40 += h40;
+            sumV20 += v20;
+            sumV40 += v40;
+            sumV20fr += v20fr;
+            sumV40fr += v40fr;
+            sumVsl += vsl;
+            sumKv += kv;
+            sumTip += tip;
+            sumSoChuyen += tong;
+            sumLuong += luong;
+            sumTongThanhToan += tongThanhToan;
 
             rowIdx++;
             const row = wsDriver.addRow({
               stt: driver.stt || '',
-              plan: sl ? planDisplayName(sl) : planName.split('||')[0] + (planName.includes('||') ? ` - ${planName.split('||')[1] || ''}` : ''),
+              plan: sl
+                ? planDisplayName(sl)
+                : planName.split('||')[0] +
+                  (planName.includes('||')
+                    ? ` - ${planName.split('||')[1] || ''}`
+                    : ''),
               route: tenTuyen,
               donGia: donGia,
               hang20: h20 || '',
@@ -1567,7 +2041,11 @@ export class SubmissionsService {
             });
             if (rowIdx % 2 === 0) {
               row.eachCell((cell) => {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FF' } } as ExcelJS.Fill;
+                cell.fill = {
+                  type: 'pattern',
+                  pattern: 'solid',
+                  fgColor: { argb: 'FFF0F4FF' },
+                };
               });
             }
           }
@@ -1594,12 +2072,22 @@ export class SubmissionsService {
             phuCapNhaXa: comp.allowanceFarHome || 0,
             phuCapChoDong: comp.allowanceWaitLoading || 0,
             phuCapXeCu: comp.allowanceOldCar || 0,
-            tongThanhToan: sumTongThanhToan + comp.fixedSalary + comp.chuyenCan + comp.allowanceFarHome + comp.allowanceWaitLoading + comp.allowanceOldCar,
+            tongThanhToan:
+              sumTongThanhToan +
+              comp.fixedSalary +
+              comp.chuyenCan +
+              comp.allowanceFarHome +
+              comp.allowanceWaitLoading +
+              comp.allowanceOldCar,
             tangCuong: '',
             leTet: '',
           });
           totalRow.eachCell((cell) => {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } } as ExcelJS.Fill;
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFFFFF00' },
+            };
             cell.font = { bold: true, size: 10 };
             cell.border = allBorder;
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1617,7 +2105,9 @@ export class SubmissionsService {
 
       // Summary sheet: combined driver data, STT→Xe, no totals
       const monthStr = `${String(filter.month).padStart(2, '0')}-${filter.year}`;
-      const wsSummary = workbook.addWorksheet(this.sanitizeSheetName(`Tổng hợp tháng ${monthStr}`, usedSheetNames));
+      const wsSummary = workbook.addWorksheet(
+        this.sanitizeSheetName(`Tổng hợp tháng ${monthStr}`, usedSheetNames),
+      );
 
       wsSummary.columns = [
         { header: 'Xe', key: 'xe', width: 8 },
@@ -1664,9 +2154,14 @@ export class SubmissionsService {
         const planGroups = new Map<string, { sl: any; subs: any[] }>();
         for (const sub of subs) {
           let key: string;
-let sl: any;
-          if (sub.shippingLineId) { key = `id:${sub.shippingLineId}`; sl = slMap.get(sub.shippingLineId); }
-          else { key = `${sub.shippingLine}||${sub.route || ''}`; sl = null; }
+          let sl: any;
+          if (sub.shippingLineId) {
+            key = `id:${sub.shippingLineId}`;
+            sl = slMap.get(sub.shippingLineId);
+          } else {
+            key = `${sub.shippingLine}||${sub.route || ''}`;
+            sl = null;
+          }
           if (!planGroups.has(key)) planGroups.set(key, { sl, subs: [] });
           planGroups.get(key)!.subs.push(sub);
         }
@@ -1675,7 +2170,15 @@ let sl: any;
           const sl = group.sl;
           const tenTuyen = group.subs[0].route || sl?.routeName || '';
           const donGia = getRouteMoney(tenTuyen, sl?.ngay, sl?.frozenMoney);
-          let h20 = 0, h40 = 0, v20 = 0, v40 = 0, v20fr = 0, v40fr = 0, vsl = 0, kv = 0, tip = 0;
+          let h20 = 0,
+            h40 = 0,
+            v20 = 0,
+            v40 = 0,
+            v20fr = 0,
+            v40fr = 0,
+            vsl = 0,
+            kv = 0,
+            tip = 0;
 
           for (const sub of group.subs) {
             h20 += parseFloat(sub.hang20) || 0;
@@ -1689,18 +2192,43 @@ let sl: any;
             tip += parseFloat(sub.tip) || 0;
           }
 
-          const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+          const tong =
+            h20 +
+            h40 +
+            Math.ceil(v20 / 2) +
+            v40 +
+            Math.ceil(v20fr / 8) +
+            Math.ceil(v40fr / 4);
           const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
-          const luong = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
-          const comp = salaryComp.components.get(driver.id) || { fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0, allowanceOldCar: 0 };
-          const tongThanhToan = luong + tip * 1000 + comp.fixedSalary + comp.chuyenCan + comp.allowanceFarHome + comp.allowanceWaitLoading + comp.allowanceOldCar;
+          const luong =
+            donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
+          const comp = salaryComp.components.get(driver.id) || {
+            fixedSalary: 0,
+            chuyenCan: 0,
+            allowanceFarHome: 0,
+            allowanceWaitLoading: 0,
+            allowanceOldCar: 0,
+          };
+          const tongThanhToan =
+            luong +
+            tip * 1000 +
+            comp.fixedSalary +
+            comp.chuyenCan +
+            comp.allowanceFarHome +
+            comp.allowanceWaitLoading +
+            comp.allowanceOldCar;
 
           rowIdx++;
           const row = wsSummary.addRow({
             xe: driver.stt || '',
             bks: driver.soXe || '',
             driverName: driver.fullName,
-            plan: sl ? planDisplayName(sl) : planName.split('||')[0] + (planName.includes('||') ? ` - ${planName.split('||')[1] || ''}` : ''),
+            plan: sl
+              ? planDisplayName(sl)
+              : planName.split('||')[0] +
+                (planName.includes('||')
+                  ? ` - ${planName.split('||')[1] || ''}`
+                  : ''),
             route: tenTuyen,
             hang20: h20 || '',
             hang40: h40 || '',
@@ -1728,7 +2256,11 @@ let sl: any;
           });
           if (rowIdx % 2 === 0) {
             row.eachCell((cell) => {
-              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FF' } } as ExcelJS.Fill;
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFF0F4FF' },
+              };
             });
           }
         }
@@ -1745,7 +2277,7 @@ let sl: any;
     // For HR: create per-driver sheets
     if (role === 'hr') {
       const driverSubsMap = new Map<number, any[]>();
-      for (const sub of submissions as any[]) {
+      for (const sub of submissions) {
         const uid = sub.userId;
         if (!driverSubsMap.has(uid)) driverSubsMap.set(uid, []);
         driverSubsMap.get(uid)!.push(sub);
@@ -1753,7 +2285,12 @@ let sl: any;
 
       for (const driver of allDrivers) {
         const subs = driverSubsMap.get(driver.id) || [];
-        const wsDriver = workbook.addWorksheet(this.sanitizeSheetName(`${driver.fullName} - ${driver.soXe || ''}`, usedSheetNames));
+        const wsDriver = workbook.addWorksheet(
+          this.sanitizeSheetName(
+            `${driver.fullName} - ${driver.soXe || ''}`,
+            usedSheetNames,
+          ),
+        );
 
         wsDriver.columns = [
           { header: 'STT', key: 'stt', width: 5 },
@@ -1791,7 +2328,26 @@ let sl: any;
         headerRow.height = 28;
 
         if (subs.length === 0) {
-          wsDriver.addRow({ stt: '', plan: 'Không có dữ liệu', route: '', donGia: '', hang20: '', hang40: '', vo20: '', vo40: '', vo20fr: '', vo40fr: '', veSinhLai: '', keoVe: '', tip: '', soChuyen: '', luong: '', tongThanhToan: '', tangCuong: '', leTet: '' });
+          wsDriver.addRow({
+            stt: '',
+            plan: 'Không có dữ liệu',
+            route: '',
+            donGia: '',
+            hang20: '',
+            hang40: '',
+            vo20: '',
+            vo40: '',
+            vo20fr: '',
+            vo40fr: '',
+            veSinhLai: '',
+            keoVe: '',
+            tip: '',
+            soChuyen: '',
+            luong: '',
+            tongThanhToan: '',
+            tangCuong: '',
+            leTet: '',
+          });
         } else {
           // Group by plan, sum quantities
           const planGroups = new Map<string, { sl: any; subs: any[] }>();
@@ -1812,14 +2368,39 @@ let sl: any;
           }
 
           let rowIdx = 0;
-          let sumH20 = 0, sumH40 = 0, sumV20 = 0, sumV40 = 0, sumV20fr = 0, sumV40fr = 0, sumVsl = 0, sumKv = 0, sumTip = 0, sumSoChuyen = 0, sumLuong = 0, sumTongThanhToan = 0;
-          const comp = salaryComp.components.get(driver.id) || { fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0, allowanceOldCar: 0 };
+          let sumH20 = 0,
+            sumH40 = 0,
+            sumV20 = 0,
+            sumV40 = 0,
+            sumV20fr = 0,
+            sumV40fr = 0,
+            sumVsl = 0,
+            sumKv = 0,
+            sumTip = 0,
+            sumSoChuyen = 0,
+            sumLuong = 0,
+            sumTongThanhToan = 0;
+          const comp = salaryComp.components.get(driver.id) || {
+            fixedSalary: 0,
+            chuyenCan: 0,
+            allowanceFarHome: 0,
+            allowanceWaitLoading: 0,
+            allowanceOldCar: 0,
+          };
 
           for (const [planName, group] of planGroups) {
             const sl = group.sl;
             const tenTuyen = group.subs[0].route || sl?.routeName || '';
             const donGia = getRouteMoney(tenTuyen, sl?.ngay, sl?.frozenMoney);
-            let h20 = 0, h40 = 0, v20 = 0, v40 = 0, v20fr = 0, v40fr = 0, vsl = 0, kv = 0, tip = 0;
+            let h20 = 0,
+              h40 = 0,
+              v20 = 0,
+              v40 = 0,
+              v20fr = 0,
+              v40fr = 0,
+              vsl = 0,
+              kv = 0,
+              tip = 0;
 
             for (const sub of group.subs) {
               h20 += parseFloat(sub.hang20) || 0;
@@ -1833,17 +2414,40 @@ let sl: any;
               tip += parseFloat(sub.tip) || 0;
             }
 
-            const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+            const tong =
+              h20 +
+              h40 +
+              Math.ceil(v20 / 2) +
+              v40 +
+              Math.ceil(v20fr / 8) +
+              Math.ceil(v40fr / 4);
             const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
-            const luong = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
+            const luong =
+              donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
             const tongThanhToan = luong + tip * 1000;
 
-            sumH20 += h20; sumH40 += h40; sumV20 += v20; sumV40 += v40; sumV20fr += v20fr; sumV40fr += v40fr; sumVsl += vsl; sumKv += kv; sumTip += tip; sumSoChuyen += tong; sumLuong += luong; sumTongThanhToan += tongThanhToan;
+            sumH20 += h20;
+            sumH40 += h40;
+            sumV20 += v20;
+            sumV40 += v40;
+            sumV20fr += v20fr;
+            sumV40fr += v40fr;
+            sumVsl += vsl;
+            sumKv += kv;
+            sumTip += tip;
+            sumSoChuyen += tong;
+            sumLuong += luong;
+            sumTongThanhToan += tongThanhToan;
 
             rowIdx++;
             const row = wsDriver.addRow({
               stt: driver.stt || '',
-              plan: sl ? planDisplayName(sl) : planName.split('||')[0] + (planName.includes('||') ? ` - ${planName.split('||')[1] || ''}` : ''),
+              plan: sl
+                ? planDisplayName(sl)
+                : planName.split('||')[0] +
+                  (planName.includes('||')
+                    ? ` - ${planName.split('||')[1] || ''}`
+                    : ''),
               route: tenTuyen,
               donGia: donGia,
               hang20: h20 || '',
@@ -1872,7 +2476,11 @@ let sl: any;
             });
             if (rowIdx % 2 === 0) {
               row.eachCell((cell) => {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FF' } } as ExcelJS.Fill;
+                cell.fill = {
+                  type: 'pattern',
+                  pattern: 'solid',
+                  fgColor: { argb: 'FFF0F4FF' },
+                };
               });
             }
           }
@@ -1899,7 +2507,11 @@ let sl: any;
             leTet: '',
           });
           totalRow.eachCell((cell) => {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } } as ExcelJS.Fill;
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFFFFF00' },
+            };
             cell.font = { bold: true, size: 10 };
             cell.border = allBorder;
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1915,7 +2527,9 @@ let sl: any;
 
     // Route prices sheet — right before main sheet (HR only)
     if (role === 'hr') {
-      const wsPrices = workbook.addWorksheet(this.sanitizeSheetName('Bảng đơn giá', usedSheetNames));
+      const wsPrices = workbook.addWorksheet(
+        this.sanitizeSheetName('Bảng đơn giá', usedSheetNames),
+      );
       wsPrices.columns = [
         { header: 'Tuyến đường', key: 'route', width: 30 },
         { header: 'Đơn giá', key: 'price', width: 18 },
@@ -1930,7 +2544,10 @@ let sl: any;
       hRow.height = 28;
 
       for (const r of allRoutes) {
-        const row = wsPrices.addRow({ route: r.name, price: Number(r.money) || 0 });
+        const row = wsPrices.addRow({
+          route: r.name,
+          price: Number(r.money) || 0,
+        });
         row.eachCell((cell) => {
           cell.border = allBorder;
           cell.alignment = { vertical: 'middle' };
@@ -1941,9 +2558,15 @@ let sl: any;
 
     if (isMonthly) {
       // Skip main sheet for monthly mode (already has summary sheet)
-      let filename = `KeHoachThang_${String(filter.month).padStart(2, '0')}_${filter.year}.xlsx`;
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+      const filename = `KeHoachThang_${String(filter.month).padStart(2, '0')}_${filter.year}.xlsx`;
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      );
       await workbook.xlsx.write(res);
       res.end();
       return;
@@ -1953,7 +2576,12 @@ let sl: any;
     const monthStr2 = filter.fromDate
       ? `${String(new Date(filter.fromDate).getMonth() + 1).padStart(2, '0')}-${new Date(filter.fromDate).getFullYear()}`
       : `${String(new Date().getMonth() + 1).padStart(2, '0')}-${new Date().getFullYear()}`;
-    const mainSheetName = role === 'ops' ? 'Tổng hợp' : role === 'hr' ? `Tổng hợp lương tháng ${monthStr2}` : 'Sản lượng xe New Way';
+    const mainSheetName =
+      role === 'ops'
+        ? 'Tổng hợp'
+        : role === 'hr'
+          ? `Tổng hợp lương tháng ${monthStr2}`
+          : 'Sản lượng xe New Way';
     const ws = workbook.addWorksheet(
       this.sanitizeSheetName(mainSheetName, usedSheetNames),
       { pageSetup: { paperSize: 9, orientation: 'landscape' } },
@@ -2016,15 +2644,45 @@ let sl: any;
     headerRow.height = 28;
 
     // Build a map userId -> summed submission data
-    const filteredSubs = role === 'ops'
-      ? submissions.filter((s: any) => s.userId !== user.id)
-      : submissions;
+    const filteredSubs =
+      role === 'ops'
+        ? submissions.filter((s: any) => s.userId !== user.id)
+        : submissions;
 
-    const driverDataMap = new Map<number, { fullName: string; username: string; h20: number; h40: number; v20: number; v40: number; v20fr: number; v40fr: number; vsl: number; tip: number; kv: number; salary: number }>();
-    for (const sub of filteredSubs as any[]) {
+    const driverDataMap = new Map<
+      number,
+      {
+        fullName: string;
+        username: string;
+        h20: number;
+        h40: number;
+        v20: number;
+        v40: number;
+        v20fr: number;
+        v40fr: number;
+        vsl: number;
+        tip: number;
+        kv: number;
+        salary: number;
+      }
+    >();
+    for (const sub of filteredSubs) {
       const uid = sub.userId;
       if (!driverDataMap.has(uid)) {
-        driverDataMap.set(uid, { fullName: sub.user?.fullName || sub.driverName || '', username: sub.user?.username || '', h20: 0, h40: 0, v20: 0, v40: 0, v20fr: 0, v40fr: 0, vsl: 0, tip: 0, kv: 0, salary: 0 });
+        driverDataMap.set(uid, {
+          fullName: sub.user?.fullName || sub.driverName || '',
+          username: sub.user?.username || '',
+          h20: 0,
+          h40: 0,
+          v20: 0,
+          v40: 0,
+          v20fr: 0,
+          v40fr: 0,
+          vsl: 0,
+          tip: 0,
+          kv: 0,
+          salary: 0,
+        });
       }
       const d = driverDataMap.get(uid)!;
       d.h20 += parseFloat(sub.hang20) || 0;
@@ -2038,20 +2696,47 @@ let sl: any;
       d.kv += parseFloat(sub.keoVe) || 0;
       // Accumulate salary per submission
       if (showLuong) {
-        const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
+        const sl = sub.shippingLineId
+          ? slMap.get(sub.shippingLineId)
+          : slNameMap.get(sub.shippingLine);
         const tenTuyen = sub.route || sl?.routeName || '';
         const donGia = getRouteMoney(tenTuyen, sl?.ngay, sl?.frozenMoney);
         const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
-        const tongSub = (parseFloat(sub.hang20) || 0) + (parseFloat(sub.hang40) || 0) + Math.ceil((parseFloat(sub.vo20) || 0) / 2) + (parseFloat(sub.vo40) || 0) + Math.ceil((parseFloat(sub.vo20fr) || 0) / 8) + Math.ceil((parseFloat(sub.vo40fr) || 0) / 4);
+        const tongSub =
+          (parseFloat(sub.hang20) || 0) +
+          (parseFloat(sub.hang40) || 0) +
+          Math.ceil((parseFloat(sub.vo20) || 0) / 2) +
+          (parseFloat(sub.vo40) || 0) +
+          Math.ceil((parseFloat(sub.vo20fr) || 0) / 8) +
+          Math.ceil((parseFloat(sub.vo40fr) || 0) / 4);
         const vslSub = parseFloat(sub.veSinhLai) || 0;
         const kvSub = parseFloat(sub.keoVe) || 0;
         const tipSub = parseFloat(sub.tip) || 0;
-        d.salary += donGia * tongSub * heSo + vslSub * 40000 * heSo + kvSub * donGia * heSo;
+        d.salary +=
+          donGia * tongSub * heSo +
+          vslSub * 40000 * heSo +
+          kvSub * donGia * heSo;
       }
     }
 
     let rowIdx = 0;
-    let sumH20 = 0, sumH40 = 0, sumV20 = 0, sumV40 = 0, sumV20fr = 0, sumV40fr = 0, sumVsl = 0, sumKv = 0, sumTip = 0, sumSoChuyen = 0, sumLuong = 0, sumLuongCung = 0, sumChuyenCan = 0, sumPhuCapNhaXa = 0, sumPhuCapChoDong = 0, sumPhuCapXeCu = 0, sumTongThanhToan = 0;
+    let sumH20 = 0,
+      sumH40 = 0,
+      sumV20 = 0,
+      sumV40 = 0,
+      sumV20fr = 0,
+      sumV40fr = 0,
+      sumVsl = 0,
+      sumKv = 0,
+      sumTip = 0,
+      sumSoChuyen = 0,
+      sumLuong = 0,
+      sumLuongCung = 0,
+      sumChuyenCan = 0,
+      sumPhuCapNhaXa = 0,
+      sumPhuCapChoDong = 0,
+      sumPhuCapXeCu = 0,
+      sumTongThanhToan = 0;
     for (const driver of allDrivers) {
       const d = driverDataMap.get(driver.id);
       const h20 = d?.h20 || 0;
@@ -2063,12 +2748,49 @@ let sl: any;
       const vsl = d?.vsl || 0;
       const tip = d?.tip || 0;
       const kv = d?.kv || 0;
-      const salary = showLuong ? (d?.salary || 0) : 0;
-      const comp = salaryComp.components.get(driver.id) || { fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0, allowanceOldCar: 0 };
-      const tongThanhToan = showLuong ? (salary + tip * 1000 + comp.fixedSalary + comp.chuyenCan + comp.allowanceFarHome + comp.allowanceWaitLoading + comp.allowanceOldCar) : 0;
-      const soChuyen = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4) + kv;
+      const salary = showLuong ? d?.salary || 0 : 0;
+      const comp = salaryComp.components.get(driver.id) || {
+        fixedSalary: 0,
+        chuyenCan: 0,
+        allowanceFarHome: 0,
+        allowanceWaitLoading: 0,
+        allowanceOldCar: 0,
+      };
+      const tongThanhToan = showLuong
+        ? salary +
+          tip * 1000 +
+          comp.fixedSalary +
+          comp.chuyenCan +
+          comp.allowanceFarHome +
+          comp.allowanceWaitLoading +
+          comp.allowanceOldCar
+        : 0;
+      const soChuyen =
+        h20 +
+        h40 +
+        Math.ceil(v20 / 2) +
+        v40 +
+        Math.ceil(v20fr / 8) +
+        Math.ceil(v40fr / 4) +
+        kv;
 
-      sumH20 += h20; sumH40 += h40; sumV20 += v20; sumV40 += v40; sumV20fr += v20fr; sumV40fr += v40fr; sumVsl += vsl; sumKv += kv; sumTip += tip; sumSoChuyen += soChuyen; sumLuong += salary; sumLuongCung += comp.fixedSalary; sumChuyenCan += comp.chuyenCan; sumPhuCapNhaXa += comp.allowanceFarHome; sumPhuCapChoDong += comp.allowanceWaitLoading; sumPhuCapXeCu += comp.allowanceOldCar; sumTongThanhToan += tongThanhToan;
+      sumH20 += h20;
+      sumH40 += h40;
+      sumV20 += v20;
+      sumV40 += v40;
+      sumV20fr += v20fr;
+      sumV40fr += v40fr;
+      sumVsl += vsl;
+      sumKv += kv;
+      sumTip += tip;
+      sumSoChuyen += soChuyen;
+      sumLuong += salary;
+      sumLuongCung += comp.fixedSalary;
+      sumChuyenCan += comp.chuyenCan;
+      sumPhuCapNhaXa += comp.allowanceFarHome;
+      sumPhuCapChoDong += comp.allowanceWaitLoading;
+      sumPhuCapXeCu += comp.allowanceOldCar;
+      sumTongThanhToan += tongThanhToan;
 
       rowIdx++;
       if (role === 'hr') {
@@ -2101,7 +2823,11 @@ let sl: any;
         });
         if (rowIdx % 2 === 0) {
           row.eachCell((cell) => {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FF' } } as ExcelJS.Fill;
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFF0F4FF' },
+            };
           });
         }
       } else {
@@ -2131,7 +2857,11 @@ let sl: any;
         });
         if (rowIdx % 2 === 0) {
           row.eachCell((cell) => {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FF' } } as ExcelJS.Fill;
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFF0F4FF' },
+            };
           });
         }
       }
@@ -2162,7 +2892,11 @@ let sl: any;
         tongThanhToan: sumTongThanhToan,
       });
       totalRow.eachCell((cell) => {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } } as ExcelJS.Fill;
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFFF00' },
+        };
         cell.font = { bold: true, size: 10 };
         cell.border = allBorder;
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -2172,7 +2906,11 @@ let sl: any;
     if (role === 'ops') {
       const opsSub = submissions.find((s: any) => s.userId === user.id) || null;
       const row = ws.addRow({
-        stt: '', username: '', driverName: '', shippingLine: '', route: '',
+        stt: '',
+        username: '',
+        driverName: '',
+        shippingLine: '',
+        route: '',
         hang20: opsSub?.hang20 || '',
         hang40: opsSub?.hang40 || '',
         vo20: opsSub?.vo20 || '',
@@ -2182,23 +2920,28 @@ let sl: any;
         veSinhLai: opsSub?.veSinhLai || '',
         keoVe: opsSub?.keoVe || '',
         tip: opsSub?.tip || '',
-          editCount: '',
-          lastEditedAt: '',
-        });
-        const rowNum = row.number;
+        editCount: '',
+        lastEditedAt: '',
+      });
+      const rowNum = row.number;
       ws.mergeCells(`A${rowNum}:E${rowNum}`);
       const cell = row.getCell(1);
       cell.value = 'SL TỔNG TÀU';
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       row.eachCell((c) => {
-        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } } as ExcelJS.Fill;
+        c.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFDC2626' },
+        };
         c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
         c.border = allBorder;
         c.alignment = { horizontal: 'center', vertical: 'middle' };
       });
     }
 
-    if (showLuong && ws.getColumn('luong')) ws.getColumn('luong').numFmt = '#,##0';
+    if (showLuong && ws.getColumn('luong'))
+      ws.getColumn('luong').numFmt = '#,##0';
 
     if (role === 'hr') {
       ws.getColumn(15).numFmt = '#,##0';
@@ -2210,7 +2953,9 @@ let sl: any;
     }
 
     if (role === 'admin' || role === 'supper_admin') {
-      const wsHistory = workbook.addWorksheet(this.sanitizeSheetName('Lịch sử chỉnh sửa', usedSheetNames));
+      const wsHistory = workbook.addWorksheet(
+        this.sanitizeSheetName('Lịch sử chỉnh sửa', usedSheetNames),
+      );
       wsHistory.columns = [
         { header: 'STT', key: 'stt', width: 6 },
         { header: 'ID bản ghi', key: 'submissionId', width: 12 },
@@ -2245,19 +2990,40 @@ let sl: any;
       const allHistory = await this.editHistoryRepository
         .createQueryBuilder('eh')
         .leftJoinAndSelect('eh.editedBy', 'user')
-        .leftJoinAndMapOne('eh.submission', Submission, 'sub', 'eh.submission_id = sub.id')
-        .leftJoinAndMapOne('sub.creator', User, 'creator', 'sub.user_id = creator.id')
+        .leftJoinAndMapOne(
+          'eh.submission',
+          Submission,
+          'sub',
+          'eh.submission_id = sub.id',
+        )
+        .leftJoinAndMapOne(
+          'sub.creator',
+          User,
+          'creator',
+          'sub.user_id = creator.id',
+        )
         .orderBy('eh.editedAt', 'DESC')
         .getMany();
 
-      const FIELD_ORDER: (keyof typeof fieldLabels)[] = ['shippingLine', 'route', 'hang20', 'hang40', 'vo20', 'vo40', 'vo20fr', 'vo40fr', 'veSinhLai', 'keoVe', 'tip'];
+      const FIELD_ORDER: (keyof typeof fieldLabels)[] = [
+        'shippingLine',
+        'route',
+        'hang20',
+        'hang40',
+        'vo20',
+        'vo40',
+        'vo20fr',
+        'vo40fr',
+        'veSinhLai',
+        'keoVe',
+        'tip',
+      ];
 
       allHistory.forEach((h: any, idx: number) => {
         let changesText = '';
         try {
           const changes = JSON.parse(h.changes);
-          changesText = FIELD_ORDER
-            .filter((k) => k in changes)
+          changesText = FIELD_ORDER.filter((k) => k in changes)
             .map((k) => {
               const v = changes[k];
               const label = fieldLabels[k] || k;
@@ -2266,18 +3032,22 @@ let sl: any;
             .join('; ');
           // Also append any unknown fields not in FIELD_ORDER
           for (const [k, v] of Object.entries(changes)) {
-            if (!FIELD_ORDER.includes(k as any)) {
-              const label = fieldLabels[k as string] || k;
-              changesText += (changesText ? '; ' : '') + `${label}: "${(v as any).old || '(trống)'}" → "${(v as any).new || '(trống)'}"`;
+            if (!FIELD_ORDER.includes(k)) {
+              const label = fieldLabels[k] || k;
+              changesText +=
+                (changesText ? '; ' : '') +
+                `${label}: "${(v as any).old || '(trống)'}" → "${(v as any).new || '(trống)'}"`;
             }
           }
         } catch {
           changesText = h.changes;
         }
 
-        const sub = h.submission as any;
+        const sub = h.submission;
         const creatorName = sub?.creator?.fullName || sub?.driverName || '—';
-        const createdDate = sub?.createdAt ? this.fmtVN(sub.createdAt, false) : '—';
+        const createdDate = sub?.createdAt
+          ? this.fmtVN(sub.createdAt, false)
+          : '—';
 
         const row = wsHistory.addRow({
           stt: idx + 1,
@@ -2295,7 +3065,9 @@ let sl: any;
     }
 
     if (showLuong && role !== 'hr') {
-      const wsSalary = workbook.addWorksheet(this.sanitizeSheetName('Tổng hợp lương', usedSheetNames));
+      const wsSalary = workbook.addWorksheet(
+        this.sanitizeSheetName('Tổng hợp lương', usedSheetNames),
+      );
       wsSalary.columns = [
         { header: 'Tên', key: 'name', width: 30 },
         { header: 'Lương', key: 'luong', width: 20 },
@@ -2314,10 +3086,23 @@ let sl: any;
       });
       salaryRow.height = 28;
 
-      const salaryMap = new Map<string, { luong: number; luongCung: number; chuyenCan: number; phuCapNhaXa: number; phuCapChoDong: number; phuCapXeCu: number; tongThanhToan: number }>();
-      for (const sub of submissions as any[]) {
+      const salaryMap = new Map<
+        string,
+        {
+          luong: number;
+          luongCung: number;
+          chuyenCan: number;
+          phuCapNhaXa: number;
+          phuCapChoDong: number;
+          phuCapXeCu: number;
+          tongThanhToan: number;
+        }
+      >();
+      for (const sub of submissions) {
         const name = sub.user?.fullName || sub.driverName;
-        const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
+        const sl = sub.shippingLineId
+          ? slMap.get(sub.shippingLineId)
+          : slNameMap.get(sub.shippingLine);
         const tenTuyen = sub.route || sl?.routeName || '';
         const donGia = getRouteMoney(tenTuyen, sl?.ngay, sl?.frozenMoney);
         const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
@@ -2330,10 +3115,31 @@ let sl: any;
         const vsl = parseFloat(sub.veSinhLai) || 0;
         const kv = parseFloat(sub.keoVe) || 0;
         const tip = parseFloat(sub.tip) || 0;
-        const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
-        const luong = donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
-        const comp = salaryComp.components.get(sub.userId) || { fixedSalary: 0, chuyenCan: 0, allowanceFarHome: 0, allowanceWaitLoading: 0, allowanceOldCar: 0 };
-        const prev = salaryMap.get(name) || { luong: 0, luongCung: 0, chuyenCan: 0, phuCapNhaXa: 0, phuCapChoDong: 0, phuCapXeCu: 0, tongThanhToan: 0 };
+        const tong =
+          h20 +
+          h40 +
+          Math.ceil(v20 / 2) +
+          v40 +
+          Math.ceil(v20fr / 8) +
+          Math.ceil(v40fr / 4);
+        const luong =
+          donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
+        const comp = salaryComp.components.get(sub.userId) || {
+          fixedSalary: 0,
+          chuyenCan: 0,
+          allowanceFarHome: 0,
+          allowanceWaitLoading: 0,
+          allowanceOldCar: 0,
+        };
+        const prev = salaryMap.get(name) || {
+          luong: 0,
+          luongCung: 0,
+          chuyenCan: 0,
+          phuCapNhaXa: 0,
+          phuCapChoDong: 0,
+          phuCapXeCu: 0,
+          tongThanhToan: 0,
+        };
         salaryMap.set(name, {
           luong: prev.luong + luong,
           luongCung: comp.fixedSalary,
@@ -2341,21 +3147,42 @@ let sl: any;
           phuCapNhaXa: comp.allowanceFarHome,
           phuCapChoDong: comp.allowanceWaitLoading,
           phuCapXeCu: comp.allowanceOldCar,
-          tongThanhToan: prev.tongThanhToan + luong + tip * 1000 + comp.fixedSalary + comp.chuyenCan + comp.allowanceFarHome + comp.allowanceWaitLoading + comp.allowanceOldCar,
+          tongThanhToan:
+            prev.tongThanhToan +
+            luong +
+            tip * 1000 +
+            comp.fixedSalary +
+            comp.chuyenCan +
+            comp.allowanceFarHome +
+            comp.allowanceWaitLoading +
+            comp.allowanceOldCar,
         });
       }
 
       let idx = 0;
       for (const [name, val] of salaryMap) {
         idx++;
-        const row = wsSalary.addRow({ name, luong: val.luong, luongCung: val.luongCung, chuyenCan: val.chuyenCan, phuCapNhaXa: val.phuCapNhaXa, phuCapChoDong: val.phuCapChoDong, phuCapXeCu: val.phuCapXeCu, tongThanhToan: val.tongThanhToan });
+        const row = wsSalary.addRow({
+          name,
+          luong: val.luong,
+          luongCung: val.luongCung,
+          chuyenCan: val.chuyenCan,
+          phuCapNhaXa: val.phuCapNhaXa,
+          phuCapChoDong: val.phuCapChoDong,
+          phuCapXeCu: val.phuCapXeCu,
+          tongThanhToan: val.tongThanhToan,
+        });
         row.eachCell((cell) => {
           cell.border = allBorder;
           cell.alignment = { vertical: 'middle' };
         });
         if (idx % 2 === 0) {
           row.eachCell((cell) => {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FF' } } as ExcelJS.Fill;
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFF0F4FF' },
+            };
           });
         }
       }
@@ -2371,16 +3198,25 @@ let sl: any;
     let filename: string;
     if (role === 'ops') {
       const slFilterName = filter.shippingLineId
-        ? (slMap.has(filter.shippingLineId) ? planDisplayName(slMap.get(filter.shippingLineId)!) : `Plan_${filter.shippingLineId}`)
-        : (filter.shippingLine || 'All');
+        ? slMap.has(filter.shippingLineId)
+          ? planDisplayName(slMap.get(filter.shippingLineId)!)
+          : `Plan_${filter.shippingLineId}`
+        : filter.shippingLine || 'All';
       filename = `SL_${slFilterName.replace(/[/\\?%*:|"<>]/g, '_')}.xlsx`;
     } else if (role === 'hr') {
       filename = `Tổng hợp lương tháng_${monthStr2.replace('-', '_')}.xlsx`;
     } else {
-      const today = new Date(); filename = `SanLuongXeNewWay_${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}.xlsx`;
+      const today = new Date();
+      filename = `SanLuongXeNewWay_${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}.xlsx`;
     }
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    );
 
     await workbook.xlsx.write(res);
     res.end();
@@ -2389,7 +3225,18 @@ let sl: any;
   /** Đổi số tiền sang chữ tiếng Việt (VD: 21.730.000 → "Hai mươi mốt triệu bảy trăm ba mươi ngàn đồng./.") */
   private vnMoneyToWords(num: number): string {
     if (!num || num <= 0) return 'Không đồng';
-    const so = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+    const so = [
+      'không',
+      'một',
+      'hai',
+      'ba',
+      'bốn',
+      'năm',
+      'sáu',
+      'bảy',
+      'tám',
+      'chín',
+    ];
     const donVi = ['', 'ngàn', 'triệu', 'tỷ'];
     const docBa = (n: number): string => {
       let s = '';
@@ -2449,7 +3296,9 @@ let sl: any;
     const parkingHph2 = Number(settings?.parkingHph2) || 0;
     const farHomeCommon = Number(settings?.allowanceFarHome) || 0;
 
-    const records = await this.salaryRecordsRepository.find({ where: { month, year } });
+    const records = await this.salaryRecordsRepository.find({
+      where: { month, year },
+    });
     const recordMap = new Map<number, SalaryRecord>();
     for (const r of records) recordMap.set(r.driverId, r);
 
@@ -2464,40 +3313,65 @@ let sl: any;
     });
     const recordItemsByRecord = new Map<number, SalaryRecordItem[]>();
     for (const ri of allRecordItems) {
-      if (!recordItemsByRecord.has(ri.recordId)) recordItemsByRecord.set(ri.recordId, []);
+      if (!recordItemsByRecord.has(ri.recordId))
+        recordItemsByRecord.set(ri.recordId, []);
       recordItemsByRecord.get(ri.recordId)!.push(ri);
     }
 
     const allRoutes = await this.routesRepository.find();
-    const routeMap = new Map<string, { money: number; effectiveDate: string | null }>();
+    const routeMap = new Map<
+      string,
+      { money: number; effectiveDate: string | null }
+    >();
     for (const r of allRoutes) {
-      routeMap.set(r.name, { money: Number(r.money) || 0, effectiveDate: r.effectiveDate || null });
+      routeMap.set(r.name, {
+        money: Number(r.money) || 0,
+        effectiveDate: r.effectiveDate || null,
+      });
     }
-    const getRouteMoney = (name: string, planDate: string | null | undefined, frozenMoney?: number | null): number => {
-      if (frozenMoney !== null && frozenMoney !== undefined) return Number(frozenMoney);
+    const getRouteMoney = (
+      name: string,
+      planDate: string | null | undefined,
+      frozenMoney?: number | null,
+    ): number => {
+      if (frozenMoney !== null && frozenMoney !== undefined)
+        return Number(frozenMoney);
       const rt = routeMap.get(name);
       if (!rt) return 0;
       if (rt.effectiveDate && planDate && planDate < rt.effectiveDate) return 0;
       return rt.money;
     };
 
-    const allShippingLines = await this.shippingLinesRepository.find({ relations: { route: true } });
+    const allShippingLines = await this.shippingLinesRepository.find({
+      relations: { route: true },
+    });
     const slMap = new Map<number, ShippingLine>();
     const slNameMap = new Map<string, ShippingLine>();
     for (const sl of allShippingLines) {
       slMap.set(sl.id, sl);
       slNameMap.set(sl.name, sl);
     }
-    const fmtNgay = (d: string | null | undefined) => d ? d.split('-').reverse().join('-') : '';
+    const fmtNgay = (d: string | null | undefined) =>
+      d ? d.split('-').reverse().join('-') : '';
     const planDisplayName = (sl: ShippingLine) => {
-      return [sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)].filter(Boolean).join(' / ');
+      return [sl.name, sl.soChuyen, sl.routeName, fmtNgay(sl.ngay)]
+        .filter(Boolean)
+        .join(' / ');
     };
 
     const daysInMonth = new Date(year, month, 0).getDate();
-    const drivers = await this.usersRepository.find({ where: { role: 'laixe' } });
-    drivers.sort((a, b) => (parseInt(a.stt) || 0) - (parseInt(b.stt) || 0) || a.fullName.localeCompare(b.fullName));
+    const drivers = await this.usersRepository.find({
+      where: { role: 'laixe' },
+    });
+    drivers.sort(
+      (a, b) =>
+        (parseInt(a.stt) || 0) - (parseInt(b.stt) || 0) ||
+        a.fullName.localeCompare(b.fullName),
+    );
 
-    const allSubmissions = await this.submissionsRepository.find({ order: { createdAt: 'DESC' } });
+    const allSubmissions = await this.submissionsRepository.find({
+      order: { createdAt: 'DESC' },
+    });
 
     // Dữ liệu tháng liền trước (dòng "Lương còn lại tháng trước" để trống, nhập tay)
     const prevMonth = month === 1 ? 12 : month - 1;
@@ -2508,23 +3382,37 @@ let sl: any;
     const usedSheetNames = new Set<string>();
 
     // Styling theo file mẫu BANG LUONG LX: font Times New Roman
-    const borderStyle: ExcelJS.Border = { style: 'thin', color: { argb: 'FF7F7F7F' } };
-    const allBorder: Partial<ExcelJS.Borders> = { top: borderStyle, left: borderStyle, bottom: borderStyle, right: borderStyle };
+    const borderStyle: ExcelJS.Border = {
+      style: 'thin',
+      color: { argb: 'FF7F7F7F' },
+    };
+    const allBorder: Partial<ExcelJS.Borders> = {
+      top: borderStyle,
+      left: borderStyle,
+      bottom: borderStyle,
+      right: borderStyle,
+    };
     const moneyFmt = '#,##0';
     const fontFamily = 'Times New Roman';
 
     // Logo công ty (file mẫu BANG LUONG LX dùng logo ở góc trái phía trên)
     let logoId: number | undefined;
     try {
-      const logoPath = path.join(process.cwd(), 'public', 'logo-luong-thang.png');
+      const logoPath = path.join(
+        process.cwd(),
+        'public',
+        'logo-luong-thang.png',
+      );
       if (fs.existsSync(logoPath)) {
         logoId = workbook.addImage({ filename: logoPath, extension: 'png' });
       }
     } catch {}
 
     const COMPANY_NAME = 'CÔNG TY TNHH DỊCH VỤ & THƯƠNG MAI NEW WAY';
-    const COMPANY_ADDR = 'Đ/c: Số 348 đường Đà Nẵng, P. Đông Hải, TP. Hải Phòng';
-    const COMPANY_TEL = 'Tel: 0384. 985.668/ 0334.985.668; Email: info@newwaytraco.vn';
+    const COMPANY_ADDR =
+      'Đ/c: Số 348 đường Đà Nẵng, P. Đông Hải, TP. Hải Phòng';
+    const COMPANY_TEL =
+      'Tel: 0384. 985.668/ 0334.985.668; Email: info@newwaytraco.vn';
     const GIAM_DOC = 'Ngô Phương Dung';
     const NGUOI_LAP = 'Trần Anh Thư';
 
@@ -2534,20 +3422,27 @@ let sl: any;
       month: '2-digit',
       year: 'numeric',
     }).formatToParts(new Date());
-    const vnDay = Number(vnNowParts.find(p => p.type === 'day')?.value);
-    const vnMonthNow = Number(vnNowParts.find(p => p.type === 'month')?.value);
-    const vnYearNow = Number(vnNowParts.find(p => p.type === 'year')?.value);
+    const vnDay = Number(vnNowParts.find((p) => p.type === 'day')?.value);
+    const vnMonthNow = Number(
+      vnNowParts.find((p) => p.type === 'month')?.value,
+    );
+    const vnYearNow = Number(vnNowParts.find((p) => p.type === 'year')?.value);
 
     for (const driver of drivers) {
       const rec = recordMap.get(driver.id);
-      const ws = workbook.addWorksheet(this.sanitizeSheetName(`${driver.fullName}${driver.soXe ? ` - ${driver.soXe}` : ''}`, usedSheetNames));
+      const ws = workbook.addWorksheet(
+        this.sanitizeSheetName(
+          `${driver.fullName}${driver.soXe ? ` - ${driver.soXe}` : ''}`,
+          usedSheetNames,
+        ),
+      );
 
-      const fixedSalary = rec ? Number(rec.fixedSalary) || 0 : fixedSalaryDefault;
+      const fixedSalary = rec
+        ? Number(rec.fixedSalary) || 0
+        : fixedSalaryDefault;
       const chiHo = rec ? Number(rec.chiHo) || 0 : 0;
       const hasBhxh = rec ? rec.hasBhxh : (driver.payBhxh ?? true);
-      const bhxh = hasBhxh
-        ? Math.round((fixedSalary * bhxhPercent) / 100)
-        : 0;
+      const bhxh = hasBhxh ? Math.round((fixedSalary * bhxhPercent) / 100) : 0;
       const daysOff = rec?.daysOff?.length || 0;
       const ngayCong = daysInMonth - daysOff;
       const hasOldCar = rec ? rec.hasOldCar : driver.oldCar;
@@ -2572,9 +3467,10 @@ let sl: any;
         for (const ri of ris) {
           const item = itemMap.get(ri.itemId);
           if (!item || !ri.enabled) continue;
-          const amount = ri.amount !== null && ri.amount !== undefined
-            ? Number(ri.amount)
-            : Number(item.defaultAmount) || 0;
+          const amount =
+            ri.amount !== null && ri.amount !== undefined
+              ? Number(ri.amount)
+              : Number(item.defaultAmount) || 0;
           if (amount <= 0) continue;
           recItemRows.push({ name: item.name, kind: item.kind, amount });
           if (item.kind === 'add') itemSumAdd += amount;
@@ -2583,26 +3479,42 @@ let sl: any;
       }
 
       // --- Gom submissions theo plan (cùng plan), lọc theo tháng plan ---
-      const planGroups = new Map<string, { sl: ShippingLine | null; subs: any[] }>();
+      const planGroups = new Map<
+        string,
+        { sl: ShippingLine | null; subs: any[] }
+      >();
       for (const sub of allSubmissions as any[]) {
         if (sub.userId !== driver.id) continue;
-        const sl = sub.shippingLineId ? slMap.get(sub.shippingLineId) : slNameMap.get(sub.shippingLine);
+        const sl = sub.shippingLineId
+          ? slMap.get(sub.shippingLineId)
+          : slNameMap.get(sub.shippingLine);
         const planDateStr = sl?.ngay || null;
-        const refDate = planDateStr ? new Date(planDateStr) : new Date(sub.createdAt);
-        if (refDate.getMonth() + 1 !== month || refDate.getFullYear() !== year) continue;
+        const refDate = planDateStr
+          ? new Date(planDateStr)
+          : new Date(sub.createdAt);
+        if (refDate.getMonth() + 1 !== month || refDate.getFullYear() !== year)
+          continue;
         let key: string;
         if (sub.shippingLineId) {
           key = `id:${sub.shippingLineId}`;
         } else {
           key = `${sub.shippingLine}||${sub.route || ''}`;
         }
-        if (!planGroups.has(key)) planGroups.set(key, { sl: sl || null, subs: [] });
+        if (!planGroups.has(key))
+          planGroups.set(key, { sl: sl || null, subs: [] });
         planGroups.get(key)!.subs.push(sub);
       }
 
       // --- Tạo line items (mỗi item = 1 tuyến con với đơn giá hiệu lực) ---
       // item: { price, name, trips, money, leTet, tangCuong }
-      const items: { price: number; name: string; trips: number; money: number; leTet: boolean; tangCuong: boolean }[] = [];
+      const items: {
+        price: number;
+        name: string;
+        trips: number;
+        money: number;
+        leTet: boolean;
+        tangCuong: boolean;
+      }[] = [];
       let totalTip = 0;
       let planTotalTrips = 0;
       let planTotalMoney = 0;
@@ -2611,7 +3523,15 @@ let sl: any;
         const sl = group.sl;
         const tenTuyen = group.subs[0].route || sl?.routeName || '';
         const donGia = getRouteMoney(tenTuyen, sl?.ngay, sl?.frozenMoney);
-        let h20 = 0, h40 = 0, v20 = 0, v40 = 0, v20fr = 0, v40fr = 0, vsl = 0, kv = 0, tip = 0;
+        let h20 = 0,
+          h40 = 0,
+          v20 = 0,
+          v40 = 0,
+          v20fr = 0,
+          v40fr = 0,
+          vsl = 0,
+          kv = 0,
+          tip = 0;
         for (const sub of group.subs) {
           h20 += parseFloat(sub.hang20) || 0;
           h40 += parseFloat(sub.hang40) || 0;
@@ -2624,12 +3544,19 @@ let sl: any;
           tip += parseFloat(sub.tip) || 0;
         }
         totalTip += tip * 1000;
-        const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+        const tong =
+          h20 +
+          h40 +
+          Math.ceil(v20 / 2) +
+          v40 +
+          Math.ceil(v20fr / 8) +
+          Math.ceil(v40fr / 4);
         const heSo = sl?.leTet ? 3 : sl?.tangCuong ? 1.15 : 1;
         const effPrice = donGia * heSo;
         // Cột Tên tuyến: chỉ lấy tên tuyến đường (không lấy tên kế hoạch)
         const routeName = sl?.routeName || tenTuyen || key.split('||')[0];
-        const planName = routeName + (sl?.leTet ? ' (x3)' : sl?.tangCuong ? ' (+15%)' : '');
+        const planName =
+          routeName + (sl?.leTet ? ' (x3)' : sl?.tangCuong ? ' (+15%)' : '');
         const mainTrips = tong + kv;
         const mainMoney = (tong + kv) * effPrice;
         const vslPrice = 40000 * heSo;
@@ -2638,10 +3565,24 @@ let sl: any;
         const leTet = !!sl?.leTet;
         const tangCuong = !!sl?.tangCuong;
         if (mainTrips > 0) {
-          items.push({ price: effPrice, name: planName, trips: mainTrips, money: mainMoney, leTet, tangCuong });
+          items.push({
+            price: effPrice,
+            name: planName,
+            trips: mainTrips,
+            money: mainMoney,
+            leTet,
+            tangCuong,
+          });
         }
         if (vsl > 0) {
-          items.push({ price: vslPrice, name: 'Vệ sinh lại', trips: vsl, money: vslMoney, leTet, tangCuong: false });
+          items.push({
+            price: vslPrice,
+            name: 'Vệ sinh lại',
+            trips: vsl,
+            money: vslMoney,
+            leTet,
+            tangCuong: false,
+          });
         }
         planTotalTrips += mainTrips + vsl;
         planTotalMoney += mainMoney + vslMoney;
@@ -2651,7 +3592,17 @@ let sl: any;
       // Các tuyến cùng mức giá viết chung vào 1 ô Tên tuyến, cách nhau dấu ","
       // Nếu có bất kỳ chuyến nào là tăng cường, đánh dấu tangCuong = true
       const mergeByName = (list: typeof items) => {
-        const map = new Map<string, { price: number; name: string; trips: number; money: number; leTet: boolean; tangCuong: boolean }>();
+        const map = new Map<
+          string,
+          {
+            price: number;
+            name: string;
+            trips: number;
+            money: number;
+            leTet: boolean;
+            tangCuong: boolean;
+          }
+        >();
         for (const it of list) {
           const key = `${it.price}|${it.name}`;
           const prev = map.get(key);
@@ -2672,9 +3623,9 @@ let sl: any;
           map.get(it.price)!.push(it);
         }
         const prices = [...map.keys()].sort((a, b) => a - b);
-        return prices.map(p => {
+        return prices.map((p) => {
           const subs = map.get(p)!;
-          const isTangCuong = subs.some(s => s.tangCuong);
+          const isTangCuong = subs.some((s) => s.tangCuong);
           return { price: p, subs, tangCuong: isTangCuong };
         });
       };
@@ -2692,11 +3643,12 @@ let sl: any;
       const tongChiHo = totalTip + tong4GuiXe;
       const luongCoBan = fixedSalary;
       const tongA = luongCoBan + planTotalMoney + tongPhuCap + tongChiHo;
-      const tongGiamTru = bhxh + fixedSalary + chiHo + itemSumDeduct + advanceDeduct; // F49 + F50 + F51 + khoản khấu trừ động + tạm ứng
+      const tongGiamTru =
+        bhxh + fixedSalary + chiHo + itemSumDeduct + advanceDeduct; // F49 + F50 + F51 + khoản khấu trừ động + tạm ứng
       const luongConLai = tongA - tongGiamTru;
 
       // Column widths
-      ws.getColumn(1).width = 6;  // STT
+      ws.getColumn(1).width = 6; // STT
       ws.getColumn(2).width = 12; // Ngày tháng
       ws.getColumn(3).width = 55; // Tên tuyến
       ws.getColumn(4).width = 14; // Đơn giá
@@ -2705,7 +3657,12 @@ let sl: any;
       ws.getColumn(7).width = 12; // Ghi chú
 
       const tnr = (bold = false, size = 12, color = 'FF000000') =>
-        ({ bold, size, color: { argb: color }, name: fontFamily } as Partial<ExcelJS.Font>);
+        ({
+          bold,
+          size,
+          color: { argb: color },
+          name: fontFamily,
+        }) as Partial<ExcelJS.Font>;
 
       // Row 1: logo + công ty (merge A1:G1, logo đặt góc trái)
       const r1 = ws.getRow(1);
@@ -2749,7 +3706,8 @@ let sl: any;
       // Row 5: tháng/năm (mẫu: TNR 13, bold)
       ws.mergeCells(5, 1, 5, 7);
       const r5 = ws.getRow(5);
-      r5.getCell(1).value = `THÁNG ${String(month).padStart(2, '0')} NĂM ${year}`;
+      r5.getCell(1).value =
+        `THÁNG ${String(month).padStart(2, '0')} NĂM ${year}`;
       r5.getCell(1).font = tnr(true, 13);
       r5.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
       r5.height = 24;
@@ -2795,8 +3753,16 @@ let sl: any;
       r8.getCell(7).font = tnr(true, 12);
 
       // Row 9: B. TỔNG TIỀN LƯƠNG/THÁNG (mẫu: chữ đỏ FFFF0000, nền xanh FFD4ECC2, bold)
-      const fillXanh = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFD4ECC2' } };
-      const fillVang = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFFCF3C0' } };
+      const fillXanh = {
+        type: 'pattern' as const,
+        pattern: 'solid' as const,
+        fgColor: { argb: 'FFD4ECC2' },
+      };
+      const fillVang = {
+        type: 'pattern' as const,
+        pattern: 'solid' as const,
+        fgColor: { argb: 'FFFCF3C0' },
+      };
       ws.mergeCells(9, 1, 9, 5);
       const r9 = ws.getRow(9);
       r9.height = 15.75;
@@ -2840,12 +3806,24 @@ let sl: any;
 
       // Row 12: header bảng chi tiết (mẫu: bold, viền full, wrapText)
       const hRow = ws.getRow(12);
-      const headers = ['Số TT', 'Ngày tháng', 'Tên tuyến', 'Đơn giá', 'Số chuyến', 'Thành tiền', 'Ghi chú'];
+      const headers = [
+        'Số TT',
+        'Ngày tháng',
+        'Tên tuyến',
+        'Đơn giá',
+        'Số chuyến',
+        'Thành tiền',
+        'Ghi chú',
+      ];
       headers.forEach((v, i) => {
         const cell = hRow.getCell(i + 1);
         cell.value = v;
         cell.font = tnr(true, 12);
-        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.alignment = {
+          horizontal: 'center',
+          vertical: 'middle',
+          wrapText: true,
+        };
         cell.border = allBorder;
       });
       hRow.height = 30.95;
@@ -2855,11 +3833,14 @@ let sl: any;
       let stt = 0;
 
       const DETAIL_ROW_HEIGHT = 20.5; // 15.75 * 1.3 = 20.475 ≈ 20.5
-      const writeGroup = (group: { price: number; subs: typeof items; tangCuong?: boolean }, isLeTet = false) => {
+      const writeGroup = (
+        group: { price: number; subs: typeof items; tangCuong?: boolean },
+        isLeTet = false,
+      ) => {
         stt++;
         const sumTrips = group.subs.reduce((s, it) => s + it.trips, 0);
         const sumMoney = group.subs.reduce((s, it) => s + it.money, 0);
-        const names = group.subs.map(it => it.name).join(', ');
+        const names = group.subs.map((it) => it.name).join(', ');
         const gr = ws.getRow(rowIdx);
         gr.height = DETAIL_ROW_HEIGHT;
         gr.getCell(1).value = stt;
@@ -2869,7 +3850,11 @@ let sl: any;
         gr.getCell(2).border = allBorder;
         gr.getCell(3).value = names;
         gr.getCell(3).font = tnr(false, 12);
-        gr.getCell(3).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        gr.getCell(3).alignment = {
+          horizontal: 'center',
+          vertical: 'middle',
+          wrapText: true,
+        };
         gr.getCell(3).border = allBorder;
         gr.getCell(4).value = group.price;
         gr.getCell(4).numFmt = moneyFmt;
@@ -2893,7 +3878,11 @@ let sl: any;
 
         gr.getCell(7).value = note;
         gr.getCell(7).font = tnr(false, 11);
-        gr.getCell(7).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        gr.getCell(7).alignment = {
+          horizontal: 'center',
+          vertical: 'middle',
+          wrapText: true,
+        };
         gr.getCell(7).border = allBorder;
         rowIdx++;
       };
@@ -2922,7 +3911,12 @@ let sl: any;
       r3p.getCell(7).font = tnr(true, 11);
       r3p.getCell(7).border = allBorder;
       rowIdx++;
-      const writeChiHoRow = (name: string, val: number | string, isTotal = false, italic = false) => {
+      const writeChiHoRow = (
+        name: string,
+        val: number | string,
+        isTotal = false,
+        italic = false,
+      ) => {
         ws.mergeCells(rowIdx, 1, rowIdx, 5);
         const r = ws.getRow(rowIdx);
         r.height = 15.75;
@@ -2963,8 +3957,18 @@ let sl: any;
       r4t.getCell(7).font = tnr(true, 11);
       r4t.getCell(7).border = allBorder;
       rowIdx++;
-      writeChiHoRow('Chi hộ tiền tip xe nâng tại các bãi, cảng.', totalTip, false, true);
-      writeChiHoRow('Chi hộ tiền gửi xe tại bãi 2 (HPH)', tong4GuiXe, false, true);
+      writeChiHoRow(
+        'Chi hộ tiền tip xe nâng tại các bãi, cảng.',
+        totalTip,
+        false,
+        true,
+      );
+      writeChiHoRow(
+        'Chi hộ tiền gửi xe tại bãi 2 (HPH)',
+        tong4GuiXe,
+        false,
+        true,
+      );
       writeChiHoRow(`Lương còn lại tháng ${prevMonth}`, '', false, true);
 
       // Mục C: CÁC KHOẢN GIẢM TRỪ (mẫu: nền xanh FFD4ECC2)
@@ -2992,7 +3996,8 @@ let sl: any;
       writeChiHoRow('Khấu trừ tạm ứng /Tháng', advanceDeduct, false, false);
       writeChiHoRow('Các khoản chi hộ khác:', chiHo, false, false);
       for (const ri of recItemRows) {
-        if (ri.kind === 'deduct') writeChiHoRow(ri.name, ri.amount, false, false);
+        if (ri.kind === 'deduct')
+          writeChiHoRow(ri.name, ri.amount, false, false);
       }
 
       // Mục D: TIỀN LƯƠNG CÒN LẠI/THÁNG (mẫu: nền vàng FFFCF3C0)
@@ -3028,7 +4033,8 @@ let sl: any;
       ws.mergeCells(rowIdx, 4, rowIdx, 7);
       const rDate = ws.getRow(rowIdx);
       rDate.height = 15.75;
-      rDate.getCell(4).value = `Hải Phòng, ngày ${vnDay} tháng ${vnMonthNow} năm ${vnYearNow}`;
+      rDate.getCell(4).value =
+        `Hải Phòng, ngày ${vnDay} tháng ${vnMonthNow} năm ${vnYearNow}`;
       rDate.getCell(4).font = { ...tnr(false, 12), italic: true };
       rDate.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' };
       rowIdx += 2; // 1 dòng trống + tới dòng chức danh
@@ -3070,26 +4076,28 @@ let sl: any;
       });
       const slIdsInMonth = slInMonth.map((sl) => sl.id);
 
-      const salContainers: any[] = slIdsInMonth.length > 0
-        ? await this.containerImportsRepository
-            .createQueryBuilder('c')
-            .leftJoinAndSelect('c.shippingLineRef', 'sl')
-            .where('c.shippingLineId IN (:...ids)', { ids: slIdsInMonth })
-            .orderBy('c.containerCode', 'ASC')
-            .getMany()
-        : [];
+      const salContainers: any[] =
+        slIdsInMonth.length > 0
+          ? await this.containerImportsRepository
+              .createQueryBuilder('c')
+              .leftJoinAndSelect('c.shippingLineRef', 'sl')
+              .where('c.shippingLineId IN (:...ids)', { ids: slIdsInMonth })
+              .orderBy('c.containerCode', 'ASC')
+              .getMany()
+          : [];
 
-      const salClaims: any[] = salContainers.length > 0
-        ? await this.containerClaimsRepository
-            .createQueryBuilder('cl')
-            .leftJoinAndSelect('cl.submissionRef', 'sub')
-            .leftJoinAndSelect('sub.user', 'u')
-            .where('cl.containerImportId IN (:...ids)', {
-              ids: salContainers.map((c) => c.id),
-            })
-            .orderBy('cl.createdAt', 'ASC')
-            .getMany()
-        : [];
+      const salClaims: any[] =
+        salContainers.length > 0
+          ? await this.containerClaimsRepository
+              .createQueryBuilder('cl')
+              .leftJoinAndSelect('cl.submissionRef', 'sub')
+              .leftJoinAndSelect('sub.user', 'u')
+              .where('cl.containerImportId IN (:...ids)', {
+                ids: salContainers.map((c) => c.id),
+              })
+              .orderBy('cl.createdAt', 'ASC')
+              .getMany()
+          : [];
 
       const salClaimsByContainer = new Map<number, any[]>();
       for (const cl of salClaims) {
@@ -3122,16 +4130,23 @@ let sl: any;
         }
       }
       for (const members of salBundleMembers.values()) {
-        members.sort((a, b) => String(a.containerCode).localeCompare(String(b.containerCode)));
+        members.sort((a, b) =>
+          String(a.containerCode).localeCompare(String(b.containerCode)),
+        );
       }
 
       const salClampContainerIds = new Set<number>();
       const salKepUnits = new Set<string>();
       const salPairs: { mainId: number; clampId: number }[] = [];
-      const salPairByContainer = new Map<number, { mainId: number; clampId: number }>();
+      const salPairByContainer = new Map<
+        number,
+        { mainId: number; clampId: number }
+      >();
       {
         const sortedClaims = [...salClaims].sort(
-          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() || (a.id || 0) - (b.id || 0),
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
+            (a.id || 0) - (b.id || 0),
         );
         const lastBySub = new Map<number, any>();
         for (const cl of sortedClaims) {
@@ -3144,8 +4159,16 @@ let sl: any;
               salClampContainerIds.add(main.containerImportId);
               const mainUnit = salUnitByContainer.get(main.containerImportId);
               if (mainUnit) salKepUnits.add(mainUnit);
-              if (mainUnit && clampUnit && mainUnit.startsWith('single:') && clampUnit.startsWith('single:')) {
-                const p = { mainId: main.containerImportId, clampId: cl.containerImportId };
+              if (
+                mainUnit &&
+                clampUnit &&
+                mainUnit.startsWith('single:') &&
+                clampUnit.startsWith('single:')
+              ) {
+                const p = {
+                  mainId: main.containerImportId,
+                  clampId: cl.containerImportId,
+                };
                 salPairs.push(p);
                 salPairByContainer.set(p.mainId, p);
                 salPairByContainer.set(p.clampId, p);
@@ -3175,10 +4198,26 @@ let sl: any;
         { header: 'Ghi chú', key: 'note', width: 14 },
       ];
 
-      const salHeaderFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
-      const salHeaderFont: Partial<ExcelJS.Font> = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
-      const salBorderStyle: ExcelJS.Border = { style: 'thin', color: { argb: 'FFCCCCCC' } };
-      const salAllBorder: Partial<ExcelJS.Borders> = { top: salBorderStyle, left: salBorderStyle, bottom: salBorderStyle, right: salBorderStyle };
+      const salHeaderFill: ExcelJS.Fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1E3A5F' },
+      };
+      const salHeaderFont: Partial<ExcelJS.Font> = {
+        bold: true,
+        color: { argb: 'FFFFFFFF' },
+        size: 11,
+      };
+      const salBorderStyle: ExcelJS.Border = {
+        style: 'thin',
+        color: { argb: 'FFCCCCCC' },
+      };
+      const salAllBorder: Partial<ExcelJS.Borders> = {
+        top: salBorderStyle,
+        left: salBorderStyle,
+        bottom: salBorderStyle,
+        right: salBorderStyle,
+      };
 
       const salContHeader = wsSalCont.getRow(1);
       salContHeader.eachCell((cell) => {
@@ -3190,13 +4229,29 @@ let sl: any;
       salContHeader.height = 28;
       wsSalCont.getColumn(5).numFmt = '#,##0';
 
-      const salYellowFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
-      const salRedFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
-      const salBlueFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBDD7EE' } };
+      const salYellowFill: ExcelJS.Fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFFF00' },
+      };
+      const salRedFill: ExcelJS.Fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFC7CE' },
+      };
+      const salBlueFill: ExcelJS.Fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFBDD7EE' },
+      };
 
       const salPlanNameFor = (c: any) => {
         const sl = c.shippingLineRef;
-        return sl ? planDisplayName(sl) : c.shippingLineId ? `Plan #${c.shippingLineId}` : '';
+        return sl
+          ? planDisplayName(sl)
+          : c.shippingLineId
+            ? `Plan #${c.shippingLineId}`
+            : '';
       };
       const salDriverOf = (cl: any) => {
         const sub = cl?.submissionRef;
@@ -3204,7 +4259,10 @@ let sl: any;
       };
       const salPlateOf = (cl: any) => cl?.submissionRef?.user?.soXe || '';
 
-      const salStyleRow = (row: ExcelJS.Row, fill: 'yellow' | 'red' | 'blue' | null) => {
+      const salStyleRow = (
+        row: ExcelJS.Row,
+        fill: 'yellow' | 'red' | 'blue' | null,
+      ) => {
         row.eachCell((cell) => {
           cell.border = salAllBorder;
           cell.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -3237,7 +4295,9 @@ let sl: any;
           const planName = salPlanNameFor(c);
           const price = priceFor(c);
           const yellow = salKepUnits.has(key);
-          const canMerge = members.every((m) => (salClaimsByContainer.get(m.id) || []).length <= 1);
+          const canMerge = members.every(
+            (m) => (salClaimsByContainer.get(m.id) || []).length <= 1,
+          );
           if (canMerge) {
             let firstRowNum: number | null = null;
             for (const m of members) {
@@ -3314,7 +4374,9 @@ let sl: any;
                 type: `${main.type} / ${clamp.type}`,
                 plan: salPlanNameFor(main),
                 giaGhuyen: price,
-                driver: mSub ? mSub.user?.fullName || mSub.driverName || '' : '',
+                driver: mSub
+                  ? mSub.user?.fullName || mSub.driverName || ''
+                  : '',
                 plate: mSub?.user?.soXe || '',
                 claimedAt: this.fmtVN(mainClaims[0].createdAt),
                 vsl: mainClaims[0].claimType === 'VSL' ? 'x' : '',
@@ -3326,17 +4388,25 @@ let sl: any;
                 containerCode: clamp.containerCode,
                 type: '',
                 plan: '',
-                giaGhuyen: '',  // merge với dòng main bên trên
+                giaGhuyen: '', // merge với dòng main bên trên
                 // Không merge Người chạy → điền lái xe clamp thực sự
-                driver: cSub ? cSub.user?.fullName || cSub.driverName || '' : '',
+                driver: cSub
+                  ? cSub.user?.fullName || cSub.driverName || ''
+                  : '',
                 plate: cSub?.user?.soXe || '',
                 claimedAt: this.fmtVN(clampClaims[0].createdAt),
                 vsl: clampClaims[0].claimType === 'VSL' ? 'x' : '',
                 keoVe: clampClaims[0].claimType === 'KV' ? 'x' : '',
                 note: clampClaims[0].claimType === 'KD2' ? 'Kéo Lần 2' : '',
               });
-              salStyleRow(rowMain, salClaimFill(mainClaims[0], mainClaims) || 'yellow');
-              salStyleRow(rowClamp, salClaimFill(clampClaims[0], clampClaims) || 'yellow');
+              salStyleRow(
+                rowMain,
+                salClaimFill(mainClaims[0], mainClaims) || 'yellow',
+              );
+              salStyleRow(
+                rowClamp,
+                salClaimFill(clampClaims[0], clampClaims) || 'yellow',
+              );
               // Merge Loại, Kế hoạch, Giá chuyến, Biển số — KHÔNG merge Người chạy (col 6)
               wsSalCont.mergeCells(rowMain.number, 3, rowClamp.number, 3); // Loại
               wsSalCont.mergeCells(rowMain.number, 4, rowClamp.number, 4); // Kế hoạch
@@ -3409,15 +4479,24 @@ let sl: any;
             keoVe: cl.claimType === 'KV' ? 'x' : '',
             note: cl.claimType === 'KD2' ? 'Kéo Lần 2' : '',
           });
-          salStyleRow(row, salClaimFill(cl, cClaims) || (yellow ? 'yellow' : null));
+          salStyleRow(
+            row,
+            salClaimFill(cl, cClaims) || (yellow ? 'yellow' : null),
+          );
         }
       }
     }
     // ── Kết thúc sheet "Container - Người chạy" ─────────────────────────────
 
     const filename = `Lương - Đội Xe - T${String(month).padStart(2, '0')}.${year}.xlsx`;
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    );
 
     await workbook.xlsx.write(res);
     res.end();

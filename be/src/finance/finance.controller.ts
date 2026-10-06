@@ -13,7 +13,11 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { FinanceService } from './finance.service';
-import type { UpsertFinanceDto, CostItemDto, BulkCostItemDto } from './finance.service';
+import type {
+  UpsertFinanceDto,
+  CostItemDto,
+  BulkCostItemDto,
+} from './finance.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Permissions } from '../common/decorators/permissions.decorator';
@@ -57,10 +61,7 @@ export class FinanceController {
    */
   @Get('vehicles')
   @Permissions('finance.view')
-  listVehicles(
-    @Query('targetUserId') targetUserId: string,
-    @Req() req: any,
-  ) {
+  listVehicles(@Query('targetUserId') targetUserId: string, @Req() req: any) {
     return this.financeService.listVehicles(
       req.user,
       this.targetUserId(targetUserId),
@@ -185,7 +186,12 @@ export class FinanceController {
   ) {
     this.assertPw(pw, headerPw, req.user);
     const { m, y } = this.monthYear(month, year);
-    return this.financeService.listCostItems(m, y, req.user, this.targetUserId(targetUserId));
+    return this.financeService.listCostItems(
+      m,
+      y,
+      req.user,
+      this.targetUserId(targetUserId),
+    );
   }
 
   /** Thêm 1 khoản chi phí — yêu cầu mật khẩu. */
@@ -222,7 +228,13 @@ export class FinanceController {
     this.assertPw(pw, headerPw, req.user);
     const { m, y } = this.monthYear(month, year);
     const editorName = req.user?.fullName || req.user?.username || '';
-    return this.financeService.addCostItemsBulk(m, y, req.user, body, editorName);
+    return this.financeService.addCostItemsBulk(
+      m,
+      y,
+      req.user,
+      body,
+      editorName,
+    );
   }
 
   /** Sửa 1 khoản chi phí — yêu cầu mật khẩu. */

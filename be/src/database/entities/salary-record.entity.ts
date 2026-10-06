@@ -120,7 +120,11 @@ export class SalaryRecord {
   })
   advanceDeduct: number;
 
-  @Column({ name: 'advance_deduct_overridden', type: 'boolean', default: false })
+  @Column({
+    name: 'advance_deduct_overridden',
+    type: 'boolean',
+    default: false,
+  })
   advanceDeductOverridden: boolean;
 
   @Column({ name: 'days_off', type: 'jsonb', nullable: true, default: [] })

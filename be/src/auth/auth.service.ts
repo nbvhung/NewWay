@@ -22,7 +22,10 @@ export class AuthService {
 
   async login(username: string, password: string) {
     const failKey = `login_fail:${username}`;
-    const failCount = parseInt((await this.redisService.get(failKey)) || '0', 10);
+    const failCount = parseInt(
+      (await this.redisService.get(failKey)) || '0',
+      10,
+    );
     if (failCount >= this.MAX_LOGIN_FAILS) {
       throw new UnauthorizedException(
         'Tài khoản bị tạm khóa do nhập sai quá nhiều lần. Vui lòng thử lại sau 15 phút.',
@@ -79,9 +82,13 @@ export class AuthService {
 
   verifyRefreshToken(token: string): { sub: number } {
     try {
-      return this.jwtService.verify(token, { secret: process.env.JWT_REFRESH_SECRET });
+      return this.jwtService.verify(token, {
+        secret: process.env.JWT_REFRESH_SECRET,
+      });
     } catch {
-      throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn');
+      throw new UnauthorizedException(
+        'Refresh token không hợp lệ hoặc đã hết hạn',
+      );
     }
   }
 
@@ -153,7 +160,10 @@ export class AuthService {
     await Promise.all([
       this.redisService.setRefreshToken(user.id, refreshHash),
       this.refreshTokenRepository.save(
-        this.refreshTokenRepository.create({ userId: user.id, tokenHash: refreshHash }),
+        this.refreshTokenRepository.create({
+          userId: user.id,
+          tokenHash: refreshHash,
+        }),
       ),
     ]);
 

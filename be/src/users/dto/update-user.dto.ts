@@ -1,4 +1,13 @@
-import { IsString, IsOptional, IsIn, IsNumber, Min, IsBoolean, IsArray, IsInt } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsIn,
+  IsNumber,
+  Min,
+  IsBoolean,
+  IsArray,
+  IsInt,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdateUserDto {

@@ -41,23 +41,31 @@ export class ZaloWebhookService implements OnApplicationBootstrap {
     const url1 = process.env.ZALO_WEBHOOK_URL;
     if (url1) {
       const ok = await this.zaloApi.setWebhook(url1, secret, 0);
-      this.logger.log(`setWebhook bot 0 → ${ok ? '✅ thành công' : '❌ thất bại'} (${url1})`);
+      this.logger.log(
+        `setWebhook bot 0 → ${ok ? '✅ thành công' : '❌ thất bại'} (${url1})`,
+      );
     } else {
-      this.logger.warn('ZALO_WEBHOOK_URL chưa được set, bỏ qua setWebhook bot 0.');
+      this.logger.warn(
+        'ZALO_WEBHOOK_URL chưa được set, bỏ qua setWebhook bot 0.',
+      );
     }
 
     // Bot 2
     const url2 = process.env.ZALO_WEBHOOK_URL_2;
     if (url2 && this.zaloApi.botCount >= 2) {
       const ok = await this.zaloApi.setWebhook(url2, secret, 1);
-      this.logger.log(`setWebhook bot 1 → ${ok ? '✅ thành công' : '❌ thất bại'} (${url2})`);
+      this.logger.log(
+        `setWebhook bot 1 → ${ok ? '✅ thành công' : '❌ thất bại'} (${url2})`,
+      );
     }
 
     // Bot 3
     const url3 = process.env.ZALO_WEBHOOK_URL_3;
     if (url3 && this.zaloApi.botCount >= 3) {
       const ok = await this.zaloApi.setWebhook(url3, secret, 2);
-      this.logger.log(`setWebhook bot 2 → ${ok ? '✅ thành công' : '❌ thất bại'} (${url3})`);
+      this.logger.log(
+        `setWebhook bot 2 → ${ok ? '✅ thành công' : '❌ thất bại'} (${url3})`,
+      );
     }
   }
 }

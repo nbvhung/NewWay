@@ -1,4 +1,13 @@
-import { IsString, IsNotEmpty, MinLength, IsOptional, IsIn, IsBoolean, IsArray, IsInt } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  MinLength,
+  IsOptional,
+  IsIn,
+  IsBoolean,
+  IsArray,
+  IsInt,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateUserDto {
@@ -17,7 +26,9 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['laixe', 'ops', 'admin', 'supper_admin', 'hr'], { message: 'Vai trò không hợp lệ' })
+  @IsIn(['laixe', 'ops', 'admin', 'supper_admin', 'hr'], {
+    message: 'Vai trò không hợp lệ',
+  })
   role?: string;
 
   @IsOptional()

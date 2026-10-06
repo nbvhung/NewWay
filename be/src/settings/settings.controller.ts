@@ -19,7 +19,9 @@ export class SettingsController {
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions('settings.entry_lock')
   async setEntryLock(@Body() body: { locked: boolean }) {
-    const locked = await this.settingsService.setEntryLocked(body.locked === true);
+    const locked = await this.settingsService.setEntryLocked(
+      body.locked === true,
+    );
     return { data: { locked } };
   }
 }

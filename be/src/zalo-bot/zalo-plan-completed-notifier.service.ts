@@ -86,7 +86,12 @@ export class ZaloPlanCompletedNotifierService {
 
   private async getDriverTotals(
     plan: ShippingLine,
-  ): Promise<Map<number, { totals: DriverTotals; zaloId: string | null; zaloBot: number }>> {
+  ): Promise<
+    Map<
+      number,
+      { totals: DriverTotals; zaloId: string | null; zaloBot: number }
+    >
+  > {
     const subs = await this.submissionsRepository
       .createQueryBuilder('s')
       .leftJoinAndSelect('s.user', 'user')
@@ -204,12 +209,7 @@ export class ZaloPlanCompletedNotifierService {
           );
           continue;
         }
-        const text = this.buildEndMessage(
-          planName,
-          entry.totals,
-          donGia,
-          heSo,
-        );
+        const text = this.buildEndMessage(planName, entry.totals, donGia, heSo);
         const sent = await this.zaloApi.sendMessage(
           entry.zaloId,
           text,
@@ -227,7 +227,11 @@ export class ZaloPlanCompletedNotifierService {
   }
 
   /** Ghép chuỗi sản lượng, VD "H20: 5, H40: 3". Không có gì thì trả "không có sản lượng". */
-  private sanLuongText(t: DriverTotals, sep: string, includeTip: boolean): string {
+  private sanLuongText(
+    t: DriverTotals,
+    sep: string,
+    includeTip: boolean,
+  ): string {
     const parts: string[] = [];
     if (t.h20 > 0) parts.push(`H20${sep}${t.h20}`);
     if (t.h40 > 0) parts.push(`H40${sep}${t.h40}`);

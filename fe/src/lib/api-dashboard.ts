@@ -18,8 +18,9 @@ export interface PlanSummary {
   contByType: Record<string, number>;
 }
 
-export interface DriverRevenue {
-  driverId: number;
+/** Doanh thu gom theo XE (biển số). `vehicleId` = tài khoản lái xe giữ biển. */
+export interface VehicleRevenue {
+  vehicleId: number;
   fullName: string;
   username: string;
   soXe: string;
@@ -31,8 +32,50 @@ export interface DriverRevenue {
   luongKhoan: number;    // lương khoán/chuyến thực tế
   planCount: number;
   totalPlanCount: number;
-  totalCont: number;     // tổng sản lượng (container) của lái xe trong tháng
+  totalCont: number;     // tổng sản lượng (container) của xe trong tháng
   routes: { routeName: string; revenue: number; planCount: number; contCount: number; contByType: Record<string, number> }[];
+}
+
+/** 1 tài xế đóng góp lương vào 1 xe (lái chính hoặc lái phụ mượn xe). */
+export interface VehicleSalaryDriver {
+  driverId: number;
+  fullName: string;
+  isMain: boolean;
+  luongNguoiLai: number;
+  bhxhCty: number;
+  luongKhoan: number;
+  luongCung: number;
+  chuyenCan: number;
+  tip: number;
+  phuCap: number;
+  itemSumAdd: number;
+  itemSumDeduct: number;
+  bhxhNld: number;
+  chiHo: number;
+  advanceDeduct: number;
+}
+
+/** Chi phí lương gom theo XE: lương lái chính + các lái phụ mượn xe. */
+export interface VehicleCostRow {
+  vehicleId: number;
+  soXe: string;
+  soMooc: string;
+  fullName: string;
+  stt: string;
+  ngayHoatDong?: string | null;
+  luongNguoiLai: number;
+  bhxhCty: number;
+  luongKhoan: number;
+  luongCung: number;
+  chuyenCan: number;
+  tip: number;
+  phuCap: number;
+  itemSumAdd: number;
+  itemSumDeduct: number;
+  bhxhNld: number;
+  chiHo: number;
+  advanceDeduct: number;
+  drivers: VehicleSalaryDriver[];
 }
 
 export interface CustomerRevenue {
@@ -87,7 +130,7 @@ export interface DashboardOverview {
   revenue: {
     total: number;
     byCustomer: CustomerRevenue[];
-    byDriver: DriverRevenue[];
+    byVehicle: VehicleRevenue[];
     byDay: DailyRevenue[];
   };
   cost: {
@@ -105,8 +148,8 @@ export interface DashboardOverview {
     // Chi tiết từng khoản chi phí của tháng, nhóm theo category
     // (Sửa chữa / Nhiên liệu / CP Khác) — để bấm card hiện danh sách.
     items: Record<string, CostItemDetail[]>;
-    /** Chi phí lương + BHXH công ty theo từng lái xe (để lọc theo xe và xem chi tiết lương). */
-    byDriver?: { driverId: number; fullName: string; soXe: string; luongNguoiLai: number; bhxhCty: number; luongKhoan: number; luongCung: number; chuyenCan: number; tip: number; phuCap: number; itemSumAdd: number; itemSumDeduct: number; bhxhNld: number; chiHo: number; advanceDeduct: number }[];
+    /** Chi phí lương + BHXH công ty theo từng XE (lái chính + lái phụ mượn xe). */
+    byVehicle?: VehicleCostRow[];
   };
   investment: {
     vonXe: number;

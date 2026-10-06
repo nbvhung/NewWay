@@ -24,4 +24,11 @@ export const TYPE_LABEL: Record<string, string> = {
 
 export const CLAMP_TYPES = new Set(['V20', 'H20', 'V20FR']);
 
-export const PHATSINH_TYPE_OPTIONS = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR'];
+export const PHATSINH_TYPE_OPTIONS = [
+  'H20',
+  'H40',
+  'V20',
+  'V40',
+  'V20FR',
+  'V40FR',
+];

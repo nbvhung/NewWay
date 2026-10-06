@@ -1,4 +1,11 @@
-import { IsInt, Min, Max, IsObject, IsOptional, IsString } from 'class-validator';
+import {
+  IsInt,
+  Min,
+  Max,
+  IsObject,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateCustomerPriceBatchDto {

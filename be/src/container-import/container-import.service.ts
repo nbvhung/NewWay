@@ -137,12 +137,68 @@ export class ContainerImportService {
 
     // Mẫu dữ liệu theo từng cột loại (giống file mẫu thực tế).
     const samples: Record<string, string[]> = {
-      A: ['BMOU6823203','BMOU6823204','BMOU6823205','BMOU6823206','BMOU6823207','BMOU6823208','BMOU6823209','BMOU6823210'],
-      B: ['BMOU1234567','BMOU1234568','BMOU1234569','BMOU1234570','BMOU1234571','BMOU1234572','BMOU1234573','BMOU1234574'],
-      C: ['BMOU9876543','BMOU9876544','BMOU9876545','BMOU9876546','BMOU9876547','BMOU9876548','BMOU9876549'],
-      D: ['BMOU1112223','BMOU1112224','BMOU1112225','BMOU1112226','BMOU1112227','BMOU1112228','BMOU1112229','BMOU1112230','BMOU1112231','BMOU1112232'],
-      E: ['TAHK4561321','TAHK4561322','TAHK4561323','TAHK4561324','TAHK4561325','TAHK4561326','TAHK4561327','TAHK4561328','TAHK4561329'],
-      G: ['HCDB8667643','HCDB8667644','HCDB8667645','HCDB8667646','HCDB8667647','HCDB8667648','HCDB8667649','HCDB8667650'],
+      A: [
+        'BMOU6823203',
+        'BMOU6823204',
+        'BMOU6823205',
+        'BMOU6823206',
+        'BMOU6823207',
+        'BMOU6823208',
+        'BMOU6823209',
+        'BMOU6823210',
+      ],
+      B: [
+        'BMOU1234567',
+        'BMOU1234568',
+        'BMOU1234569',
+        'BMOU1234570',
+        'BMOU1234571',
+        'BMOU1234572',
+        'BMOU1234573',
+        'BMOU1234574',
+      ],
+      C: [
+        'BMOU9876543',
+        'BMOU9876544',
+        'BMOU9876545',
+        'BMOU9876546',
+        'BMOU9876547',
+        'BMOU9876548',
+        'BMOU9876549',
+      ],
+      D: [
+        'BMOU1112223',
+        'BMOU1112224',
+        'BMOU1112225',
+        'BMOU1112226',
+        'BMOU1112227',
+        'BMOU1112228',
+        'BMOU1112229',
+        'BMOU1112230',
+        'BMOU1112231',
+        'BMOU1112232',
+      ],
+      E: [
+        'TAHK4561321',
+        'TAHK4561322',
+        'TAHK4561323',
+        'TAHK4561324',
+        'TAHK4561325',
+        'TAHK4561326',
+        'TAHK4561327',
+        'TAHK4561328',
+        'TAHK4561329',
+      ],
+      G: [
+        'HCDB8667643',
+        'HCDB8667644',
+        'HCDB8667645',
+        'HCDB8667646',
+        'HCDB8667647',
+        'HCDB8667648',
+        'HCDB8667649',
+        'HCDB8667650',
+      ],
     };
     for (const [col, codes] of Object.entries(samples)) {
       codes.forEach((code, i) => {
@@ -191,10 +247,7 @@ export class ContainerImportService {
     return map[t] || null;
   }
 
-  async parseFile(
-    file: any,
-    bundleStartIndex = 0,
-  ): Promise<ParsedContainer[]> {
+  async parseFile(file: any, bundleStartIndex = 0): Promise<ParsedContainer[]> {
     const name = (file.originalname || '').toLowerCase();
     if (!name.endsWith('.xlsx') && !name.endsWith('.xls')) {
       throw new BadRequestException(
@@ -270,7 +323,9 @@ export class ContainerImportService {
     const maxRow = ws.rowCount;
     for (let r = 2; r <= maxRow; r++) {
       for (const [colIndex, type] of typeCols) {
-        const code = this.normalizeCode(String(ws.getCell(r, colIndex).value ?? ''));
+        const code = this.normalizeCode(
+          String(ws.getCell(r, colIndex).value ?? ''),
+        );
         if (!code) continue;
         const bundleId = bundleByTypeRow.get(type)?.get(r);
         rows.push({ code, type, bundleId });
@@ -384,14 +439,25 @@ export class ContainerImportService {
    * Lấy thông tin claim (VSL/KV/KD2 + thời gian ghi nhận mới nhất) theo container.
    * Dùng cho web (ContainerCodesTab) để hiển thị tag VSL/KV/KD2 và giờ tài xế nhập.
    */
-  private async loadClaimInfo(
-    containerIds: number[],
-  ): Promise<
-    Map<number, { hasVsl: boolean; hasKv: boolean; hasKd2: boolean; claimedAt: Date | null }>
+  private async loadClaimInfo(containerIds: number[]): Promise<
+    Map<
+      number,
+      {
+        hasVsl: boolean;
+        hasKv: boolean;
+        hasKd2: boolean;
+        claimedAt: Date | null;
+      }
+    >
   > {
     const result = new Map<
       number,
-      { hasVsl: boolean; hasKv: boolean; hasKd2: boolean; claimedAt: Date | null }
+      {
+        hasVsl: boolean;
+        hasKv: boolean;
+        hasKd2: boolean;
+        claimedAt: Date | null;
+      }
     >();
     const ids = [...new Set(containerIds.filter((id) => id != null))];
     if (ids.length === 0) return result;
@@ -453,8 +519,7 @@ export class ContainerImportService {
         qb.andWhere('(sub.id IS NULL OR u.id IN (:...visible))', { visible });
       }
     }
-    qb.orderBy('c.createdAt', 'DESC')
-      .take(5000);
+    qb.orderBy('c.createdAt', 'DESC').take(5000);
     const rows = await qb.getMany();
     const claimInfo = await this.loadClaimInfo(rows.map((r) => r.id));
     return rows.map((r) => {
@@ -476,7 +541,8 @@ export class ContainerImportService {
         hasVsl: info.hasVsl,
         hasKv: info.hasKv,
         hasKd2: info.hasKd2,
-        claimedAt: info.claimedAt || sub?.lastEditedAt || sub?.updatedAt || null,
+        claimedAt:
+          info.claimedAt || sub?.lastEditedAt || sub?.updatedAt || null,
       };
     });
   }
@@ -508,9 +574,7 @@ export class ContainerImportService {
       select: { id: true, name: true },
     });
     if (completed.length > 0) {
-      const names = completed
-        .map((p) => p.name || `#${p.id}`)
-        .join(', ');
+      const names = completed.map((p) => p.name || `#${p.id}`).join(', ');
       throw new BadRequestException(
         `Không thể xoá container của kế hoạch đã hoàn thành (${names}). ` +
           `Xoá lúc này sẽ làm lệch bảng kê / lương đã chốt. ` +
@@ -606,10 +670,7 @@ export class ContainerImportService {
   }
 
   /** Câu thông báo trả về FE, nêu rõ đã trừ ô nào của lái xe nào. */
-  private buildRemoveMessage(
-    base: string,
-    summary: ReversalSummary,
-  ): string {
+  private buildRemoveMessage(base: string, summary: ReversalSummary): string {
     if (summary.claimCount === 0) {
       return `${base} (container chưa có ghi nhận nào, sản lượng không đổi)`;
     }
@@ -763,7 +824,13 @@ export class ContainerImportService {
       },
     );
 
-    await this.logContainerDeletion([snapshot], 'DELETE', actor, undefined, claims);
+    await this.logContainerDeletion(
+      [snapshot],
+      'DELETE',
+      actor,
+      undefined,
+      claims,
+    );
 
     return {
       message: this.buildRemoveMessage('Đã xóa container', summary),
@@ -807,7 +874,9 @@ export class ContainerImportService {
             .getRepository(ContainerClaim)
             .delete({ containerImportId: In(ids) });
         }
-        await em.getRepository(ContainerImport).delete({ shippingLineId: planId });
+        await em
+          .getRepository(ContainerImport)
+          .delete({ shippingLineId: planId });
         return rev;
       },
     );
@@ -930,7 +999,9 @@ export class ContainerImportService {
   private planDisplayName(sl: any): string {
     if (!sl) return '';
     const ngay = sl.ngay ? String(sl.ngay).split('-').reverse().join('-') : '';
-    return [sl.name, sl.soChuyen, sl.routeName, ngay].filter(Boolean).join(' / ');
+    return [sl.name, sl.soChuyen, sl.routeName, ngay]
+      .filter(Boolean)
+      .join(' / ');
   }
 
   /**
@@ -963,15 +1034,18 @@ export class ContainerImportService {
           'Vui lòng nhập ít nhất 3 số cuối của mã container để tra cứu (vd: 815, 8668815).',
         );
       }
-      qb.where('RIGHT(TRIM(c.container_code), :len) = :q', { q, len: q.length });
+      qb.where('RIGHT(TRIM(c.container_code), :len) = :q', {
+        q,
+        len: q.length,
+      });
     } else {
       // Bọc ngoặc cả cụm OR: nếu không, `andWhere(visible)` phía dưới thành
       // `WHERE TRIM = q OR code LIKE ... AND (visible)` → điều kiện visible chỉ
       // dính vào vế LIKE, vế khớp chính xác sẽ bỏ qua giới hạn xe.
-      qb.where(
-        '(TRIM(c.container_code) = :q OR c.container_code LIKE :like)',
-        { q, like: `%${q}%` },
-      );
+      qb.where('(TRIM(c.container_code) = :q OR c.container_code LIKE :like)', {
+        q,
+        like: `%${q}%`,
+      });
     }
 
     const visible = resolveVisibleDriverIds(user);
@@ -984,8 +1058,7 @@ export class ContainerImportService {
         qb.andWhere('(sub.id IS NULL OR u.id IN (:...visible))', { visible });
       }
     }
-    qb.orderBy('c.containerCode', 'ASC')
-      .take(300);
+    qb.orderBy('c.containerCode', 'ASC').take(300);
     const rows = await qb.getMany();
     const claimInfo = await this.loadClaimInfo(rows.map((r) => r.id));
     return rows.map((r) => {
@@ -1013,7 +1086,8 @@ export class ContainerImportService {
         hasVsl: info.hasVsl,
         hasKv: info.hasKv,
         hasKd2: info.hasKd2,
-        claimedAt: info.claimedAt || sub?.lastEditedAt || sub?.updatedAt || null,
+        claimedAt:
+          info.claimedAt || sub?.lastEditedAt || sub?.updatedAt || null,
         plan: plan
           ? {
               id: plan.id,
@@ -1286,9 +1360,7 @@ export class ContainerImportService {
         container.bundleId,
         container.shippingLineId,
       );
-      const pending = members.filter(
-        (m) => !m.submissionId && !m.phatSinh,
-      );
+      const pending = members.filter((m) => !m.submissionId && !m.phatSinh);
       if (pending.length === 0) {
         throw new BadRequestException(
           `Bó ${container.bundleId} đã được ghi nhận trước đó rồi.`,
@@ -1403,11 +1475,14 @@ export class ContainerImportService {
 
     return {
       claimed: claimedIds.length,
-      containers: claimedIds.length > 0
-        ? (await this.containerImportsRepository.find({
-            where: { id: In(claimedIds) },
-          })).map((c) => c.containerCode)
-        : [],
+      containers:
+        claimedIds.length > 0
+          ? (
+              await this.containerImportsRepository.find({
+                where: { id: In(claimedIds) },
+              })
+            ).map((c) => c.containerCode)
+          : [],
       totals,
       submissionId: submission.id,
     };

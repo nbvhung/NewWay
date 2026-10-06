@@ -81,7 +81,10 @@ export class ContainerImportController {
   @Get()
   @Permissions('container.view')
   findAll(@Query('planId') planId?: string, @CurrentUser() user?: any) {
-    return this.containerImportService.findAll(planId ? +planId : undefined, user);
+    return this.containerImportService.findAll(
+      planId ? +planId : undefined,
+      user,
+    );
   }
 
   @Post('claim-remaining')

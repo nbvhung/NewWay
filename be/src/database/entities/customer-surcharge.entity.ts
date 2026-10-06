@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Customer } from './customer.entity';
 
 @Entity('customer_surcharges')
@@ -19,7 +27,13 @@ export class CustomerSurcharge {
   @Column({ name: 'calc_type', length: 20, default: 'add' })
   calcType: string;
 
-  @Column({ name: 'value', type: 'decimal', precision: 15, scale: 2, default: 0 })
+  @Column({
+    name: 'value',
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    default: 0,
+  })
   value: number;
 
   @Column({ name: 'month', type: 'int', nullable: false })

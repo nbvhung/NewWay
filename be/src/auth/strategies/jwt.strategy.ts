@@ -24,7 +24,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: TokenPayload) {
-    const isBlacklisted = await this.redisService.isTokenBlacklisted(payload.jti || '');
+    const isBlacklisted = await this.redisService.isTokenBlacklisted(
+      payload.jti || '',
+    );
     if (isBlacklisted) {
       throw new UnauthorizedException('Token đã bị vô hiệu hóa');
     }

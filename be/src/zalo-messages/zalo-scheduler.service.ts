@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnApplicationBootstrap,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 import { ZaloApiService } from '../zalo-bot/zalo-api.service';
 import { ZaloMessagesService } from './zalo-messages.service';
@@ -19,8 +24,7 @@ export class ZaloSchedulerService
   private readonly logger = new Logger(ZaloSchedulerService.name);
   private readonly lockKey = 'zalo:scheduler:lock';
   private readonly lockTtlMs = 30_000;
-  private readonly instanceToken =
-    `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  private readonly instanceToken = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   private stopped = true;
   private running = false;
 
@@ -33,7 +37,9 @@ export class ZaloSchedulerService
 
   onApplicationBootstrap() {
     if (!this.zaloApi.configured) {
-      this.logger.warn('Thiếu ZALO_BOT_TOKEN, scheduler tin hẹn giờ không chạy');
+      this.logger.warn(
+        'Thiếu ZALO_BOT_TOKEN, scheduler tin hẹn giờ không chạy',
+      );
       return;
     }
     this.stopped = false;
@@ -142,7 +148,9 @@ export class ZaloSchedulerService
             await this.zaloMessages.markResult(item.id, false);
           }
         } catch (err: any) {
-          this.logger.error(`Gửi tin hẹn giờ #${item.id} lỗi: ${err?.message || err}`);
+          this.logger.error(
+            `Gửi tin hẹn giờ #${item.id} lỗi: ${err?.message || err}`,
+          );
           await this.zaloMessages.markResult(
             item.id,
             false,

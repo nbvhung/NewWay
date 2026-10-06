@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Customer } from './customer.entity';
 
 @Entity('customer_prices')
@@ -31,7 +39,13 @@ export class CustomerPrice {
   @Column({ name: 'route_name', length: 255, default: '' })
   routeName: string;
 
-  @Column({ name: 'unit_price', type: 'decimal', precision: 15, scale: 2, default: 0 })
+  @Column({
+    name: 'unit_price',
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    default: 0,
+  })
   unitPrice: number;
 
   @CreateDateColumn({ name: 'created_at' })

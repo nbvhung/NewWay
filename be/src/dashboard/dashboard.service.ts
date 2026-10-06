@@ -12,7 +12,10 @@ import { User } from '../database/entities/user.entity';
 import { Route } from '../database/entities/route.entity';
 import { FinanceEntry } from '../database/entities/finance-entry.entity';
 import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
-import { resolveVisibleDriverIds, hasPermission } from '../common/permissions/permissions';
+import {
+  resolveVisibleDriverIds,
+  hasPermission,
+} from '../common/permissions/permissions';
 import { SalaryService } from '../salary/salary.service';
 
 // ─── Nhóm chi tiết trong `finance_cost_items` ────────────────────
@@ -47,14 +50,19 @@ export interface PlanSummary {
   totalCont: number;
   revenue: number;
   subvendorCost: number;
-  luongChuyen: number;   // lương chuyến cho các lái xe trong KH này
+  luongChuyen: number; // lương chuyến cho các lái xe trong KH này
   driverCount: number;
   contByType: Record<string, number>;
 }
 
-export interface DriverRevenue {
-  driverId: number;
-  fullName: string;
+/**
+ * Doanh thu gom theo XE (biển số). `vehicleId` = id tài khoản lái xe giữ biển
+ * (chủ xe). Khi tài xế mượn xe chạy, doanh thu tính về xe thực chạy
+ * (`submission.actual_vehicle_id`).
+ */
+export interface VehicleRevenue {
+  vehicleId: number;
+  fullName: string; // chủ xe / lái xe chính
   username: string;
   soXe: string;
   soMooc: string;
@@ -62,11 +70,61 @@ export interface DriverRevenue {
   sdt: string;
   ngayHoatDong: string | null;
   revenue: number;
-  luongKhoan: number;   // lương khoán theo chuyến (tính đúng từ submissions)
+  luongKhoan: number; // lương khoán theo chuyến (tính đúng từ submissions)
   planCount: number;
   totalPlanCount: number;
-  totalCont: number;    // tổng sản lượng (container đã ghi nhận) của lái xe trong tháng
-  routes: { routeName: string; revenue: number; planCount: number; contCount: number; contByType: Record<string, number> }[];
+  totalCont: number; // tổng sản lượng (container đã ghi nhận) của xe trong tháng
+  routes: {
+    routeName: string;
+    revenue: number;
+    planCount: number;
+    contCount: number;
+    contByType: Record<string, number>;
+  }[];
+}
+
+/** 1 tài xế đóng góp lương vào 1 xe (lái chính hoặc lái phụ mượn xe). */
+export interface VehicleSalaryDriver {
+  driverId: number;
+  fullName: string;
+  /** true = tài xế là chủ xe (lái chính), false = lái phụ mượn xe. */
+  isMain: boolean;
+  luongNguoiLai: number;
+  bhxhCty: number;
+  luongKhoan: number;
+  luongCung: number;
+  chuyenCan: number;
+  tip: number;
+  phuCap: number;
+  itemSumAdd: number;
+  itemSumDeduct: number;
+  bhxhNld: number;
+  chiHo: number;
+  advanceDeduct: number;
+}
+
+/** Chi phí lương gom theo XE: lương lái chính + các lái phụ mượn xe. */
+export interface VehicleCostRow {
+  vehicleId: number;
+  soXe: string;
+  soMooc: string;
+  fullName: string; // chủ xe / lái chính
+  stt: string;
+  ngayHoatDong: string | null;
+  luongNguoiLai: number;
+  bhxhCty: number;
+  luongKhoan: number;
+  luongCung: number;
+  chuyenCan: number;
+  tip: number;
+  phuCap: number;
+  itemSumAdd: number;
+  itemSumDeduct: number;
+  bhxhNld: number;
+  chiHo: number;
+  advanceDeduct: number;
+  /** Danh sách tài xế đóng góp lương cho xe này (lái chính + lái phụ). */
+  drivers: VehicleSalaryDriver[];
 }
 
 export interface CustomerRevenue {
@@ -75,11 +133,17 @@ export interface CustomerRevenue {
   revenue: number;
   planCount: number;
   totalCont: number;
-  contByType: Record<string, number>;  // sản lượng theo loại container
-  // Chi tiết theo tuyến đường của khách này (giống `DriverRevenue.routes`,
+  contByType: Record<string, number>; // sản lượng theo loại container
+  // Chi tiết theo tuyến đường của khách này (giống `VehicleRevenue.routes`,
   // chỉ khác: lọc theo khách hàng thay vì theo lái xe). Doanh thu KHÔNG chia
   // đều như bên lái xe — đây là toàn bộ tiền khách trả cho tuyến đó.
-  routes: { routeName: string; revenue: number; planCount: number; contCount: number; contByType: Record<string, number> }[];
+  routes: {
+    routeName: string;
+    revenue: number;
+    planCount: number;
+    contCount: number;
+    contByType: Record<string, number>;
+  }[];
 }
 
 export interface DailyRevenue {
@@ -100,33 +164,36 @@ export interface DashboardOverview {
   revenue: {
     total: number;
     byCustomer: CustomerRevenue[];
-    byDriver: DriverRevenue[];
-    byDay: DailyRevenue[];     // biểu đồ theo ngày
+    byVehicle: VehicleRevenue[];
+    byDay: DailyRevenue[]; // biểu đồ theo ngày
   };
   cost: {
     subvendor: number;
-    luongChuyen: number;       // tổng lương khoán/chuyến
-    luongNguoiLai: number;     // tổng THỰC NHẬN của lái xe (theo bảng lương)
-    bhxhCty: number;           // BHXH phần CÔNG TY đóng (21,5% lương cứng)
+    luongChuyen: number; // tổng lương khoán/chuyến
+    luongNguoiLai: number; // tổng THỰC NHẬN của lái xe (theo bảng lương)
+    bhxhCty: number; // BHXH phần CÔNG TY đóng (21,5% lương cứng)
     suaChua: number;
     nhienLieu: number;
     cpKhac: number;
     total: number;
     profit: number;
-    /** Chi phí lương + BHXH công ty theo từng lái xe (để lọc ở tab Tổng quan và popup chi tiết lương) */
-    byDriver?: { driverId: number; fullName: string; soXe: string; luongNguoiLai: number; bhxhCty: number; luongKhoan: number; luongCung: number; chuyenCan: number; tip: number; phuCap: number; itemSumAdd: number; itemSumDeduct: number; bhxhNld: number; chiHo: number; advanceDeduct: number }[];
+    /** Chi phí lương + BHXH công ty theo từng XE (lái chính + lái phụ mượn xe). */
+    byVehicle?: VehicleCostRow[];
     // Chi tiết từng khoản chi phí của tháng, nhóm theo category
     // (để bấm card Sửa chữa / Nhiên liệu / CP Khác hiện danh sách).
-    items: Record<string, {
-      id: number;
-      itemDate: string | null;
-      vehicleUserId: number | null;
-      vehicleLabel: string;
-      name: string;
-      amount: number;
-      note: string | null;
-      createdByName: string;
-    }[]>;
+    items: Record<
+      string,
+      {
+        id: number;
+        itemDate: string | null;
+        vehicleUserId: number | null;
+        vehicleLabel: string;
+        name: string;
+        amount: number;
+        note: string | null;
+        createdByName: string;
+      }[]
+    >;
   };
   investment: {
     vonXe: number;
@@ -134,16 +201,19 @@ export interface DashboardOverview {
     vonKhac: number;
     total: number;
     // Chi tiết vốn đầu tư (cộng dồn) theo nhóm, để lọc theo xe.
-    items: Record<string, {
-      id: number;
-      itemDate: string | null;
-      vehicleUserId: number | null;
-      vehicleLabel: string;
-      name: string;
-      amount: number;
-      note: string | null;
-      createdByName: string;
-    }[]>;
+    items: Record<
+      string,
+      {
+        id: number;
+        itemDate: string | null;
+        vehicleUserId: number | null;
+        vehicleLabel: string;
+        name: string;
+        amount: number;
+        note: string | null;
+        createdByName: string;
+      }[]
+    >;
   };
   /** Xe thuộc sở hữu của tài khoản đang xem (để lọc theo xe). */
   /** Được phép chọn xem theo bên (supper_admin / finance.all). */
@@ -167,24 +237,35 @@ export interface DashboardOverview {
 export class DashboardService {
   constructor(
     @InjectRepository(ShippingLine) private slRepo: Repository<ShippingLine>,
-    @InjectRepository(Submission)   private subRepo: Repository<Submission>,
-    @InjectRepository(ContainerImport) private ciRepo: Repository<ContainerImport>,
-    @InjectRepository(Customer)     private customerRepo: Repository<Customer>,
-    @InjectRepository(CustomerPrice) private priceRepo: Repository<CustomerPrice>,
-    @InjectRepository(CustomerSurcharge) private surchargeRepo: Repository<CustomerSurcharge>,
-    @InjectRepository(SalaryRecord) private salaryRepo: Repository<SalaryRecord>,
-    @InjectRepository(User)         private userRepo: Repository<User>,
-    @InjectRepository(Route)        private routeRepo: Repository<Route>,
-    @InjectRepository(FinanceEntry) private financeRepo: Repository<FinanceEntry>,
-    @InjectRepository(FinanceCostItem) private costItemRepo: Repository<FinanceCostItem>,
+    @InjectRepository(Submission) private subRepo: Repository<Submission>,
+    @InjectRepository(ContainerImport)
+    private ciRepo: Repository<ContainerImport>,
+    @InjectRepository(Customer) private customerRepo: Repository<Customer>,
+    @InjectRepository(CustomerPrice)
+    private priceRepo: Repository<CustomerPrice>,
+    @InjectRepository(CustomerSurcharge)
+    private surchargeRepo: Repository<CustomerSurcharge>,
+    @InjectRepository(SalaryRecord)
+    private salaryRepo: Repository<SalaryRecord>,
+    @InjectRepository(User) private userRepo: Repository<User>,
+    @InjectRepository(Route) private routeRepo: Repository<Route>,
+    @InjectRepository(FinanceEntry)
+    private financeRepo: Repository<FinanceEntry>,
+    @InjectRepository(FinanceCostItem)
+    private costItemRepo: Repository<FinanceCostItem>,
     private salaryService: SalaryService,
   ) {}
 
-  async getOverview(month: number, year: number, user?: any, benParam?: string): Promise<DashboardOverview> {
+  async getOverview(
+    month: number,
+    year: number,
+    user?: any,
+    benParam?: string,
+  ): Promise<DashboardOverview> {
     const pad = (n: number) => String(n).padStart(2, '0');
     const fromDate = `${year}-${pad(month)}-01`;
-    const lastDay  = new Date(year, month, 0).getDate();
-    const toDate   = `${year}-${pad(month)}-${pad(lastDay)}`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const toDate = `${year}-${pad(month)}-${pad(lastDay)}`;
 
     // 0. Danh sách xe (lái xe) mà tài khoản này được phép xem.
     //    null = xem tất cả (admin/supper_admin hoặc tài khoản không giới hạn xe).
@@ -193,16 +274,24 @@ export class DashboardService {
     // 0b. Lọc theo BÊN (A/B) — chỉ supper_admin hoặc quyền finance.all.
     //     Bên của xe suy ra từ chủ vốn sở hữu xe (users.ben + visible_driver_ids),
     //     xe không thuộc chủ vốn nào → bên 'A' (giống tab Tài chính).
-    const canPickBen = user?.role === 'supper_admin' || hasPermission(user, 'finance.all');
-    const normBen = (v?: string | null) => (v || '').trim().toUpperCase() || 'A';
+    const canPickBen =
+      user?.role === 'supper_admin' || hasPermission(user, 'finance.all');
+    const normBen = (v?: string | null) =>
+      (v || '').trim().toUpperCase() || 'A';
     const owners = await this.userRepo.find({
       where: { role: In(['admin', 'supper_admin']) },
       order: { id: 'ASC' },
     });
     const benOptions = Array.from(
-      new Set(['A', ...owners.filter((o) => (o.ben || '').trim()).map((o) => normBen(o.ben))]),
+      new Set([
+        'A',
+        ...owners
+          .filter((o) => (o.ben || '').trim())
+          .map((o) => normBen(o.ben)),
+      ]),
     ).sort();
-    const benSel = canPickBen && benParam && benParam.trim() ? normBen(benParam) : null;
+    const benSel =
+      canPickBen && benParam && benParam.trim() ? normBen(benParam) : null;
     let benOwnerIds: number[] | null = null;
     if (benSel) {
       const driverBen = new Map<number, string>();
@@ -215,8 +304,12 @@ export class DashboardService {
         }
       }
       const drivers = await this.userRepo.find({ where: { role: 'laixe' } });
-      visible = drivers.filter((d) => normBen(driverBen.get(d.id)) === benSel).map((d) => d.id);
-      benOwnerIds = owners.filter((o) => normBen(o.ben) === benSel).map((o) => o.id);
+      visible = drivers
+        .filter((d) => normBen(driverBen.get(d.id)) === benSel)
+        .map((d) => d.id);
+      benOwnerIds = owners
+        .filter((o) => normBen(o.ben) === benSel)
+        .map((o) => o.id);
     }
 
     // 1. Kế hoạch trong tháng
@@ -246,12 +339,13 @@ export class DashboardService {
         };
         const visibleSet = new Set(visible);
         plans = plans.filter(
-          (sl) => sl.allDrivers || planDriverIds(sl).some((id) => visibleSet.has(id)),
+          (sl) =>
+            sl.allDrivers || planDriverIds(sl).some((id) => visibleSet.has(id)),
         );
       }
     }
 
-    const planIds = plans.map(p => p.id);
+    const planIds = plans.map((p) => p.id);
 
     // 2. Containers của các kế hoạch (lọc theo xe được phép xem nếu có).
     //    Khi bị giới hạn xe: CHỈ lấy container đã gán cho xe của họ — container
@@ -277,9 +371,9 @@ export class DashboardService {
             visible === null
               ? '1=1'
               : visible.length === 0
-              ? '1=0'
-              // Lọc theo xe thực chạy: hoặc actualVehicle nằm trong visible, hoặc user nằm trong visible và không có actualVehicle
-              : '(sub.actual_vehicle_id IN (:...visible) OR (sub.actual_vehicle_id IS NULL AND u.id IN (:...visible)))',
+                ? '1=0'
+                : // Lọc theo xe thực chạy: hoặc actualVehicle nằm trong visible, hoặc user nằm trong visible và không có actualVehicle
+                  '(sub.actual_vehicle_id IN (:...visible) OR (sub.actual_vehicle_id IS NULL AND u.id IN (:...visible)))',
             visible && visible.length > 0 ? { visible } : {},
           )
           .getMany()
@@ -293,7 +387,11 @@ export class DashboardService {
           .where('sub.shippingLineId IN (:...ids)', { ids: planIds })
           .andWhere('u.role = :laixeRole', { laixeRole: 'laixe' })
           .andWhere(
-            visible === null ? '1=1' : visible.length === 0 ? '1=0' : 'sub.userId IN (:...visible)',
+            visible === null
+              ? '1=1'
+              : visible.length === 0
+                ? '1=0'
+                : 'sub.userId IN (:...visible)',
             visible && visible.length > 0 ? { visible } : {},
           )
           .getMany()
@@ -305,17 +403,21 @@ export class DashboardService {
     for (const r of allRoutes) routeMap.set(r.name, r);
 
     // 5. Giá khách hàng & phụ phí
-    const allPrices     = await this.priceRepo.find({ where: { month, year } });
-    const allSurcharges = await this.surchargeRepo.find({ where: { month, year, active: true } });
+    const allPrices = await this.priceRepo.find({ where: { month, year } });
+    const allSurcharges = await this.surchargeRepo.find({
+      where: { month, year, active: true },
+    });
 
     // 6. Customers
     const allCustomers = await this.customerRepo.find();
-    const customerMap  = new Map<number, Customer>();
+    const customerMap = new Map<number, Customer>();
     for (const c of allCustomers) customerMap.set(c.id, c);
 
     // 7. Users
-    const allUsers = await this.userRepo.find({ where: { role: 'laixe' } as any });
-    const userMap  = new Map<number, User>();
+    const allUsers = await this.userRepo.find({
+      where: { role: 'laixe' },
+    });
+    const userMap = new Map<number, User>();
     for (const u of allUsers) userMap.set(u.id, u);
 
     // 7b. Chi phí LƯƠNG LÁI XE = TỔNG THỰC NHẬN theo bảng lương tháng (đã gồm
@@ -326,19 +428,19 @@ export class DashboardService {
     );
     const netSalaryByDriver = new Map<number, number>();
     const bhxhCtyByDriver = new Map<number, number>();
-    // Lưu toàn bộ record lương chi tiết để đưa vào byDriver
+    // Lưu toàn bộ record lương chi tiết để đưa vào byVehicle
     const salaryRecordMap = new Map<number, any>();
     try {
       const salRes = await this.salaryService.getRecords(month, year);
       for (const r of salRes?.records || []) {
-        const id = Number((r as any).driverId);
+        const id = Number(r.driverId);
         if (!Number.isFinite(id)) continue;
-        netSalaryByDriver.set(id, Number((r as any).total) || 0);
+        netSalaryByDriver.set(id, Number(r.total) || 0);
         bhxhCtyByDriver.set(
           id,
-          (r as any).hasBhxh
+          r.hasBhxh
             ? Math.round(
-                ((Number((r as any).fixedSalary) || 0) * COMPANY_BHXH_PERCENT) / 100,
+                ((Number(r.fixedSalary) || 0) * COMPANY_BHXH_PERCENT) / 100,
               )
             : 0,
         );
@@ -347,52 +449,11 @@ export class DashboardService {
     } catch {
       // Bảng lương lỗi → coi như 0, không làm sập dashboard.
     }
-    const costByDriver: {
-      driverId: number;
-      fullName: string;
-      soXe: string;
-      luongNguoiLai: number;
-      bhxhCty: number;
-      // Chi tiết các thành phần lương
-      luongKhoan: number;
-      luongCung: number;
-      chuyenCan: number;
-      tip: number;
-      phuCap: number;     // tổng phụ cấp (xa nhà, chờ hàng, xe cũ, bãi)
-      itemSumAdd: number;
-      itemSumDeduct: number;
-      bhxhNld: number;    // BHXH người lao động tự đóng
-      chiHo: number;
-      advanceDeduct: number;
-    }[] = [];
     let totalLuongNguoiLai = 0;
     let totalBhxhCty = 0;
     for (const d of scopedDrivers) {
-      const net = netSalaryByDriver.get(d.id) ?? 0;
-      const bh = bhxhCtyByDriver.get(d.id) ?? 0;
-      totalLuongNguoiLai += net;
-      totalBhxhCty += bh;
-      const rec = salaryRecordMap.get(d.id);
-      costByDriver.push({
-        driverId: d.id,
-        fullName: d.fullName || '',
-        soXe: (d as any).soXe || '',
-        luongNguoiLai: net,
-        bhxhCty: bh,
-        luongKhoan: Number(rec?.luongKhoan) || 0,
-        luongCung: Number(rec?.fixedSalary) || 0,
-        chuyenCan: Number(rec?.chuyenCan) || 0,
-        tip: Number(rec?.tip) || 0,
-        phuCap: (Number(rec?.allowanceFarHome) || 0) +
-                (Number(rec?.allowanceWaitLoading) || 0) +
-                (Number(rec?.allowanceOldCar) || 0) +
-                (Number(rec?.parkingHph2) || 0),
-        itemSumAdd: Number(rec?.itemSumAdd) || 0,
-        itemSumDeduct: Number(rec?.itemSumDeduct) || 0,
-        bhxhNld: Number(rec?.bhxh) || 0,
-        chiHo: Number(rec?.chiHo) || 0,
-        advanceDeduct: Number(rec?.advanceDeduct) || 0,
-      });
+      totalLuongNguoiLai += netSalaryByDriver.get(d.id) ?? 0;
+      totalBhxhCty += bhxhCtyByDriver.get(d.id) ?? 0;
     }
 
     // ─── Helper: Tính doanh thu theo customer price (ưu tiên đơn giá deal đã duyệt của kế hoạch) ──────────────
@@ -404,26 +465,39 @@ export class DashboardService {
     ): number => {
       if (!day) return 0;
       // Nếu kế hoạch đã duyệt giá deal → dùng dealed_prices kể cả khi không có customer_id
-      const usePlanPrice = !!plan && plan.priceStatus === 'approved' && !!plan.dealedPrices;
+      const usePlanPrice =
+        !!plan && plan.priceStatus === 'approved' && !!plan.dealedPrices;
       if (!customerId && !usePlanPrice) return 0;
-      const myPrices     = customerId ? allPrices.filter(p => p.customerId === customerId && day >= p.fromDay && day <= p.toDay) : [];
-      const mySurcharges = customerId ? allSurcharges.filter(s => s.customerId === customerId && day >= s.fromDay && day <= s.toDay) : [];
+      const myPrices = customerId
+        ? allPrices.filter(
+            (p) =>
+              p.customerId === customerId && day >= p.fromDay && day <= p.toDay,
+          )
+        : [];
+      const mySurcharges = customerId
+        ? allSurcharges.filter(
+            (s) =>
+              s.customerId === customerId && day >= s.fromDay && day <= s.toDay,
+          )
+        : [];
       const countByType: Record<string, number> = {};
-      for (const ci of conts) countByType[ci.type] = (countByType[ci.type] ?? 0) + 1;
+      for (const ci of conts)
+        countByType[ci.type] = (countByType[ci.type] ?? 0) + 1;
       let total = 0;
       for (const [type, count] of Object.entries(countByType)) {
         let unit = 0;
         if (usePlanPrice) {
-          unit = Number((plan as ShippingLine).dealedPrices![type]) || 0;
+          unit = Number(plan.dealedPrices![type]) || 0;
         } else {
-          const price = myPrices.find(p => p.containerType === type);
+          const price = myPrices.find((p) => p.containerType === type);
           unit = price ? Number(price.unitPrice) : 0;
         }
         total += unit * count;
       }
       for (const sur of mySurcharges) {
         if (sur.calcType === 'add') total += Number(sur.value);
-        else if (sur.calcType === 'percent') total += total * (Number(sur.value) / 100);
+        else if (sur.calcType === 'percent')
+          total += total * (Number(sur.value) / 100);
       }
       return total;
     };
@@ -431,7 +505,7 @@ export class DashboardService {
     // ─── Helper: Tính lương khoán cho 1 submission ───────────────
     const calcSubSalary = (sub: Submission, sl: ShippingLine): number => {
       const routeName = sub.route || sl.routeName || '';
-      const rt        = routeMap.get(routeName);
+      const rt = routeMap.get(routeName);
       if (!rt) return 0;
       // effectiveDate check
       if (rt.effectiveDate && sl.ngay && sl.ngay < rt.effectiveDate) return 0;
@@ -443,8 +517,14 @@ export class DashboardService {
       const v20fr = parseFloat(sub.vo20fr) || 0;
       const v40fr = parseFloat(sub.vo40fr) || 0;
       const vsl = parseFloat(sub.veSinhLai) || 0;
-      const kv  = parseFloat(sub.keoVe) || 0;
-      const tong = h20 + h40 + Math.ceil(v20 / 2) + v40 + Math.ceil(v20fr / 8) + Math.ceil(v40fr / 4);
+      const kv = parseFloat(sub.keoVe) || 0;
+      const tong =
+        h20 +
+        h40 +
+        Math.ceil(v20 / 2) +
+        v40 +
+        Math.ceil(v20fr / 8) +
+        Math.ceil(v40fr / 4);
       const heSo = sl.leTet ? 3 : sl.tangCuong ? 1.15 : 1;
       return donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
     };
@@ -467,11 +547,49 @@ export class DashboardService {
     }
 
     // ─── Accumulation maps ───────────────────────────────────────
-    const customerRevenueMap = new Map<number, { name: string; revenue: number; planCount: number; totalCont: number; contByType: Record<string, number>; routes: Map<string, { revenue: number; planCount: number; contCount: number; contByType: Record<string, number> }> }>();
-    const driverRevenueMap   = new Map<number, { revenue: number; luongKhoan: number; planCount: number; totalCont: number; routes: Map<string, { revenue: number; planCount: number; contCount: number; contByType: Record<string, number> }> }>();
-    const dailyRevenueMap    = new Map<number, { revenue: number; planCount: number }>(); // day → revenue
+    const customerRevenueMap = new Map<
+      number,
+      {
+        name: string;
+        revenue: number;
+        planCount: number;
+        totalCont: number;
+        contByType: Record<string, number>;
+        routes: Map<
+          string,
+          {
+            revenue: number;
+            planCount: number;
+            contCount: number;
+            contByType: Record<string, number>;
+          }
+        >;
+      }
+    >();
+    const driverRevenueMap = new Map<
+      number,
+      {
+        revenue: number;
+        luongKhoan: number;
+        planCount: number;
+        totalCont: number;
+        routes: Map<
+          string,
+          {
+            revenue: number;
+            planCount: number;
+            contCount: number;
+            contByType: Record<string, number>;
+          }
+        >;
+      }
+    >();
+    const dailyRevenueMap = new Map<
+      number,
+      { revenue: number; planCount: number }
+    >(); // day → revenue
 
-    let totalRevenue   = 0;
+    let totalRevenue = 0;
     let totalSubvendor = 0;
     let totalLuongChuyen = 0;
 
@@ -479,9 +597,9 @@ export class DashboardService {
     const planSummaries: PlanSummary[] = [];
 
     for (const plan of plans) {
-      const day   = dayOfDate(plan.ngay);
+      const day = dayOfDate(plan.ngay);
       const conts = contsByPlan.get(plan.id) ?? [];
-      const subs  = subsByPlan.get(plan.id) ?? [];
+      const subs = subsByPlan.get(plan.id) ?? [];
 
       // Kế hoạch "all_drivers" (phân công cho tất cả) LUÔN hiện cho mọi admin
       // vì bao gồm cả xe của họ. Chỉ loại bỏ kế hoạch chỉ định đích danh người khác
@@ -503,17 +621,21 @@ export class DashboardService {
 
       // Container breakdown
       const contByType: Record<string, number> = {};
-      for (const ci of conts) contByType[ci.type] = (contByType[ci.type] ?? 0) + 1;
+      for (const ci of conts)
+        contByType[ci.type] = (contByType[ci.type] ?? 0) + 1;
 
       // Revenue từ khách hàng chính
       const revenue = calcRevenue(plan.customerId, day, conts, plan);
 
       // Chi phí subvendor
       let subvendorCost = 0;
-      const vendorName = plan.vendorKhac || (plan.vendor !== 'NW' ? plan.vendor : '');
+      const vendorName =
+        plan.vendorKhac || (plan.vendor !== 'NW' ? plan.vendor : '');
       if (vendorName) {
         const svCust = allCustomers.find(
-          c => c.type === 'subvendor' && c.name.trim().toLowerCase() === vendorName.trim().toLowerCase(),
+          (c) =>
+            c.type === 'subvendor' &&
+            c.name.trim().toLowerCase() === vendorName.trim().toLowerCase(),
         );
         if (svCust) subvendorCost = calcRevenue(svCust.id, day, conts, null);
       }
@@ -522,8 +644,8 @@ export class DashboardService {
       let luongChuyen = 0;
       for (const sub of subs) luongChuyen += calcSubSalary(sub, plan);
 
-      totalRevenue     += revenue;
-      totalSubvendor   += subvendorCost;
+      totalRevenue += revenue;
+      totalSubvendor += subvendorCost;
       totalLuongChuyen += luongChuyen;
 
       // Xe hiệu dụng (effective vehicle): nếu tài xế đang lái thay xe khác,
@@ -544,18 +666,29 @@ export class DashboardService {
 
       // Customer accumulation (toàn bộ plan, không chia)
       if (plan.customerId) {
-        const cust  = customerMap.get(plan.customerId);
-        const entry = customerRevenueMap.get(plan.customerId)
-          ?? { name: cust?.name ?? `KH#${plan.customerId}`, revenue: 0, planCount: 0, totalCont: 0, contByType: {}, routes: new Map() };
-        entry.revenue   += revenue;
+        const cust = customerMap.get(plan.customerId);
+        const entry = customerRevenueMap.get(plan.customerId) ?? {
+          name: cust?.name ?? `KH#${plan.customerId}`,
+          revenue: 0,
+          planCount: 0,
+          totalCont: 0,
+          contByType: {},
+          routes: new Map(),
+        };
+        entry.revenue += revenue;
         entry.planCount += 1;
         entry.totalCont += conts.length;
         for (const [t, n] of Object.entries(contByType)) {
           entry.contByType[t] = (entry.contByType[t] ?? 0) + n;
         }
 
-        const cRoute = entry.routes.get(plan.routeName) ?? { revenue: 0, planCount: 0, contCount: 0, contByType: {} };
-        cRoute.revenue   += revenue;
+        const cRoute = entry.routes.get(plan.routeName) ?? {
+          revenue: 0,
+          planCount: 0,
+          contCount: 0,
+          contByType: {},
+        };
+        cRoute.revenue += revenue;
         cRoute.planCount += 1;
         cRoute.contCount += conts.length;
         for (const [t, n] of Object.entries(contByType)) {
@@ -568,7 +701,7 @@ export class DashboardService {
       // Daily accumulation
       if (day) {
         const de = dailyRevenueMap.get(day) ?? { revenue: 0, planCount: 0 };
-        de.revenue   += revenue;
+        de.revenue += revenue;
         de.planCount += 1;
         dailyRevenueMap.set(day, de);
       }
@@ -577,31 +710,47 @@ export class DashboardService {
       // CỦA CHÍNH XE ĐÓ (không chia đều). Xe chạy nhiều/loại đắt → nhiều hơn.
       for (const [dId, driverConts] of contsByEffectiveDriver.entries()) {
         // Doanh thu từ đúng container của xe này trong plan này
-        const driverRevenue = calcRevenue(plan.customerId, day, driverConts, plan);
+        const driverRevenue = calcRevenue(
+          plan.customerId,
+          day,
+          driverConts,
+          plan,
+        );
 
-        const entry = driverRevenueMap.get(dId)
-          ?? { revenue: 0, luongKhoan: 0, planCount: 0, totalCont: 0, routes: new Map() };
-        entry.revenue   += driverRevenue;
+        const entry = driverRevenueMap.get(dId) ?? {
+          revenue: 0,
+          luongKhoan: 0,
+          planCount: 0,
+          totalCont: 0,
+          routes: new Map(),
+        };
+        entry.revenue += driverRevenue;
         entry.planCount += 1;
 
         // Lương khoán: tìm submission theo xe hiệu dụng (gốc hoặc lái thay)
-        const driverSub = subs.find(s => (s.actualVehicleId ?? s.userId) === dId);
+        const driverSub = subs.find(
+          (s) => (s.actualVehicleId ?? s.userId) === dId,
+        );
         if (driverSub) entry.luongKhoan += calcSubSalary(driverSub, plan);
 
         entry.totalCont += driverConts.length;
 
-        const routeEntry = entry.routes.get(plan.routeName)
-          ?? { revenue: 0, planCount: 0, contCount: 0, contByType: {} };
-        routeEntry.revenue    += driverRevenue;
-        routeEntry.planCount  += 1;
-        routeEntry.contCount  += driverConts.length;
+        const routeEntry = entry.routes.get(plan.routeName) ?? {
+          revenue: 0,
+          planCount: 0,
+          contCount: 0,
+          contByType: {},
+        };
+        routeEntry.revenue += driverRevenue;
+        routeEntry.planCount += 1;
+        routeEntry.contCount += driverConts.length;
         for (const ci of driverConts) {
-          routeEntry.contByType[ci.type] = (routeEntry.contByType[ci.type] ?? 0) + 1;
+          routeEntry.contByType[ci.type] =
+            (routeEntry.contByType[ci.type] ?? 0) + 1;
         }
         entry.routes.set(plan.routeName, routeEntry);
         driverRevenueMap.set(dId, entry);
       }
-
 
       planSummaries.push({
         id: plan.id,
@@ -614,58 +763,270 @@ export class DashboardService {
         vendorKhac: plan.vendorKhac,
         completed: plan.completed,
         totalCont: conts.length,
-        revenue:       Math.round(revenue),
+        revenue: Math.round(revenue),
         subvendorCost: Math.round(subvendorCost),
-        luongChuyen:   Math.round(luongChuyen),
+        luongChuyen: Math.round(luongChuyen),
         driverCount: contsByEffectiveDriver.size,
         contByType,
       });
     }
 
-    // ─── Build byDriver ──────────────────────────────────────────
-    const byDriver: DriverRevenue[] = [];
+    // ─── Build byVehicle (doanh thu gom theo xe) ─────────────────
+    const byVehicle: VehicleRevenue[] = [];
     for (const [dId, entry] of driverRevenueMap.entries()) {
       const u = userMap.get(dId);
-      byDriver.push({
-        driverId:  dId,
-        fullName:  u?.fullName ?? `Driver#${dId}`,
-        username:  u?.username ?? '',
-        soXe:      u?.soXe ?? '',
-        soMooc:    u?.soMooc ?? '',
-        stt:       u?.stt ?? '',
-        sdt:       u?.sdt ?? '',
+      byVehicle.push({
+        vehicleId: dId,
+        fullName: u?.fullName ?? `Xe#${dId}`,
+        username: u?.username ?? '',
+        soXe: u?.soXe ?? '',
+        soMooc: u?.soMooc ?? '',
+        stt: u?.stt ?? '',
+        sdt: u?.sdt ?? '',
         ngayHoatDong: u?.ngayHoatDong ?? null,
-        revenue:   Math.round(entry.revenue),
+        revenue: Math.round(entry.revenue),
         luongKhoan: Math.round(entry.luongKhoan),
-        planCount:  entry.planCount,
+        planCount: entry.planCount,
         totalPlanCount: planSummaries.length,
-        totalCont:  entry.totalCont,
+        totalCont: entry.totalCont,
         routes: Array.from(entry.routes.entries())
-          .map(([routeName, r]) => ({ routeName, revenue: Math.round(r.revenue), planCount: r.planCount, contCount: r.contCount, contByType: r.contByType }))
+          .map(([routeName, r]) => ({
+            routeName,
+            revenue: Math.round(r.revenue),
+            planCount: r.planCount,
+            contCount: r.contCount,
+            contByType: r.contByType,
+          }))
           .sort((a, b) => b.revenue - a.revenue),
       });
     }
-    byDriver.sort((a, b) => b.revenue - a.revenue);
+    byVehicle.sort((a, b) => b.revenue - a.revenue);
+
+    // ─── Build cost by VEHICLE ───────────────────────────────────
+    // Mỗi XE (biển số) là 1 dòng. Lương của lái xe CHÍNH (chủ xe) và các lái
+    // xe PHỤ (mượn xe — xác định qua `submission.actual_vehicle_id`) đều gộp
+    // về xe thực chạy. Nếu 1 tài xế chạy nhiều xe: lương chuyến chia theo
+    // từng xe, phần lương cứng/chuyên cần/phụ cấp gán về xe chạy nhiều nhất.
+    const planById = new Map<number, ShippingLine>();
+    for (const p of plans) planById.set(p.id, p);
+
+    const driverVehicleTrips = new Map<
+      number,
+      Map<number, { count: number; salary: number }>
+    >();
+    for (const sub of allSubmissions) {
+      const dId = sub.userId;
+      const vId = sub.actualVehicleId ?? sub.userId;
+      const plan = sub.shippingLineId
+        ? planById.get(sub.shippingLineId)
+        : undefined;
+      const sal = plan ? calcSubSalary(sub, plan) : 0;
+      let m = driverVehicleTrips.get(dId);
+      if (!m) {
+        m = new Map();
+        driverVehicleTrips.set(dId, m);
+      }
+      const e = m.get(vId) ?? { count: 0, salary: 0 };
+      e.count += 1;
+      e.salary += sal;
+      m.set(vId, e);
+    }
+
+    const emptyComp = () => ({
+      luongNguoiLai: 0,
+      bhxhCty: 0,
+      luongKhoan: 0,
+      luongCung: 0,
+      chuyenCan: 0,
+      tip: 0,
+      phuCap: 0,
+      itemSumAdd: 0,
+      itemSumDeduct: 0,
+      bhxhNld: 0,
+      chiHo: 0,
+      advanceDeduct: 0,
+    });
+
+    const costByVehicleMap = new Map<number, VehicleCostRow>();
+    const ensureVehicleRow = (vid: number): VehicleCostRow => {
+      let row = costByVehicleMap.get(vid);
+      if (!row) {
+        const u = userMap.get(vid);
+        row = {
+          vehicleId: vid,
+          soXe: u?.soXe || '',
+          soMooc: u?.soMooc || '',
+          fullName: u?.fullName || `Xe#${vid}`,
+          stt: u?.stt || '',
+          ngayHoatDong: u?.ngayHoatDong ?? null,
+          ...emptyComp(),
+          drivers: [],
+        };
+        costByVehicleMap.set(vid, row);
+      }
+      return row;
+    };
+    // Đảm bảo mọi xe trong phạm vi xem đều có dòng (kể cả chưa có lương).
+    for (const d of scopedDrivers) ensureVehicleRow(d.id);
+
+    for (const d of scopedDrivers) {
+      const rec = salaryRecordMap.get(d.id);
+      const comp = {
+        luongNguoiLai: netSalaryByDriver.get(d.id) ?? 0,
+        bhxhCty: bhxhCtyByDriver.get(d.id) ?? 0,
+        luongKhoan: Number(rec?.luongKhoan) || 0,
+        luongCung: Number(rec?.fixedSalary) || 0,
+        chuyenCan: Number(rec?.chuyenCan) || 0,
+        tip: Number(rec?.tip) || 0,
+        phuCap:
+          (Number(rec?.allowanceFarHome) || 0) +
+          (Number(rec?.allowanceWaitLoading) || 0) +
+          (Number(rec?.allowanceOldCar) || 0) +
+          (Number(rec?.parkingHph2) || 0),
+        itemSumAdd: Number(rec?.itemSumAdd) || 0,
+        itemSumDeduct: Number(rec?.itemSumDeduct) || 0,
+        bhxhNld: Number(rec?.bhxh) || 0,
+        chiHo: Number(rec?.chiHo) || 0,
+        advanceDeduct: Number(rec?.advanceDeduct) || 0,
+      };
+
+      // Xe thực chạy của tài xế trong tháng (chỉ xe trong phạm vi xem).
+      const entries: { vid: number; count: number; salary: number }[] = [];
+      const trips = driverVehicleTrips.get(d.id);
+      if (trips) {
+        for (const [vid, t] of trips.entries()) {
+          if (visible === null || visible.includes(vid)) {
+            entries.push({ vid, count: t.count, salary: t.salary });
+          }
+        }
+      }
+
+      // Không có chuyến → toàn bộ lương về xe gốc của tài xế.
+      if (entries.length === 0) {
+        const row = ensureVehicleRow(d.id);
+        row.luongNguoiLai += comp.luongNguoiLai;
+        row.bhxhCty += comp.bhxhCty;
+        row.luongKhoan += comp.luongKhoan;
+        row.luongCung += comp.luongCung;
+        row.chuyenCan += comp.chuyenCan;
+        row.tip += comp.tip;
+        row.phuCap += comp.phuCap;
+        row.itemSumAdd += comp.itemSumAdd;
+        row.itemSumDeduct += comp.itemSumDeduct;
+        row.bhxhNld += comp.bhxhNld;
+        row.chiHo += comp.chiHo;
+        row.advanceDeduct += comp.advanceDeduct;
+        row.drivers.push({
+          driverId: d.id,
+          fullName: d.fullName || '',
+          isMain: true,
+          ...comp,
+        });
+        continue;
+      }
+
+      // Xe "chính" = xe chạy nhiều chuyến nhất (hòa → lương chuyến cao hơn → xe gốc).
+      let best = entries[0];
+      for (const e of entries) {
+        if (
+          e.count > best.count ||
+          (e.count === best.count && e.salary > best.salary) ||
+          (e.count === best.count && e.salary === best.salary && e.vid === d.id)
+        ) {
+          best = e;
+        }
+      }
+      const primaryVid = best.vid;
+
+      // Lương chuyến chia theo từng xe (tỷ lệ theo lương chuyến thực tế).
+      const totalTripSalary = entries.reduce((s, e) => s + e.salary, 0);
+      const parts = entries.map((e) => ({
+        vid: e.vid,
+        part:
+          totalTripSalary > 0
+            ? Math.round((comp.luongKhoan * e.salary) / totalTripSalary)
+            : 0,
+      }));
+      // Phần lẻ dồn về xe chính để tổng không đổi.
+      const assigned = parts.reduce((s, p) => s + p.part, 0);
+      const primaryPart = parts.find((p) => p.vid === primaryVid);
+      if (primaryPart) primaryPart.part += comp.luongKhoan - assigned;
+
+      const secondaryTrip = parts
+        .filter((p) => p.vid !== primaryVid)
+        .reduce((s, p) => s + p.part, 0);
+
+      for (const p of parts) {
+        const isPrimary = p.vid === primaryVid;
+        // Xe chính giữ toàn bộ lương cứng/phụ cấp/khấu trừ (trừ phần lương
+        // chuyến đã chia cho các xe phụ). Xe phụ chỉ nhận phần lương chuyến.
+        const contrib = isPrimary
+          ? {
+              ...comp,
+              luongKhoan: p.part,
+              luongNguoiLai: comp.luongNguoiLai - secondaryTrip,
+            }
+          : { ...emptyComp(), luongKhoan: p.part, luongNguoiLai: p.part };
+
+        const row = ensureVehicleRow(p.vid);
+        row.luongNguoiLai += contrib.luongNguoiLai;
+        row.bhxhCty += contrib.bhxhCty;
+        row.luongKhoan += contrib.luongKhoan;
+        row.luongCung += contrib.luongCung;
+        row.chuyenCan += contrib.chuyenCan;
+        row.tip += contrib.tip;
+        row.phuCap += contrib.phuCap;
+        row.itemSumAdd += contrib.itemSumAdd;
+        row.itemSumDeduct += contrib.itemSumDeduct;
+        row.bhxhNld += contrib.bhxhNld;
+        row.chiHo += contrib.chiHo;
+        row.advanceDeduct += contrib.advanceDeduct;
+        row.drivers.push({
+          driverId: d.id,
+          fullName: d.fullName || '',
+          isMain: p.vid === d.id,
+          ...contrib,
+        });
+      }
+    }
+
+    const costByVehicle = Array.from(costByVehicleMap.values()).sort(
+      (a, b) =>
+        (parseInt(a.stt) || 999999) - (parseInt(b.stt) || 999999) ||
+        a.soXe.localeCompare(b.soXe),
+    );
 
     // ─── Build byCustomer (include ALL active customers) ─────────
     // Chỉ include customers có doanh thu, sắp xếp giảm dần
-    const byCustomer: CustomerRevenue[] = Array.from(customerRevenueMap.entries())
+    const byCustomer: CustomerRevenue[] = Array.from(
+      customerRevenueMap.entries(),
+    )
       .map(([customerId, e]) => ({
         customerId,
         customerName: e.name,
-        revenue:    Math.round(e.revenue),
-        planCount:  e.planCount,
-        totalCont:  e.totalCont,
+        revenue: Math.round(e.revenue),
+        planCount: e.planCount,
+        totalCont: e.totalCont,
         contByType: e.contByType,
         routes: Array.from(e.routes.entries())
-          .map(([routeName, r]) => ({ routeName, revenue: Math.round(r.revenue), planCount: r.planCount, contCount: r.contCount, contByType: r.contByType }))
+          .map(([routeName, r]) => ({
+            routeName,
+            revenue: Math.round(r.revenue),
+            planCount: r.planCount,
+            contCount: r.contCount,
+            contByType: r.contByType,
+          }))
           .sort((a, b) => b.revenue - a.revenue),
       }))
       .sort((a, b) => b.revenue - a.revenue);
 
     // ─── Build byDay ─────────────────────────────────────────────
     const byDay: DailyRevenue[] = Array.from(dailyRevenueMap.entries())
-      .map(([day, d]) => ({ day, revenue: Math.round(d.revenue), planCount: d.planCount }))
+      .map(([day, d]) => ({
+        day,
+        revenue: Math.round(d.revenue),
+        planCount: d.planCount,
+      }))
       .sort((a, b) => a.day - b.day);
 
     // ─── Finance entries (chi phí + vốn đầu tư) — mỗi admin xem của mình ─
@@ -673,16 +1034,21 @@ export class DashboardService {
     // Đang lọc theo bên → gộp sổ tài chính của mọi chủ vốn thuộc bên đó.
     const scopeWhere: any = benOwnerIds
       ? { userId: In(benOwnerIds.length ? benOwnerIds : [-1]) }
-      : userId ? { userId } : {};
+      : userId
+        ? { userId }
+        : {};
 
     // Bản ghi của ĐÚNG tháng đang chọn (dùng cho 3 cột chi phí legacy).
     const monthFinance = await this.financeRepo.find({
       where: { ...scopeWhere, month, year },
     });
     const finance = {
-      suaChua:   monthFinance.reduce((s, e) => s + (Number(e.suaChua) || 0), 0),
-      nhienLieu: monthFinance.reduce((s, e) => s + (Number(e.nhienLieu) || 0), 0),
-      cpKhac:    monthFinance.reduce((s, e) => s + (Number(e.cpKhac) || 0), 0),
+      suaChua: monthFinance.reduce((s, e) => s + (Number(e.suaChua) || 0), 0),
+      nhienLieu: monthFinance.reduce(
+        (s, e) => s + (Number(e.nhienLieu) || 0),
+        0,
+      ),
+      cpKhac: monthFinance.reduce((s, e) => s + (Number(e.cpKhac) || 0), 0),
     };
 
     // MỌI bản ghi finance của user → để cộng dồn VỐN ĐẦU TƯ xuyên tháng.
@@ -715,18 +1081,20 @@ export class DashboardService {
     const cumLegacy = { vonXe: 0, vonMooc: 0, vonKhac: 0 };
     for (const e of allFinance) {
       if (e.year < year || (e.year === year && e.month <= month)) {
-        cumLegacy.vonXe   += Number((e as any).vonXe)   || 0;
+        cumLegacy.vonXe += Number((e as any).vonXe) || 0;
         cumLegacy.vonMooc += Number((e as any).vonMooc) || 0;
         cumLegacy.vonKhac += Number((e as any).vonKhac) || 0;
       }
     }
 
-    const suaChua   = Number(finance?.suaChua   ?? 0) + sumItems('suaChua', costRows);
-    const nhienLieu = Number(finance?.nhienLieu ?? 0) + sumItems('nhienLieu', costRows);
-    const cpKhac    = Number(finance?.cpKhac    ?? 0) + sumItems('cpKhac', costRows);
-    const vonXe     = cumLegacy.vonXe   + sumItems('vonXe', investRows);
-    const vonMooc   = cumLegacy.vonMooc + sumItems('vonMooc', investRows);
-    const vonKhac   = cumLegacy.vonKhac + sumItems('vonKhac', investRows);
+    const suaChua =
+      Number(finance?.suaChua ?? 0) + sumItems('suaChua', costRows);
+    const nhienLieu =
+      Number(finance?.nhienLieu ?? 0) + sumItems('nhienLieu', costRows);
+    const cpKhac = Number(finance?.cpKhac ?? 0) + sumItems('cpKhac', costRows);
+    const vonXe = cumLegacy.vonXe + sumItems('vonXe', investRows);
+    const vonMooc = cumLegacy.vonMooc + sumItems('vonMooc', investRows);
+    const vonKhac = cumLegacy.vonKhac + sumItems('vonKhac', investRows);
     const totalChiPhi = Math.round(
       totalSubvendor +
         totalLuongNguoiLai +
@@ -756,11 +1124,15 @@ export class DashboardService {
           note: i.note,
           createdByName: i.createdByName,
         }))
-        .sort((a, b) => String(b.itemDate || '').localeCompare(String(a.itemDate || '')));
+        .sort((a, b) =>
+          String(b.itemDate || '').localeCompare(String(a.itemDate || '')),
+        );
     const costItemsDetail: Record<string, ReturnType<typeof mapDetail>> = {};
-    for (const c of COST_CATEGORIES) costItemsDetail[c] = mapDetail(costRows, c);
+    for (const c of COST_CATEGORIES)
+      costItemsDetail[c] = mapDetail(costRows, c);
     const investItemsDetail: Record<string, ReturnType<typeof mapDetail>> = {};
-    for (const c of INVEST_CATEGORIES) investItemsDetail[c] = mapDetail(investRows, c);
+    for (const c of INVEST_CATEGORIES)
+      investItemsDetail[c] = mapDetail(investRows, c);
 
     // Xe thuộc sở hữu của tài khoản đang xem (để lọc chi phí / lợi nhuận / vốn theo xe).
     // - Tài khoản bị giới hạn `visibleDriverIds` → chỉ xe của họ.
@@ -783,37 +1155,37 @@ export class DashboardService {
       month,
       year,
       plans: {
-        total:      planSummaries.length,
-        completed:  planSummaries.filter(p => p.completed).length,
-        incomplete: planSummaries.filter(p => !p.completed).length,
+        total: planSummaries.length,
+        completed: planSummaries.filter((p) => p.completed).length,
+        incomplete: planSummaries.filter((p) => !p.completed).length,
         list: planSummaries,
       },
       revenue: {
         total: Math.round(totalRevenue),
         byCustomer,
-        byDriver,
+        byVehicle,
         byDay,
       },
       cost: {
-        subvendor:    Math.round(totalSubvendor),
-        luongChuyen:  Math.round(totalLuongChuyen),
+        subvendor: Math.round(totalSubvendor),
+        luongChuyen: Math.round(totalLuongChuyen),
         luongNguoiLai: Math.round(totalLuongNguoiLai),
-        bhxhCty:      Math.round(totalBhxhCty),
-        suaChua:      Math.round(suaChua),
-        nhienLieu:    Math.round(nhienLieu),
-        cpKhac:       Math.round(cpKhac),
-        total:        totalChiPhi,
-        profit:       Math.round(totalRevenue - totalChiPhi),
+        bhxhCty: Math.round(totalBhxhCty),
+        suaChua: Math.round(suaChua),
+        nhienLieu: Math.round(nhienLieu),
+        cpKhac: Math.round(cpKhac),
+        total: totalChiPhi,
+        profit: Math.round(totalRevenue - totalChiPhi),
         // Chi tiết từng khoản theo nhóm (để bấm card hiện danh sách)
         items: costItemsDetail,
-        // Chi phí lương + BHXH công ty theo từng lái xe (để lọc ở tab Tổng quan)
-        byDriver: costByDriver,
+        // Chi phí lương + BHXH công ty theo từng XE (lái chính + lái phụ mượn xe)
+        byVehicle: costByVehicle,
       },
       investment: {
-        vonXe:   Math.round(vonXe),
+        vonXe: Math.round(vonXe),
         vonMooc: Math.round(vonMooc),
         vonKhac: Math.round(vonKhac),
-        total:   Math.round(vonXe + vonMooc + vonKhac),
+        total: Math.round(vonXe + vonMooc + vonKhac),
         // Chi tiết vốn đầu tư (cộng dồn) theo nhóm, để lọc theo xe
         items: investItemsDetail,
       },

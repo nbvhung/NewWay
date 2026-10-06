@@ -1,4 +1,14 @@
-import { Controller, Post, Get, Body, Req, Res, UseGuards, HttpCode, UnauthorizedException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Req,
+  Res,
+  UseGuards,
+  HttpCode,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
@@ -16,7 +26,10 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   @Throttle({ default: { limit: 10, ttl: 60000 } })
-  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const result = await this.authService.login(dto.username, dto.password);
     this.setTokenCookies(res, result.accessToken, result.refreshToken);
     return { user: result.user };
@@ -50,7 +63,10 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(200)
   @UseGuards(AuthGuard('jwt-refresh'))
-  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const user = req.user as any;
     const result = await this.authService.refresh(user.id);
     this.setTokenCookies(res, result.accessToken, result.refreshToken);
@@ -86,7 +102,11 @@ export class AuthController {
     return { user };
   }
 
-  private setTokenCookies(res: Response, accessToken: string, refreshToken: string) {
+  private setTokenCookies(
+    res: Response,
+    accessToken: string,
+    refreshToken: string,
+  ) {
     const isProd = process.env.NODE_ENV === 'production';
     res.cookie('access_token', accessToken, {
       httpOnly: true,
@@ -106,8 +126,16 @@ export class AuthController {
 
   private clearTokenCookies(res: Response) {
     const isProd = process.env.NODE_ENV === 'production';
-    res.clearCookie('access_token', { path: '/', secure: isProd, sameSite: 'lax' });
-    res.clearCookie('refresh_token', { path: '/', secure: isProd, sameSite: 'lax' });
+    res.clearCookie('access_token', {
+      path: '/',
+      secure: isProd,
+      sameSite: 'lax',
+    });
+    res.clearCookie('refresh_token', {
+      path: '/',
+      secure: isProd,
+      sameSite: 'lax',
+    });
   }
 
   private extractToken(req: Request): string | null {

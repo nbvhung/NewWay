@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Index,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { User } from './user.entity';
 
 @Entity('zalo_scheduled_messages')
@@ -18,7 +27,13 @@ export class ZaloScheduledMessage {
   user: User | null;
 
   /** 'user' = gửi cho lái xe (theo user_id), 'group' = gửi cho nhóm Zalo (theo chat_id, bot 3). */
-  @Column({ name: 'target_type', type: 'varchar', length: 10, default: 'user', nullable: false })
+  @Column({
+    name: 'target_type',
+    type: 'varchar',
+    length: 10,
+    default: 'user',
+    nullable: false,
+  })
   targetType: 'user' | 'group';
 
   /** chat_id của nhóm khi target_type='group'. */
@@ -30,7 +45,12 @@ export class ZaloScheduledMessage {
   botIndex: number;
 
   /** Nếu true → sau khi gửi thành công, tự tạo record +24h (gửi hàng ngày). */
-  @Column({ name: 'repeat_daily', type: 'boolean', default: false, nullable: false })
+  @Column({
+    name: 'repeat_daily',
+    type: 'boolean',
+    default: false,
+    nullable: false,
+  })
   repeatDaily: boolean;
 
   /** Tin do cơ chế tự động (tin giao ca nhóm theo 2 mốc gần thời điểm ghi cont đầu). */

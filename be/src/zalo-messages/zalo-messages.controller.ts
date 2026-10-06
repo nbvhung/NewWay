@@ -1,10 +1,23 @@
-import { Controller, Get, Post, Delete, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Put,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ZaloMessagesService } from './zalo-messages.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Permissions } from '../common/decorators/permissions.decorator';
 import { SendZaloMessageDto } from './dto/send-zalo-message.dto';
-import { RenameZaloGroupDto, ScheduleZaloMessageDto } from './dto/schedule-zalo-message.dto';
+import {
+  RenameZaloGroupDto,
+  ScheduleZaloMessageDto,
+} from './dto/schedule-zalo-message.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('admin/zalo-messages')
@@ -15,7 +28,10 @@ export class ZaloMessagesController {
   @Get('conversations')
   @Permissions('zalo.chat')
   async conversations(@CurrentUser() user: any) {
-    const data = await this.zaloMessagesService.getConversations(user.role, user.visibleDriverIds);
+    const data = await this.zaloMessagesService.getConversations(
+      user.role,
+      user.visibleDriverIds,
+    );
     return { data };
   }
 
@@ -33,13 +49,19 @@ export class ZaloMessagesController {
   @Post('send')
   @Permissions('zalo.send')
   async send(@Body() dto: SendZaloMessageDto) {
-    const result = await this.zaloMessagesService.sendToUser(dto.userId, dto.text);
+    const result = await this.zaloMessagesService.sendToUser(
+      dto.userId,
+      dto.text,
+    );
     return { data: result };
   }
 
   @Post('schedule')
   @Permissions('zalo.schedule')
-  async schedule(@Body() dto: ScheduleZaloMessageDto, @CurrentUser() user: any) {
+  async schedule(
+    @Body() dto: ScheduleZaloMessageDto,
+    @CurrentUser() user: any,
+  ) {
     if (new Date(dto.sendAt).getTime() <= Date.now()) {
       return {
         data: { ok: false, error: 'Thời gian gửi phải ở tương lai' },
@@ -49,7 +71,10 @@ export class ZaloMessagesController {
     const groupTargets = dto.groupTargets || [];
     if (userTargets.length === 0 && groupTargets.length === 0) {
       return {
-        data: { ok: false, error: 'Vui lòng chọn ít nhất một người hoặc nhóm nhận' },
+        data: {
+          ok: false,
+          error: 'Vui lòng chọn ít nhất một người hoặc nhóm nhận',
+        },
       };
     }
     const result = await this.zaloMessagesService.scheduleMulti(

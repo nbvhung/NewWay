@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import {
-  dashboardApi, DashboardOverview, PlanSummary, DriverRevenue, CustomerRevenue, CostItemDetail, OwnedDriver,
+  dashboardApi, DashboardOverview, PlanSummary, VehicleRevenue, CustomerRevenue, CostItemDetail, OwnedDriver,
+  VehicleSalaryDriver,
 } from '@/lib/api-dashboard';
 
 const COST_LABEL: Record<string, string> = { suaChua: 'Sửa chữa', nhienLieu: 'Nhiên liệu', cpKhac: 'CP Khác' };
@@ -102,10 +103,10 @@ function PlanSheet({ plan, onClose }: { plan: PlanSummary; onClose: () => void }
 }
 
 /* ───────────────────────────────────────────────────────────────
-   DRIVER MODAL
+   VEHICLE MODAL — chi tiết doanh thu theo xe (biển số)
    ─────────────────────────────────────────────────────────────── */
-function DriverSheet({ d, totalP, onClose }: { d: DriverRevenue; totalP: number; onClose: () => void }) {
-  const ini = d.fullName.split(' ').map(w => w[0] ?? '').slice(-2).join('').toUpperCase();
+function VehicleSheet({ d, totalP, onClose }: { d: VehicleRevenue; totalP: number; onClose: () => void }) {
+  const ini = (d.soXe || d.fullName || 'X').split(' ').map(w => w[0] ?? '').slice(-2).join('').toUpperCase();
   const pp  = pc(d.planCount, totalP);
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/25" onClick={onClose}>
@@ -115,11 +116,12 @@ function DriverSheet({ d, totalP, onClose }: { d: DriverRevenue; totalP: number;
           <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-base font-bold flex-shrink-0"
             style={{ background: `linear-gradient(135deg,#fbbf24,${C.amber})` }}>{ini}</div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-[15px] font-bold leading-snug truncate">{d.fullName}</h3>
-            <p className="text-[10px] mt-0.5" style={{ color: C.muted }}>@{d.username}</p>
+            <p className="text-[10px]" style={{ color: C.muted }}>🚛 Xe</p>
+            <h3 className="text-[15px] font-bold leading-snug truncate">{d.soXe || d.fullName}</h3>
+            {d.fullName && <p className="text-[10px] mt-0.5" style={{ color: C.muted }}>Chủ xe: {d.fullName}</p>}
             <div className="flex gap-2 mt-1.5 flex-wrap">
-              {d.soXe  && <span className="text-[10px] px-2 py-0.5 rounded font-medium" style={{ background: C.amberLt, color: C.amberDk }}>{d.soXe}</span>}
-              {d.soMooc && <span className="text-[10px] px-2 py-0.5 rounded font-medium" style={{ background: '#f5f5f4', color: C.muted }}>{d.soMooc}</span>}
+              {d.soMooc && <span className="text-[10px] px-2 py-0.5 rounded font-medium" style={{ background: '#f5f5f4', color: C.muted }}>Mooc {d.soMooc}</span>}
+              {d.stt && <span className="text-[10px] px-2 py-0.5 rounded font-medium" style={{ background: '#f5f5f4', color: C.muted }}>STT {d.stt}</span>}
               {d.ngayHoatDong && <span className="text-[10px] px-2 py-0.5 rounded font-medium" style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' }}>📅 {d.ngayHoatDong}</span>}
             </div>
           </div>
@@ -333,30 +335,31 @@ function CostItemsSheet({ category, items, month, year, onClose }: {
 }
 
 /* ───────────────────────────────────────────────────────────────
-   DRIVER SALARY SHEET — popup chi tiết lương từng lái xe
-   Hiển thị danh sách lái xe + tổng thu nhập cty phải trả
-   Bấm vào từng dòng → expand chi tiết các khoản
+   VEHICLE SALARY SHEET — popup chi tiết lương theo XE (biển số)
+   Mỗi dòng = 1 xe. Lương gồm lái CHÍNH (chủ xe) + các lái PHỤ mượn xe.
+   Bấm vào từng dòng → expand chi tiết các khoản + danh sách tài xế.
    ─────────────────────────────────────────────────────────────── */
-type SalaryDriverRow = NonNullable<DashboardOverview['cost']['byDriver']>[number];
+type SalaryVehicleRow = NonNullable<DashboardOverview['cost']['byVehicle']>[number];
 
-function DriverSalarySheet({ rows, month, year, onClose }: {
-  rows: SalaryDriverRow[]; month: number; year: number; onClose: () => void;
+function VehicleSalarySheet({ rows, month, year, onClose }: {
+  rows: SalaryVehicleRow[]; month: number; year: number; onClose: () => void;
 }) {
   const [expanded, setExpanded] = useState<number | null>(null);
   // Tổng Cty chi = Thực nhận (net) + BHXH NLĐ (Cty nộp hộ) + BHXH Cty đóng = gross salary + BHXH Cty
-  const calcTotal = (r: SalaryDriverRow) => r.luongNguoiLai + r.bhxhNld + r.bhxhCty;
+  const calcTotal = (r: SalaryVehicleRow) => r.luongNguoiLai + r.bhxhNld + r.bhxhCty;
+  const driverTotal = (d: VehicleSalaryDriver) => d.luongNguoiLai + d.bhxhNld + d.bhxhCty;
   const totalAll = rows.reduce((s, r) => s + calcTotal(r), 0);
   const sortedRows = [...rows].sort((a, b) => calcTotal(b) - calcTotal(a));
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/25" onClick={onClose}>
-      <div className="dsh bg-white w-full sm:max-w-[580px] sm:rounded-xl rounded-t-xl overflow-hidden shadow-xl"
+      <div className="dsh bg-white w-full sm:max-w-[600px] sm:rounded-xl rounded-t-xl overflow-hidden shadow-xl"
         onClick={e => e.stopPropagation()} style={{ maxHeight: '92vh', overflowY: 'auto' }}>
         {/* Header */}
         <div className="px-5 pt-5 pb-4 flex justify-between gap-3" style={{ background: C.surface }}>
           <div className="min-w-0">
             <p className="text-[11px]" style={{ color: C.muted }}>Chi phí lương · {MONTHS_VN[month]}/{year}</p>
-            <h3 className="text-[16px] font-bold mt-0.5">👥 Lương Lái Xe</h3>
+            <h3 className="text-[16px] font-bold mt-0.5">🚛 Lương Theo Xe</h3>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded hover:bg-white/60 cursor-pointer text-stone-400 flex-shrink-0">✕</button>
         </div>
@@ -374,18 +377,19 @@ function DriverSalarySheet({ rows, month, year, onClose }: {
               <p className="text-[9px]" style={{ color: C.muted }}>₫</p>
             </div>
           </div>
-          <p className="text-[9px] mt-2" style={{ color: C.muted }}>* Tổng Cty chi = Lương gross + BHXH Cty đóng (bao gồm cả phần BHXH trừ vào lương nhân viên)</p>
+          <p className="text-[9px] mt-2" style={{ color: C.muted }}>* Mỗi xe gồm lương lái chính (chủ xe) + các lái phụ mượn xe. Tổng Cty chi = Lương gross + BHXH Cty đóng.</p>
         </div>
-        {/* Danh sách lái xe */}
+        {/* Danh sách xe */}
         <div className="px-5 py-3 space-y-2">
-          <p className="text-[11px] font-semibold mb-2" style={{ color: C.muted }}>{rows.length} lái xe · bấm để xem chi tiết</p>
+          <p className="text-[11px] font-semibold mb-2" style={{ color: C.muted }}>{rows.length} xe · bấm để xem chi tiết</p>
           {sortedRows.length === 0 ? (
             <p className="text-center py-8 text-[12px]" style={{ color: C.muted }}>Chưa có dữ liệu lương tháng này</p>
           ) : (
             sortedRows.map((r, i) => {
-              const ini = r.fullName.split(' ').map(w => w[0] ?? '').slice(-2).join('').toUpperCase();
+              const ini = (r.soXe || r.fullName || 'X').split(' ').map(w => w[0] ?? '').slice(-2).join('').toUpperCase();
               const total = calcTotal(r);
-              const isExp = expanded === r.driverId;
+              const isExp = expanded === r.vehicleId;
+              const subCount = r.drivers.filter(d => !d.isMain).length;
               const detailRows: [string, number, string, boolean][] = [
                 ['Lương khoán/chuyến', r.luongKhoan, C.amber, r.luongKhoan > 0],
                 ['Lương cứng', r.luongCung, C.ink, r.luongCung > 0],
@@ -401,9 +405,9 @@ function DriverSalarySheet({ rows, month, year, onClose }: {
               // Tổng Cty chi = thực nhận (gross - khấu trừ NLĐ) + BHXH NLĐ (công ty nộp hộ) + BHXH Cty
               const totalCty = r.luongNguoiLai + r.bhxhNld + r.bhxhCty;
               return (
-                <div key={r.driverId}>
+                <div key={r.vehicleId}>
                   <div
-                    onClick={() => setExpanded(isExp ? null : r.driverId)}
+                    onClick={() => setExpanded(isExp ? null : r.vehicleId)}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors hover:bg-stone-50"
                     style={{ border: `1px solid ${isExp ? C.amber : C.faint}`, background: isExp ? C.amberLt : undefined }}
                   >
@@ -412,10 +416,12 @@ function DriverSalarySheet({ rows, month, year, onClose }: {
                     {/* Avatar */}
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
                       style={{ background: `linear-gradient(135deg,#fbbf24,${C.amber})` }}>{ini}</div>
-                    {/* Name + xe */}
+                    {/* Biển số + chủ xe */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-semibold truncate">{r.fullName}</p>
-                      {r.soXe && <p className="text-[9px] mt-0.5" style={{ color: C.muted }}>🚛 {r.soXe}</p>}
+                      <p className="text-[12px] font-semibold truncate">🚛 {r.soXe || r.fullName}</p>
+                      <p className="text-[9px] mt-0.5 truncate" style={{ color: C.muted }}>
+                        {r.fullName}{subCount > 0 ? ` · ${subCount} lái phụ` : ''}
+                      </p>
                     </div>
                     {/* Tổng Cty chi */}
                     <div className="text-right flex-shrink-0">
@@ -444,6 +450,24 @@ function DriverSalarySheet({ rows, month, year, onClose }: {
                         <p className="text-[9px] mt-1.5" style={{ color: C.muted }}>
                           * Bao gồm BHXH NLĐ công ty nộp hộ ({fmt(r.bhxhNld)} ₫) + BHXH Cty đóng ({fmt(r.bhxhCty)} ₫)
                         </p>
+                        {/* Danh sách tài xế đóng góp */}
+                        {r.drivers.length > 0 && (
+                          <div className="mt-2.5 pt-2" style={{ borderTop: '1px dashed #fcd34d' }}>
+                            <p className="text-[10px] font-semibold mb-1" style={{ color: C.muted }}>Tài xế ({r.drivers.length})</p>
+                            {r.drivers.map((dv, k) => (
+                              <div key={k} className="flex justify-between items-center py-1">
+                                <span className="text-[11px] flex items-center gap-1.5 min-w-0" style={{ color: C.ink }}>
+                                  <span className="truncate">{dv.fullName}</span>
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0"
+                                    style={dv.isMain ? { background: C.amberLt, color: C.amberDk } : { background: C.blueLt, color: C.blue }}>
+                                    {dv.isMain ? 'Lái chính' : 'Lái phụ'}
+                                  </span>
+                                </span>
+                                <span className="text-[11px] font-semibold flex-shrink-0" style={{ color: C.red }}>{fmt(driverTotal(dv))} ₫</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -518,7 +542,7 @@ export function DashboardTab() {
 
   // popups for plan/driver/customer detail
   const [selP, setSelP] = useState<PlanSummary | null>(null);
-  const [selD, setSelD] = useState<DriverRevenue | null>(null);
+  const [selVehicle, setSelVehicle] = useState<VehicleRevenue | null>(null);
   const [selC, setSelC] = useState<CustomerRevenue | null>(null);
   const [selCost, setSelCost] = useState<string | null>(null);
   const [showDriverSalary, setShowDriverSalary] = useState(false);
@@ -568,8 +592,8 @@ export function DashboardTab() {
 
   /* ── Lọc theo xe (Chi phí / Lợi nhuận / Vốn đầu tư) ────────── */
   const ownedDrivers = data.ownedDrivers || [];
-  const driverRev = (id: number) =>
-    data.revenue.byDriver.find(d => d.driverId === id) || null;
+  const vehicleRev = (id: number) =>
+    data.revenue.byVehicle.find(d => d.vehicleId === id) || null;
   const sumCostItems = (cat: string, id: number) =>
     (data.cost.items?.[cat] ?? [])
       .filter(it => it.vehicleUserId === id)
@@ -687,7 +711,7 @@ export function DashboardTab() {
         {activeCard === 'revenue' && (() => {
           const sel = revenueDriver;
           const isAll = sel === '';
-          const drv = isAll ? null : driverRev(sel as number);
+          const drv = isAll ? null : vehicleRev(sel as number);
           return (
           <div className="p-5">
             <DriverFilterBar title="💰 Chi tiết Doanh Thu" drivers={ownedDrivers} value={revenueDriver} onChange={setRevenueDriver} />
@@ -696,7 +720,7 @@ export function DashboardTab() {
                 <div className="rounded-xl p-4 mb-4 flex items-center justify-between"
                   style={{ background: C.amberLt, border: `1px solid ${C.amber}30` }}>
                   <span className="text-[13px] font-semibold" style={{ color: C.amberDk }}>
-                    Doanh thu của {drv?.fullName || 'lái xe này'}
+                    Doanh thu của xe {drv?.soXe || drv?.fullName || 'này'}
                   </span>
                   <span className="text-[20px] font-extrabold" style={{ color: C.amber }}>{fmt(drv?.revenue || 0)} ₫</span>
                 </div>
@@ -766,17 +790,17 @@ export function DashboardTab() {
                 </div>
               </div>
 
-              {/* Theo lái xe */}
+              {/* Theo xe */}
               <div>
-                <p className="text-[12px] font-semibold mb-2" style={{ color: C.muted }}>Theo lái xe</p>
+                <p className="text-[12px] font-semibold mb-2" style={{ color: C.muted }}>Theo xe</p>
                 <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                  {data.revenue.byDriver.length === 0
+                  {data.revenue.byVehicle.length === 0
                     ? <p className="text-[12px] text-center py-6" style={{ color: C.muted }}>Chưa có dữ liệu</p>
-                    : data.revenue.byDriver.map((d, i) => {
-                        const ini = d.fullName.split(' ').map(w => w[0] ?? '').slice(-2).join('').toUpperCase();
-                        const w = pc(d.revenue, data.revenue.byDriver[0]?.revenue || 1);
+                    : data.revenue.byVehicle.map((d, i) => {
+                        const ini = (d.soXe || d.fullName).split(' ').map(w => w[0] ?? '').slice(-2).join('').toUpperCase();
+                        const w = pc(d.revenue, data.revenue.byVehicle[0]?.revenue || 1);
                         return (
-                          <div key={d.driverId} onClick={() => setSelD(d)}
+                          <div key={d.vehicleId} onClick={() => setSelVehicle(d)}
                             className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-stone-50 transition-colors"
                             style={{ border: `1px solid ${C.faint}` }}>
                             <span className="w-5 text-[11px] font-bold flex-shrink-0"
@@ -784,7 +808,7 @@ export function DashboardTab() {
                             <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
                               style={{ background: `linear-gradient(135deg,#fbbf24,${C.amber})` }}>{ini}</div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-[12px] font-semibold truncate">{d.fullName}</p>
+                              <p className="text-[12px] font-semibold truncate">🚛 {d.soXe || d.fullName}</p>
                               <div className="flex items-center gap-2 mt-0.5">
                                 <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: '#f5f5f4' }}>
                                   <div className="h-full rounded-full" style={{ width: `${w}%`, background: i === 0 ? C.amber : '#fcd34d' }} />
@@ -834,7 +858,7 @@ export function DashboardTab() {
           const isAll = sel === '';
           const costDrv = isAll
             ? null
-            : ((data.cost.byDriver ?? []).find(x => x.driverId === sel) ?? null);
+            : ((data.cost.byVehicle ?? []).find(x => x.vehicleId === sel) ?? null);
           const luong     = isAll ? data.cost.luongNguoiLai : (costDrv?.luongNguoiLai ?? 0);
           const bhxhCty   = isAll ? data.cost.bhxhCty       : (costDrv?.bhxhCty ?? 0);
           const subvendor = isAll ? data.cost.subvendor   : 0;
@@ -843,7 +867,7 @@ export function DashboardTab() {
           const cpKhac    = isAll ? data.cost.cpKhac      : sumCostItems('cpKhac', sel as number);
           const sum = luong + bhxhCty + subvendor + suaChua + nhienLieu + cpKhac;
           const tiles: [string, number, string, string, string][] = [
-            ['Lương lái xe', luong, C.amber, isAll ? '(bấm để xem chi tiết từng LX)' : '(thực nhận của xe)', isAll ? 'driverSalary' : ''],
+            ['Lương lái xe', luong, C.amber, isAll ? '(bấm để xem chi tiết từng xe)' : '(thực nhận của xe)', isAll ? 'driverSalary' : ''],
             ['BHXH (Cty đóng)', bhxhCty, '#0d9488', isAll ? '(21,5% lương cứng)' : '(xe này)', ''],
             ['Subvendor',    subvendor, C.red,     isAll ? '(phí thuê ngoài)'   : '(không gắn xe)', ''],
             ['Sửa chữa',    suaChua,   '#7c3aed', '(bấm để xem chi tiết)', 'suaChua'],
@@ -888,10 +912,10 @@ export function DashboardTab() {
         {activeCard === 'profit' && (() => {
           const sel = profitDriver;
           const isAll = sel === '';
-          const drv = isAll ? null : driverRev(sel as number);
+          const drv = isAll ? null : vehicleRev(sel as number);
           const costDrv = isAll
             ? null
-            : ((data.cost.byDriver ?? []).find(x => x.driverId === sel) ?? null);
+            : ((data.cost.byVehicle ?? []).find(x => x.vehicleId === sel) ?? null);
           const rev       = isAll ? revenue              : (drv?.revenue ?? 0);
           const luong     = isAll ? data.cost.luongNguoiLai : (costDrv?.luongNguoiLai ?? 0);
           const bhxhCty   = isAll ? data.cost.bhxhCty       : (costDrv?.bhxhCty ?? 0);
@@ -1199,7 +1223,7 @@ export function DashboardTab() {
 
       {/* Popups */}
       {selP && <PlanSheet plan={selP} onClose={() => setSelP(null)} />}
-      {selD && <DriverSheet d={selD} totalP={data.plans.total} onClose={() => setSelD(null)} />}
+      {selVehicle && <VehicleSheet d={selVehicle} totalP={data.plans.total} onClose={() => setSelVehicle(null)} />}
       {selC && <CustomerSheet c={selC} onClose={() => setSelC(null)} />}
       {selCost && (
         <CostItemsSheet
@@ -1213,8 +1237,8 @@ export function DashboardTab() {
         />
       )}
       {showDriverSalary && (
-        <DriverSalarySheet
-          rows={data.cost.byDriver ?? []}
+        <VehicleSalarySheet
+          rows={data.cost.byVehicle ?? []}
           month={data.month}
           year={data.year}
           onClose={() => setShowDriverSalary(false)}

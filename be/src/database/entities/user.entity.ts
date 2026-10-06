@@ -22,10 +22,22 @@ export class User {
   @Column({ name: 'role', length: 20, default: 'laixe' })
   role: string;
 
-  @Column({ name: 'permissions', type: 'text', array: true, nullable: true, default: null })
+  @Column({
+    name: 'permissions',
+    type: 'text',
+    array: true,
+    nullable: true,
+    default: null,
+  })
   permissions: string[] | null;
 
-  @Column({ name: 'visible_driver_ids', type: 'int', array: true, nullable: true, default: null })
+  @Column({
+    name: 'visible_driver_ids',
+    type: 'int',
+    array: true,
+    nullable: true,
+    default: null,
+  })
   visibleDriverIds: number[] | null;
 
   /**
@@ -33,7 +45,13 @@ export class User {
    * Xe thừa hưởng bên từ chủ vốn sở hữu nó (`visible_driver_ids`); xe không
    * thuộc chủ vốn nào → mặc định 'A'.
    */
-  @Column({ name: 'ben', type: 'varchar', length: 10, nullable: true, default: null })
+  @Column({
+    name: 'ben',
+    type: 'varchar',
+    length: 10,
+    nullable: true,
+    default: null,
+  })
   ben: string | null;
 
   @Column({ name: 'so_xe', length: 50, default: '' })
@@ -49,7 +67,12 @@ export class User {
   sdt: string;
 
   /** Ngày đi vào hoạt động (ISO date string YYYY-MM-DD). */
-  @Column({ name: 'ngay_hoat_dong', type: 'date', nullable: true, default: null })
+  @Column({
+    name: 'ngay_hoat_dong',
+    type: 'date',
+    nullable: true,
+    default: null,
+  })
   ngayHoatDong: string | null;
 
   @Column({
@@ -93,7 +116,12 @@ export class User {
    * NULL = đang lái xe gốc (users.id).
    * Được set bởi lệnh Zalo `/xe XXXXX` và reset khi tài xế nhắn lại `/xe` hoặc OPS reset.
    */
-  @Column({ name: 'current_vehicle_id', type: 'int', nullable: true, default: null })
+  @Column({
+    name: 'current_vehicle_id',
+    type: 'int',
+    nullable: true,
+    default: null,
+  })
   currentVehicleId: number | null;
 
   @CreateDateColumn({ name: 'created_at' })

@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Route } from '../database/entities/route.entity';
@@ -15,7 +19,9 @@ export class RoutesService {
   async findAll() {
     return this.routesRepository
       .createQueryBuilder('r')
-      .orderBy("CASE WHEN r.type = 'XT' THEN 1 WHEN r.type = 'CB' THEN 2 WHEN r.type = 'ĐH' THEN 3 ELSE 4 END")
+      .orderBy(
+        "CASE WHEN r.type = 'XT' THEN 1 WHEN r.type = 'CB' THEN 2 WHEN r.type = 'ĐH' THEN 3 ELSE 4 END",
+      )
       .addOrderBy('r.name', 'ASC')
       .getMany();
   }

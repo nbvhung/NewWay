@@ -140,7 +140,13 @@ export class FinanceService {
 
   /** Danh sách admin để chọn "nhập vốn cho ai" (chỉ role admin/supper_admin). */
   async listFinanceAdmins(): Promise<
-    { id: number; fullName: string; username: string; role: string; ben: string }[]
+    {
+      id: number;
+      fullName: string;
+      username: string;
+      role: string;
+      ben: string;
+    }[]
   > {
     const users = await this.usersRepo.find({
       where: { role: In(['admin', 'supper_admin']) },
@@ -207,7 +213,10 @@ export class FinanceService {
    * Danh sách xe để chọn khi nhập chi phí — CHỈ xe thuộc bên của bản ghi
    * đang xem (tách biệt hoàn toàn: bên A không thấy xe bên B).
    */
-  async listVehicles(actor: any, targetUserId?: number): Promise<VehicleOption[]> {
+  async listVehicles(
+    actor: any,
+    targetUserId?: number,
+  ): Promise<VehicleOption[]> {
     const { ben } = await this.resolveOwner(actor, targetUserId);
     const drivers = await this.usersRepo.find({
       where: { role: 'laixe' },
@@ -251,11 +260,16 @@ export class FinanceService {
    * - `targetUserId` (khác bản thân) → chỉ supper_admin được phép.
    * - Ngược lại → chính actor.
    */
-  private async resolveUserId(actor: any, targetUserId?: number): Promise<number> {
+  private async resolveUserId(
+    actor: any,
+    targetUserId?: number,
+  ): Promise<number> {
     const selfId: number = actor?.sub ?? actor?.id;
     if (targetUserId && targetUserId !== selfId) {
       if (!this.isSuperAdmin(actor)) {
-        throw new ForbiddenException('Chỉ supper_admin được xem/ghi dữ liệu của admin khác');
+        throw new ForbiddenException(
+          'Chỉ supper_admin được xem/ghi dữ liệu của admin khác',
+        );
       }
       return targetUserId;
     }
@@ -338,7 +352,7 @@ export class FinanceService {
     const allEntries = await this.repo.find({ where: scopeWhere });
     for (const e of allEntries) {
       if (e.year < year || (e.year === year && e.month <= month)) {
-        cumLegacy.vonXe   += num((e as any).vonXe);
+        cumLegacy.vonXe += num((e as any).vonXe);
         cumLegacy.vonMooc += num((e as any).vonMooc);
         cumLegacy.vonKhac += num((e as any).vonKhac);
       }
@@ -359,7 +373,7 @@ export class FinanceService {
       // ── Vốn đầu tư (3 nhóm) — CỘNG DỒN xuyên tháng ──
       investItems: investGrouped,
       investTotals: {
-        vonXe:   cumLegacy.vonXe   + sum(investGrouped, 'vonXe'),
+        vonXe: cumLegacy.vonXe + sum(investGrouped, 'vonXe'),
         vonMooc: cumLegacy.vonMooc + sum(investGrouped, 'vonMooc'),
         vonKhac: cumLegacy.vonKhac + sum(investGrouped, 'vonKhac'),
       },
@@ -367,7 +381,10 @@ export class FinanceService {
   }
 
   /** Ẩn chi phí nếu chưa xác thực mật khẩu. */
-  private stripCostIfNeeded(entry: FinanceEntry, includeCost: boolean): Partial<FinanceEntry> {
+  private stripCostIfNeeded(
+    entry: FinanceEntry,
+    includeCost: boolean,
+  ): Partial<FinanceEntry> {
     if (includeCost) return entry;
     return {
       id: entry.id,
@@ -545,7 +562,9 @@ export class FinanceService {
   /** Tên khoản chi kèm số xe để hiện trong lịch sử, vd "Thay nhớt (15C 04717)". */
   private async itemNameWithVehicle(item: FinanceCostItem): Promise<string> {
     if (!item.vehicleUserId) return item.name || '';
-    const v = await this.usersRepo.findOne({ where: { id: Number(item.vehicleUserId) } });
+    const v = await this.usersRepo.findOne({
+      where: { id: Number(item.vehicleUserId) },
+    });
     const label = v?.soXe || v?.fullName || `#${item.vehicleUserId}`;
     return item.name ? `${item.name} (${label})` : `(${label})`;
   }
@@ -571,8 +590,13 @@ export class FinanceService {
     if (dto.amount !== undefined) item.amount = Number(dto.amount) || 0;
     if (dto.note !== undefined) item.note = dto.note ?? null;
     if (dto.vehicleUserId !== undefined) {
-      const owner = await this.usersRepo.findOne({ where: { id: item.userId } });
-      await this.assertVehicleInBen(dto.vehicleUserId, this.normBen(owner?.ben));
+      const owner = await this.usersRepo.findOne({
+        where: { id: item.userId },
+      });
+      await this.assertVehicleInBen(
+        dto.vehicleUserId,
+        this.normBen(owner?.ben),
+      );
       item.vehicleUserId =
         dto.vehicleUserId === null ? null : Number(dto.vehicleUserId);
     }
@@ -580,20 +604,31 @@ export class FinanceService {
     const saved = await this.costRepo.save(item);
 
     if (Number(saved.amount) !== oldAmount) {
-      await this.writeAudit(item.month, item.year, item.userId, selfId, editorName, {
-        [item.category]: {
-          old: oldAmount,
-          new: Number(saved.amount) || 0,
-          action: 'UPDATE',
-          itemName: await this.itemNameWithVehicle(saved),
+      await this.writeAudit(
+        item.month,
+        item.year,
+        item.userId,
+        selfId,
+        editorName,
+        {
+          [item.category]: {
+            old: oldAmount,
+            new: Number(saved.amount) || 0,
+            action: 'UPDATE',
+            itemName: await this.itemNameWithVehicle(saved),
+          },
         },
-      });
+      );
     }
     return saved;
   }
 
   /** Xóa 1 khoản chi phí chi tiết. */
-  async deleteCostItem(id: number, actor: any, editorName: string): Promise<{ message: string }> {
+  async deleteCostItem(
+    id: number,
+    actor: any,
+    editorName: string,
+  ): Promise<{ message: string }> {
     const item = await this.costRepo.findOne({ where: { id } });
     if (!item) throw new NotFoundException('Không tìm thấy khoản chi phí');
     const selfId: number = actor?.sub ?? actor?.id;
@@ -603,14 +638,21 @@ export class FinanceService {
 
     const itemName = await this.itemNameWithVehicle(item);
     await this.costRepo.remove(item);
-    await this.writeAudit(item.month, item.year, item.userId, selfId, editorName, {
-      [item.category]: {
-        old: Number(item.amount) || 0,
-        new: 0,
-        action: 'DELETE',
-        itemName,
+    await this.writeAudit(
+      item.month,
+      item.year,
+      item.userId,
+      selfId,
+      editorName,
+      {
+        [item.category]: {
+          old: Number(item.amount) || 0,
+          new: 0,
+          action: 'DELETE',
+          itemName,
+        },
       },
-    });
+    );
     return { message: 'Đã xóa khoản chi phí' };
   }
 
@@ -624,11 +666,17 @@ export class FinanceService {
     userId: number,
     editedById: number | null,
     editedByName: string,
-    changes: Record<string, { old: number; new: number; action?: string; itemName?: string }>,
+    changes: Record<
+      string,
+      { old: number; new: number; action?: string; itemName?: string }
+    >,
   ): Promise<void> {
     if (Object.keys(changes).length === 0) return;
     const log = this.auditRepo.create({
-      month, year, userId, editedById: editedById ?? null,
+      month,
+      year,
+      userId,
+      editedById: editedById ?? null,
       editedByName: editedByName || '',
       changes: JSON.stringify(changes),
     });
@@ -657,7 +705,11 @@ export class FinanceService {
 
     // Quyền ghi vốn đầu tư: admin phải nhập mật mã; supper_admin được miễn.
     const touchesInvestment = INVEST_FIELDS.some((f) => dto[f] !== undefined);
-    if (touchesInvestment && !this.isSuperAdmin(actor) && !opts.investUnlocked) {
+    if (
+      touchesInvestment &&
+      !this.isSuperAdmin(actor) &&
+      !opts.investUnlocked
+    ) {
       throw new ForbiddenException('Cần nhập mật mã để nhập vốn đầu tư');
     }
 

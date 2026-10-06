@@ -24,25 +24,39 @@ describe('DeletePasswordGuard — bắt buộc mật khẩu cho mọi DELETE', (
   });
 
   it('method viết thường vẫn bị chặn (delete)', () => {
-    expect(() => guard.canActivate(ctx({ method: 'delete' }))).toThrow(ForbiddenException);
-  });
-
-  it('DELETE không nhập mật khẩu => 403', () => {
-    expect(() => guard.canActivate(ctx({ method: 'DELETE', headers: {}, query: {} }))).toThrow(
+    expect(() => guard.canActivate(ctx({ method: 'delete' }))).toThrow(
       ForbiddenException,
     );
   });
 
+  it('DELETE không nhập mật khẩu => 403', () => {
+    expect(() =>
+      guard.canActivate(ctx({ method: 'DELETE', headers: {}, query: {} })),
+    ).toThrow(ForbiddenException);
+  });
+
   it('DELETE sai mật khẩu => 403', () => {
     expect(() =>
-      guard.canActivate(ctx({ method: 'DELETE', headers: { 'x-cost-password': '123' }, query: {} })),
+      guard.canActivate(
+        ctx({
+          method: 'DELETE',
+          headers: { 'x-cost-password': '123' },
+          query: {},
+        }),
+      ),
     ).toThrow(ForbiddenException);
   });
 
   it('DELETE mật khẩu rỗng / toàn khoảng trắng => 403', () => {
     for (const value of ['', '   ']) {
       expect(() =>
-        guard.canActivate(ctx({ method: 'DELETE', headers: { 'x-cost-password': value }, query: {} })),
+        guard.canActivate(
+          ctx({
+            method: 'DELETE',
+            headers: { 'x-cost-password': value },
+            query: {},
+          }),
+        ),
       ).toThrow(ForbiddenException);
     }
   });
@@ -50,21 +64,31 @@ describe('DeletePasswordGuard — bắt buộc mật khẩu cho mọi DELETE', (
   it('DELETE đúng mật khẩu qua header => cho qua', () => {
     expect(
       guard.canActivate(
-        ctx({ method: 'DELETE', headers: { 'x-cost-password': ACTION_PASSWORD }, query: {} }),
+        ctx({
+          method: 'DELETE',
+          headers: { 'x-cost-password': ACTION_PASSWORD },
+          query: {},
+        }),
       ),
     ).toBe(true);
   });
 
   it('DELETE đúng mật khẩu qua query ?pw= => cho qua', () => {
     expect(
-      guard.canActivate(ctx({ method: 'DELETE', headers: {}, query: { pw: ACTION_PASSWORD } })),
+      guard.canActivate(
+        ctx({ method: 'DELETE', headers: {}, query: { pw: ACTION_PASSWORD } }),
+      ),
     ).toBe(true);
   });
 
   it('mật khẩu có khoảng trắng thừa vẫn chấp nhận (trim)', () => {
     expect(
       guard.canActivate(
-        ctx({ method: 'DELETE', headers: { 'x-cost-password': `  ${ACTION_PASSWORD} ` }, query: {} }),
+        ctx({
+          method: 'DELETE',
+          headers: { 'x-cost-password': `  ${ACTION_PASSWORD} ` },
+          query: {},
+        }),
       ),
     ).toBe(true);
   });
@@ -72,7 +96,11 @@ describe('DeletePasswordGuard — bắt buộc mật khẩu cho mọi DELETE', (
   it('header nhiều giá trị (mảng) lấy giá trị đầu', () => {
     expect(
       guard.canActivate(
-        ctx({ method: 'DELETE', headers: { 'x-cost-password': [ACTION_PASSWORD, 'x'] }, query: {} }),
+        ctx({
+          method: 'DELETE',
+          headers: { 'x-cost-password': [ACTION_PASSWORD, 'x'] },
+          query: {},
+        }),
       ),
     ).toBe(true);
   });
@@ -89,13 +117,21 @@ describe('DeletePasswordGuard — bắt buộc mật khẩu cho mọi DELETE', (
 
   it('query pw dạng mảng lấy giá trị đầu', () => {
     expect(
-      guard.canActivate(ctx({ method: 'DELETE', headers: {}, query: { pw: [ACTION_PASSWORD, 'x'] } })),
+      guard.canActivate(
+        ctx({
+          method: 'DELETE',
+          headers: {},
+          query: { pw: [ACTION_PASSWORD, 'x'] },
+        }),
+      ),
     ).toBe(true);
   });
 
   it('guard được đăng ký TOÀN CỤC trong AppModule (không thể quên cho endpoint mới)', () => {
     const src = readFileSync(join(__dirname, '../../app.module.ts'), 'utf8');
     expect(src).toContain('DeletePasswordGuard');
-    expect(src).toMatch(/provide:\s*APP_GUARD,\s*useClass:\s*DeletePasswordGuard/);
+    expect(src).toMatch(
+      /provide:\s*APP_GUARD,\s*useClass:\s*DeletePasswordGuard/,
+    );
   });
 });

@@ -23,7 +23,11 @@ export class ZaloOpsNotifierService {
       });
       for (const u of ops) {
         if (!u.zaloId) continue;
-        const sent = await this.zaloApi.sendMessage(u.zaloId, text, u.zaloBot ?? 0);
+        const sent = await this.zaloApi.sendMessage(
+          u.zaloId,
+          text,
+          u.zaloBot ?? 0,
+        );
         if (sent && u.id) {
           await this.zaloMessages.log(u.zaloId, u.id, 'bot', text);
         }

@@ -32,7 +32,12 @@ interface Db {
 }
 
 function inValues(cond: any): number[] | null {
-  if (cond && typeof cond === 'object' && '_type' in cond && cond._type === 'in') {
+  if (
+    cond &&
+    typeof cond === 'object' &&
+    '_type' in cond &&
+    cond._type === 'in'
+  ) {
     return (cond._value as any[]).map(Number);
   }
   return null;
@@ -69,7 +74,8 @@ function build(initial: Partial<Db> = {}) {
 
   const containerRepo: any = {
     findOne: jest.fn(
-      async ({ where }: any) => db.containers.find((c) => matchWhere(c, where)) ?? null,
+      async ({ where }: any) =>
+        db.containers.find((c) => matchWhere(c, where)) ?? null,
     ),
     find: jest.fn(async ({ where }: any = {}) =>
       db.containers.filter((c) => matchWhere(c, where)),
@@ -97,7 +103,8 @@ function build(initial: Partial<Db> = {}) {
       db.submissions.filter((s) => matchWhere(s, where)),
     ),
     findOne: jest.fn(
-      async ({ where }: any) => db.submissions.find((s) => matchWhere(s, where)) ?? null,
+      async ({ where }: any) =>
+        db.submissions.find((s) => matchWhere(s, where)) ?? null,
     ),
     create: jest.fn((v: any) => ({ ...v })),
     save: jest.fn(async (v: any) => v),
@@ -117,7 +124,8 @@ function build(initial: Partial<Db> = {}) {
       db.plans.filter((p) => matchWhere(p, where)),
     ),
     findOne: jest.fn(
-      async ({ where }: any) => db.plans.find((p) => matchWhere(p, where)) ?? null,
+      async ({ where }: any) =>
+        db.plans.find((p) => matchWhere(p, where)) ?? null,
     ),
   };
 
@@ -155,7 +163,16 @@ function build(initial: Partial<Db> = {}) {
     { syncForPlan: jest.fn(async () => undefined) } as any,
   );
 
-  return { svc, db, containerRepo, claimRepo, submissionRepo, historyRepo, planRepo, auditRepo };
+  return {
+    svc,
+    db,
+    containerRepo,
+    claimRepo,
+    submissionRepo,
+    historyRepo,
+    planRepo,
+    auditRepo,
+  };
 }
 
 const ACTOR = { id: 6, fullName: 'Mr Bach' };
@@ -178,7 +195,12 @@ function baseV40() {
       },
     ],
     claims: [
-      { id: 5003, containerImportId: 8832, submissionId: 1526, claimType: 'CLAIM' },
+      {
+        id: 5003,
+        containerImportId: 8832,
+        submissionId: 1526,
+        claimType: 'CLAIM',
+      },
     ],
     submissions: [
       {
@@ -225,7 +247,12 @@ describe('Xoá container → trừ sản lượng của lái xe', () => {
   it('cont có CLAIM + KV + KD2 → trừ đúng nhiều ô (Vỏ 40 x2, Kéo về x1)', async () => {
     const init = baseV40();
     init.claims = [
-      { id: 1, containerImportId: 8832, submissionId: 1526, claimType: 'CLAIM' },
+      {
+        id: 1,
+        containerImportId: 8832,
+        submissionId: 1526,
+        claimType: 'CLAIM',
+      },
       { id: 2, containerImportId: 8832, submissionId: 1526, claimType: 'KV' },
       { id: 3, containerImportId: 8832, submissionId: 1526, claimType: 'KD2' },
     ];
@@ -266,15 +293,41 @@ describe('Xoá container → trừ sản lượng của lái xe', () => {
     const { svc, db } = build({
       plans: [{ id: 1, name: 'P', completed: false }],
       containers: [
-        { id: 1, containerCode: 'AAAA1111111', type: 'H40', shippingLineId: 1, submissionId: 10, bundleId: null },
-        { id: 2, containerCode: 'BBBB2222222', type: 'V20', shippingLineId: 1, submissionId: 10, bundleId: null },
+        {
+          id: 1,
+          containerCode: 'AAAA1111111',
+          type: 'H40',
+          shippingLineId: 1,
+          submissionId: 10,
+          bundleId: null,
+        },
+        {
+          id: 2,
+          containerCode: 'BBBB2222222',
+          type: 'V20',
+          shippingLineId: 1,
+          submissionId: 10,
+          bundleId: null,
+        },
       ],
       claims: [
         { id: 1, containerImportId: 1, submissionId: 10, claimType: 'REGO' },
-        { id: 2, containerImportId: 2, submissionId: 10, claimType: 'CLASSIFY' },
+        {
+          id: 2,
+          containerImportId: 2,
+          submissionId: 10,
+          claimType: 'CLASSIFY',
+        },
       ],
       submissions: [
-        { id: 10, userId: 5, driverName: 'D', hang40: '2', vo20: '7', editCount: 0 },
+        {
+          id: 10,
+          userId: 5,
+          driverName: 'D',
+          hang40: '2',
+          vo20: '7',
+          editCount: 0,
+        },
       ],
     });
 
@@ -289,8 +342,22 @@ describe('Xoá container → trừ sản lượng của lái xe', () => {
     const { svc, db } = build({
       plans: [{ id: 1, name: 'P', completed: false }],
       containers: [
-        { id: 1, containerCode: 'AAAA1111111', type: 'V40FR', shippingLineId: 1, submissionId: 10, bundleId: 'B1' },
-        { id: 2, containerCode: 'BBBB2222222', type: 'V40FR', shippingLineId: 1, submissionId: 10, bundleId: 'B1' },
+        {
+          id: 1,
+          containerCode: 'AAAA1111111',
+          type: 'V40FR',
+          shippingLineId: 1,
+          submissionId: 10,
+          bundleId: 'B1',
+        },
+        {
+          id: 2,
+          containerCode: 'BBBB2222222',
+          type: 'V40FR',
+          shippingLineId: 1,
+          submissionId: 10,
+          bundleId: 'B1',
+        },
       ],
       claims: [
         { id: 1, containerImportId: 1, submissionId: 10, claimType: 'CLAIM' },
@@ -356,10 +423,38 @@ describe('Xoá container → trừ sản lượng của lái xe', () => {
     const { svc, db } = build({
       plans: [{ id: 317, name: 'VSL', completed: false }],
       containers: [
-        { id: 1, containerCode: 'AAAA1111111', type: 'V40', shippingLineId: 317, submissionId: 100, bundleId: null },
-        { id: 2, containerCode: 'BBBB2222222', type: 'V40', shippingLineId: 317, submissionId: 100, bundleId: null },
-        { id: 3, containerCode: 'CCCC3333333', type: 'V40', shippingLineId: 317, submissionId: 200, bundleId: null },
-        { id: 4, containerCode: 'DDDD4444444', type: 'V40', shippingLineId: 317, submissionId: null, bundleId: null },
+        {
+          id: 1,
+          containerCode: 'AAAA1111111',
+          type: 'V40',
+          shippingLineId: 317,
+          submissionId: 100,
+          bundleId: null,
+        },
+        {
+          id: 2,
+          containerCode: 'BBBB2222222',
+          type: 'V40',
+          shippingLineId: 317,
+          submissionId: 100,
+          bundleId: null,
+        },
+        {
+          id: 3,
+          containerCode: 'CCCC3333333',
+          type: 'V40',
+          shippingLineId: 317,
+          submissionId: 200,
+          bundleId: null,
+        },
+        {
+          id: 4,
+          containerCode: 'DDDD4444444',
+          type: 'V40',
+          shippingLineId: 317,
+          submissionId: null,
+          bundleId: null,
+        },
       ],
       claims: [
         { id: 1, containerImportId: 1, submissionId: 100, claimType: 'CLAIM' },

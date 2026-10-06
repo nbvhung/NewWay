@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { ZaloGroup } from '../database/entities/zalo-group.entity';
@@ -45,7 +50,9 @@ export class ZaloGroupAutoService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit() {
     if (!this.zaloApi.configured) {
-      this.logger.warn('Thiếu ZALO_BOT_TOKEN, tự động tin giao ca nhóm không chạy');
+      this.logger.warn(
+        'Thiếu ZALO_BOT_TOKEN, tự động tin giao ca nhóm không chạy',
+      );
       return;
     }
     this.stopped = false;

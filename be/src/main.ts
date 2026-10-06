@@ -28,7 +28,9 @@ async function bootstrap() {
   expressApp.set('trust proxy', 1);
 
   const allowedOrigins = new Set(
-    (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',').map(s => s.trim().toLowerCase())
+    (process.env.CORS_ORIGIN || 'http://localhost:3000')
+      .split(',')
+      .map((s) => s.trim().toLowerCase()),
   );
   app.enableCors({
     origin: (origin, callback) => {
@@ -55,4 +57,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-

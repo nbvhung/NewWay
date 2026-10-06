@@ -69,7 +69,14 @@ export class ZaloMessagesService {
   async getConversations(
     currentRole: string,
     visibleDriverIds?: number[] | null,
-  ): Promise<Array<{ userId: number; lastAt: Date; fullName: string | null; soXe: string | null }>> {
+  ): Promise<
+    Array<{
+      userId: number;
+      lastAt: Date;
+      fullName: string | null;
+      soXe: string | null;
+    }>
+  > {
     const allowedRoles = this.visibleRolesFor(currentRole);
 
     const qb = this.zaloMessagesRepository
@@ -84,7 +91,10 @@ export class ZaloMessagesService {
 
     // Giới hạn xe: null = không giới hạn, [] = không xe nào, [ids] = đúng các xe đó.
     // Chỉ role 'admin' mới bị giới hạn theo xe; ops/hr... xem tất cả.
-    const visible = resolveVisibleDriverIds({ role: currentRole, visibleDriverIds });
+    const visible = resolveVisibleDriverIds({
+      role: currentRole,
+      visibleDriverIds,
+    });
     if (visible !== null) {
       if (visible.length === 0) {
         // Bị khoá hoàn toàn → không hiện cuộc trò chuyện nào
@@ -124,7 +134,11 @@ export class ZaloMessagesService {
     if (!user.zaloId) {
       return { ok: false, error: 'Lái xe chưa liên kết Zalo' };
     }
-    const sent = await this.zaloApi.sendMessage(user.zaloId, text, user.zaloBot ?? 0);
+    const sent = await this.zaloApi.sendMessage(
+      user.zaloId,
+      text,
+      user.zaloBot ?? 0,
+    );
     if (!sent) {
       return { ok: false, error: 'Gửi tin nhắn thất bại' };
     }
@@ -138,7 +152,9 @@ export class ZaloMessagesService {
     sendAt: string,
     createdById: number,
   ): Promise<{ batchId: string; scheduled: number; skipped: string[] }> {
-    const users = await this.usersRepository.find({ where: { id: In(userIds) } });
+    const users = await this.usersRepository.find({
+      where: { id: In(userIds) },
+    });
     const batchId = randomUUID();
     const sendAtDate = new Date(sendAt);
     let scheduled = 0;
@@ -186,7 +202,9 @@ export class ZaloMessagesService {
 
     // Lái xe
     const userIds = userTargets.map((t) => t.userId);
-    const users = await this.usersRepository.find({ where: { id: In(userIds) } });
+    const users = await this.usersRepository.find({
+      where: { id: In(userIds) },
+    });
     for (const t of userTargets) {
       const u = users.find((x) => x.id === t.userId);
       if (!u) {
@@ -248,7 +266,9 @@ export class ZaloMessagesService {
 
   /** Đổi tên gợi nhớ cho một nhóm. */
   async renameGroup(chatId: string, name: string): Promise<ZaloGroup | null> {
-    const group = await this.zaloGroupsRepository.findOne({ where: { chatId } });
+    const group = await this.zaloGroupsRepository.findOne({
+      where: { chatId },
+    });
     if (!group) return null;
     group.name = name;
     return this.zaloGroupsRepository.save(group);
@@ -297,7 +317,9 @@ export class ZaloMessagesService {
       .getMany();
 
     const groups = await this.zaloGroupsRepository.find();
-    const groupName = new Map(groups.map((g) => [g.chatId, g.name || g.chatId]));
+    const groupName = new Map(
+      groups.map((g) => [g.chatId, g.name || g.chatId]),
+    );
 
     const grouped = new Map<string, Record<string, any>>();
     for (const row of rows) {
@@ -322,7 +344,13 @@ export class ZaloMessagesService {
           createdAt: row.createdAt,
           repeatDaily: row.repeatDaily,
           recipients: [entry],
-          counts: { pending: 0, processing: 0, sent: 0, failed: 0, cancelled: 0 },
+          counts: {
+            pending: 0,
+            processing: 0,
+            sent: 0,
+            failed: 0,
+            cancelled: 0,
+          },
         });
       } else {
         g.recipients.push(entry);
@@ -342,7 +370,9 @@ export class ZaloMessagesService {
       const nextPending = g.recipients
         .filter((r: any) => r.status === 'pending')
         .map((r: any) => new Date(r.sendAt).getTime());
-      g.nextSendAt = nextPending.length ? new Date(Math.min(...nextPending)) : null;
+      g.nextSendAt = nextPending.length
+        ? new Date(Math.min(...nextPending))
+        : null;
     }
     return Array.from(grouped.values());
   }
@@ -364,12 +394,14 @@ export class ZaloMessagesService {
       .createQueryBuilder()
       .update()
       .set({ status: 'processing' })
-      .where(`id IN (
+      .where(
+        `id IN (
         SELECT id FROM zalo_scheduled_messages
         WHERE status = 'pending' AND send_at <= NOW()
         FOR UPDATE SKIP LOCKED
         LIMIT 100
-      )`)
+      )`,
+      )
       .returning('*')
       .execute();
     const raw = (res.raw || []) as Array<Record<string, any>>;

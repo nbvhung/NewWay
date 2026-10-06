@@ -4,7 +4,10 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
-import { ACTION_PASSWORD, readActionPassword } from '../security/action-password';
+import {
+  ACTION_PASSWORD,
+  readActionPassword,
+} from '../security/action-password';
 
 /**
  * Chặn xoá nhầm: MỌI request `DELETE` của API đều phải kèm mật khẩu thao tác

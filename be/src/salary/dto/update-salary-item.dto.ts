@@ -12,7 +12,9 @@ export class CreateSalaryItemDto {
   @IsNotEmpty({ message: 'Tên khoản không được để trống' })
   name: string;
 
-  @IsIn(['add', 'deduct'], { message: 'Loại khoản phải là cộng thêm hoặc khấu trừ' })
+  @IsIn(['add', 'deduct'], {
+    message: 'Loại khoản phải là cộng thêm hoặc khấu trừ',
+  })
   kind: 'add' | 'deduct';
 
   @IsOptional()
@@ -33,7 +35,9 @@ export class UpdateSalaryItemDto {
   name?: string;
 
   @IsOptional()
-  @IsIn(['add', 'deduct'], { message: 'Loại khoản phải là cộng thêm hoặc khấu trừ' })
+  @IsIn(['add', 'deduct'], {
+    message: 'Loại khoản phải là cộng thêm hoặc khấu trừ',
+  })
   kind?: 'add' | 'deduct';
 
   @IsOptional()

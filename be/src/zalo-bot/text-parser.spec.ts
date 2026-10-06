@@ -14,14 +14,14 @@ describe('extractContainerCodes', () => {
     expect(extractContainerCodes('sau tam hai')).toEqual([]);
     expect(extractContainerCodes('3203')).toEqual(['3203']);
     expect(extractContainerCodes('68232')).toEqual(['68232']);
-    expect(extractContainerCodes('sau tam hai ba hai khong')).toEqual(['682320']);
+    expect(extractContainerCodes('sau tam hai ba hai khong')).toEqual([
+      '682320',
+    ]);
   });
 
   it('không trích mã từ số điện thoại 10 số', () => {
     expect(extractContainerCodes('0912345678')).toEqual([]);
-    expect(extractContainerCodes('dien thoai 0912345678 cua toi')).toEqual(
-      [],
-    );
+    expect(extractContainerCodes('dien thoai 0912345678 cua toi')).toEqual([]);
   });
 
   it('bỏ qua từ nhiễu khi đọc số', () => {
@@ -61,9 +61,9 @@ describe('extractContainerCodes', () => {
   });
 
   it('không trích khi văn bản không chứa số', () => {
-    expect(extractContainerCodes('HUN TRUNG / HUNTRUNG-DINHVU / HONDA')).toEqual(
-      [],
-    );
+    expect(
+      extractContainerCodes('HUN TRUNG / HUNTRUNG-DINHVU / HONDA'),
+    ).toEqual([]);
     expect(extractContainerCodes('xin chao ban')).toEqual([]);
   });
 

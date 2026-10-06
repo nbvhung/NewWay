@@ -8,7 +8,14 @@ import { FinanceService } from './finance.service';
 import { FinanceController } from './finance.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([FinanceEntry, FinanceAuditLog, FinanceCostItem, User])],
+  imports: [
+    TypeOrmModule.forFeature([
+      FinanceEntry,
+      FinanceAuditLog,
+      FinanceCostItem,
+      User,
+    ]),
+  ],
   providers: [FinanceService],
   controllers: [FinanceController],
   exports: [FinanceService],

@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  Index,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { User } from './user.entity';
 
 @Entity('zalo_messages')
@@ -6,7 +14,12 @@ export class ZaloMessage {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'zalo_user_id', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'zalo_user_id',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   zaloUserId: string | null;
 
   @Index('idx_zalo_messages_user')
@@ -23,7 +36,12 @@ export class ZaloMessage {
   @Column({ name: 'content', type: 'text', nullable: false })
   content: string;
 
-  @Column({ name: 'sent_by_admin', type: 'boolean', default: false, nullable: false })
+  @Column({
+    name: 'sent_by_admin',
+    type: 'boolean',
+    default: false,
+    nullable: false,
+  })
   sentByAdmin: boolean;
 
   @CreateDateColumn({ name: 'created_at' })

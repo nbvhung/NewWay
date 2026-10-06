@@ -62,7 +62,12 @@ export class FinanceCostItem {
   @Column({ name: 'created_by_id', type: 'int', nullable: true })
   createdById: number | null;
 
-  @Column({ name: 'created_by_name', type: 'varchar', length: 255, default: '' })
+  @Column({
+    name: 'created_by_name',
+    type: 'varchar',
+    length: 255,
+    default: '',
+  })
   createdByName: string;
 
   @CreateDateColumn({ name: 'created_at' })

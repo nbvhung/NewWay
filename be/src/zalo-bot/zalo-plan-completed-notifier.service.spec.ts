@@ -157,7 +157,15 @@ describe('ZaloPlanCompletedNotifierService — mẫu tin nhắn', () => {
 
     it('không có sản lượng → hiện "không có sản lượng", lương 0K', () => {
       const zero = {
-        h20: 0, h40: 0, v20: 0, v40: 0, v20fr: 0, v40fr: 0, vsl: 0, kv: 0, tip: 0,
+        h20: 0,
+        h40: 0,
+        v20: 0,
+        v40: 0,
+        v20fr: 0,
+        v40fr: 0,
+        vsl: 0,
+        kv: 0,
+        tip: 0,
       };
       const text = (makeService([]) as any).buildEndMessage(
         PLAN_NAME,
@@ -221,7 +229,15 @@ describe('ZaloPlanCompletedNotifierService — mẫu tin nhắn', () => {
   describe('notifyPlanEnd — gửi thật cho từng lái xe', () => {
     it('gửi tin có lương + câu 24h cho lái xe đã liên kết Zalo', async () => {
       const subs = [
-        sub({ userId: 11, hang20: '5', hang40: '3', vo20: '2', vo40: '1', veSinhLai: '1', tip: '200' }),
+        sub({
+          userId: 11,
+          hang20: '5',
+          hang40: '3',
+          vo20: '2',
+          vo40: '1',
+          veSinhLai: '1',
+          tip: '200',
+        }),
       ];
       const svc = makeService(subs, 500000) as any;
       const sent: { zaloId: string; text: string }[] = [];

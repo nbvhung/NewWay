@@ -16,10 +16,12 @@ describe('calculateAttendanceBonus', () => {
     expect(calculateAttendanceBonus(tripSalary)).toBe(expectedBonus);
   });
 
-  it.each(Array.from({ length: 30 }, (_, step) => [
-    15_500_000 + step * 500_000,
-    Math.min(1_500_000, (step + 1) * 50_000),
-  ]))('%i monthly trip salary gives %i bonus', (tripSalary, expectedBonus) => {
+  it.each(
+    Array.from({ length: 30 }, (_, step) => [
+      15_500_000 + step * 500_000,
+      Math.min(1_500_000, (step + 1) * 50_000),
+    ]),
+  )('%i monthly trip salary gives %i bonus', (tripSalary, expectedBonus) => {
     expect(calculateAttendanceBonus(tripSalary)).toBe(expectedBonus);
   });
 

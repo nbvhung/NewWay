@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, Res, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { SubmissionsService } from './submissions.service';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
@@ -15,7 +26,12 @@ export class SubmissionsController {
   @Post('submissions')
   @UseGuards(JwtAuthGuard)
   async create(@Body() dto: CreateSubmissionDto, @CurrentUser() user: any) {
-    const result = await this.submissionsService.create(dto, user.id, user.fullName || user.username, user);
+    const result = await this.submissionsService.create(
+      dto,
+      user.id,
+      user.fullName || user.username,
+      user,
+    );
     return { data: result };
   }
 
@@ -43,7 +59,11 @@ export class SubmissionsController {
     const now = new Date();
     const m = month ? parseInt(month) : now.getMonth() + 1;
     const y = year ? parseInt(year) : now.getFullYear();
-    const result = await this.submissionsService.getSalarySummary(user.id, m, y);
+    const result = await this.submissionsService.getSalarySummary(
+      user.id,
+      m,
+      y,
+    );
     return { data: result };
   }
 
@@ -54,7 +74,13 @@ export class SubmissionsController {
     @Body() dto: UpdateSubmissionDto,
     @CurrentUser() user: any,
   ) {
-    const result = await this.submissionsService.updateMy(+id, dto, user.id, user, user.fullName || user.username);
+    const result = await this.submissionsService.updateMy(
+      +id,
+      dto,
+      user.id,
+      user,
+      user.fullName || user.username,
+    );
     return { data: result };
   }
 
@@ -69,14 +95,18 @@ export class SubmissionsController {
     @Query('from_date') fromDate?: string,
     @Query('to_date') toDate?: string,
   ) {
-    const result = await this.submissionsService.findAll({
-      userId: userId ? +userId : undefined,
-      shippingLine,
-      shippingLineId: shippingLineId ? +shippingLineId : undefined,
-      fromDate,
-      toDate,
-      excludeCompleted: false,
-    }, user.role, user);
+    const result = await this.submissionsService.findAll(
+      {
+        userId: userId ? +userId : undefined,
+        shippingLine,
+        shippingLineId: shippingLineId ? +shippingLineId : undefined,
+        fromDate,
+        toDate,
+        excludeCompleted: false,
+      },
+      user.role,
+      user,
+    );
     return { data: result };
   }
 
@@ -88,7 +118,13 @@ export class SubmissionsController {
     @Body() dto: UpdateSubmissionDto,
     @CurrentUser() user: any,
   ) {
-    const result = await this.submissionsService.updateMy(+id, dto, user.id, user, user.fullName || user.username);
+    const result = await this.submissionsService.updateMy(
+      +id,
+      dto,
+      user.id,
+      user,
+      user.fullName || user.username,
+    );
     return { data: result };
   }
 

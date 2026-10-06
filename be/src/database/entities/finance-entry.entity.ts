@@ -28,23 +28,59 @@ export class FinanceEntry {
   userId: number;
 
   // ── Chi phí (dùng chung cho tất cả admin) ──────────────────
-  @Column({ name: 'sua_chua', type: 'decimal', precision: 18, scale: 0, default: 0 })
+  @Column({
+    name: 'sua_chua',
+    type: 'decimal',
+    precision: 18,
+    scale: 0,
+    default: 0,
+  })
   suaChua: number;
 
-  @Column({ name: 'nhien_lieu', type: 'decimal', precision: 18, scale: 0, default: 0 })
+  @Column({
+    name: 'nhien_lieu',
+    type: 'decimal',
+    precision: 18,
+    scale: 0,
+    default: 0,
+  })
   nhienLieu: number;
 
-  @Column({ name: 'cp_khac', type: 'decimal', precision: 18, scale: 0, default: 0 })
+  @Column({
+    name: 'cp_khac',
+    type: 'decimal',
+    precision: 18,
+    scale: 0,
+    default: 0,
+  })
   cpKhac: number;
 
   // ── Vốn đầu tư (mỗi admin nhập riêng) ──────────────────────
-  @Column({ name: 'von_xe', type: 'decimal', precision: 18, scale: 0, default: 0 })
+  @Column({
+    name: 'von_xe',
+    type: 'decimal',
+    precision: 18,
+    scale: 0,
+    default: 0,
+  })
   vonXe: number;
 
-  @Column({ name: 'von_mooc', type: 'decimal', precision: 18, scale: 0, default: 0 })
+  @Column({
+    name: 'von_mooc',
+    type: 'decimal',
+    precision: 18,
+    scale: 0,
+    default: 0,
+  })
   vonMooc: number;
 
-  @Column({ name: 'von_khac', type: 'decimal', precision: 18, scale: 0, default: 0 })
+  @Column({
+    name: 'von_khac',
+    type: 'decimal',
+    precision: 18,
+    scale: 0,
+    default: 0,
+  })
   vonKhac: number;
 
   @Column({ type: 'varchar', length: 500, nullable: true })

@@ -121,7 +121,10 @@ export class CustomersController {
     @Body() dto: CreateCustomerPriceDto,
     @CurrentUser() user: any,
   ) {
-    return this.customersService.createPrice(+id, dto, { id: user.id, fullName: user.fullName || user.username });
+    return this.customersService.createPrice(+id, dto, {
+      id: user.id,
+      fullName: user.fullName || user.username,
+    });
   }
 
   @Put(':id/prices/:priceId')
@@ -131,13 +134,19 @@ export class CustomersController {
     @Body() dto: UpdateCustomerPriceDto,
     @CurrentUser() user: any,
   ) {
-    return this.customersService.updatePrice(+priceId, dto, { id: user.id, fullName: user.fullName || user.username });
+    return this.customersService.updatePrice(+priceId, dto, {
+      id: user.id,
+      fullName: user.fullName || user.username,
+    });
   }
 
   @Delete(':id/prices/:priceId')
   @Permissions('customer.price')
   deletePrice(@Param('priceId') priceId: string, @CurrentUser() user: any) {
-    return this.customersService.deletePrice(+priceId, { id: user.id, fullName: user.fullName || user.username });
+    return this.customersService.deletePrice(+priceId, {
+      id: user.id,
+      fullName: user.fullName || user.username,
+    });
   }
 
   @Post(':id/prices/batch')
@@ -147,7 +156,10 @@ export class CustomersController {
     @Body() dto: CreateCustomerPriceBatchDto,
     @CurrentUser() user: any,
   ) {
-    return this.customersService.batchUpsertPrices(+id, dto, { id: user.id, fullName: user.fullName || user.username });
+    return this.customersService.batchUpsertPrices(+id, dto, {
+      id: user.id,
+      fullName: user.fullName || user.username,
+    });
   }
 
   @Delete(':id/prices/period')
@@ -194,7 +206,10 @@ export class CustomersController {
     @Body() dto: CreateCustomerSurchargeDto,
     @CurrentUser() user: any,
   ) {
-    return this.customersService.createSurcharge(+id, dto, { id: user.id, fullName: user.fullName || user.username });
+    return this.customersService.createSurcharge(+id, dto, {
+      id: user.id,
+      fullName: user.fullName || user.username,
+    });
   }
 
   @Put(':id/surcharges/:sid')
@@ -204,13 +219,19 @@ export class CustomersController {
     @Body() dto: UpdateCustomerSurchargeDto,
     @CurrentUser() user: any,
   ) {
-    return this.customersService.updateSurcharge(+sid, dto, { id: user.id, fullName: user.fullName || user.username });
+    return this.customersService.updateSurcharge(+sid, dto, {
+      id: user.id,
+      fullName: user.fullName || user.username,
+    });
   }
 
   @Delete(':id/surcharges/:sid')
   @Permissions('customer.surcharge')
   deleteSurcharge(@Param('sid') sid: string, @CurrentUser() user: any) {
-    return this.customersService.deleteSurcharge(+sid, { id: user.id, fullName: user.fullName || user.username });
+    return this.customersService.deleteSurcharge(+sid, {
+      id: user.id,
+      fullName: user.fullName || user.username,
+    });
   }
 
   // ─── Lịch sử thêm/sửa (chỉ admin) ──────────────────────────────
@@ -222,7 +243,9 @@ export class CustomersController {
 
   @Post(':id/dossier/upload')
   @Permissions('customer.dossier')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }),
+  )
   uploadDossierFile(
     @Param('id') id: string,
     @Query('month') month?: string,
@@ -231,9 +254,11 @@ export class CustomersController {
     @UploadedFile() file?: any,
   ) {
     const now = new Date();
-    const ft = (['invoice', 'bangKe', 'deNghi'].includes(fileType || '')
-      ? fileType
-      : 'invoice') as 'invoice' | 'bangKe' | 'deNghi';
+    const ft = (
+      ['invoice', 'bangKe', 'deNghi'].includes(fileType || '')
+        ? fileType
+        : 'invoice'
+    ) as 'invoice' | 'bangKe' | 'deNghi';
     return this.customersService.uploadDossierFile(
       +id,
       month ? +month : now.getMonth() + 1,
@@ -266,9 +291,11 @@ export class CustomersController {
     @Query('fileType') fileType?: string,
   ) {
     const now = new Date();
-    const ft = (['invoice', 'bangKe', 'deNghi'].includes(fileType || '')
-      ? fileType
-      : 'invoice') as 'invoice' | 'bangKe' | 'deNghi';
+    const ft = (
+      ['invoice', 'bangKe', 'deNghi'].includes(fileType || '')
+        ? fileType
+        : 'invoice'
+    ) as 'invoice' | 'bangKe' | 'deNghi';
     const result = await this.customersService.getDossierFile(
       +id,
       month ? +month : now.getMonth() + 1,

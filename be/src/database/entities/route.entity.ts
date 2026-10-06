@@ -1,4 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+} from 'typeorm';
 
 @Entity('routes')
 export class Route {
@@ -8,7 +13,13 @@ export class Route {
   @Column({ name: 'name', length: 255, unique: true, nullable: false })
   name: string;
 
-  @Column({ name: 'money', type: 'decimal', precision: 15, scale: 2, default: 0 })
+  @Column({
+    name: 'money',
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    default: 0,
+  })
   money: number;
 
   @Column({ name: 'effective_date', type: 'date', nullable: true })

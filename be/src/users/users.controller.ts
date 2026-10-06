@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -18,8 +28,17 @@ export class UsersController {
   //  - Chọn lái xe để chỉnh chi tiết Lương (vd hr)     → `salary.view` / `salary.manage`
   // Tab Tài khoản vẫn chỉ hiện khi có `user.view`/`tab.users`. Guard là any-of.
   @Get()
-  @Permissions('user.view', 'plan.create', 'plan.edit', 'salary.view', 'salary.manage')
-  findAll(@CurrentUser() user: any, @Query('forAssignment') forAssignment?: string) {
+  @Permissions(
+    'user.view',
+    'plan.create',
+    'plan.edit',
+    'salary.view',
+    'salary.manage',
+  )
+  findAll(
+    @CurrentUser() user: any,
+    @Query('forAssignment') forAssignment?: string,
+  ) {
     return this.usersService.findAll(user, {
       forAssignment: forAssignment === 'true' || forAssignment === '1',
     });
@@ -33,7 +52,11 @@ export class UsersController {
 
   @Put(':id')
   @Permissions('user.manage')
-  update(@Param('id') id: string, @Body() dto: UpdateUserDto, @CurrentUser() user: any) {
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+    @CurrentUser() user: any,
+  ) {
     return this.usersService.update(+id, dto, user.role, user.id, user);
   }
 
@@ -46,7 +69,17 @@ export class UsersController {
 
   @Delete(':id')
   @Permissions('user.manage')
-  remove(@Param('id') id: string, @Query('mode') mode: string, @CurrentUser() user: any) {
-    return this.usersService.remove(+id, user.role, user.id, mode, user.fullName);
+  remove(
+    @Param('id') id: string,
+    @Query('mode') mode: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.usersService.remove(
+      +id,
+      user.role,
+      user.id,
+      mode,
+      user.fullName,
+    );
   }
 }

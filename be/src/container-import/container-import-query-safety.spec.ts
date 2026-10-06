@@ -19,8 +19,14 @@ const LIMITED = { sub: 6, role: 'admin', visibleDriverIds: [10, 11, 13] };
 /** QueryBuilder giả: ghi lại mọi `where` / `andWhere` để soi chuỗi điều kiện. */
 function captureChain(sink: { where: string[]; andWhere: string[] }) {
   const chain: any = {
-    where: jest.fn((cond: string) => { sink.where.push(cond); return chain; }),
-    andWhere: jest.fn((cond: string) => { sink.andWhere.push(cond); return chain; }),
+    where: jest.fn((cond: string) => {
+      sink.where.push(cond);
+      return chain;
+    }),
+    andWhere: jest.fn((cond: string) => {
+      sink.andWhere.push(cond);
+      return chain;
+    }),
     orderBy: jest.fn(() => chain),
     addOrderBy: jest.fn(() => chain),
     take: jest.fn(() => chain),
@@ -61,7 +67,10 @@ function build() {
 }
 
 /** Điều kiện có ` OR ` thì BẮT BUỘC bọc ngoặc ngoài cùng. */
-function assertOrConditionsWrapped(sink: { where: string[]; andWhere: string[] }) {
+function assertOrConditionsWrapped(sink: {
+  where: string[];
+  andWhere: string[];
+}) {
   const all = [...sink.where, ...sink.andWhere];
   const withOr = all.filter((c) => /\bOR\b/i.test(c));
   expect(withOr.length).toBeGreaterThan(0);
@@ -98,7 +107,11 @@ describe('Container query — mọi điều kiện OR phải bọc ngoặc (ch�
 
   it('không giới hạn xe: KHÔNG sinh điều kiện OR nào (tránh lọc nhầm)', async () => {
     const { svc, sink } = build();
-    await svc.findAll(307, { sub: 4, role: 'supper_admin', visibleDriverIds: null } as any);
+    await svc.findAll(307, {
+      sub: 4,
+      role: 'supper_admin',
+      visibleDriverIds: null,
+    } as any);
     const all = [...sink.where, ...sink.andWhere];
     expect(all.some((c) => /\bOR\b/i.test(c))).toBe(false);
   });

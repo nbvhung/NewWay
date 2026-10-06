@@ -13,7 +13,15 @@ import { ZaloMessagesModule } from '../zalo-messages/zalo-messages.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ContainerImport, ContainerClaim, ContainerAuditLog, ShippingLine, Submission, User, EditHistory]),
+    TypeOrmModule.forFeature([
+      ContainerImport,
+      ContainerClaim,
+      ContainerAuditLog,
+      ShippingLine,
+      Submission,
+      User,
+      EditHistory,
+    ]),
     ZaloMessagesModule,
   ],
   controllers: [ContainerImportController],

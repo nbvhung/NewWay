@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { User } from './user.entity';
 import { ShippingLine } from './shipping-line.entity';
 
@@ -74,7 +82,12 @@ export class Submission {
    * NULL = lái xế đang dùng xe gốc của mình (userId == vehicle).
    * Dùng để tính doanh thu / BKS / Bên trong Dashboard và xuất Excel.
    */
-  @Column({ name: 'actual_vehicle_id', type: 'int', nullable: true, default: null })
+  @Column({
+    name: 'actual_vehicle_id',
+    type: 'int',
+    nullable: true,
+    default: null,
+  })
   actualVehicleId: number | null;
 
   @ManyToOne(() => User, { nullable: true, eager: false })

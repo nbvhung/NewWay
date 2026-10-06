@@ -93,7 +93,9 @@ export class ZaloApiService {
       );
       return !!(data && data.ok === true);
     } catch (err: any) {
-      this.logger.error(`deleteWebhook (bot ${botIndex}) failed: ${err.message}`);
+      this.logger.error(
+        `deleteWebhook (bot ${botIndex}) failed: ${err.message}`,
+      );
       return false;
     }
   }
@@ -104,7 +106,11 @@ export class ZaloApiService {
    * @param url   URL đầy đủ của webhook endpoint (https://...)
    * @param secret  Secret token để Zalo gửi kèm header (tuỳ chọn)
    */
-  async setWebhook(url: string, secret?: string, botIndex = 0): Promise<boolean> {
+  async setWebhook(
+    url: string,
+    secret?: string,
+    botIndex = 0,
+  ): Promise<boolean> {
     if (!this.token(botIndex)) return false;
     try {
       const body: Record<string, string> = { url };
@@ -114,7 +120,9 @@ export class ZaloApiService {
         body,
         { timeout: 15000 },
       );
-      this.logger.log(`setWebhook (bot ${botIndex}) → url=${url} result=${JSON.stringify(data)}`);
+      this.logger.log(
+        `setWebhook (bot ${botIndex}) → url=${url} result=${JSON.stringify(data)}`,
+      );
       return !!(data && data.ok === true);
     } catch (err: any) {
       this.logger.error(`setWebhook (bot ${botIndex}) failed: ${err.message}`);
@@ -128,7 +136,9 @@ export class ZaloApiService {
     botIndex = 0,
   ): Promise<boolean> {
     if (!this.token(botIndex)) {
-      this.logger.warn(`Bot ${botIndex} chưa cấu hình token, bỏ qua gửi tin: ${text}`);
+      this.logger.warn(
+        `Bot ${botIndex} chưa cấu hình token, bỏ qua gửi tin: ${text}`,
+      );
       return false;
     }
     if (await this.isMaintenanceMode()) {
@@ -162,7 +172,8 @@ export class ZaloApiService {
    */
   async sendAdminNotify(text: string): Promise<boolean> {
     const chatId = process.env.ZALO_ADMIN_NOTIFY_ZALO_ID || '';
-    const botIndex = parseInt(process.env.ZALO_ADMIN_NOTIFY_BOT_INDEX || '0', 10) || 0;
+    const botIndex =
+      parseInt(process.env.ZALO_ADMIN_NOTIFY_BOT_INDEX || '0', 10) || 0;
     if (!chatId) {
       this.logger.warn(
         `sendAdminNotify bỏ qua: thiếu ZALO_ADMIN_NOTIFY_ZALO_ID`,
@@ -232,7 +243,9 @@ export class ZaloApiService {
         if (Buffer.isBuffer(data)) return data;
         return Buffer.from(data);
       } catch (err: any) {
-        this.logger.warn(`downloadFile (bot ${botIndex}, ${mode}) failed: ${err.message}`);
+        this.logger.warn(
+          `downloadFile (bot ${botIndex}, ${mode}) failed: ${err.message}`,
+        );
       }
     }
     return null;

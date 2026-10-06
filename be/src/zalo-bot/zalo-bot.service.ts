@@ -5,10 +5,7 @@ import { ZaloApiService } from './zalo-api.service';
 import { ZaloSttService } from './zalo-stt.service';
 import { ZaloSessionService } from './zalo-session.service';
 import { RedisService } from '../redis/redis.service';
-import {
-  extractContainerCodes,
-  extractContainerPrefix,
-} from './text-parser';
+import { extractContainerCodes, extractContainerPrefix } from './text-parser';
 import { dailyLuckyNumber } from './lucky-number';
 import {
   TYPE_FIELD_MAP,
@@ -62,7 +59,10 @@ export class ZaloBotService {
   }
 
   private async isQuiet(zaloUserId: string): Promise<boolean> {
-    return !(await this.redis.markOnce(`zalo:quiet:${zaloUserId}`, QUIET_TTL_MS));
+    return !(await this.redis.markOnce(
+      `zalo:quiet:${zaloUserId}`,
+      QUIET_TTL_MS,
+    ));
   }
 
   constructor(
@@ -107,9 +107,7 @@ export class ZaloBotService {
    * user_id). Bỏ qua tài khoản đã xóa hoặc bị khóa (disabled). Khi tìm thấy
    * → khôi phục lại users.zalo_id để lái xe không phải gửi lại SĐT.
    */
-  private async recoverUserByZaloId(
-    zaloUserId: string,
-  ): Promise<User | null> {
+  private async recoverUserByZaloId(zaloUserId: string): Promise<User | null> {
     const row = await this.zaloMessagesRepository.findOne({
       where: { zaloUserId, userId: Not(IsNull()) },
       order: { createdAt: 'DESC' },
@@ -140,10 +138,7 @@ export class ZaloBotService {
     await this.zaloApi.sendMessage(chatId, text, this.botOf(zaloUserId));
   }
 
-  private async replySilent(
-    zaloUserId: string,
-    text: string,
-  ): Promise<void> {
+  private async replySilent(zaloUserId: string, text: string): Promise<void> {
     const userId = await this.resolveUserId(zaloUserId);
     await this.zaloMessagesService.log(zaloUserId, userId, 'bot', text);
   }
@@ -272,7 +267,10 @@ export class ZaloBotService {
         return;
       }
       await this.reply(chatId, zaloUserId, 'Đang nghe...');
-      const audio = await this.zaloApi.downloadFile(voiceUrl, this.botOf(zaloUserId));
+      const audio = await this.zaloApi.downloadFile(
+        voiceUrl,
+        this.botOf(zaloUserId),
+      );
       if (!audio) {
         await this.reply(
           chatId,
@@ -328,7 +326,11 @@ export class ZaloBotService {
         `trigger buon ngu tu ${zaloUserId} (voiceUrl=${voiceUrl ? 'set' : 'unset'})`,
       );
       if (voiceUrl) {
-        const sent = await this.zaloApi.sendVoice(chatId, voiceUrl, this.botOf(zaloUserId));
+        const sent = await this.zaloApi.sendVoice(
+          chatId,
+          voiceUrl,
+          this.botOf(zaloUserId),
+        );
         this.logger.log(`sendVoice result=${sent}`);
         if (!sent) {
           await this.reply(
@@ -634,9 +636,11 @@ export class ZaloBotService {
 
     const driverName =
       session.userFullName ||
-      (await this.usersRepository.findOne({
-        where: { zaloId: zaloUserId },
-      }))?.fullName ||
+      (
+        await this.usersRepository.findOne({
+          where: { zaloId: zaloUserId },
+        })
+      )?.fullName ||
       zaloUserId;
     if (!(await this.isQuiet(zaloUserId))) {
       // Bot 3 (index 2): không báo linh tinh — chỉ gửi tin theo lịch.
@@ -757,7 +761,10 @@ export class ZaloBotService {
     }
 
     // Parse 5 số cuối từ lệnh, ví dụ "/xe 01376" → "01376"
-    const match = rawText.trim().replace(/^\/xe\s*/i, '').replace(/\D/g, '');
+    const match = rawText
+      .trim()
+      .replace(/^\/xe\s*/i, '')
+      .replace(/\D/g, '');
 
     // Không có số → reset về xe gốc
     if (!match) {
@@ -784,7 +791,8 @@ export class ZaloBotService {
       where: { role: 'laixe' },
     });
     const matched = allDrivers.filter(
-      (u) => u.id !== driver.id && (u.soXe || '').replace(/\D/g, '').endsWith(match),
+      (u) =>
+        u.id !== driver.id && (u.soXe || '').replace(/\D/g, '').endsWith(match),
     );
 
     if (matched.length === 0) {
@@ -797,7 +805,9 @@ export class ZaloBotService {
     }
 
     if (matched.length > 1) {
-      const list = matched.map((u, i) => `${i + 1}. ${u.soXe} — ${u.fullName}`).join('\n');
+      const list = matched
+        .map((u, i) => `${i + 1}. ${u.soXe} — ${u.fullName}`)
+        .join('\n');
       await this.reply(
         chatId,
         zaloUserId,
@@ -1242,11 +1252,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          [
-            'Sếp đang chạy kế hoạch nào ạ?',
-            '',
-            ...lines,
-          ].join('\n'),
+          ['Sếp đang chạy kế hoạch nào ạ?', '', ...lines].join('\n'),
         );
       } else {
         // Tài xế nhắn mã khác thay vì 1/2 → coi như bỏ phát sinh và tìm mã mới
@@ -1404,11 +1410,7 @@ export class ZaloBotService {
     await this.reply(
       chatId,
       zaloUserId,
-      [
-        `Container ${fullCode} thuộc loại nào ạ?`,
-        '',
-        ...lines,
-      ].join('\n'),
+      [`Container ${fullCode} thuộc loại nào ạ?`, '', ...lines].join('\n'),
     );
   }
 
@@ -1426,7 +1428,10 @@ export class ZaloBotService {
       .trim();
     if (!normalized.startsWith('tip')) return null;
 
-    let rest = normalized.slice(3).replace(/^[.\s_\-:,(/–—]+/, '').trim();
+    let rest = normalized
+      .slice(3)
+      .replace(/^[.\s_\-:,(/–—]+/, '')
+      .trim();
     rest = rest.replace(/^(?:so luong|so|luong)\s*/, '').trim();
     rest = rest.replace(/\s*(?:cai|con|xe|chiec)\s*$/, '').trim();
     rest = rest.replace(/[.\s_\-:,(/–—]+$/, '').trim();
@@ -2108,7 +2113,9 @@ export class ZaloBotService {
         await this.editHistoryRepository.save(history);
       }
 
-      const claimedBefore = await this.containerImportService.countClaimed(plan.id);
+      const claimedBefore = await this.containerImportService.countClaimed(
+        plan.id,
+      );
 
       if (container.bundleId) {
         await this.containerImportService.claimBundle(

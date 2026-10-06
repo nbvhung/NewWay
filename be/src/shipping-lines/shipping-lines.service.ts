@@ -18,7 +18,18 @@ import { ZaloPlanCompletedNotifierService } from '../zalo-bot/zalo-plan-complete
 import { resolveVisibleDriverIds } from '../common/permissions/permissions';
 
 // KV20/KV20FR = đơn giá cho cả cặp kẹp (xem PRICE_CONTAINER_TYPES ở customers).
-const PRICE_TYPES = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'KV20', 'KV20FR', 'VSL', 'TIP'];
+const PRICE_TYPES = [
+  'H20',
+  'H40',
+  'V20',
+  'V40',
+  'V20FR',
+  'V40FR',
+  'KV20',
+  'KV20FR',
+  'VSL',
+  'TIP',
+];
 
 @Injectable()
 export class ShippingLinesService {
@@ -40,7 +51,11 @@ export class ShippingLinesService {
     private zaloPlanCompletedNotifier: ZaloPlanCompletedNotifierService,
   ) {}
 
-  async findAll(completed?: boolean, userId?: number, user?: any): Promise<any[]> {
+  async findAll(
+    completed?: boolean,
+    userId?: number,
+    user?: any,
+  ): Promise<any[]> {
     const qb = this.shippingLinesRepository
       .createQueryBuilder('sl')
       .leftJoinAndSelect('sl.route', 'route')
@@ -65,9 +80,15 @@ export class ShippingLinesService {
         qb.andWhere('1=0');
       } else {
         // Kế hoạch được hiện nếu: allDrivers = true HOẶC driver_ids chứa ít nhất 1 ID visible
-        const conditions = visible.map((_, i) => `CAST(sl.driver_ids AS JSONB) @> CAST(:vid${i} AS JSONB)`).join(' OR ');
+        const conditions = visible
+          .map(
+            (_, i) => `CAST(sl.driver_ids AS JSONB) @> CAST(:vid${i} AS JSONB)`,
+          )
+          .join(' OR ');
         const params: Record<string, string> = {};
-        visible.forEach((id, i) => { params[`vid${i}`] = JSON.stringify([id]); });
+        visible.forEach((id, i) => {
+          params[`vid${i}`] = JSON.stringify([id]);
+        });
         qb.andWhere(`(sl.all_drivers = true OR ${conditions})`, params);
       }
     }
@@ -82,7 +103,9 @@ export class ShippingLinesService {
 
     const dealedPrices = this.normalizePrices(dto.dealedPrices);
     if (!dealedPrices) {
-      throw new BadRequestException('Vui lòng nhập đơn giá deal với khách hàng (ít nhất 1 loại container)');
+      throw new BadRequestException(
+        'Vui lòng nhập đơn giá deal với khách hàng (ít nhất 1 loại container)',
+      );
     }
 
     const plan = this.shippingLinesRepository.create({
@@ -108,13 +131,16 @@ export class ShippingLinesService {
     return this.shippingLinesRepository.save(plan);
   }
 
-  private normalizePrices(prices?: Record<string, unknown>): Record<string, number> | null {
+  private normalizePrices(
+    prices?: Record<string, unknown>,
+  ): Record<string, number> | null {
     if (!prices || typeof prices !== 'object') return null;
     const out: Record<string, number> = {};
     let hasValue = false;
     for (const type of PRICE_TYPES) {
       const raw = prices[type];
-      const val = raw === undefined || raw === null || raw === '' ? 0 : Number(raw);
+      const val =
+        raw === undefined || raw === null || raw === '' ? 0 : Number(raw);
       const n = isNaN(val) ? 0 : Math.max(0, val);
       out[type] = n;
       if (n > 0) hasValue = true;
@@ -139,7 +165,10 @@ export class ShippingLinesService {
     if (dto.soChuyen !== undefined) plan.soChuyen = dto.soChuyen.trim();
     if (dto.routeName !== undefined) {
       plan.routeName = dto.routeName.trim();
-      await this.submissionsRepository.update({ shippingLineId: id }, { route: dto.routeName.trim() });
+      await this.submissionsRepository.update(
+        { shippingLineId: id },
+        { route: dto.routeName.trim() },
+      );
     }
     if (dto.ngay !== undefined) plan.ngay = dto.ngay;
     if (dto.customerId !== undefined) plan.customerId = dto.customerId ?? null;
@@ -147,31 +176,43 @@ export class ShippingLinesService {
     if (dto.tangCuong !== undefined) plan.tangCuong = dto.tangCuong;
     if (dto.leTet !== undefined) plan.leTet = dto.leTet;
     if (dto.vendorKhac !== undefined) plan.vendorKhac = dto.vendorKhac.trim();
-    if (dto.tenNguoiNhap !== undefined) plan.tenNguoiNhap = dto.tenNguoiNhap.trim();
+    if (dto.tenNguoiNhap !== undefined)
+      plan.tenNguoiNhap = dto.tenNguoiNhap.trim();
     if (dto.completed !== undefined) {
       plan.completed = dto.completed;
-      if (dto.completed && (plan.frozenMoney == null)) {
+      if (dto.completed && plan.frozenMoney == null) {
         // Đóng băng giá tuyến đường tại thời điểm hoàn thành kế hoạch
         const route = plan.routeName
-          ? await this.routesRepository.findOne({ where: { name: plan.routeName } })
+          ? await this.routesRepository.findOne({
+              where: { name: plan.routeName },
+            })
           : null;
         plan.frozenMoney = route ? Number(route.money) || 0 : 0;
-        console.log(`[FREEZE] Plan ${plan.id} "${plan.name}" -> frozenMoney = ${plan.frozenMoney}, routeName = "${plan.routeName}", route found = ${!!route}, route.money = ${route?.money}`);
+        console.log(
+          `[FREEZE] Plan ${plan.id} "${plan.name}" -> frozenMoney = ${plan.frozenMoney}, routeName = "${plan.routeName}", route found = ${!!route}, route.money = ${route?.money}`,
+        );
       } else if (!dto.completed) {
         // Khi bỏ hoàn thành, reset frozenMoney để có thể set lại khi complete lần sau
-        console.log(`[UNFREEZE] Plan ${plan.id} "${plan.name}" -> reset frozenMoney from ${plan.frozenMoney} to null`);
+        console.log(
+          `[UNFREEZE] Plan ${plan.id} "${plan.name}" -> reset frozenMoney from ${plan.frozenMoney} to null`,
+        );
         plan.frozenMoney = null;
       } else {
-        console.log(`[FREEZE-SKIP] Plan ${plan.id} "${plan.name}" -> frozenMoney already set = ${plan.frozenMoney} (type: ${typeof plan.frozenMoney})`);
+        console.log(
+          `[FREEZE-SKIP] Plan ${plan.id} "${plan.name}" -> frozenMoney already set = ${plan.frozenMoney} (type: ${typeof plan.frozenMoney})`,
+        );
       }
     }
-    if (dto.driverIds !== undefined) plan.driverIds = JSON.stringify(dto.driverIds);
+    if (dto.driverIds !== undefined)
+      plan.driverIds = JSON.stringify(dto.driverIds);
     if (dto.allDrivers !== undefined) plan.allDrivers = dto.allDrivers;
 
     if (dto.dealedPrices !== undefined) {
       const dealedPrices = this.normalizePrices(dto.dealedPrices);
       if (!dealedPrices) {
-        throw new BadRequestException('Đơn giá deal không hợp lệ (ít nhất 1 loại container)');
+        throw new BadRequestException(
+          'Đơn giá deal không hợp lệ (ít nhất 1 loại container)',
+        );
       }
       plan.dealedPrices = dealedPrices;
       plan.priceStatus = 'pending';
@@ -181,7 +222,9 @@ export class ShippingLinesService {
 
     if (dto.completed === true) {
       if (plan.priceStatus !== 'approved') {
-        throw new BadRequestException('Kế hoạch cần HR/Admin duyệt đơn giá trước khi hoàn thành');
+        throw new BadRequestException(
+          'Kế hoạch cần HR/Admin duyệt đơn giá trước khi hoàn thành',
+        );
       }
     }
 
@@ -255,7 +298,9 @@ export class ShippingLinesService {
    * Gọi API này 1 lần để fix dữ liệu cũ.
    */
   async backfillFrozenMoney(): Promise<{ fixed: number; skipped: number }> {
-    const completedPlans = await this.shippingLinesRepository.find({ where: { completed: true } });
+    const completedPlans = await this.shippingLinesRepository.find({
+      where: { completed: true },
+    });
     const allRoutes = await this.routesRepository.find();
     const routeMap = new Map<string, number>();
     for (const r of allRoutes) {

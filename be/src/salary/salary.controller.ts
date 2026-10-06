@@ -102,10 +102,7 @@ export class SalaryController {
 
   @Post('fixed-salary/pay')
   @Permissions('salary.pay')
-  async payFixedSalary(
-    @Body() dto: PaySalaryDto,
-    @CurrentUser() user: any,
-  ) {
+  async payFixedSalary(@Body() dto: PaySalaryDto, @CurrentUser() user: any) {
     const count = await this.salaryService.payFixedSalary(
       dto.driverIds,
       dto.month,
@@ -113,15 +110,15 @@ export class SalaryController {
       dto.undo,
       { id: user?.id, name: user?.fullName || user?.username || '' },
     );
-    return { message: `${dto.undo ? 'Đã hoàn tác thanh toán lương cứng' : 'Đã thanh toán lương cứng'} cho ${count} lái xe`, count };
+    return {
+      message: `${dto.undo ? 'Đã hoàn tác thanh toán lương cứng' : 'Đã thanh toán lương cứng'} cho ${count} lái xe`,
+      count,
+    };
   }
 
   @Post('total/pay')
   @Permissions('salary.pay')
-  async payTotalSalary(
-    @Body() dto: PaySalaryDto,
-    @CurrentUser() user: any,
-  ) {
+  async payTotalSalary(@Body() dto: PaySalaryDto, @CurrentUser() user: any) {
     const count = await this.salaryService.payTotalSalary(
       dto.driverIds,
       dto.month,
@@ -129,7 +126,10 @@ export class SalaryController {
       dto.undo,
       { id: user?.id, name: user?.fullName || user?.username || '' },
     );
-    return { message: `${dto.undo ? 'Đã hoàn tác thanh toán tổng lương' : 'Đã thanh toán tổng lương'} cho ${count} lái xe`, count };
+    return {
+      message: `${dto.undo ? 'Đã hoàn tác thanh toán tổng lương' : 'Đã thanh toán tổng lương'} cho ${count} lái xe`,
+      count,
+    };
   }
 
   @Get('payment-logs')
@@ -160,7 +160,10 @@ export class SalaryController {
 
   @Put('advances/:id')
   @Permissions('salary.manage')
-  async updateAdvance(@Param('id') id: string, @Body() dto: Partial<CreateDriverAdvanceDto>) {
+  async updateAdvance(
+    @Param('id') id: string,
+    @Body() dto: Partial<CreateDriverAdvanceDto>,
+  ) {
     return { data: await this.salaryService.updateAdvance(+id, dto) };
   }
 

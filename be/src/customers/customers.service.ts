@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, In } from 'typeorm';
 import * as ExcelJS from 'exceljs';
@@ -31,7 +35,18 @@ const TYPE_FIELD_MAP: Record<string, string> = {
   TIP: 'TIP',
 };
 
-const TYPE_HEADERS = ['H20', 'H40', 'V20', 'V40', 'V20FR', 'V40FR', 'KV20', 'KV20FR', 'VSL', 'TIP'];
+const TYPE_HEADERS = [
+  'H20',
+  'H40',
+  'V20',
+  'V40',
+  'V20FR',
+  'V40FR',
+  'KV20',
+  'KV20FR',
+  'VSL',
+  'TIP',
+];
 
 /**
  * Loại container → loại đơn giá KẸP tương ứng.
@@ -137,9 +152,11 @@ export class CustomersService {
     return Array.from(customerIds);
   }
 
-  async findAll(user?: {
-    visibleDriverIds?: number[] | null;
-  } | null): Promise<Customer[]> {
+  async findAll(
+    user?: {
+      visibleDriverIds?: number[] | null;
+    } | null,
+  ): Promise<Customer[]> {
     const allowedCustomerIds = await this.resolveVisibleCustomerIds(user);
     if (allowedCustomerIds === null) {
       return this.customersRepository.find({ order: { name: 'ASC' } });
@@ -215,7 +232,10 @@ export class CustomersService {
   }> {
     const { fromDate, toDate } = this.monthRange(month, year);
     const allowedCustomerIds = await this.resolveVisibleCustomerIds(user);
-    if (allowedCustomerIds !== null && !allowedCustomerIds.includes(customerId)) {
+    if (
+      allowedCustomerIds !== null &&
+      !allowedCustomerIds.includes(customerId)
+    ) {
       return { customerId, month, year, plans: 0, soChuyen: 0, containers: 0 };
     }
     let plans = await this.shippingLinesRepository.find({
@@ -260,7 +280,8 @@ export class CustomersService {
       }
     };
     return plans.filter(
-      (sl) => sl.allDrivers || planDriverIds(sl).some((id) => visibleSet.has(id)),
+      (sl) =>
+        sl.allDrivers || planDriverIds(sl).some((id) => visibleSet.has(id)),
     );
   }
 
@@ -293,7 +314,10 @@ export class CustomersService {
     user?: { visibleDriverIds?: number[] | null } | null,
   ): Promise<any[]> {
     const allowedCustomerIds = await this.resolveVisibleCustomerIds(user);
-    if (allowedCustomerIds !== null && !allowedCustomerIds.includes(customerId)) {
+    if (
+      allowedCustomerIds !== null &&
+      !allowedCustomerIds.includes(customerId)
+    ) {
       return [];
     }
     const where: any = { customerId };
@@ -337,9 +361,11 @@ export class CustomersService {
   }
 
   /** Tất cả kế hoạch đã hoàn thành (kèm customerId hiện tại) để chọn gán. */
-  async getAllCompletedPlans(user?: {
-    visibleDriverIds?: number[] | null;
-  } | null): Promise<any[]> {
+  async getAllCompletedPlans(
+    user?: {
+      visibleDriverIds?: number[] | null;
+    } | null,
+  ): Promise<any[]> {
     let plans = await this.shippingLinesRepository.find({
       where: { completed: true },
       order: { ngay: 'DESC' },
@@ -379,8 +405,13 @@ export class CustomersService {
   }
 
   /** Gán danh sách kế hoạch đã hoàn thành cho 1 khách hàng (và bỏ gán các KH còn lại). */
-  async assignPlans(customerId: number, planIds: number[]): Promise<{ message: string; assigned: number }> {
-    const customer = await this.customersRepository.findOne({ where: { id: customerId } });
+  async assignPlans(
+    customerId: number,
+    planIds: number[],
+  ): Promise<{ message: string; assigned: number }> {
+    const customer = await this.customersRepository.findOne({
+      where: { id: customerId },
+    });
     if (!customer) throw new NotFoundException('Không tìm thấy khách hàng');
     const ids = (planIds || []).map(Number).filter((n) => Number.isFinite(n));
 
@@ -395,7 +426,10 @@ export class CustomersService {
         .createQueryBuilder()
         .update(ShippingLine)
         .set({ customerId: null })
-        .where('customer_id = :customerId AND id NOT IN (:...ids)', { customerId, ids })
+        .where('customer_id = :customerId AND id NOT IN (:...ids)', {
+          customerId,
+          ids,
+        })
         .execute();
     } else {
       await this.shippingLinesRepository
@@ -406,8 +440,18 @@ export class CustomersService {
         .execute();
     }
 
-    await this.logAudit(customerId, 'plan', null, 'UPDATE', { id: undefined, fullName: '' }, JSON.stringify({ assignedPlanIds: ids }));
-    return { message: `Đã gán ${ids.length} kế hoạch cho ${customer.name}`, assigned: ids.length };
+    await this.logAudit(
+      customerId,
+      'plan',
+      null,
+      'UPDATE',
+      { id: undefined, fullName: '' },
+      JSON.stringify({ assignedPlanIds: ids }),
+    );
+    return {
+      message: `Đã gán ${ids.length} kế hoạch cho ${customer.name}`,
+      assigned: ids.length,
+    };
   }
 
   // ─── Hồ sơ thanh toán (multi-file) ─────────────────────────────
@@ -498,15 +542,15 @@ export class CustomersService {
     });
     return {
       invoice: {
-        has: !!(dossier?.invoiceData),
+        has: !!dossier?.invoiceData,
         fileName: dossier?.invoiceFileName || '',
       },
       bangKe: {
-        has: !!(dossier?.bangKeData),
+        has: !!dossier?.bangKeData,
         fileName: dossier?.bangKeFileName || '',
       },
       deNghi: {
-        has: !!(dossier?.deNghiData),
+        has: !!dossier?.deNghiData,
         fileName: dossier?.deNghiFileName || '',
       },
     };
@@ -524,7 +568,11 @@ export class CustomersService {
   }
 
   // ─── Đơn giá theo khách hàng ──────────────────────────────────
-  async getPrices(customerId: number, month: number, year: number): Promise<CustomerPrice[]> {
+  async getPrices(
+    customerId: number,
+    month: number,
+    year: number,
+  ): Promise<CustomerPrice[]> {
     return this.pricesRepository.find({
       where: { customerId, month, year },
       order: { routeName: 'ASC', fromDay: 'ASC', containerType: 'ASC' },
@@ -568,7 +616,14 @@ export class CustomersService {
       unitPrice: dto.unitPrice,
     });
     const saved = await this.pricesRepository.save(price);
-    await this.logAudit(customerId, 'price', saved.id, 'CREATE', actor, JSON.stringify(saved));
+    await this.logAudit(
+      customerId,
+      'price',
+      saved.id,
+      'CREATE',
+      actor,
+      JSON.stringify(saved),
+    );
     return saved;
   }
 
@@ -577,7 +632,9 @@ export class CustomersService {
     dto: UpdateCustomerPriceDto,
     actor: { id?: number; fullName?: string },
   ): Promise<CustomerPrice> {
-    const price = await this.pricesRepository.findOne({ where: { id: priceId } });
+    const price = await this.pricesRepository.findOne({
+      where: { id: priceId },
+    });
     if (!price) throw new NotFoundException('Không tìm thấy đơn giá');
     const changes: Record<string, { old: any; new: any }> = {};
     if (dto.fromDay !== undefined && dto.fromDay !== price.fromDay) {
@@ -588,16 +645,34 @@ export class CustomersService {
       changes.toDay = { old: price.toDay, new: dto.toDay };
       price.toDay = dto.toDay;
     }
-    if (dto.containerType !== undefined && dto.containerType !== price.containerType) {
-      changes.containerType = { old: price.containerType, new: dto.containerType };
+    if (
+      dto.containerType !== undefined &&
+      dto.containerType !== price.containerType
+    ) {
+      changes.containerType = {
+        old: price.containerType,
+        new: dto.containerType,
+      };
       price.containerType = dto.containerType;
     }
-    if (dto.routeName !== undefined && dto.routeName.trim() !== (price.routeName || '')) {
-      changes.routeName = { old: price.routeName || '', new: dto.routeName.trim() };
+    if (
+      dto.routeName !== undefined &&
+      dto.routeName.trim() !== (price.routeName || '')
+    ) {
+      changes.routeName = {
+        old: price.routeName || '',
+        new: dto.routeName.trim(),
+      };
       price.routeName = dto.routeName.trim();
     }
-    if (dto.unitPrice !== undefined && Number(dto.unitPrice) !== Number(price.unitPrice)) {
-      changes.unitPrice = { old: Number(price.unitPrice), new: Number(dto.unitPrice) };
+    if (
+      dto.unitPrice !== undefined &&
+      Number(dto.unitPrice) !== Number(price.unitPrice)
+    ) {
+      changes.unitPrice = {
+        old: Number(price.unitPrice),
+        new: Number(dto.unitPrice),
+      };
       price.unitPrice = dto.unitPrice;
     }
     if (price.fromDay > price.toDay) {
@@ -605,13 +680,25 @@ export class CustomersService {
     }
     const saved = await this.pricesRepository.save(price);
     if (Object.keys(changes).length > 0) {
-      await this.logAudit(price.customerId, 'price', saved.id, 'UPDATE', actor, JSON.stringify(changes));
+      await this.logAudit(
+        price.customerId,
+        'price',
+        saved.id,
+        'UPDATE',
+        actor,
+        JSON.stringify(changes),
+      );
     }
     return saved;
   }
 
-  async deletePrice(priceId: number, actor: { id?: number; fullName?: string }): Promise<{ message: string }> {
-    const price = await this.pricesRepository.findOne({ where: { id: priceId } });
+  async deletePrice(
+    priceId: number,
+    actor: { id?: number; fullName?: string },
+  ): Promise<{ message: string }> {
+    const price = await this.pricesRepository.findOne({
+      where: { id: priceId },
+    });
     if (!price) throw new NotFoundException('Không tìm thấy đơn giá');
     const { customerId, id } = price;
     await this.pricesRepository.remove(price);
@@ -654,7 +741,14 @@ export class CustomersService {
         if (oldVal !== val) {
           existing.unitPrice = val;
           await this.pricesRepository.save(existing);
-          await this.logAudit(customerId, 'price', existing.id, 'UPDATE', actor, JSON.stringify({ unitPrice: { old: oldVal, new: val } }));
+          await this.logAudit(
+            customerId,
+            'price',
+            existing.id,
+            'UPDATE',
+            actor,
+            JSON.stringify({ unitPrice: { old: oldVal, new: val } }),
+          );
           updated++;
         }
       } else {
@@ -669,7 +763,14 @@ export class CustomersService {
           unitPrice: val,
         });
         const saved = await this.pricesRepository.save(p);
-        await this.logAudit(customerId, 'price', saved.id, 'CREATE', actor, JSON.stringify(saved));
+        await this.logAudit(
+          customerId,
+          'price',
+          saved.id,
+          'CREATE',
+          actor,
+          JSON.stringify(saved),
+        );
         created++;
       }
     }
@@ -701,7 +802,9 @@ export class CustomersService {
       await this.logAudit(customerId, 'price', p.id, 'DELETE', actor, '');
     }
     const rnLabel = routeName ? ` tuyến "${routeName}"` : '';
-    return { message: `Đã xóa ${found.length} đơn giá${rnLabel} của khoảng ${fromDay}-${toDay}/${month}/${year}` };
+    return {
+      message: `Đã xóa ${found.length} đơn giá${rnLabel} của khoảng ${fromDay}-${toDay}/${month}/${year}`,
+    };
   }
 
   // ─── Phụ phí theo khách hàng ──────────────────────────────────
@@ -742,7 +845,14 @@ export class CustomersService {
       note: dto.note || '',
     });
     const saved = await this.surchargesRepository.save(sur);
-    await this.logAudit(customerId, 'surcharge', saved.id, 'CREATE', actor, JSON.stringify(saved));
+    await this.logAudit(
+      customerId,
+      'surcharge',
+      saved.id,
+      'CREATE',
+      actor,
+      JSON.stringify(saved),
+    );
     return saved;
   }
 
@@ -795,12 +905,22 @@ export class CustomersService {
     }
     const saved = await this.surchargesRepository.save(sur);
     if (Object.keys(changes).length > 0) {
-      await this.logAudit(sur.customerId, 'surcharge', saved.id, 'UPDATE', actor, JSON.stringify(changes));
+      await this.logAudit(
+        sur.customerId,
+        'surcharge',
+        saved.id,
+        'UPDATE',
+        actor,
+        JSON.stringify(changes),
+      );
     }
     return saved;
   }
 
-  async deleteSurcharge(sid: number, actor: { id?: number; fullName?: string }): Promise<{ message: string }> {
+  async deleteSurcharge(
+    sid: number,
+    actor: { id?: number; fullName?: string },
+  ): Promise<{ message: string }> {
     const sur = await this.surchargesRepository.findOne({ where: { id: sid } });
     if (!sur) throw new NotFoundException('Không tìm thấy phụ phí');
     const { customerId, id } = sur;
@@ -810,7 +930,10 @@ export class CustomersService {
   }
 
   // ─── Lịch sử thêm/sửa (admin) ─────────────────────────────────
-  async getHistory(customerId: number, entity?: string): Promise<CustomerAuditLog[]> {
+  async getHistory(
+    customerId: number,
+    entity?: string,
+  ): Promise<CustomerAuditLog[]> {
     return this.auditLogsRepository.find({
       where: entity ? { customerId, entity } : { customerId },
       order: { createdAt: 'DESC' },
@@ -891,15 +1014,24 @@ export class CustomersService {
         return new Date(raw.getTime());
       }
       const m = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})/);
-      if (m) return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+      if (m)
+        return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
       return null;
     };
-    const donGiaFor = (type: string | undefined, day: number | null, routeName?: string): number | null => {
+    const donGiaFor = (
+      type: string | undefined,
+      day: number | null,
+      routeName?: string,
+    ): number | null => {
       if (!type || day === null) return null;
       const rn = (routeName || '').trim();
       const match = (want: string) =>
         prices.find(
-          (p) => p.containerType === type && day >= p.fromDay && day <= p.toDay && (p.routeName || '') === want,
+          (p) =>
+            p.containerType === type &&
+            day >= p.fromDay &&
+            day <= p.toDay &&
+            (p.routeName || '') === want,
         );
       // Ưu tiên đơn giá riêng của tuyến, fallback về đơn giá chung (mọi tuyến).
       const matched = rn ? match(rn) || match('') : match('');
@@ -915,7 +1047,7 @@ export class CustomersService {
     // V20FR→KV20FR) VÀ khách có nhập đơn giá kẹp cho ngày + tuyến của container
     // chính. Ngược lại giữ nguyên cách tính đơn lẻ.
     const containerById = new Map<number, any>();
-    for (const c of containers as any[]) containerById.set(c.id, c);
+    for (const c of containers) containerById.set(c.id, c);
 
     const isBundleMember = (c: any) =>
       !!c?.bundleId && FR_BUNDLE_TYPES.has(String(c.type));
@@ -932,7 +1064,9 @@ export class CustomersService {
     if (containers.length > 0) {
       const claims = await this.containerClaimsRepository
         .createQueryBuilder('cl')
-        .where('cl.containerImportId IN (:...ids)', { ids: containers.map((c) => c.id) })
+        .where('cl.containerImportId IN (:...ids)', {
+          ids: containers.map((c) => c.id),
+        })
         .orderBy('cl.createdAt', 'ASC')
         .addOrderBy('cl.id', 'ASC')
         .getMany();
@@ -947,7 +1081,9 @@ export class CustomersService {
         if (cl.claimType === 'CLAMP') {
           const clampC = containerById.get(cl.containerImportId);
           const mainClaim = lastBySubmission.get(cl.submissionId);
-          const mainC = mainClaim ? containerById.get(mainClaim.containerImportId) : null;
+          const mainC = mainClaim
+            ? containerById.get(mainClaim.containerImportId)
+            : null;
           if (
             clampC &&
             mainC &&
@@ -969,7 +1105,9 @@ export class CustomersService {
               usedInPair.add(mainC.id);
               usedInPair.add(clampC.id);
               const sameType = String(mainC.type) === String(clampC.type);
-              const kepType = sameType ? KEP_PRICE_TYPE[String(mainC.type)] : undefined;
+              const kepType = sameType
+                ? KEP_PRICE_TYPE[String(mainC.type)]
+                : undefined;
               const sl: any = mainC.shippingLineRef;
               const price = kepType
                 ? donGiaFor(kepType, getDayOfNgay(sl), sl?.routeName || '')
@@ -1009,7 +1147,7 @@ export class CustomersService {
     >();
     {
       const groups = new Map<string, any[]>();
-      for (const c of containers as any[]) {
+      for (const c of containers) {
         if (!FR_BUNDLE_TYPES.has(String(c.type))) continue;
         const key = c.bundleId
           ? `bundle:${c.shippingLineId}:${c.bundleId}`
@@ -1067,25 +1205,34 @@ export class CustomersService {
 
     // ── Helpers ────────────────────────────────────────────────────
     const NEWWAY_NAME = 'CÔNG TY TNHH DỊCH VỤ VÀ THƯƠNG MẠI NEW WAY';
-    const NEWWAY_ADDR = 'Số 348 Đường Đà Nẵng, Phường Đông Hải, Thành phố Hải Phòng.';
+    const NEWWAY_ADDR =
+      'Số 348 Đường Đà Nẵng, Phường Đông Hải, Thành phố Hải Phòng.';
     const NEWWAY_MST = '0202094515';
     const lastDay = new Date(year, month, 0).getDate();
 
     const tnr = (bold = false, size = 12): Partial<ExcelJS.Font> => ({
-      bold, size, name: 'Times New Roman',
+      bold,
+      size,
+      name: 'Times New Roman',
     });
 
     const thinBorder: Partial<ExcelJS.Borders> = {
-      top: { style: 'thin' }, left: { style: 'thin' },
-      bottom: { style: 'thin' }, right: { style: 'thin' },
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' },
     };
 
     // ── Phân loại containers ──────────────────────────────────────
     // Empty: V20, V40, V20FR, V40FR  |  Laden: H20, H40
     const emptyTypes = ['V20', 'V40', 'V20FR', 'V40FR'];
     const ladenTypes = ['H20', 'H40'];
-    const emptyContainers = containers.filter((c) => emptyTypes.includes(c.type));
-    const ladenContainers = containers.filter((c) => ladenTypes.includes(c.type));
+    const emptyContainers = containers.filter((c) =>
+      emptyTypes.includes(c.type),
+    );
+    const ladenContainers = containers.filter((c) =>
+      ladenTypes.includes(c.type),
+    );
 
     // ── Hàm vẽ header chung cho sheet Empty/Laden ─────────────────
     const buildBangKeSheet = (
@@ -1191,7 +1338,17 @@ export class CustomersService {
       ws.getCell('E11').font = tnr(false, 12);
 
       // Row 12: Header bảng dữ liệu
-      const headers = ['TT', 'SỐ CONT', 'Ngày', label20, label40, 'Tuyến đường', 'TÀU', 'ĐƠN GIÁ', 'SỐ XE'];
+      const headers = [
+        'TT',
+        'SỐ CONT',
+        'Ngày',
+        label20,
+        label40,
+        'Tuyến đường',
+        'TÀU',
+        'ĐƠN GIÁ',
+        'SỐ XE',
+      ];
       const r12 = ws.getRow(12);
       headers.forEach((h, i) => {
         const cell = r12.getCell(i + 1);
@@ -1232,7 +1389,7 @@ export class CustomersService {
 
       // Gộp ô ĐƠN GIÁ cho các nhóm nhiều dòng (bó FR / cặp kẹp): cả nhóm chỉ
       // tính 1 lần giá, dòng đầu mang giá, các dòng sau đã được xếp liền nhau.
-      for (let i = 0; i < rows.length; ) {
+      for (let i = 0; i < rows.length;) {
         const g = rows[i].mergeGroup;
         if (!g) {
           i++;
@@ -1257,9 +1414,13 @@ export class CustomersService {
 
       // Row: tổng 20/40 (with SUBTOTAL formula)
       if (rows.length > 0) {
-        ws.getCell(`D${blankRow}`).value = { formula: `SUM(D${dataStartRow}:D${blankRow - 1})` };
+        ws.getCell(`D${blankRow}`).value = {
+          formula: `SUM(D${dataStartRow}:D${blankRow - 1})`,
+        };
         ws.getCell(`D${blankRow}`).font = tnr(false, 12);
-        ws.getCell(`E${blankRow}`).value = { formula: `SUM(E${dataStartRow}:E${blankRow - 1})` };
+        ws.getCell(`E${blankRow}`).value = {
+          formula: `SUM(E${dataStartRow}:E${blankRow - 1})`,
+        };
         ws.getCell(`E${blankRow}`).font = tnr(false, 12);
       }
 
@@ -1268,15 +1429,20 @@ export class CustomersService {
       ws.mergeCells(`A${congRow}:G${congRow}`);
       ws.getCell(`A${congRow}`).value = 'Cộng';
       ws.getCell(`A${congRow}`).font = tnr(true, 12);
-      ws.getCell(`A${congRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      ws.getCell(`A${congRow}`).alignment = {
+        horizontal: 'center',
+        vertical: 'middle',
+      };
       ws.getCell(`A${congRow}`).border = thinBorder;
       for (let c = 2; c <= 7; c++) ws.getCell(congRow, c).border = thinBorder;
-      ws.getCell(`H${congRow}`).value = rows.length > 0
-        ? { formula: `SUM(H${dataStartRow}:H${blankRow})` }
-        : 0;
+      ws.getCell(`H${congRow}`).value =
+        rows.length > 0 ? { formula: `SUM(H${dataStartRow}:H${blankRow})` } : 0;
       ws.getCell(`H${congRow}`).font = tnr(true, 12);
       ws.getCell(`H${congRow}`).numFmt = '#,##0';
-      ws.getCell(`H${congRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      ws.getCell(`H${congRow}`).alignment = {
+        horizontal: 'center',
+        vertical: 'middle',
+      };
       ws.getCell(`H${congRow}`).border = thinBorder;
 
       // Thuế VAT (8%)
@@ -1284,13 +1450,19 @@ export class CustomersService {
       ws.mergeCells(`A${vatRow}:G${vatRow}`);
       ws.getCell(`A${vatRow}`).value = 'Thuế VAT (8%)';
       ws.getCell(`A${vatRow}`).font = tnr(true, 12);
-      ws.getCell(`A${vatRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      ws.getCell(`A${vatRow}`).alignment = {
+        horizontal: 'center',
+        vertical: 'middle',
+      };
       ws.getCell(`A${vatRow}`).border = thinBorder;
       for (let c = 2; c <= 7; c++) ws.getCell(vatRow, c).border = thinBorder;
       ws.getCell(`H${vatRow}`).value = { formula: `H${congRow}*8/100` };
       ws.getCell(`H${vatRow}`).font = tnr(true, 12);
       ws.getCell(`H${vatRow}`).numFmt = '#,##0';
-      ws.getCell(`H${vatRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      ws.getCell(`H${vatRow}`).alignment = {
+        horizontal: 'center',
+        vertical: 'middle',
+      };
       ws.getCell(`H${vatRow}`).border = thinBorder;
 
       // Tổng
@@ -1298,13 +1470,19 @@ export class CustomersService {
       ws.mergeCells(`A${totalRow}:G${totalRow}`);
       ws.getCell(`A${totalRow}`).value = 'Tổng';
       ws.getCell(`A${totalRow}`).font = tnr(true, 12);
-      ws.getCell(`A${totalRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      ws.getCell(`A${totalRow}`).alignment = {
+        horizontal: 'center',
+        vertical: 'middle',
+      };
       ws.getCell(`A${totalRow}`).border = thinBorder;
       for (let c = 2; c <= 7; c++) ws.getCell(totalRow, c).border = thinBorder;
       ws.getCell(`H${totalRow}`).value = { formula: `H${congRow}+H${vatRow}` };
       ws.getCell(`H${totalRow}`).font = tnr(true, 12);
       ws.getCell(`H${totalRow}`).numFmt = '#,##0';
-      ws.getCell(`H${totalRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      ws.getCell(`H${totalRow}`).alignment = {
+        horizontal: 'center',
+        vertical: 'middle',
+      };
       ws.getCell(`H${totalRow}`).border = thinBorder;
 
       // Bằng chữ
@@ -1312,12 +1490,16 @@ export class CustomersService {
       ws.mergeCells(`A${bangChuRow}:B${bangChuRow}`);
       ws.getCell(`A${bangChuRow}`).value = 'Bằng chữ : ';
       ws.getCell(`A${bangChuRow}`).font = tnr(true, 12);
-      ws.getCell(`A${bangChuRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      ws.getCell(`A${bangChuRow}`).alignment = {
+        horizontal: 'center',
+        vertical: 'middle',
+      };
 
       // Blank row
       const signDateRow = bangChuRow + 2;
       ws.mergeCells(`F${signDateRow}:I${signDateRow}`);
-      ws.getCell(`F${signDateRow}`).value = `Ngày ${lastDay} tháng ${String(month).padStart(2, '0')} năm ${year}`;
+      ws.getCell(`F${signDateRow}`).value =
+        `Ngày ${lastDay} tháng ${String(month).padStart(2, '0')} năm ${year}`;
       ws.getCell(`F${signDateRow}`).font = tnr(true, 12);
       ws.getCell(`F${signDateRow}`).alignment = { horizontal: 'center' };
 
@@ -1355,15 +1537,15 @@ export class CustomersService {
           ? bo.price
           : null
         : kepActive
-          ? kep!.role === 'main'
-            ? kep!.price
+          ? kep.role === 'main'
+            ? kep.price
             : null
           : donGiaFor(type, day, sl?.routeName || '');
 
       const mergeGroup = bo?.groupId
         ? bo.groupId
         : kepActive
-          ? `kep:${kep!.mainId}`
+          ? `kep:${kep.mainId}`
           : null;
 
       return {
@@ -1376,8 +1558,8 @@ export class CustomersService {
         soXe: user?.soXe || '',
         type,
         day,
-        kepRole: kepActive ? kep!.role : null,
-        kepLabel: kepActive && kep!.role === 'main' ? kep!.label : null,
+        kepRole: kepActive ? kep.role : null,
+        kepLabel: kepActive && kep.role === 'main' ? kep.label : null,
         mergeGroup,
       };
     };
@@ -1389,13 +1571,25 @@ export class CustomersService {
     // Sheet 1: Empty (Bảng kê sản lượng vận chuyển VỎ)
     // ══════════════════════════════════════════════════════════════
     const wsEmpty = workbook.addWorksheet('Empty');
-    buildBangKeSheet(wsEmpty, 'BẢNG KÊ SẢN LƯỢNG VẬN CHUYỂN VỎ', 'Vỏ 20', 'Vỏ 40', emptyRows);
+    buildBangKeSheet(
+      wsEmpty,
+      'BẢNG KÊ SẢN LƯỢNG VẬN CHUYỂN VỎ',
+      'Vỏ 20',
+      'Vỏ 40',
+      emptyRows,
+    );
 
     // ══════════════════════════════════════════════════════════════
     // Sheet 2: Laden (Bảng kê sản lượng vận chuyển HÀNG)
     // ══════════════════════════════════════════════════════════════
     const wsLaden = workbook.addWorksheet('Laden');
-    buildBangKeSheet(wsLaden, 'BẢNG KÊ SẢN LƯỢNG VẬN CHUYỂN HÀNG', 'Hàng 20', 'Hàng 40', ladenRows);
+    buildBangKeSheet(
+      wsLaden,
+      'BẢNG KÊ SẢN LƯỢNG VẬN CHUYỂN HÀNG',
+      'Hàng 20',
+      'Hàng 40',
+      ladenRows,
+    );
 
     // ══════════════════════════════════════════════════════════════
     // Sheet 3: QTSL (Quyết toán sản lượng theo xe)
@@ -1412,17 +1606,54 @@ export class CustomersService {
     wsQTSL.getColumn(9).width = 14.75;
 
     wsQTSL.mergeCells('A1:I2');
-    wsQTSL.getCell('A1').value = `QUYẾT TOÁN SẢN LƯỢNG VẬN CHUYỂN THÁNG ${String(month).padStart(2, '0')}.${year}`;
+    wsQTSL.getCell('A1').value =
+      `QUYẾT TOÁN SẢN LƯỢNG VẬN CHUYỂN THÁNG ${String(month).padStart(2, '0')}.${year}`;
     wsQTSL.getCell('A1').font = tnr(true, 14);
-    wsQTSL.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
+    wsQTSL.getCell('A1').alignment = {
+      horizontal: 'center',
+      vertical: 'middle',
+    };
 
-    const qtslHeaders3 = ['STT', 'Tuyến đường', 'Loại hàng', 'Số cont', 'Đơn giá\n(đồng)', 'Tiền DV\nchưa thuế', 'Thuế VAT', 'Thuế VAT', 'Tổng'];
-    const qtslHeaders4 = [null, null, null, null, null, null, '%', 'Tiền thuế', null];
-    const qtslHeaders5 = [null, 1, 2, 3, 4, '5 = (3x4)', 6, '7 = (5x6)', '8 = (5+7)'];
+    const qtslHeaders3 = [
+      'STT',
+      'Tuyến đường',
+      'Loại hàng',
+      'Số cont',
+      'Đơn giá\n(đồng)',
+      'Tiền DV\nchưa thuế',
+      'Thuế VAT',
+      'Thuế VAT',
+      'Tổng',
+    ];
+    const qtslHeaders4 = [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      '%',
+      'Tiền thuế',
+      null,
+    ];
+    const qtslHeaders5 = [
+      null,
+      1,
+      2,
+      3,
+      4,
+      '5 = (3x4)',
+      6,
+      '7 = (5x6)',
+      '8 = (5+7)',
+    ];
 
-    wsQTSL.mergeCells('B3:B4'); wsQTSL.mergeCells('C3:C4');
-    wsQTSL.mergeCells('D3:D4'); wsQTSL.mergeCells('E3:E4');
-    wsQTSL.mergeCells('F3:F4'); wsQTSL.mergeCells('G3:H3');
+    wsQTSL.mergeCells('B3:B4');
+    wsQTSL.mergeCells('C3:C4');
+    wsQTSL.mergeCells('D3:D4');
+    wsQTSL.mergeCells('E3:E4');
+    wsQTSL.mergeCells('F3:F4');
+    wsQTSL.mergeCells('G3:H3');
     wsQTSL.mergeCells('I3:I4');
 
     const r3q = wsQTSL.getRow(3);
@@ -1431,7 +1662,11 @@ export class CustomersService {
         const cell = r3q.getCell(i + 1);
         cell.value = h;
         cell.font = tnr(true, 11);
-        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.alignment = {
+          horizontal: 'center',
+          vertical: 'middle',
+          wrapText: true,
+        };
         cell.border = thinBorder;
       }
     });
@@ -1442,7 +1677,11 @@ export class CustomersService {
         const cell = r4q.getCell(i + 1);
         cell.value = h;
         cell.font = tnr(true, 11);
-        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.alignment = {
+          horizontal: 'center',
+          vertical: 'middle',
+          wrapText: true,
+        };
         cell.border = thinBorder;
       }
     });
@@ -1464,11 +1703,24 @@ export class CustomersService {
     // Group all containers by tuyến đường + soXe, then by container type
     const allRows = [...emptyRows, ...ladenRows];
     const typeLabel = (t: string) =>
-      t === 'H20' ? "20'F" : t === 'H40' ? "40'F" :
-      t === 'V20' ? "20'E" : t === 'V40' ? "40'E" :
-      t === 'V20FR' ? "20'E kẹp" : t === 'V40FR' ? "40'E kẹp" : t;
+      t === 'H20'
+        ? "20'F"
+        : t === 'H40'
+          ? "40'F"
+          : t === 'V20'
+            ? "20'E"
+            : t === 'V40'
+              ? "40'E"
+              : t === 'V20FR'
+                ? "20'E kẹp"
+                : t === 'V40FR'
+                  ? "40'E kẹp"
+                  : t;
 
-    const groupMap = new Map<string, Map<string, { label: string; count: number; donGia: number }>>();
+    const groupMap = new Map<
+      string,
+      Map<string, { label: string; count: number; donGia: number }>
+    >();
     const routeOrder: string[] = [];
 
     // Nhóm nhiều dòng (bó FR / cặp kẹp) chỉ tính 1 lần cho cả nhóm.
@@ -1481,7 +1733,8 @@ export class CustomersService {
       const routeKey = r.routeName || 'Không rõ';
       const soXe = r.soXe || 'Không rõ';
       const key = `${routeKey} / ${soXe}`;
-      const tl = r.kepRole === 'main' && r.kepLabel ? r.kepLabel : typeLabel(r.type);
+      const tl =
+        r.kepRole === 'main' && r.kepLabel ? r.kepLabel : typeLabel(r.type);
       // Khóa nhóm tách theo CÁCH TÍNH GIÁ (bó / cặp kẹp / vỏ lẻ) để đơn giá
       // không bao giờ bị cộng gộp nhầm giữa các dòng khác bản chất.
       const groupKey = r.mergeGroup
@@ -1519,12 +1772,16 @@ export class CustomersService {
         [stt, key, data.label, data.count, data.donGia].forEach((v, ci) => {
           row.getCell(ci + 1).value = v;
           row.getCell(ci + 1).font = tnr(false, 11);
-          row.getCell(ci + 1).alignment = { horizontal: 'center', vertical: 'middle' };
+          row.getCell(ci + 1).alignment = {
+            horizontal: 'center',
+            vertical: 'middle',
+          };
           row.getCell(ci + 1).border = thinBorder;
         });
         row.getCell(5).numFmt = '#,##0';
         row.getCell(6).value = { formula: `E${qtslRowNum}*D${qtslRowNum}` };
-        row.getCell(6).font = tnr(false, 11); row.getCell(6).numFmt = '#,##0';
+        row.getCell(6).font = tnr(false, 11);
+        row.getCell(6).numFmt = '#,##0';
         row.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
         row.getCell(6).border = thinBorder;
         row.getCell(7).value = 8;
@@ -1532,11 +1789,13 @@ export class CustomersService {
         row.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' };
         row.getCell(7).border = thinBorder;
         row.getCell(8).value = { formula: `F${qtslRowNum}*G${qtslRowNum}/100` };
-        row.getCell(8).font = tnr(false, 11); row.getCell(8).numFmt = '#,##0';
+        row.getCell(8).font = tnr(false, 11);
+        row.getCell(8).numFmt = '#,##0';
         row.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' };
         row.getCell(8).border = thinBorder;
         row.getCell(9).value = { formula: `H${qtslRowNum}+F${qtslRowNum}` };
-        row.getCell(9).font = tnr(false, 11); row.getCell(9).numFmt = '#,##0';
+        row.getCell(9).font = tnr(false, 11);
+        row.getCell(9).numFmt = '#,##0';
         row.getCell(9).alignment = { horizontal: 'center', vertical: 'middle' };
         row.getCell(9).border = thinBorder;
         qtslRowNum++;
@@ -1548,13 +1807,22 @@ export class CustomersService {
     wsQTSL.mergeCells(`A${qtslTotalRow}:C${qtslTotalRow}`);
     wsQTSL.getCell(`A${qtslTotalRow}`).value = 'Tổng';
     wsQTSL.getCell(`A${qtslTotalRow}`).font = tnr(true, 11);
-    wsQTSL.getCell(`A${qtslTotalRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
-    for (let c = 1; c <= 9; c++) wsQTSL.getCell(qtslTotalRow, c).border = thinBorder;
+    wsQTSL.getCell(`A${qtslTotalRow}`).alignment = {
+      horizontal: 'center',
+      vertical: 'middle',
+    };
+    for (let c = 1; c <= 9; c++)
+      wsQTSL.getCell(qtslTotalRow, c).border = thinBorder;
     for (const col of ['D', 'F', 'H', 'I']) {
-      wsQTSL.getCell(`${col}${qtslTotalRow}`).value = { formula: `SUM(${col}${qtslDataStart}:${col}${qtslTotalRow - 1})` };
+      wsQTSL.getCell(`${col}${qtslTotalRow}`).value = {
+        formula: `SUM(${col}${qtslDataStart}:${col}${qtslTotalRow - 1})`,
+      };
       wsQTSL.getCell(`${col}${qtslTotalRow}`).font = tnr(true, 11);
       wsQTSL.getCell(`${col}${qtslTotalRow}`).numFmt = '#,##0';
-      wsQTSL.getCell(`${col}${qtslTotalRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsQTSL.getCell(`${col}${qtslTotalRow}`).alignment = {
+        horizontal: 'center',
+        vertical: 'middle',
+      };
     }
 
     // QTSL Bằng tiền + Signature
@@ -1562,11 +1830,15 @@ export class CustomersService {
     wsQTSL.mergeCells(`A${qtslBangTien}:B${qtslBangTien}`);
     wsQTSL.getCell(`A${qtslBangTien}`).value = 'Bằng tiền :';
     wsQTSL.getCell(`A${qtslBangTien}`).font = tnr(true, 11);
-    wsQTSL.getCell(`A${qtslBangTien}`).alignment = { horizontal: 'right', vertical: 'middle' };
+    wsQTSL.getCell(`A${qtslBangTien}`).alignment = {
+      horizontal: 'right',
+      vertical: 'middle',
+    };
 
     const qtslSignDate = qtslBangTien + 2;
     wsQTSL.mergeCells(`F${qtslSignDate}:I${qtslSignDate}`);
-    wsQTSL.getCell(`F${qtslSignDate}`).value = `Ngày ${lastDay} tháng ${String(month).padStart(2, '0')} năm ${year}`;
+    wsQTSL.getCell(`F${qtslSignDate}`).value =
+      `Ngày ${lastDay} tháng ${String(month).padStart(2, '0')} năm ${year}`;
     wsQTSL.getCell(`F${qtslSignDate}`).font = tnr(true, 12);
     wsQTSL.getCell(`F${qtslSignDate}`).alignment = { horizontal: 'center' };
 
@@ -1595,37 +1867,54 @@ export class CustomersService {
     wsQT.getColumn(9).width = 14.75;
 
     wsQT.mergeCells('A1:I2');
-    wsQT.getCell('A1').value = `QUYẾT TOÁN VẬN CHUYỂN THÁNG ${String(month).padStart(2, '0')}.${year}`;
+    wsQT.getCell('A1').value =
+      `QUYẾT TOÁN VẬN CHUYỂN THÁNG ${String(month).padStart(2, '0')}.${year}`;
     wsQT.getCell('A1').font = tnr(true, 14);
     wsQT.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
 
-    wsQT.mergeCells('B3:B4'); wsQT.mergeCells('C3:C4');
-    wsQT.mergeCells('D3:D4'); wsQT.mergeCells('E3:E4');
-    wsQT.mergeCells('F3:F4'); wsQT.mergeCells('G3:H3');
+    wsQT.mergeCells('B3:B4');
+    wsQT.mergeCells('C3:C4');
+    wsQT.mergeCells('D3:D4');
+    wsQT.mergeCells('E3:E4');
+    wsQT.mergeCells('F3:F4');
+    wsQT.mergeCells('G3:H3');
     wsQT.mergeCells('I3:I4');
     const r3qt = wsQT.getRow(3);
     qtslHeaders3.forEach((h, i) => {
       if (h !== null) {
         r3qt.getCell(i + 1).value = h;
         r3qt.getCell(i + 1).font = tnr(true, 11);
-        r3qt.getCell(i + 1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        r3qt.getCell(i + 1).alignment = {
+          horizontal: 'center',
+          vertical: 'middle',
+          wrapText: true,
+        };
         r3qt.getCell(i + 1).border = thinBorder;
       }
     });
-    const r4qt = wsQT.getRow(4); r4qt.height = 18.75;
+    const r4qt = wsQT.getRow(4);
+    r4qt.height = 18.75;
     qtslHeaders4.forEach((h, i) => {
       if (h !== null) {
         r4qt.getCell(i + 1).value = h;
         r4qt.getCell(i + 1).font = tnr(true, 11);
-        r4qt.getCell(i + 1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        r4qt.getCell(i + 1).alignment = {
+          horizontal: 'center',
+          vertical: 'middle',
+          wrapText: true,
+        };
         r4qt.getCell(i + 1).border = thinBorder;
       }
     });
-    const r5qt = wsQT.getRow(5); r5qt.height = 16.5;
+    const r5qt = wsQT.getRow(5);
+    r5qt.height = 16.5;
     qtslHeaders5.forEach((h, i) => {
       r5qt.getCell(i + 1).value = h;
       r5qt.getCell(i + 1).font = tnr(true, 11);
-      r5qt.getCell(i + 1).alignment = { horizontal: 'center', vertical: 'middle' };
+      r5qt.getCell(i + 1).alignment = {
+        horizontal: 'center',
+        vertical: 'middle',
+      };
       r5qt.getCell(i + 1).border = thinBorder;
     });
     for (let r = 3; r <= 5; r++) {
@@ -1633,7 +1922,10 @@ export class CustomersService {
     }
 
     // Group by route only
-    const qtGroupMap = new Map<string, Map<string, { label: string; count: number; donGia: number }>>();
+    const qtGroupMap = new Map<
+      string,
+      Map<string, { label: string; count: number; donGia: number }>
+    >();
     const qtRouteOrder: string[] = [];
     // Nhóm nhiều dòng (bó FR / cặp kẹp) chỉ tính 1 lần cho cả nhóm.
     const qtSeenGroups = new Set<string>();
@@ -1643,7 +1935,8 @@ export class CustomersService {
         qtSeenGroups.add(r.mergeGroup);
       }
       const routeKey = r.routeName || 'Không rõ';
-      const tl = r.kepRole === 'main' && r.kepLabel ? r.kepLabel : typeLabel(r.type);
+      const tl =
+        r.kepRole === 'main' && r.kepLabel ? r.kepLabel : typeLabel(r.type);
       const groupKey = r.mergeGroup
         ? `${tl}@@${r.mergeGroup.startsWith('bo:') ? 'bo' : 'kep'}`
         : `type:${tl}`;
@@ -1674,15 +1967,21 @@ export class CustomersService {
       const typeMap = qtGroupMap.get(routeKey)!;
       for (const data of typeMap.values()) {
         const row = wsQT.getRow(qtRowNum);
-        [stt, routeKey, data.label, data.count, data.donGia].forEach((v, ci) => {
-          row.getCell(ci + 1).value = v;
-          row.getCell(ci + 1).font = tnr(false, 11);
-          row.getCell(ci + 1).alignment = { horizontal: 'center', vertical: 'middle' };
-          row.getCell(ci + 1).border = thinBorder;
-        });
+        [stt, routeKey, data.label, data.count, data.donGia].forEach(
+          (v, ci) => {
+            row.getCell(ci + 1).value = v;
+            row.getCell(ci + 1).font = tnr(false, 11);
+            row.getCell(ci + 1).alignment = {
+              horizontal: 'center',
+              vertical: 'middle',
+            };
+            row.getCell(ci + 1).border = thinBorder;
+          },
+        );
         row.getCell(5).numFmt = '#,##0';
         row.getCell(6).value = { formula: `E${qtRowNum}*D${qtRowNum}` };
-        row.getCell(6).font = tnr(false, 11); row.getCell(6).numFmt = '#,##0';
+        row.getCell(6).font = tnr(false, 11);
+        row.getCell(6).numFmt = '#,##0';
         row.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
         row.getCell(6).border = thinBorder;
         row.getCell(7).value = 8;
@@ -1690,11 +1989,13 @@ export class CustomersService {
         row.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' };
         row.getCell(7).border = thinBorder;
         row.getCell(8).value = { formula: `F${qtRowNum}*G${qtRowNum}/100` };
-        row.getCell(8).font = tnr(false, 11); row.getCell(8).numFmt = '#,##0';
+        row.getCell(8).font = tnr(false, 11);
+        row.getCell(8).numFmt = '#,##0';
         row.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' };
         row.getCell(8).border = thinBorder;
         row.getCell(9).value = { formula: `H${qtRowNum}+F${qtRowNum}` };
-        row.getCell(9).font = tnr(false, 11); row.getCell(9).numFmt = '#,##0';
+        row.getCell(9).font = tnr(false, 11);
+        row.getCell(9).numFmt = '#,##0';
         row.getCell(9).alignment = { horizontal: 'center', vertical: 'middle' };
         row.getCell(9).border = thinBorder;
         qtRowNum++;
@@ -1706,13 +2007,22 @@ export class CustomersService {
     wsQT.mergeCells(`A${qtTotalRow}:C${qtTotalRow}`);
     wsQT.getCell(`A${qtTotalRow}`).value = 'Tổng';
     wsQT.getCell(`A${qtTotalRow}`).font = tnr(true, 11);
-    wsQT.getCell(`A${qtTotalRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
-    for (let c = 1; c <= 9; c++) wsQT.getCell(qtTotalRow, c).border = thinBorder;
+    wsQT.getCell(`A${qtTotalRow}`).alignment = {
+      horizontal: 'center',
+      vertical: 'middle',
+    };
+    for (let c = 1; c <= 9; c++)
+      wsQT.getCell(qtTotalRow, c).border = thinBorder;
     for (const col of ['D', 'F', 'H', 'I']) {
-      wsQT.getCell(`${col}${qtTotalRow}`).value = { formula: `SUM(${col}${qtDataStart}:${col}${qtTotalRow - 1})` };
+      wsQT.getCell(`${col}${qtTotalRow}`).value = {
+        formula: `SUM(${col}${qtDataStart}:${col}${qtTotalRow - 1})`,
+      };
       wsQT.getCell(`${col}${qtTotalRow}`).font = tnr(true, 11);
       wsQT.getCell(`${col}${qtTotalRow}`).numFmt = '#,##0';
-      wsQT.getCell(`${col}${qtTotalRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsQT.getCell(`${col}${qtTotalRow}`).alignment = {
+        horizontal: 'center',
+        vertical: 'middle',
+      };
     }
 
     // QT Bằng tiền + Signature
@@ -1720,11 +2030,15 @@ export class CustomersService {
     wsQT.mergeCells(`A${qtBangTien}:B${qtBangTien}`);
     wsQT.getCell(`A${qtBangTien}`).value = 'Bằng tiền :';
     wsQT.getCell(`A${qtBangTien}`).font = tnr(true, 11);
-    wsQT.getCell(`A${qtBangTien}`).alignment = { horizontal: 'right', vertical: 'middle' };
+    wsQT.getCell(`A${qtBangTien}`).alignment = {
+      horizontal: 'right',
+      vertical: 'middle',
+    };
 
     const qtSignDate = qtBangTien + 2;
     wsQT.mergeCells(`F${qtSignDate}:I${qtSignDate}`);
-    wsQT.getCell(`F${qtSignDate}`).value = `Ngày ${lastDay} tháng ${String(month).padStart(2, '0')} năm ${year}`;
+    wsQT.getCell(`F${qtSignDate}`).value =
+      `Ngày ${lastDay} tháng ${String(month).padStart(2, '0')} năm ${year}`;
     wsQT.getCell(`F${qtSignDate}`).font = tnr(true, 12);
     wsQT.getCell(`F${qtSignDate}`).alignment = { horizontal: 'center' };
 
@@ -1752,8 +2066,10 @@ export class CustomersService {
     res.end();
   }
 
-
-  private monthRange(month: number, year: number): { fromDate: string; toDate: string } {
+  private monthRange(
+    month: number,
+    year: number,
+  ): { fromDate: string; toDate: string } {
     const fromDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const toDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;

@@ -7,7 +7,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     const redisUrl = process.env.REDIS_URL;
-    
+
     if (redisUrl) {
       // Use REDIS_URL from Railway
       this.client = new Redis(redisUrl, {
@@ -51,7 +51,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async set(key: string, value: string, ttl?: number): Promise<void> {
     await this.safe(
-      () => (ttl ? this.client.set(key, value, 'EX', ttl) : this.client.set(key, value)),
+      () =>
+        ttl
+          ? this.client.set(key, value, 'EX', ttl)
+          : this.client.set(key, value),
       undefined,
     );
   }
@@ -93,7 +96,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async blacklistToken(jti: string, ttl: number): Promise<void> {
-    await this.safe(() => this.client.set(`blacklist:${jti}`, '1', 'EX', ttl), undefined);
+    await this.safe(
+      () => this.client.set(`blacklist:${jti}`, '1', 'EX', ttl),
+      undefined,
+    );
   }
 
   async isTokenBlacklisted(jti: string): Promise<boolean> {
@@ -102,7 +108,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async setRefreshToken(userId: number, tokenHash: string): Promise<void> {
     await this.safe(
-      () => this.client.set(`refresh_token:${userId}`, tokenHash, 'EX', 7 * 24 * 60 * 60),
+      () =>
+        this.client.set(
+          `refresh_token:${userId}`,
+          tokenHash,
+          'EX',
+          7 * 24 * 60 * 60,
+        ),
       undefined,
     );
   }
@@ -112,14 +124,21 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async removeRefreshToken(userId: number): Promise<void> {
-    await this.safe(() => this.client.del(`refresh_token:${userId}`), undefined);
+    await this.safe(
+      () => this.client.del(`refresh_token:${userId}`),
+      undefined,
+    );
   }
 
   /**
    * Leader election lock: SET NX PX. Chỉ 1 instance giành được lock mới chạy poller.
    * Trả true nếu giành được lock.
    */
-  async acquireLock(key: string, token: string, ttlMs: number): Promise<boolean> {
+  async acquireLock(
+    key: string,
+    token: string,
+    ttlMs: number,
+  ): Promise<boolean> {
     const ok = await this.safe(
       () => this.client.set(key, token, 'PX', ttlMs, 'NX'),
       null,
@@ -160,4 +179,3 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return ok === 'OK';
   }
 }
-
