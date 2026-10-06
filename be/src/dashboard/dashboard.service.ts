@@ -402,10 +402,12 @@ export class DashboardService {
       conts: ContainerImport[],
       plan: ShippingLine | null,
     ): number => {
-      if (!customerId || !day) return 0;
-      const myPrices     = allPrices.filter(p => p.customerId === customerId && day >= p.fromDay && day <= p.toDay);
-      const mySurcharges = allSurcharges.filter(s => s.customerId === customerId && day >= s.fromDay && day <= s.toDay);
+      if (!day) return 0;
+      // Nếu kế hoạch đã duyệt giá deal → dùng dealed_prices kể cả khi không có customer_id
       const usePlanPrice = !!plan && plan.priceStatus === 'approved' && !!plan.dealedPrices;
+      if (!customerId && !usePlanPrice) return 0;
+      const myPrices     = customerId ? allPrices.filter(p => p.customerId === customerId && day >= p.fromDay && day <= p.toDay) : [];
+      const mySurcharges = customerId ? allSurcharges.filter(s => s.customerId === customerId && day >= s.fromDay && day <= s.toDay) : [];
       const countByType: Record<string, number> = {};
       for (const ci of conts) countByType[ci.type] = (countByType[ci.type] ?? 0) + 1;
       let total = 0;
