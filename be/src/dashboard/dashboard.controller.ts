@@ -16,11 +16,12 @@ export class DashboardController {
     @CurrentUser() user: any,
     @Query('month') month?: string,
     @Query('year') year?: string,
+    @Query('ben') ben?: string,
   ) {
     const now = new Date();
     const m = month ? parseInt(month) : now.getMonth() + 1;
     const y = year ? parseInt(year) : now.getFullYear();
-    const data = await this.dashboardService.getOverview(m, y, user);
+    const data = await this.dashboardService.getOverview(m, y, user, ben);
     return { data };
   }
 }

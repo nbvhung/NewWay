@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Submission } from '../database/entities/submission.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
@@ -12,7 +12,7 @@ import { User } from '../database/entities/user.entity';
 import { Route } from '../database/entities/route.entity';
 import { FinanceEntry } from '../database/entities/finance-entry.entity';
 import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
-import { resolveVisibleDriverIds } from '../common/permissions/permissions';
+import { resolveVisibleDriverIds, hasPermission } from '../common/permissions/permissions';
 import { SalaryService } from '../salary/salary.service';
 
 // ─── Nhóm chi tiết trong `finance_cost_items` ────────────────────
@@ -146,6 +146,12 @@ export interface DashboardOverview {
     }[]>;
   };
   /** Xe thuộc sở hữu của tài khoản đang xem (để lọc theo xe). */
+  /** Được phép chọn xem theo bên (supper_admin / finance.all). */
+  canPickBen: boolean;
+  /** Danh sách bên có thể chọn (vd ['A','B']). */
+  benOptions: string[];
+  /** Bên đang lọc (null = tất cả). */
+  ben: string | null;
   ownedDrivers: {
     id: number;
     fullName: string;
@@ -174,7 +180,7 @@ export class DashboardService {
     private salaryService: SalaryService,
   ) {}
 
-  async getOverview(month: number, year: number, user?: any): Promise<DashboardOverview> {
+  async getOverview(month: number, year: number, user?: any, benParam?: string): Promise<DashboardOverview> {
     const pad = (n: number) => String(n).padStart(2, '0');
     const fromDate = `${year}-${pad(month)}-01`;
     const lastDay  = new Date(year, month, 0).getDate();
@@ -182,7 +188,36 @@ export class DashboardService {
 
     // 0. Danh sách xe (lái xe) mà tài khoản này được phép xem.
     //    null = xem tất cả (admin/supper_admin hoặc tài khoản không giới hạn xe).
-    const visible = resolveVisibleDriverIds(user);
+    let visible = resolveVisibleDriverIds(user);
+
+    // 0b. Lọc theo BÊN (A/B) — chỉ supper_admin hoặc quyền finance.all.
+    //     Bên của xe suy ra từ chủ vốn sở hữu xe (users.ben + visible_driver_ids),
+    //     xe không thuộc chủ vốn nào → bên 'A' (giống tab Tài chính).
+    const canPickBen = user?.role === 'supper_admin' || hasPermission(user, 'finance.all');
+    const normBen = (v?: string | null) => (v || '').trim().toUpperCase() || 'A';
+    const owners = await this.userRepo.find({
+      where: { role: In(['admin', 'supper_admin']) },
+      order: { id: 'ASC' },
+    });
+    const benOptions = Array.from(
+      new Set(['A', ...owners.filter((o) => (o.ben || '').trim()).map((o) => normBen(o.ben))]),
+    ).sort();
+    const benSel = canPickBen && benParam && benParam.trim() ? normBen(benParam) : null;
+    let benOwnerIds: number[] | null = null;
+    if (benSel) {
+      const driverBen = new Map<number, string>();
+      for (const o of owners) {
+        const b = (o.ben || '').trim().toUpperCase();
+        if (!b) continue;
+        for (const d of o.visibleDriverIds || []) {
+          const id = Number(d);
+          if (Number.isFinite(id) && !driverBen.has(id)) driverBen.set(id, b);
+        }
+      }
+      const drivers = await this.userRepo.find({ where: { role: 'laixe' } });
+      visible = drivers.filter((d) => normBen(driverBen.get(d.id)) === benSel).map((d) => d.id);
+      benOwnerIds = owners.filter((o) => normBen(o.ben) === benSel).map((o) => o.id);
+    }
 
     // 1. Kế hoạch trong tháng
     let plans = await this.slRepo
@@ -633,12 +668,20 @@ export class DashboardService {
 
     // ─── Finance entries (chi phí + vốn đầu tư) — mỗi admin xem của mình ─
     const userId = user?.sub ?? user?.id ?? null;
-    const scopeWhere: any = userId ? { userId } : {};
+    // Đang lọc theo bên → gộp sổ tài chính của mọi chủ vốn thuộc bên đó.
+    const scopeWhere: any = benOwnerIds
+      ? { userId: In(benOwnerIds.length ? benOwnerIds : [-1]) }
+      : userId ? { userId } : {};
 
     // Bản ghi của ĐÚNG tháng đang chọn (dùng cho 3 cột chi phí legacy).
-    const finance = await this.financeRepo.findOne({
-      where: userId ? { month, year, userId } : { month, year },
+    const monthFinance = await this.financeRepo.find({
+      where: { ...scopeWhere, month, year },
     });
+    const finance = {
+      suaChua:   monthFinance.reduce((s, e) => s + (Number(e.suaChua) || 0), 0),
+      nhienLieu: monthFinance.reduce((s, e) => s + (Number(e.nhienLieu) || 0), 0),
+      cpKhac:    monthFinance.reduce((s, e) => s + (Number(e.cpKhac) || 0), 0),
+    };
 
     // MỌI bản ghi finance của user → để cộng dồn VỐN ĐẦU TƯ xuyên tháng.
     const allFinance = await this.financeRepo.find({ where: scopeWhere });
@@ -772,6 +815,9 @@ export class DashboardService {
         // Chi tiết vốn đầu tư (cộng dồn) theo nhóm, để lọc theo xe
         items: investItemsDetail,
       },
+      canPickBen,
+      benOptions,
+      ben: benSel,
       ownedDrivers,
     };
   }

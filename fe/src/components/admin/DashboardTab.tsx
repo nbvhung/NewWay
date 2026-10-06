@@ -530,14 +530,16 @@ export function DashboardTab() {
   const [revenueDriver, setRevenueDriver] = useState<number | ''>('');
   // Máy tính lợi nhuận chủ đầu tư
   const [investorCapital, setInvestorCapital] = useState('');
+  // Lọc theo bên (chỉ hiện khi BE trả canPickBen = true)
+  const [ben, setBen] = useState('');
 
   const load = async () => {
     setLoading(true); setError('');
-    try { setData((await dashboardApi.getOverview(month, year)).data.data); }
+    try { setData((await dashboardApi.getOverview(month, year, ben || undefined)).data.data); }
     catch (e: any) { setError(e?.response?.data?.message || e?.message || 'Lỗi tải dữ liệu'); }
     finally { setLoading(false); }
   };
-  useEffect(() => { load(); }, [month, year]);
+  useEffect(() => { load(); }, [month, year, ben]);
 
   if (loading) return (
     <div className="dsh flex items-center justify-center" style={{ minHeight: '50vh' }}>
@@ -632,6 +634,17 @@ export function DashboardTab() {
             style={{ border: `1px solid ${C.faint}` }}>
             {[year + 1, year, year - 1, year - 2].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
+          {/* Lọc theo Bên — chỉ hiện với supper_admin / finance.all */}
+          {data?.canPickBen && (
+            <select value={ben} onChange={e => { setBen(e.target.value); }}
+              className="rounded-lg px-3 py-2 text-[12px] outline-none cursor-pointer bg-white font-semibold"
+              style={{ border: `1px solid ${ben ? C.amber : C.faint}`, color: ben ? C.amber : undefined }}>
+              <option value="">🏢 Tất cả bên</option>
+              {(data.benOptions || []).map(b => (
+                <option key={b} value={b}>Bên {b}</option>
+              ))}
+            </select>
+          )}
           <button onClick={load} className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer bg-white hover:bg-stone-50 text-[14px]"
             style={{ border: `1px solid ${C.faint}`, color: C.muted }}>↻</button>
         </div>

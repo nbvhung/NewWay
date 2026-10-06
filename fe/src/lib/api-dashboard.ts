@@ -118,9 +118,18 @@ export interface DashboardOverview {
   };
   /** Xe thuộc sở hữu của tài khoản đang xem (để lọc theo xe). */
   ownedDrivers: OwnedDriver[];
+  /** Tài khoản này được phép chọn lọc theo Bên (supper_admin / finance.all). */
+  canPickBen: boolean;
+  /** Danh sách bên có trong hệ thống (vd ['A', 'B']). */
+  benOptions: string[];
+  /** Bên đang lọc (null = tất cả). */
+  ben: string | null;
 }
 
 export const dashboardApi = {
-  getOverview: (month: number, year: number) =>
-    api.get<{ data: DashboardOverview }>(`/admin/dashboard?month=${month}&year=${year}`),
+  getOverview: (month: number, year: number, ben?: string) => {
+    const q = new URLSearchParams({ month: String(month), year: String(year) });
+    if (ben) q.set('ben', ben);
+    return api.get<{ data: DashboardOverview }>(`/admin/dashboard?${q}`);
+  },
 };
