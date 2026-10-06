@@ -462,7 +462,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
         editForm={editForm}
         setEditForm={setEditForm}
         allShippingLines={allShippingLines}
-        allDrivers={allUsers}
+        allDrivers={allUsers.filter(u => u.role === 'laixe')}
         saving={saving}
         onSave={saveSubEdit}
         submission={editSub}
