@@ -55,6 +55,25 @@ export interface PlanSummary {
   contByType: Record<string, number>;
 }
 
+export interface VehicleDriverRevenue {
+  driverId: number;
+  fullName: string;
+  /** true = chủ xe (lái chính), false = lái phụ mượn xe. */
+  isMain: boolean;
+  revenue: number;
+  luongKhoan: number;
+  planCount: number;
+  totalCont: number;
+  contByType: Record<string, number>;
+  routes: {
+    routeName: string;
+    revenue: number;
+    planCount: number;
+    contCount: number;
+    contByType: Record<string, number>;
+  }[];
+}
+
 /**
  * Doanh thu gom theo XE (biển số). `vehicleId` = id tài khoản lái xe giữ biển
  * (chủ xe). Khi tài xế mượn xe chạy, doanh thu tính về xe thực chạy
@@ -81,6 +100,8 @@ export interface VehicleRevenue {
     contCount: number;
     contByType: Record<string, number>;
   }[];
+  /** Doanh thu/sản lượng tách theo từng lái xe đã chạy xe này (lái chính + lái phụ). */
+  drivers: VehicleDriverRevenue[];
 }
 
 /** 1 tài xế đóng góp lương vào 1 xe (lái chính hoặc lái phụ mượn xe). */
@@ -594,6 +615,30 @@ export class DashboardService {
       { revenue: number; planCount: number }
     >(); // day → revenue
 
+    // Doanh thu/sản lượng tách theo (xe, lái xe) — để popup "Theo xe" lọc theo lái xe.
+    const vehicleDriverRevenueMap = new Map<
+      number,
+      Map<
+        number,
+        {
+          revenue: number;
+          luongKhoan: number;
+          planCount: number;
+          totalCont: number;
+          contByType: Record<string, number>;
+          routes: Map<
+            string,
+            {
+              revenue: number;
+              planCount: number;
+              contCount: number;
+              contByType: Record<string, number>;
+            }
+          >;
+        }
+      >
+    >();
+
     let totalRevenue = 0;
     let totalSubvendor = 0;
     let totalLuongChuyen = 0;
@@ -759,6 +804,59 @@ export class DashboardService {
         }
         entry.routes.set(plan.routeName, routeEntry);
         driverRevenueMap.set(dId, entry);
+
+        // ── Tách theo LÁI XE trong cùng xe (lái chính + lái phụ) ──
+        const contsByDriverInVehicle = new Map<number, ContainerImport[]>();
+        for (const ci of driverConts) {
+          const sub = ci.submissionRef;
+          if (!sub) continue;
+          const arr = contsByDriverInVehicle.get(sub.userId) ?? [];
+          arr.push(ci);
+          contsByDriverInVehicle.set(sub.userId, arr);
+        }
+        let vdMap = vehicleDriverRevenueMap.get(dId);
+        if (!vdMap) {
+          vdMap = new Map();
+          vehicleDriverRevenueMap.set(dId, vdMap);
+        }
+        for (const [driverId, dConts] of contsByDriverInVehicle.entries()) {
+          const dRev = calcRevenue(plan.customerId, day, dConts, plan);
+          const de = vdMap.get(driverId) ?? {
+            revenue: 0,
+            luongKhoan: 0,
+            planCount: 0,
+            totalCont: 0,
+            contByType: {},
+            routes: new Map(),
+          };
+          de.revenue += dRev;
+          de.planCount += 1;
+          de.totalCont += dConts.length;
+          for (const ci of dConts) {
+            de.contByType[ci.type] = (de.contByType[ci.type] ?? 0) + 1;
+          }
+          const dRoute = de.routes.get(plan.routeName) ?? {
+            revenue: 0,
+            planCount: 0,
+            contCount: 0,
+            contByType: {},
+          };
+          dRoute.revenue += dRev;
+          dRoute.planCount += 1;
+          dRoute.contCount += dConts.length;
+          for (const ci of dConts) {
+            dRoute.contByType[ci.type] = (dRoute.contByType[ci.type] ?? 0) + 1;
+          }
+          de.routes.set(plan.routeName, dRoute);
+          // Lương chuyến của lái xe này trên xe này.
+          const dSub = subs.find(
+            (s) =>
+              s.userId === driverId &&
+              (s.actualVehicleId ?? s.userId) === dId,
+          );
+          if (dSub) de.luongKhoan += calcSubSalary(dSub, plan);
+          vdMap.set(driverId, de);
+        }
       }
 
       planSummaries.push({
@@ -806,6 +904,30 @@ export class DashboardService {
             contCount: r.contCount,
             contByType: r.contByType,
           }))
+          .sort((a, b) => b.revenue - a.revenue),
+        drivers: Array.from(vehicleDriverRevenueMap.get(dId)?.entries() ?? [])
+          .map(([driverId, e]) => {
+            const du = userMap.get(driverId);
+            return {
+              driverId,
+              fullName: du?.fullName ?? `Lái xe #${driverId}`,
+              isMain: driverId === dId,
+              revenue: Math.round(e.revenue),
+              luongKhoan: Math.round(e.luongKhoan),
+              planCount: e.planCount,
+              totalCont: e.totalCont,
+              contByType: e.contByType,
+              routes: Array.from(e.routes.entries())
+                .map(([routeName, r]) => ({
+                  routeName,
+                  revenue: Math.round(r.revenue),
+                  planCount: r.planCount,
+                  contCount: r.contCount,
+                  contByType: r.contByType,
+                }))
+                .sort((a, b) => b.revenue - a.revenue),
+            };
+          })
           .sort((a, b) => b.revenue - a.revenue),
       });
     }

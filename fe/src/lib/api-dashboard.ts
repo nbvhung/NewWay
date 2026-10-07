@@ -18,6 +18,19 @@ export interface PlanSummary {
   contByType: Record<string, number>;
 }
 
+/** Doanh thu/sản lượng tách theo từng lái xe đã chạy 1 xe (lái chính + lái phụ). */
+export interface VehicleDriverRevenue {
+  driverId: number;
+  fullName: string;
+  isMain: boolean;
+  revenue: number;
+  luongKhoan: number;
+  planCount: number;
+  totalCont: number;
+  contByType: Record<string, number>;
+  routes: { routeName: string; revenue: number; planCount: number; contCount: number; contByType: Record<string, number> }[];
+}
+
 /** Doanh thu gom theo XE (biển số). `vehicleId` = tài khoản lái xe giữ biển. */
 export interface VehicleRevenue {
   vehicleId: number;
@@ -34,6 +47,8 @@ export interface VehicleRevenue {
   totalPlanCount: number;
   totalCont: number;     // tổng sản lượng (container) của xe trong tháng
   routes: { routeName: string; revenue: number; planCount: number; contCount: number; contByType: Record<string, number> }[];
+  /** Doanh thu/sản lượng tách theo từng lái xe đã chạy xe này. */
+  drivers?: VehicleDriverRevenue[];
 }
 
 /** 1 tài xế đóng góp lương vào 1 xe (lái chính hoặc lái phụ mượn xe). */

@@ -107,8 +107,24 @@ function PlanSheet({ plan, onClose }: { plan: PlanSummary; onClose: () => void }
    VEHICLE MODAL — chi tiết doanh thu theo xe (biển số)
    ─────────────────────────────────────────────────────────────── */
 function VehicleSheet({ d, totalP, onClose }: { d: VehicleRevenue; totalP: number; onClose: () => void }) {
+  const [selDriver, setSelDriver] = useState<number | ''>('');
   const ini = (d.soXe || d.fullName || 'X').split(' ').map(w => w[0] ?? '').slice(-2).join('').toUpperCase();
-  const pp  = pc(d.planCount, totalP);
+  const drivers = d.drivers ?? [];
+  const sel = selDriver === '' ? null : drivers.find(x => x.driverId === selDriver) || null;
+
+  const viewRevenue = sel ? sel.revenue : d.revenue;
+  const viewLuong = sel ? sel.luongKhoan : d.luongKhoan;
+  const viewCont = sel ? sel.totalCont : d.totalCont;
+  const viewPlanCount = sel ? sel.planCount : d.planCount;
+  const viewRoutes = sel ? sel.routes : d.routes;
+  const viewContByType: Record<string, number> = sel
+    ? sel.contByType
+    : viewRoutes.reduce((m, r) => {
+        for (const [t, n] of Object.entries(r.contByType ?? {})) m[t] = (m[t] ?? 0) + n;
+        return m;
+      }, {} as Record<string, number>);
+  const pp = pc(viewPlanCount, totalP);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/25" onClick={onClose}>
       <div className="dsh bg-white w-full sm:max-w-[560px] sm:rounded-xl rounded-t-xl overflow-hidden shadow-xl"
@@ -128,11 +144,32 @@ function VehicleSheet({ d, totalP, onClose }: { d: VehicleRevenue; totalP: numbe
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded hover:bg-white/60 cursor-pointer text-stone-400 flex-shrink-0">✕</button>
         </div>
+
+        {/* Lọc theo lái xe đã chạy xe này */}
+        {drivers.length > 0 && (
+          <div className="px-5 py-3 border-b flex items-center justify-between gap-3" style={{ borderColor: C.faint }}>
+            <span className="text-[11px] font-semibold" style={{ color: C.muted }}>Lọc theo lái xe</span>
+            <select
+              value={selDriver}
+              onChange={e => setSelDriver(e.target.value === '' ? '' : Number(e.target.value))}
+              className="px-3 py-1.5 text-[12px] bg-white border rounded-lg outline-none cursor-pointer max-w-[260px]"
+              style={{ borderColor: C.faint }}
+            >
+              <option value="">👥 Tất cả lái xe</option>
+              {drivers.map(dv => (
+                <option key={dv.driverId} value={dv.driverId}>
+                  {dv.fullName} · {dv.isMain ? 'Lái chính' : 'Lái phụ'} ({fmt(dv.revenue)}₫)
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div className="grid grid-cols-3 border-b" style={{ borderColor: C.faint }}>
           {([
-            ['Sản lượng', fmt(d.totalCont), 'cont', C.ink],
-            ['Doanh thu', fmt(d.revenue),   '₫',     C.amber],
-            ['Lương khoán', fmt(d.luongKhoan), '₫',  C.red],
+            ['Sản lượng', fmt(viewCont), 'cont', C.ink],
+            ['Doanh thu', fmt(viewRevenue),   '₫',     C.amber],
+            ['Lương khoán', fmt(viewLuong), '₫',  C.red],
           ] as [string,string,string,string][]).map(([lbl,val,unit,c],i) => (
             <div key={i} className={i < 2 ? 'px-4 py-3 border-r' : 'px-4 py-3'} style={{ borderColor: C.faint }}>
               <p className="text-[9px] mb-1" style={{ color: C.muted }}>{lbl}</p>
@@ -141,20 +178,36 @@ function VehicleSheet({ d, totalP, onClose }: { d: VehicleRevenue; totalP: numbe
             </div>
           ))}
         </div>
+
+        {/* Sản lượng theo loại container */}
+        {Object.keys(viewContByType).length > 0 && (
+          <div className="px-5 py-3 border-b" style={{ borderColor: C.faint }}>
+            <p className="text-[10px] font-semibold mb-2" style={{ color: C.muted }}>Sản lượng theo loại</p>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(viewContByType).sort((a, b) => b[1] - a[1]).map(([t, n]) => (
+                <span key={t} className="px-2 py-0.5 rounded text-[11px] font-semibold"
+                  style={{ background: '#fff7ed', color: C.amberDk, border: `1px solid #fcd34d` }}>
+                  {t} ×{n}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="px-5 py-3 border-b" style={{ borderColor: C.faint }}>
           <div className="flex justify-between mb-1.5">
             <span className="text-[10px]" style={{ color: C.muted }}>Kế hoạch tham gia</span>
-            <span className="text-[11px] font-semibold">{d.planCount}/{totalP}</span>
+            <span className="text-[11px] font-semibold">{viewPlanCount}/{totalP}</span>
           </div>
           <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: C.faint }}>
             <div className="h-full rounded-full" style={{ width: `${pp}%`, background: C.amber, transition: 'width 0.8s ease' }} />
           </div>
         </div>
-        {d.routes.length > 0 && (
+        {viewRoutes.length > 0 && (
           <div className="px-5 py-4">
             <p className="text-[12px] font-bold mb-3">Tuyến đường</p>
             <div className="space-y-3">
-              {d.routes.slice(0, 12).map((r, i) => {
+              {viewRoutes.slice(0, 12).map((r, i) => {
                 const types = Object.entries(r.contByType ?? {}).sort((a, b) => b[1] - a[1]);
                 return (
                   <div key={i} className="rounded-lg p-3" style={{ background: i === 0 ? C.amberLt : C.surface, border: `1px solid ${i === 0 ? '#fcd34d' : C.faint}` }}>
@@ -179,7 +232,7 @@ function VehicleSheet({ d, totalP, onClose }: { d: VehicleRevenue; totalP: numbe
                     )}
                     {/* Progress bar */}
                     <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: '#e7e5e4' }}>
-                      <div className="h-full rounded-full" style={{ width: `${pc(r.contCount, d.totalCont || 1)}%`, background: i === 0 ? C.amber : '#fcd34d' }} />
+                      <div className="h-full rounded-full" style={{ width: `${pc(r.contCount, viewCont || 1)}%`, background: i === 0 ? C.amber : '#fcd34d' }} />
                     </div>
                   </div>
                 );
