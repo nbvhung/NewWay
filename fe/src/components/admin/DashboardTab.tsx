@@ -398,20 +398,6 @@ function VehicleSalarySheet({ rows, month, year, onClose }: {
               const total = calcTotal(r);
               const isExp = expanded === r.vehicleId;
               const subCount = r.drivers.filter(d => !d.isMain).length;
-              const detailRows: [string, number, string, boolean][] = [
-                ['Lương khoán/chuyến', r.luongKhoan, C.amber, r.luongKhoan > 0],
-                ['Lương cứng', r.luongCung, C.ink, r.luongCung > 0],
-                ['Chuyên cần', r.chuyenCan, '#0891b2', r.chuyenCan > 0],
-                ['Phụ cấp khác', r.phuCap, '#7c3aed', r.phuCap > 0],
-                ['Thưởng (tip)', r.tip, C.green, r.tip > 0],
-                ['Khoản cộng thêm', r.itemSumAdd, '#059669', r.itemSumAdd > 0],
-                ['Khoản khấu trừ', -r.itemSumDeduct, C.red, r.itemSumDeduct > 0],
-                ['Chi hộ', -r.chiHo, C.red, r.chiHo > 0],
-                ['Trừ tạm ứng', -r.advanceDeduct, C.red, r.advanceDeduct > 0],
-                ['BHXH Cty đóng', r.bhxhCty, '#16a34a', r.bhxhCty > 0],
-              ];
-              // Tổng phải trả = thực nhận + BHXH Cty đóng.
-              const totalCty = r.luongNguoiLai + r.bhxhCty;
               return (
                 <div key={r.vehicleId}>
                   <div
@@ -438,29 +424,12 @@ function VehicleSalarySheet({ rows, month, year, onClose }: {
                     </div>
                     <span className="text-[10px] ml-1" style={{ color: C.muted }}>{isExp ? '▲' : '▼'}</span>
                   </div>
-                  {/* Chi tiết mở rộng */}
+                  {/* Chi tiết mở rộng — danh sách tài xế */}
                   {isExp && (
                     <div className="mx-1 mb-2 rounded-b-xl overflow-hidden" style={{ border: `1px solid ${C.amber}40`, borderTop: 'none', background: '#fffbf0' }}>
-                      <div className="px-4 py-3 space-y-0">
-                        {detailRows.filter(([,, , show]) => show).map(([lbl, val]) => (
-                          <div key={lbl} className="flex justify-between items-center py-1.5 border-b last:border-0" style={{ borderColor: '#fef3c7' }}>
-                            <span className="text-[11px]" style={{ color: C.muted }}>{lbl}</span>
-                            <span className="text-[11px] font-semibold" style={{ color: val < 0 ? C.red : lbl === 'BHXH Cty đóng' ? '#16a34a' : C.ink }}>
-                              {val < 0 ? '-' : '+'}{fmt(Math.abs(val))} ₫
-                            </span>
-                          </div>
-                        ))}
-                        {/* Tổng phải trả */}
-                        <div className="flex justify-between items-center py-2 mt-1.5 px-3 rounded-lg" style={{ background: C.redLt }}>
-                          <span className="text-[12px] font-bold" style={{ color: C.red }}>Tổng phải trả</span>
-                          <span className="text-[14px] font-extrabold" style={{ color: C.red }}>{fmt(totalCty)} ₫</span>
-                        </div>
-                        <p className="text-[9px] mt-1.5" style={{ color: C.muted }}>
-                          * Lái chính: thực nhận + BHXH Cty đóng. Lái phụ: chỉ lương chuyến.
-                        </p>
-                        {/* Danh sách tài xế đóng góp */}
-                        {r.drivers.length > 0 && (
-                          <div className="mt-2.5 pt-2" style={{ borderTop: '1px dashed #fcd34d' }}>
+                      <div className="px-4 py-3">
+                        {r.drivers.length > 0 ? (
+                          <>
                             <p className="text-[10px] font-semibold mb-1" style={{ color: C.muted }}>Tài xế ({r.drivers.length})</p>
                             {r.drivers.map((dv, k) => (
                               <div key={k} className="flex justify-between items-center py-1">
@@ -477,7 +446,9 @@ function VehicleSalarySheet({ rows, month, year, onClose }: {
                                 </span>
                               </div>
                             ))}
-                          </div>
+                          </>
+                        ) : (
+                          <p className="text-[11px] text-center" style={{ color: C.muted }}>Chưa có tài xế</p>
                         )}
                       </div>
                     </div>
