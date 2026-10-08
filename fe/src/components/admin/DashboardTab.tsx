@@ -903,8 +903,7 @@ export function DashboardTab() {
           const cpKhac    = isAll ? data.cost.cpKhac      : sumCostItems('cpKhac', sel as number);
           const sum = luong + bhxhCty + subvendor + suaChua + nhienLieu + cpKhac;
           const tiles: [string, number, string, string, string][] = [
-            ['Lương lái xe', luong, C.amber, isAll ? '(bấm để xem chi tiết từng xe)' : '(thực nhận của xe)', isAll ? 'driverSalary' : ''],
-            ['BHXH (Cty đóng)', bhxhCty, '#0d9488', isAll ? '(21,5% lương cứng)' : '(xe này)', ''],
+            ['Lương lái xe + BHXH Cty', luong + bhxhCty, C.amber, isAll ? '(bấm để xem chi tiết từng xe)' : '(thực nhận + BHXH Cty)', isAll ? 'driverSalary' : ''],
             ['Subvendor',    subvendor, C.red,     isAll ? '(phí thuê ngoài)'   : '(không gắn xe)', ''],
             ['Sửa chữa',    suaChua,   '#7c3aed', '(bấm để xem chi tiết)', 'suaChua'],
             ['Nhiên liệu',   nhienLieu, '#0891b2', '(bấm để xem chi tiết)', 'nhienLieu'],

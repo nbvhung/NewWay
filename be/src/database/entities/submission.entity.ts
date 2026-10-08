@@ -8,6 +8,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { User } from './user.entity';
+import { Vehicle } from './vehicle.entity';
 import { ShippingLine } from './shipping-line.entity';
 
 @Entity('submissions')
@@ -90,7 +91,7 @@ export class Submission {
   })
   actualVehicleId: number | null;
 
-  @ManyToOne(() => User, { nullable: true, eager: false })
+  @ManyToOne(() => Vehicle, { nullable: true, eager: false })
   @JoinColumn({ name: 'actual_vehicle_id' })
-  actualVehicle: User | null;
+  actualVehicle: Vehicle | null;
 }

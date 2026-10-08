@@ -177,6 +177,8 @@ export class AuthService {
         role: user.role,
         permissions: resolvePermissions(user),
         visibleDriverIds,
+        soXe: user.soXe || '',
+        homeVehicleId: user.homeVehicleId ?? null,
       },
     };
   }

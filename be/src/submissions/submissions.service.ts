@@ -892,10 +892,10 @@ export class SubmissionsService {
       if (visible.length === 0) {
         query.andWhere('1=0');
       } else {
-        // Lọc theo XE THỰC CHẠY (không theo tài xế gốc) — chủ xe vẫn thấy chuyến
-        // trên xe mình kể cả khi do lái phụ (mượn xe) chạy.
+        // Lọc theo XE THỰC CHẠY (actual ?? home ?? tài xế) — chủ xe vẫn thấy
+        // chuyến trên xe mình kể cả khi do lái phụ (mượn xe) chạy.
         query.andWhere(
-          '(s.actual_vehicle_id IN (:...visibleDriverIds) OR (s.actual_vehicle_id IS NULL AND s.userId IN (:...visibleDriverIds)))',
+          'COALESCE(s.actual_vehicle_id, user.home_vehicle_id, s.userId) IN (:...visibleDriverIds)',
           { visibleDriverIds: visible },
         );
       }

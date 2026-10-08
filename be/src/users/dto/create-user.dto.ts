@@ -67,6 +67,12 @@ export class CreateUserDto {
   @IsString()
   ngayHoatDong?: string;
 
+  /** Xe nhà của lái xe (id trong bảng vehicles). */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Xe nhà không hợp lệ' })
+  homeVehicleId?: number | null;
+
   @IsOptional()
   @IsString()
   zaloId?: string;

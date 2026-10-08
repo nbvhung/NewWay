@@ -19,6 +19,7 @@ import { ZaloGroupAutoService } from '../zalo-messages/zalo-group-auto.service';
 import { ZaloOpsNotifierService } from './zalo-ops-notifier.service';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { User } from '../database/entities/user.entity';
+import { Vehicle } from '../database/entities/vehicle.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Submission } from '../database/entities/submission.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
@@ -76,6 +77,8 @@ export class ZaloBotService {
     private opsNotifier: ZaloOpsNotifierService,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Vehicle)
+    private vehiclesRepository: Repository<Vehicle>,
     @InjectRepository(ShippingLine)
     private shippingLinesRepository: Repository<ShippingLine>,
     @InjectRepository(Submission)
@@ -760,6 +763,14 @@ export class ZaloBotService {
       return;
     }
 
+    // Xe nhà của tài xế (bảng vehicles)
+    const homeVehicle = driver.homeVehicleId
+      ? await this.vehiclesRepository.findOne({
+          where: { id: driver.homeVehicleId },
+        })
+      : null;
+    const homePlate = homeVehicle?.soXe || '';
+
     // Parse 5 số cuối từ lệnh, ví dụ "/xe 01376" → "01376"
     const match = rawText
       .trim()
@@ -772,7 +783,7 @@ export class ZaloBotService {
         await this.reply(
           chatId,
           zaloUserId,
-          `🚚 Sếp ${driver.fullName} đang lái xe gốc (${driver.soXe || 'chưa có BKS'}) — không cần thay đổi gì.`,
+          `🚚 Sếp ${driver.fullName} đang lái xe gốc (${homePlate || 'chưa có BKS'}) — không cần thay đổi gì.`,
         );
         return;
       }
@@ -781,18 +792,17 @@ export class ZaloBotService {
       await this.reply(
         chatId,
         zaloUserId,
-        `✅ Đã reset về xe gốc.\nSếp ${driver.fullName} đang lái: ${driver.soXe || '(chưa có BKS)'}.\nCác chuyến tiếp theo sẽ được ghi nhận cho xe này.`,
+        `✅ Đã reset về xe gốc.\nSếp ${driver.fullName} đang lái: ${homePlate || '(chưa có BKS)'}.\nCác chuyến tiếp theo sẽ được ghi nhận cho xe này.`,
       );
       return;
     }
 
-    // Tìm xe theo 5 số cuối trong danh sách lái xe (bỏ qua chính mình)
-    const allDrivers = await this.usersRepository.find({
-      where: { role: 'laixe' },
-    });
-    const matched = allDrivers.filter(
-      (u) =>
-        u.id !== driver.id && (u.soXe || '').replace(/\D/g, '').endsWith(match),
+    // Tìm xe theo 5 số cuối trong bảng vehicles (bỏ qua xe nhà của chính mình)
+    const allVehicles = await this.vehiclesRepository.find();
+    const matched = allVehicles.filter(
+      (v) =>
+        v.id !== driver.homeVehicleId &&
+        (v.soXe || '').replace(/\D/g, '').endsWith(match),
     );
 
     if (matched.length === 0) {
@@ -806,7 +816,7 @@ export class ZaloBotService {
 
     if (matched.length > 1) {
       const list = matched
-        .map((u, i) => `${i + 1}. ${u.soXe} — ${u.fullName}`)
+        .map((v, i) => `${i + 1}. ${v.soXe}`)
         .join('\n');
       await this.reply(
         chatId,
@@ -824,7 +834,7 @@ export class ZaloBotService {
     await this.reply(
       chatId,
       zaloUserId,
-      `✅ Xác nhận! Sếp ${driver.fullName} đang lái thay xe:\n🚚 ${targetVehicle.soXe} — ${targetVehicle.fullName}\n\nDoanh thu các chuyến tiếp theo sẽ tính cho xe ${targetVehicle.soXe}.\nLương chuyến vẫn tính cho Sếp.\n\nNhắn /xe để quay về xe gốc (${driver.soXe || 'chưa có BKS'}).`,
+      `✅ Xác nhận! Sếp ${driver.fullName} đang lái thay xe:\n🚚 ${targetVehicle.soXe}\n\nDoanh thu các chuyến tiếp theo sẽ tính cho xe ${targetVehicle.soXe}.\nLương chuyến vẫn tính cho Sếp.\n\nNhắn /xe để quay về xe gốc (${homePlate || 'chưa có BKS'}).`,
     );
   }
 
@@ -2086,7 +2096,8 @@ export class ZaloBotService {
           shippingLineId: plan.id,
           route: plan.routeName || '',
           driverName: user.fullName,
-          // Snapshot xe thực chạy: nếu tài xế đang mượn xe khác, lưu lại để tính doanh thu / BKS đúng bên
+          // Snapshot xe thực chạy: chỉ lưu khi tài xế đang MƯỢN xe khác
+          // (current_vehicle_id). Xe nhà để NULL — truy vấn dùng home_vehicle_id.
           actualVehicleId: user.currentVehicleId ?? null,
           [field]: String(increment),
         });

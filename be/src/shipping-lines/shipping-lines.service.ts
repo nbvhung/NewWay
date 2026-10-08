@@ -86,9 +86,10 @@ export class ShippingLinesService {
         // HOẶC có submission với XE THỰC CHẠY thuộc họ (lái phụ chạy xe của họ).
         const subs = await this.submissionsRepository
           .createQueryBuilder('sub')
+          .leftJoin('sub.user', 'u')
           .select('DISTINCT sub.shipping_line_id', 'planId')
           .where(
-            '(sub.actual_vehicle_id IN (:...visible) OR (sub.actual_vehicle_id IS NULL AND sub.user_id IN (:...visible)))',
+            'COALESCE(sub.actual_vehicle_id, u.home_vehicle_id, sub.user_id) IN (:...visible)',
             { visible },
           )
           .getRawMany();

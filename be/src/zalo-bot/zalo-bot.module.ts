@@ -14,6 +14,7 @@ import { ZaloPlanCompletedNotifierService } from './zalo-plan-completed-notifier
 import { ContainerImportModule } from '../container-import/container-import.module';
 import { ZaloMessagesModule } from '../zalo-messages/zalo-messages.module';
 import { User } from '../database/entities/user.entity';
+import { Vehicle } from '../database/entities/vehicle.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Submission } from '../database/entities/submission.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
@@ -25,6 +26,7 @@ import { ZaloMessage } from '../database/entities/zalo-message.entity';
   imports: [
     TypeOrmModule.forFeature([
       User,
+      Vehicle,
       ShippingLine,
       Submission,
       EditHistory,

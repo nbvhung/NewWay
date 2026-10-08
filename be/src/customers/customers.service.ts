@@ -150,9 +150,10 @@ export class CustomersService {
     // khi do lái phụ mượn xe chạy) — để chủ xe thấy đúng khách hàng của mình.
     const subRows = await this.submissionsRepository
       .createQueryBuilder('sub')
+      .leftJoin('sub.user', 'u')
       .select('DISTINCT sub.shipping_line_id', 'planId')
       .where(
-        '(sub.actual_vehicle_id IN (:...visible) OR (sub.actual_vehicle_id IS NULL AND sub.user_id IN (:...visible)))',
+        'COALESCE(sub.actual_vehicle_id, u.home_vehicle_id, sub.user_id) IN (:...visible)',
         { visible },
       )
       .getRawMany();

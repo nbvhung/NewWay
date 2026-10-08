@@ -128,6 +128,20 @@ export const PERMISSIONS: PermissionDef[] = [
     desc: 'Ghi container cho 1 lái xe (claim)',
   },
 
+  // ── Xe ──
+  {
+    key: 'vehicle.view',
+    group: 'Xe',
+    label: 'Xem danh sách xe',
+    desc: 'Xem danh sách xe & chi tiết xe',
+  },
+  {
+    key: 'vehicle.manage',
+    group: 'Xe',
+    label: 'Quản lý xe',
+    desc: 'Thêm/sửa/xóa xe, gán chủ vốn, phân công lái xe',
+  },
+
   // ── Khách hàng ──
   {
     key: 'customer.view',
@@ -318,6 +332,12 @@ export const PERMISSIONS: PermissionDef[] = [
     group: 'Hiển thị tab',
     label: 'Tab Tài khoản',
     desc: 'Hiện tab Tài khoản trong menu',
+  },
+  {
+    key: 'tab.vehicles',
+    group: 'Hiển thị tab',
+    label: 'Tab Quản lý XE',
+    desc: 'Hiện tab Quản lý XE trong menu',
   },
 
   // ── Hệ thống ──

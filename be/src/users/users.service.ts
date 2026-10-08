@@ -160,6 +160,7 @@ export class UsersService {
       stt: dto.stt?.trim() || '',
       sdt: dto.sdt?.trim() || '',
       ngayHoatDong: dto.ngayHoatDong?.trim() || null,
+      homeVehicleId: dto.homeVehicleId ?? null,
       zaloId: dto.zaloId?.trim() || null,
       zaloBot: dto.zaloBot ?? 0,
       oldCar: dto.oldCar ?? false,
@@ -227,6 +228,8 @@ export class UsersService {
     if (dto.sdt !== undefined) target.sdt = dto.sdt.trim();
     if (dto.ngayHoatDong !== undefined)
       target.ngayHoatDong = dto.ngayHoatDong?.trim() || null;
+    if (dto.homeVehicleId !== undefined)
+      target.homeVehicleId = dto.homeVehicleId ?? null;
     if (dto.zaloId !== undefined) target.zaloId = dto.zaloId.trim() || null;
     if (dto.zaloBot !== undefined) target.zaloBot = dto.zaloBot;
     if (dto.allowanceFarHome !== undefined)

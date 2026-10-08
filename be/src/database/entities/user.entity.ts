@@ -66,6 +66,19 @@ export class User {
   @Column({ name: 'sdt', length: 20, default: '' })
   sdt: string;
 
+  /**
+   * Xe NHÀ của lái xe (id trong bảng `vehicles`). Nhiều lái xe có thể cùng 1 xe.
+   * Lương cứng + BHXH của lái xe được tính vào xe nhà này.
+   * NULL = chưa gán xe.
+   */
+  @Column({
+    name: 'home_vehicle_id',
+    type: 'int',
+    nullable: true,
+    default: null,
+  })
+  homeVehicleId: number | null;
+
   /** Ngày đi vào hoạt động (ISO date string YYYY-MM-DD). */
   @Column({
     name: 'ngay_hoat_dong',

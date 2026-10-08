@@ -380,31 +380,12 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
               <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">Thông tin xe</span>
             </div>
             <div className="p-3 grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Biển số xe</label>
-                <input type="text" value={newUser.soXe} onChange={e => setNewUser({ ...newUser, soXe: e.target.value })} placeholder="15H 07883"
-                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
-              </div>
-              <div>
-                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Số mooc</label>
-                <input type="text" value={newUser.soMooc} onChange={e => setNewUser({ ...newUser, soMooc: e.target.value })} placeholder="15RM 08266"
-                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
-              </div>
-              <div>
-                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">STT</label>
-                <input type="text" value={newUser.stt} onChange={e => setNewUser({ ...newUser, stt: e.target.value })} placeholder="NW001"
-                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
-              </div>
-              <div>
+              <div className="col-span-2">
                 <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Số điện thoại</label>
                 <input type="text" value={newUser.sdt} onChange={e => setNewUser({ ...newUser, sdt: e.target.value })} placeholder="0912237755"
                   className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
               </div>
-              <div className="col-span-2">
-                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">📅 Ngày đi vào hoạt động</label>
-                <input type="date" value={newUser.ngayHoatDong} onChange={e => setNewUser({ ...newUser, ngayHoatDong: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
-              </div>
+              <p className="col-span-2 text-[9px] text-[#a8a29e]">Biển số / mooc / STT / ngày hoạt động nay quản lý ở tab <b>Quản lý XE</b>.</p>
             </div>
           </div>
 

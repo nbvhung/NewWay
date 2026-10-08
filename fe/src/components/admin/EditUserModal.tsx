@@ -102,31 +102,12 @@ export function EditUserModal({ open, onClose, editUserData, setEditUserData, on
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="text-xs font-medium text-[#78716c] mb-1 block">Số xe</label>
-            <input type="text" value={editUserData?.soXe || ''} onChange={e => setEditUserData({ ...editUserData, soXe: e.target.value })}
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-[#78716c] mb-1 block">Số mooc</label>
-            <input type="text" value={editUserData?.soMooc || ''} onChange={e => setEditUserData({ ...editUserData, soMooc: e.target.value })}
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-[#78716c] mb-1 block">STT</label>
-            <input type="text" value={editUserData?.stt || ''} onChange={e => setEditUserData({ ...editUserData, stt: e.target.value })}
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
-          </div>
-          <div>
+          <div className="col-span-2">
             <label className="text-xs font-medium text-[#78716c] mb-1 block">SĐT</label>
             <input type="text" value={editUserData?.sdt || ''} onChange={e => setEditUserData({ ...editUserData, sdt: e.target.value })}
               className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
           </div>
-          <div className="col-span-2">
-            <label className="text-xs font-medium text-[#78716c] mb-1 block">📅 Ngày đi vào hoạt động</label>
-            <input type="date" value={editUserData?.ngayHoatDong || ''} onChange={e => setEditUserData({ ...editUserData, ngayHoatDong: e.target.value })}
-              className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
-          </div>
+          <p className="col-span-2 text-[9px] text-[#a8a29e]">Biển số / mooc / STT / ngày hoạt động nay quản lý ở tab <b>Quản lý XE</b>.</p>
           <div>
             <label className="text-xs font-medium text-[#78716c] mb-1 block">Zalo ID</label>
             <input type="text" value={editUserData?.zaloId || ''} onChange={e => setEditUserData({ ...editUserData, zaloId: e.target.value })}

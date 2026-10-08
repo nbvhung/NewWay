@@ -402,7 +402,7 @@ export class DashboardService {
               : allowedVehicles.length === 0
                 ? '1=0'
                 : // Lọc theo xe thực chạy (không phải tài xế gốc).
-                  '(sub.actual_vehicle_id IN (:...allowed) OR (sub.actual_vehicle_id IS NULL AND u.id IN (:...allowed)))',
+                  'COALESCE(sub.actual_vehicle_id, u.home_vehicle_id, u.id) IN (:...allowed)',
             allowedVehicles && allowedVehicles.length > 0
               ? { allowed: allowedVehicles }
               : {},
@@ -423,7 +423,7 @@ export class DashboardService {
               : allowedVehicles.length === 0
                 ? '1=0'
                 : // Xe thực chạy thuộc phạm vi (không lọc theo tài xế gốc).
-                  '(sub.actual_vehicle_id IN (:...allowed) OR (sub.actual_vehicle_id IS NULL AND sub.userId IN (:...allowed)))',
+                  'COALESCE(sub.actual_vehicle_id, u.home_vehicle_id, sub.userId) IN (:...allowed)',
             allowedVehicles && allowedVehicles.length > 0
               ? { allowed: allowedVehicles }
               : {},
@@ -711,7 +711,8 @@ export class DashboardService {
       for (const ci of conts) {
         const sub = ci.submissionRef;
         if (!sub) continue;
-        const effectiveId = sub.actualVehicleId ?? sub.userId;
+        const effectiveId =
+          sub.actualVehicleId ?? userMap.get(sub.userId)?.homeVehicleId ?? sub.userId;
         if (!effectiveId) continue;
         const arr = contsByEffectiveDriver.get(effectiveId) ?? [];
         arr.push(ci);
@@ -783,7 +784,10 @@ export class DashboardService {
 
         // Lương khoán: tìm submission theo xe hiệu dụng (gốc hoặc lái thay)
         const driverSub = subs.find(
-          (s) => (s.actualVehicleId ?? s.userId) === dId,
+          (s) =>
+              (s.actualVehicleId ??
+                userMap.get(s.userId)?.homeVehicleId ??
+                s.userId) === dId,
         );
         if (driverSub) entry.luongKhoan += calcSubSalary(driverSub, plan);
 
@@ -852,7 +856,9 @@ export class DashboardService {
           const dSub = subs.find(
             (s) =>
               s.userId === driverId &&
-              (s.actualVehicleId ?? s.userId) === dId,
+              (s.actualVehicleId ??
+                userMap.get(s.userId)?.homeVehicleId ??
+                s.userId) === dId,
           );
           if (dSub) de.luongKhoan += calcSubSalary(dSub, plan);
           vdMap.set(driverId, de);
@@ -952,7 +958,8 @@ export class DashboardService {
     >();
     for (const sub of allSubmissions) {
       const dId = sub.userId;
-      const vId = sub.actualVehicleId ?? sub.userId;
+      const vId =
+        sub.actualVehicleId ?? userMap.get(sub.userId)?.homeVehicleId ?? sub.userId;
       const plan = sub.shippingLineId
         ? planById.get(sub.shippingLineId)
         : undefined;

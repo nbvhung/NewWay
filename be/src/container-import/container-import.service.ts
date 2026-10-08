@@ -513,10 +513,10 @@ export class ContainerImportService {
         // Không xe nào được phép → chỉ hiện container chưa ghi nhận
         qb.andWhere('sub.id IS NULL');
       } else {
-        // Lọc theo XE THỰC CHẠY (không theo tài xế ghi nhận) — chủ xe tra được
+        // Lọc theo XE THỰC CHẠY (actual ?? home ?? tài xế) — chủ xe tra được
         // container mà xe mình đã chạy kể cả khi do lái phụ chạy.
         qb.andWhere(
-          '(sub.id IS NULL OR COALESCE(sub.actual_vehicle_id, sub.user_id) IN (:...visible))',
+          '(sub.id IS NULL OR COALESCE(sub.actual_vehicle_id, u.home_vehicle_id, sub.user_id) IN (:...visible))',
           { visible },
         );
       }
@@ -1056,9 +1056,9 @@ export class ContainerImportService {
         qb.andWhere('sub.id IS NULL');
       } else {
         // Bọc ngoặc để `COALESCE(...) IN` vẫn nằm trong điều kiện tra cứu
-        // (mã/3 số cuối). Lọc theo XE THỰC CHẠY.
+        // (mã/3 số cuối). Lọc theo XE THỰC CHẠY (actual ?? home ?? tài xế).
         qb.andWhere(
-          '(sub.id IS NULL OR COALESCE(sub.actual_vehicle_id, sub.user_id) IN (:...visible))',
+          '(sub.id IS NULL OR COALESCE(sub.actual_vehicle_id, u.home_vehicle_id, sub.user_id) IN (:...visible))',
           { visible },
         );
       }
