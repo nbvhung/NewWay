@@ -20,6 +20,7 @@ import { ZaloOpsNotifierService } from './zalo-ops-notifier.service';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { User } from '../database/entities/user.entity';
 import { Vehicle } from '../database/entities/vehicle.entity';
+import { PlanVehicleOverride } from '../database/entities/plan-vehicle-override.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Submission } from '../database/entities/submission.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
@@ -79,6 +80,8 @@ export class ZaloBotService {
     private usersRepository: Repository<User>,
     @InjectRepository(Vehicle)
     private vehiclesRepository: Repository<Vehicle>,
+    @InjectRepository(PlanVehicleOverride)
+    private overrideRepository: Repository<PlanVehicleOverride>,
     @InjectRepository(ShippingLine)
     private shippingLinesRepository: Repository<ShippingLine>,
     @InjectRepository(Submission)
@@ -396,6 +399,12 @@ export class ZaloBotService {
       return;
     }
 
+    // Đảo lái xe theo kế hoạch: /doixe (chọn kế hoạch → chọn xe từng bước)
+    if (lower.startsWith('/doixe') || lower.startsWith('/doi xe')) {
+      await this.startDoiXe(chatId, zaloUserId);
+      return;
+    }
+
     const session = (await this.sessionService.get(zaloUserId)) || {};
 
     if (!session.userId) {
@@ -450,6 +459,7 @@ export class ZaloBotService {
       session.awaitingClamp ||
       session.phatSinh ||
       session.tipFlow ||
+      session.doiXe ||
       (session.pendingCandidates?.length ?? 0) > 0;
 
     if (hasPending) {
@@ -534,6 +544,11 @@ export class ZaloBotService {
         zaloUserId,
         'Sếp gửi số cuối của container kẹp giúp em nhé.',
       );
+      return;
+    }
+
+    if (session.doiXe) {
+      await this.handleDoiXe(chatId, zaloUserId, text, session);
       return;
     }
 
@@ -680,6 +695,10 @@ export class ZaloBotService {
         '   /xe 01376  → chuyển sang lái xe 01376',
         '   /xe        → quay về xe gốc của mình',
         '   (Lương vẫn tính cho mình, doanh thu tính cho xe đang lái)',
+        '',
+        '5️⃣ Đảo xe theo kế hoạch (khi lái thay cho 1 kế hoạch cụ thể):',
+        '   /doixe     → chọn kế hoạch → chọn xe đã chạy (từng bước)',
+        '   (Doanh thu + lương chuyến tính cho xe đã chạy; lương cứng + BHXH theo xe nhà)',
         '',
         'Hủy kế hoạch hiện tại / thao tác lại: /logout',
         'Đổi sang SĐT tài khoản khác: /doi-sdt',
@@ -836,6 +855,180 @@ export class ZaloBotService {
       zaloUserId,
       `✅ Xác nhận! Sếp ${driver.fullName} đang lái thay xe:\n🚚 ${targetVehicle.soXe}\n\nDoanh thu các chuyến tiếp theo sẽ tính cho xe ${targetVehicle.soXe}.\nLương chuyến vẫn tính cho Sếp.\n\nNhắn /xe để quay về xe gốc (${homePlate || 'chưa có BKS'}).`,
     );
+  }
+
+  /**
+   * Đảo lái xe theo kế hoạch (/doixe): chọn kế hoạch → chọn xe từng bước.
+   * Lưu override (plan, driver → vehicle); ưu tiên cao nhất khi tính doanh thu/lương chuyến.
+   */
+  private async startDoiXe(
+    chatId: string,
+    zaloUserId: string,
+  ): Promise<void> {
+    const driver = await this.usersRepository.findOne({
+      where: { zaloId: zaloUserId },
+    });
+    if (!driver) {
+      await this.reply(
+        chatId,
+        zaloUserId,
+        'Zalo này chưa xác nhận tài khoản. Sếp gửi SĐT đã đăng ký để kích hoạt nhé (vd: 0931234567).',
+      );
+      return;
+    }
+    const plans = await this.shippingLinesRepository.find({
+      where: { completed: false },
+      order: { id: 'DESC' },
+      take: 100,
+    });
+    const assigned = plans.filter(
+      (p) =>
+        p.allDrivers ||
+        this.isDriverAssigned(p, driver.id) ||
+        this.isVehicleAssigned(p, driver.homeVehicleId),
+    );
+    if (assigned.length === 0) {
+      await this.reply(
+        chatId,
+        zaloUserId,
+        'Hiện không có kế hoạch nào đang chạy để đảo xe. Sếp liên hệ OPS nhé.',
+      );
+      return;
+    }
+    const session = (await this.sessionService.get(zaloUserId)) || {};
+    session.doiXe = {
+      step: 'plan',
+      pendingPlanOptions: assigned.map((p) => ({
+        id: p.id,
+        name: this.planDisplayName(p),
+      })),
+    };
+    await this.sessionService.save(zaloUserId, session);
+    const lines = assigned.map((p, i) => `${i + 1}. ${this.planDisplayName(p)}`);
+    await this.reply(
+      chatId,
+      zaloUserId,
+      ['🔄 Sếp đảo xe cho kế hoạch nào ạ?', '', ...lines, '', '(gõ "hủy" để thoát)'].join('\n'),
+    );
+  }
+
+  private async handleDoiXe(
+    chatId: string,
+    zaloUserId: string,
+    text: string,
+    session: any,
+  ): Promise<void> {
+    const dx = session.doiXe;
+    if (!dx) return;
+    const trimmed = text.trim();
+
+    if (dx.step === 'plan') {
+      const idx = parseInt(trimmed, 10) - 1;
+      const opt = dx.pendingPlanOptions?.[idx];
+      if (!opt) {
+        await this.reply(
+          chatId,
+          zaloUserId,
+          'Số Sếp gửi chưa hợp lệ. Sếp gửi số thứ tự kế hoạch giúp em nhé.',
+        );
+        return;
+      }
+      dx.planId = opt.id;
+      dx.planName = opt.name;
+      dx.step = 'vehicle';
+      session.doiXe = dx;
+      await this.sessionService.save(zaloUserId, session);
+      await this.reply(
+        chatId,
+        zaloUserId,
+        `Kế hoạch: ${opt.name}\n\nSếp chạy xe nào cho kế hoạch này? Gửi 5 số cuối biển (vd 07883), hoặc gõ "gốc" để bỏ đảo.`,
+      );
+      return;
+    }
+
+    // step === 'vehicle'
+    if (/^(goc|gốc|xe goc|xe gốc|bo dao|bỏ đảo)$/i.test(trimmed)) {
+      const existing = await this.overrideRepository.findOne({
+        where: { planId: dx.planId, driverId: session.userId },
+      });
+      if (existing) await this.overrideRepository.remove(existing);
+      session.doiXe = undefined;
+      await this.sessionService.save(zaloUserId, session);
+      await this.reply(
+        chatId,
+        zaloUserId,
+        '✅ Đã bỏ đảo xe cho kế hoạch này. Chuyến tính theo xe nhà của Sếp.',
+      );
+      return;
+    }
+
+    const match = trimmed.replace(/\D/g, '');
+    if (!match) {
+      await this.reply(
+        chatId,
+        zaloUserId,
+        'Sếp gửi 5 số cuối biển số xe giúp em (hoặc "gốc" để bỏ đảo).',
+      );
+      return;
+    }
+    const allVehicles = await this.vehiclesRepository.find();
+    const matched = allVehicles.filter((v) =>
+      (v.soXe || '').replace(/\D/g, '').endsWith(match),
+    );
+    if (matched.length === 0) {
+      await this.reply(
+        chatId,
+        zaloUserId,
+        `❌ Không tìm thấy xe nào có số cuối "${match}". Sếp kiểm tra lại nhé.`,
+      );
+      return;
+    }
+    if (matched.length > 1) {
+      const list = matched.map((v, i) => `${i + 1}. ${v.soXe}`).join('\n');
+      await this.reply(
+        chatId,
+        zaloUserId,
+        `⚠️ Có ${matched.length} xe cùng số cuối "${match}":\n${list}\n\nSếp gửi số đầy đủ hơn nhé.`,
+      );
+      return;
+    }
+    const vehicle = matched[0];
+    let row = await this.overrideRepository.findOne({
+      where: { planId: dx.planId, driverId: session.userId },
+    });
+    if (!row) {
+      row = this.overrideRepository.create({
+        planId: dx.planId,
+        driverId: session.userId,
+        vehicleId: vehicle.id,
+        createdById: session.userId,
+        createdByName: session.userFullName || '',
+      });
+    } else {
+      row.vehicleId = vehicle.id;
+    }
+    await this.overrideRepository.save(row);
+    session.doiXe = undefined;
+    await this.sessionService.save(zaloUserId, session);
+    await this.reply(
+      chatId,
+      zaloUserId,
+      `✅ Đã đảo xe:\n📋 Kế hoạch: ${dx.planName}\n🚚 Xe đã chạy: ${vehicle.soXe}\n\nDoanh thu + lương chuyến tính cho xe ${vehicle.soXe}; lương cứng + BHXH vẫn theo xe nhà của Sếp.`,
+    );
+  }
+
+  /** Kế hoạch có phân công cho xe (vehicle id) không. */
+  private isVehicleAssigned(
+    plan: ShippingLine,
+    vehicleId?: number | null,
+  ): boolean {
+    if (!vehicleId) return false;
+    try {
+      const ids = JSON.parse(plan.driverIds || '[]');
+      return Array.isArray(ids) && ids.map(Number).includes(Number(vehicleId));
+    } catch {
+      return false;
+    }
   }
 
   private async handleCandidatePick(

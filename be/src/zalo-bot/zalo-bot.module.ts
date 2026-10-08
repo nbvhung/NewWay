@@ -15,6 +15,7 @@ import { ContainerImportModule } from '../container-import/container-import.modu
 import { ZaloMessagesModule } from '../zalo-messages/zalo-messages.module';
 import { User } from '../database/entities/user.entity';
 import { Vehicle } from '../database/entities/vehicle.entity';
+import { PlanVehicleOverride } from '../database/entities/plan-vehicle-override.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Submission } from '../database/entities/submission.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
@@ -27,6 +28,7 @@ import { ZaloMessage } from '../database/entities/zalo-message.entity';
     TypeOrmModule.forFeature([
       User,
       Vehicle,
+      PlanVehicleOverride,
       ShippingLine,
       Submission,
       EditHistory,

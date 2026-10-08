@@ -54,6 +54,13 @@ export interface ZaloSession {
     pendingPlanOptions: PendingPlanOption[];
     selectedPlanId?: number;
   };
+  /** Đảo lái xe theo kế hoạch: chọn kế hoạch → chọn xe. */
+  doiXe?: {
+    step: 'plan' | 'vehicle';
+    planId?: number;
+    planName?: string;
+    pendingPlanOptions?: PendingPlanOption[];
+  };
 }
 
 const SESSION_TTL = 3600;
