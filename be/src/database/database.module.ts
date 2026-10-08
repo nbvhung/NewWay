@@ -84,6 +84,7 @@ import { SeedService } from './seed.service';
           database: process.env.DATABASE_NAME || 'newway',
           entities: [
             User,
+            Vehicle,
             ShippingLine,
             Route,
             Submission,
