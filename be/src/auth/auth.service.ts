@@ -20,6 +20,32 @@ export class AuthService {
     private redisService: RedisService,
   ) {}
 
+  /**
+   * Trả thông tin user TƯƠI từ DB (kèm quyền hiện tại) cho `/api/auth/me`.
+   * Nhờ vậy quyền tab mới được cập nhật không cần đăng nhập lại.
+   */
+  async getMe(userId: number) {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user || user.role === 'disabled') {
+      throw new UnauthorizedException('Tài khoản không hợp lệ');
+    }
+    const visibleDriverIds = Array.isArray(user.visibleDriverIds)
+      ? user.visibleDriverIds
+          .map((v) => Number(v))
+          .filter((n) => Number.isFinite(n))
+      : null;
+    return {
+      id: user.id,
+      username: user.username,
+      fullName: user.fullName,
+      role: user.role,
+      permissions: resolvePermissions(user),
+      visibleDriverIds,
+      soXe: user.soXe || '',
+      homeVehicleId: user.homeVehicleId ?? null,
+    };
+  }
+
   async login(username: string, password: string) {
     const failKey = `login_fail:${username}`;
     const failCount = parseInt(

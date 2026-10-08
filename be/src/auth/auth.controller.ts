@@ -98,8 +98,8 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  getMe(@CurrentUser() user: any) {
-    return { user };
+  async getMe(@CurrentUser() user: any) {
+    return { user: await this.authService.getMe(user.id ?? user.sub) };
   }
 
   private setTokenCookies(
