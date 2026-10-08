@@ -38,7 +38,6 @@ const GROUPS: NavGroup[] = [
       { href: '/admin/monthly', label: 'Kế hoạch theo tháng', icon: '📅', tab: 'tab.monthly', fallback: ['entry.view_all'] },
       { href: '/admin/completed', label: 'Đã hoàn thành', icon: '✅', tab: 'tab.completed', fallback: ['plan.view'] },
       { href: '/admin/containers', label: 'Mã Số Container', icon: '🗃️', tab: 'tab.containers', fallback: ['container.view'] },
-      { href: '/admin/vehicles', label: 'Quản lý XE', icon: '🚛', tab: 'tab.vehicles', fallback: ['vehicle.view'] },
       { href: '/admin/chat', label: 'Lịch sử chat', icon: '💬', tab: 'tab.chat', fallback: ['zalo.chat'] },
     ],
   },
@@ -59,7 +58,10 @@ const GROUPS: NavGroup[] = [
   {
     label: 'Hệ thống',
     icon: '⚙️',
-    items: () => [{ href: '/admin/users', label: 'Tài khoản', icon: '🧑‍💼', tab: 'tab.users', fallback: ['user.view'] }],
+    items: () => [
+      { href: '/admin/users', label: 'Tài khoản', icon: '🧑‍💼', tab: 'tab.users', fallback: ['user.view'] },
+      { href: '/admin/vehicles', label: 'Quản lý XE', icon: '🚛', tab: 'tab.vehicles', fallback: ['vehicle.view'] },
+    ],
   },
 ];
 
