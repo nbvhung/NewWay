@@ -6,12 +6,14 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   Req,
 } from '@nestjs/common';
 import { VehiclesService } from './vehicles.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
+import { OverrideDto } from './dto/override.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Permissions } from '../common/decorators/permissions.decorator';
@@ -32,6 +34,31 @@ export class VehiclesController {
   @Permissions('vehicle.view')
   listForSelect(@Req() req: any) {
     return this.vehiclesService.listForSelect(req.user);
+  }
+
+  // ── Đảo lái xe theo kế hoạch (khai báo TRƯỚC ':id') ──
+  @Get('overrides')
+  @Permissions('vehicle.view')
+  listOverrides(
+    @Query('vehicleId') vehicleId?: string,
+    @Query('planId') planId?: string,
+  ) {
+    return this.vehiclesService.listOverrides({
+      vehicleId: vehicleId ? +vehicleId : undefined,
+      planId: planId ? +planId : undefined,
+    });
+  }
+
+  @Post('overrides')
+  @Permissions('vehicle.manage')
+  upsertOverride(@Body() dto: OverrideDto, @Req() req: any) {
+    return this.vehiclesService.upsertOverride(dto, req.user);
+  }
+
+  @Delete('overrides/:id')
+  @Permissions('vehicle.manage')
+  deleteOverride(@Param('id') id: string) {
+    return this.vehiclesService.deleteOverride(+id);
   }
 
   @Get(':id')

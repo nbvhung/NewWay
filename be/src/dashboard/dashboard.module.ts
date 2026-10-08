@@ -13,6 +13,7 @@ import { User } from '../database/entities/user.entity';
 import { Route } from '../database/entities/route.entity';
 import { FinanceEntry } from '../database/entities/finance-entry.entity';
 import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
+import { PlanVehicleOverride } from '../database/entities/plan-vehicle-override.entity';
 import { SalaryModule } from '../salary/salary.module';
 
 @Module({
@@ -29,6 +30,7 @@ import { SalaryModule } from '../salary/salary.module';
       Route,
       FinanceEntry,
       FinanceCostItem,
+      PlanVehicleOverride,
     ]),
     SalaryModule,
   ],

@@ -874,6 +874,11 @@ export class SubmissionsService {
       .leftJoinAndSelect('s.shippingLineRef', 'sl')
       // Join xe thực chạy để lấy biển số (actualVehicleSoXe)
       .leftJoin('users', 'av', 'av.id = s.actual_vehicle_id')
+      .leftJoin(
+        'plan_vehicle_overrides',
+        'pvo',
+        'pvo.plan_id = s.shipping_line_id AND pvo.driver_id = s.user_id',
+      )
       .addSelect([
         'av.so_xe AS av_so_xe',
         'av.full_name AS av_full_name',
@@ -895,7 +900,7 @@ export class SubmissionsService {
         // Lọc theo XE THỰC CHẠY (actual ?? home ?? tài xế) — chủ xe vẫn thấy
         // chuyến trên xe mình kể cả khi do lái phụ (mượn xe) chạy.
         query.andWhere(
-          'COALESCE(s.actual_vehicle_id, user.home_vehicle_id, s.userId) IN (:...visibleDriverIds)',
+          'COALESCE(pvo.vehicle_id, s.actual_vehicle_id, user.home_vehicle_id, s.userId) IN (:...visibleDriverIds)',
           { visibleDriverIds: visible },
         );
       }

@@ -30,6 +30,19 @@ export interface VehicleOption {
   label: string;
 }
 
+export interface VehicleOverride {
+  id: number;
+  planId: number;
+  planName: string;
+  planNgay: string | null;
+  driverId: number;
+  driverName: string;
+  vehicleId: number;
+  vehicleLabel: string;
+  createdByName: string;
+  createdAt: string;
+}
+
 export const vehiclesApi = {
   getAll: () => api.get<{ data: VehicleItem[] }>('/admin/vehicles'),
 
@@ -47,4 +60,15 @@ export const vehiclesApi = {
 
   assignDrivers: (id: number, driverIds: number[]) =>
     api.put(`/admin/vehicles/${id}/drivers`, { driverIds }),
+
+  // ── Đảo lái xe theo kế hoạch ──
+  listOverrides: (params?: { vehicleId?: number; planId?: number }) =>
+    api.get<{ data: VehicleOverride[] }>('/admin/vehicles/overrides', {
+      params: params || {},
+    }),
+
+  upsertOverride: (data: { planId: number; driverId: number; vehicleId: number }) =>
+    api.post('/admin/vehicles/overrides', data),
+
+  deleteOverride: (id: number) => api.delete(`/admin/vehicles/overrides/${id}`),
 };

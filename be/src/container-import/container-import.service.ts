@@ -505,6 +505,11 @@ export class ContainerImportService {
     qb.leftJoinAndSelect('c.submissionRef', 'sub')
       .leftJoin('sub.user', 'u')
       .addSelect(['u.id', 'u.fullName', 'u.username'])
+      .leftJoin(
+        'plan_vehicle_overrides',
+        'pvo',
+        'pvo.plan_id = c.shipping_line_id AND pvo.driver_id = sub.user_id',
+      )
       .leftJoin('c.importedByRef', 'imp')
       .addSelect(['imp.id', 'imp.fullName']);
     const visible = resolveVisibleDriverIds(user);
@@ -516,7 +521,7 @@ export class ContainerImportService {
         // Lọc theo XE THỰC CHẠY (actual ?? home ?? tài xế) — chủ xe tra được
         // container mà xe mình đã chạy kể cả khi do lái phụ chạy.
         qb.andWhere(
-          '(sub.id IS NULL OR COALESCE(sub.actual_vehicle_id, u.home_vehicle_id, sub.user_id) IN (:...visible))',
+          '(sub.id IS NULL OR COALESCE(pvo.vehicle_id, sub.actual_vehicle_id, u.home_vehicle_id, sub.user_id) IN (:...visible))',
           { visible },
         );
       }
@@ -1027,6 +1032,11 @@ export class ContainerImportService {
       .leftJoinAndSelect('c.submissionRef', 'sub')
       .leftJoin('sub.user', 'u')
       .addSelect(['u.id', 'u.fullName', 'u.username'])
+      .leftJoin(
+        'plan_vehicle_overrides',
+        'pvo',
+        'pvo.plan_id = c.shipping_line_id AND pvo.driver_id = sub.user_id',
+      )
       .leftJoin('c.importedByRef', 'imp')
       .addSelect(['imp.id', 'imp.fullName']);
 
@@ -1058,7 +1068,7 @@ export class ContainerImportService {
         // Bọc ngoặc để `COALESCE(...) IN` vẫn nằm trong điều kiện tra cứu
         // (mã/3 số cuối). Lọc theo XE THỰC CHẠY (actual ?? home ?? tài xế).
         qb.andWhere(
-          '(sub.id IS NULL OR COALESCE(sub.actual_vehicle_id, u.home_vehicle_id, sub.user_id) IN (:...visible))',
+          '(sub.id IS NULL OR COALESCE(pvo.vehicle_id, sub.actual_vehicle_id, u.home_vehicle_id, sub.user_id) IN (:...visible))',
           { visible },
         );
       }

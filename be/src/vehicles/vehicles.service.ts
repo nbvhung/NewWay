@@ -6,12 +6,15 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Vehicle } from '../database/entities/vehicle.entity';
+import { PlanVehicleOverride } from '../database/entities/plan-vehicle-override.entity';
 import { User } from '../database/entities/user.entity';
 import { Submission } from '../database/entities/submission.entity';
 import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
+import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { resolveVisibleDriverIds } from '../common/permissions/permissions';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
+import { OverrideDto } from './dto/override.dto';
 
 const DEFAULT_BEN = 'A';
 const normBen = (v?: string | null): string =>
@@ -22,12 +25,16 @@ export class VehiclesService {
   constructor(
     @InjectRepository(Vehicle)
     private readonly vehiclesRepository: Repository<Vehicle>,
+    @InjectRepository(PlanVehicleOverride)
+    private readonly overrideRepository: Repository<PlanVehicleOverride>,
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
     @InjectRepository(Submission)
     private readonly submissionsRepository: Repository<Submission>,
     @InjectRepository(FinanceCostItem)
     private readonly costItemsRepository: Repository<FinanceCostItem>,
+    @InjectRepository(ShippingLine)
+    private readonly shippingLinesRepository: Repository<ShippingLine>,
   ) {}
 
   /** Phạm vi xe được xem: admin có visible_driver_ids → chỉ xe đó; ngược lại tất cả. */
@@ -216,5 +223,86 @@ export class VehiclesService {
     }
     await this.syncPlateToDrivers(vehicleId);
     return { message: 'Đã cập nhật phân công lái xe' };
+  }
+
+  // ── Đảo lái xe theo kế hoạch (plan_vehicle_overrides) ──────────────
+
+  /** Danh sách override (lọc theo xe hoặc kế hoạch). */
+  async listOverrides(filter: {
+    vehicleId?: number;
+    planId?: number;
+  }): Promise<any[]> {
+    const where: any = {};
+    if (filter.vehicleId) where.vehicleId = filter.vehicleId;
+    if (filter.planId) where.planId = filter.planId;
+    const rows = await this.overrideRepository.find({
+      where,
+      order: { id: 'DESC' },
+    });
+    if (rows.length === 0) return [];
+    const planIds = [...new Set(rows.map((r) => r.planId))];
+    const driverIds = [...new Set(rows.map((r) => r.driverId))];
+    const vehicleIds = [...new Set(rows.map((r) => r.vehicleId))];
+    const [plans, drivers, vehicles] = await Promise.all([
+      this.shippingLinesRepository.find({ where: { id: In(planIds) } }),
+      this.usersRepository.find({ where: { id: In(driverIds) } }),
+      this.vehiclesRepository.find({ where: { id: In(vehicleIds) } }),
+    ]);
+    const planMap = new Map(plans.map((p) => [p.id, p]));
+    const driverMap = new Map(drivers.map((d) => [d.id, d]));
+    const vehicleMap = new Map(vehicles.map((v) => [v.id, v]));
+    return rows.map((r) => {
+      const p = planMap.get(r.planId);
+      const d = driverMap.get(r.driverId);
+      const v = vehicleMap.get(r.vehicleId);
+      return {
+        id: r.id,
+        planId: r.planId,
+        planName: p?.name || `KH#${r.planId}`,
+        planNgay: p?.ngay || null,
+        driverId: r.driverId,
+        driverName: d?.fullName || `LX#${r.driverId}`,
+        vehicleId: r.vehicleId,
+        vehicleLabel: v?.soXe || `Xe#${r.vehicleId}`,
+        createdByName: r.createdByName || '',
+        createdAt: r.createdAt,
+      };
+    });
+  }
+
+  /** Tạo/ghi đè override cho (kế hoạch, lái xe). */
+  async upsertOverride(dto: OverrideDto, actor?: any): Promise<any> {
+    const [plan, driver, vehicle] = await Promise.all([
+      this.shippingLinesRepository.findOne({ where: { id: dto.planId } }),
+      this.usersRepository.findOne({ where: { id: dto.driverId } }),
+      this.vehiclesRepository.findOne({ where: { id: dto.vehicleId } }),
+    ]);
+    if (!plan) throw new NotFoundException('Không tìm thấy kế hoạch');
+    if (!driver || driver.role !== 'laixe')
+      throw new BadRequestException('Lái xe không hợp lệ');
+    if (!vehicle) throw new BadRequestException('Xe không hợp lệ');
+
+    let row = await this.overrideRepository.findOne({
+      where: { planId: dto.planId, driverId: dto.driverId },
+    });
+    if (!row) {
+      row = this.overrideRepository.create({
+        planId: dto.planId,
+        driverId: dto.driverId,
+        vehicleId: dto.vehicleId,
+        createdById: actor?.sub ?? actor?.id ?? null,
+        createdByName: actor?.fullName || actor?.username || '',
+      });
+    } else {
+      row.vehicleId = dto.vehicleId;
+    }
+    return this.overrideRepository.save(row);
+  }
+
+  async deleteOverride(id: number): Promise<{ message: string }> {
+    const row = await this.overrideRepository.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('Không tìm thấy đảo lái xe');
+    await this.overrideRepository.remove(row);
+    return { message: 'Đã xoá đảo lái xe' };
   }
 }

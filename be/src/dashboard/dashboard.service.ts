@@ -12,6 +12,7 @@ import { User } from '../database/entities/user.entity';
 import { Route } from '../database/entities/route.entity';
 import { FinanceEntry } from '../database/entities/finance-entry.entity';
 import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
+import { PlanVehicleOverride } from '../database/entities/plan-vehicle-override.entity';
 import {
   resolveVisibleDriverIds,
   hasPermission,
@@ -274,6 +275,8 @@ export class DashboardService {
     private financeRepo: Repository<FinanceEntry>,
     @InjectRepository(FinanceCostItem)
     private costItemRepo: Repository<FinanceCostItem>,
+    @InjectRepository(PlanVehicleOverride)
+    private overrideRepo: Repository<PlanVehicleOverride>,
     private salaryService: SalaryService,
   ) {}
 
@@ -376,6 +379,26 @@ export class DashboardService {
 
     const planIds = plans.map((p) => p.id);
 
+    // Đảo lái xe theo kế hoạch: (planId, driverId) → vehicleId (ưu tiên cao nhất).
+    const overrideMap = new Map<string, number>();
+    if (planIds.length) {
+      const ovs = await this.overrideRepo.find({
+        where: { planId: In(planIds) },
+      });
+      for (const o of ovs) {
+        overrideMap.set(`${o.planId}:${o.driverId}`, o.vehicleId);
+      }
+    }
+    const effectiveVehicleId = (
+      planId: number | null | undefined,
+      driverId: number,
+      actualVehicleId: number | null | undefined,
+      homeVehicleId: number | null | undefined,
+    ): number =>
+      (planId != null ? overrideMap.get(`${planId}:${driverId}`) : undefined) ??
+      actualVehicleId ??
+      homeVehicleId ??
+      driverId;
     // 2. Containers của các kế hoạch (lọc theo xe được phép xem nếu có).
     //    Khi bị giới hạn xe: CHỈ lấy container đã gán cho xe của họ — container
     //    chưa gán (sub = NULL) không được tính để tránh lộ sản lượng của kế hoạch
@@ -394,6 +417,11 @@ export class DashboardService {
           .createQueryBuilder('ci')
           .leftJoinAndSelect('ci.submissionRef', 'sub')
           .leftJoinAndSelect('sub.user', 'u')
+          .leftJoin(
+            'plan_vehicle_overrides',
+            'pvo',
+            'pvo.plan_id = ci.shipping_line_id AND pvo.driver_id = sub.user_id',
+          )
           .where('ci.shippingLineId IN (:...ids)', { ids: planIds })
           .andWhere('u.role = :laixeRole', { laixeRole: 'laixe' })
           .andWhere(
@@ -401,8 +429,8 @@ export class DashboardService {
               ? '1=1'
               : allowedVehicles.length === 0
                 ? '1=0'
-                : // Lọc theo xe thực chạy (không phải tài xế gốc).
-                  'COALESCE(sub.actual_vehicle_id, u.home_vehicle_id, u.id) IN (:...allowed)',
+                : // Xe hiệu dụng: override > actual > home > tài xế.
+                  'COALESCE(pvo.vehicle_id, sub.actual_vehicle_id, u.home_vehicle_id, u.id) IN (:...allowed)',
             allowedVehicles && allowedVehicles.length > 0
               ? { allowed: allowedVehicles }
               : {},
@@ -415,6 +443,11 @@ export class DashboardService {
       ? await this.subRepo
           .createQueryBuilder('sub')
           .innerJoin('sub.user', 'u')
+          .leftJoin(
+            'plan_vehicle_overrides',
+            'pvo',
+            'pvo.plan_id = sub.shipping_line_id AND pvo.driver_id = sub.user_id',
+          )
           .where('sub.shippingLineId IN (:...ids)', { ids: planIds })
           .andWhere('u.role = :laixeRole', { laixeRole: 'laixe' })
           .andWhere(
@@ -422,8 +455,8 @@ export class DashboardService {
               ? '1=1'
               : allowedVehicles.length === 0
                 ? '1=0'
-                : // Xe thực chạy thuộc phạm vi (không lọc theo tài xế gốc).
-                  'COALESCE(sub.actual_vehicle_id, u.home_vehicle_id, sub.userId) IN (:...allowed)',
+                : // Xe hiệu dụng: override > actual > home > tài xế.
+                  'COALESCE(pvo.vehicle_id, sub.actual_vehicle_id, u.home_vehicle_id, sub.userId) IN (:...allowed)',
             allowedVehicles && allowedVehicles.length > 0
               ? { allowed: allowedVehicles }
               : {},
@@ -711,8 +744,12 @@ export class DashboardService {
       for (const ci of conts) {
         const sub = ci.submissionRef;
         if (!sub) continue;
-        const effectiveId =
-          sub.actualVehicleId ?? userMap.get(sub.userId)?.homeVehicleId ?? sub.userId;
+        const effectiveId = effectiveVehicleId(
+          plan.id,
+          sub.userId,
+          sub.actualVehicleId,
+          userMap.get(sub.userId)?.homeVehicleId,
+        );
         if (!effectiveId) continue;
         const arr = contsByEffectiveDriver.get(effectiveId) ?? [];
         arr.push(ci);
@@ -785,9 +822,12 @@ export class DashboardService {
         // Lương khoán: tìm submission theo xe hiệu dụng (gốc hoặc lái thay)
         const driverSub = subs.find(
           (s) =>
-              (s.actualVehicleId ??
-                userMap.get(s.userId)?.homeVehicleId ??
-                s.userId) === dId,
+            effectiveVehicleId(
+              plan.id,
+              s.userId,
+              s.actualVehicleId,
+              userMap.get(s.userId)?.homeVehicleId,
+            ) === dId,
         );
         if (driverSub) entry.luongKhoan += calcSubSalary(driverSub, plan);
 
@@ -856,9 +896,12 @@ export class DashboardService {
           const dSub = subs.find(
             (s) =>
               s.userId === driverId &&
-              (s.actualVehicleId ??
-                userMap.get(s.userId)?.homeVehicleId ??
-                s.userId) === dId,
+              effectiveVehicleId(
+                plan.id,
+                s.userId,
+                s.actualVehicleId,
+                userMap.get(s.userId)?.homeVehicleId,
+              ) === dId,
           );
           if (dSub) de.luongKhoan += calcSubSalary(dSub, plan);
           vdMap.set(driverId, de);
@@ -958,8 +1001,12 @@ export class DashboardService {
     >();
     for (const sub of allSubmissions) {
       const dId = sub.userId;
-      const vId =
-        sub.actualVehicleId ?? userMap.get(sub.userId)?.homeVehicleId ?? sub.userId;
+      const vId = effectiveVehicleId(
+        sub.shippingLineId,
+        sub.userId,
+        sub.actualVehicleId,
+        userMap.get(sub.userId)?.homeVehicleId,
+      );
       const plan = sub.shippingLineId
         ? planById.get(sub.shippingLineId)
         : undefined;

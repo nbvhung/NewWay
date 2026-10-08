@@ -28,6 +28,7 @@ import { FinanceEntry } from './entities/finance-entry.entity';
 import { FinanceAuditLog } from './entities/finance-audit-log.entity';
 import { FinanceCostItem } from './entities/finance-cost-item.entity';
 import { Vehicle } from './entities/vehicle.entity';
+import { PlanVehicleOverride } from './entities/plan-vehicle-override.entity';
 import { SeedService } from './seed.service';
 
 @Module({
@@ -43,6 +44,7 @@ import { SeedService } from './seed.service';
             entities: [
               User,
               Vehicle,
+              PlanVehicleOverride,
               ShippingLine,
               Route,
               Submission,
@@ -85,6 +87,7 @@ import { SeedService } from './seed.service';
           entities: [
             User,
             Vehicle,
+            PlanVehicleOverride,
             ShippingLine,
             Route,
             Submission,
@@ -124,6 +127,7 @@ import { SeedService } from './seed.service';
     TypeOrmModule.forFeature([
       User,
       Vehicle,
+      PlanVehicleOverride,
       ShippingLine,
       Route,
       Submission,

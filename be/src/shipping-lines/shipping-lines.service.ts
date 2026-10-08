@@ -87,9 +87,14 @@ export class ShippingLinesService {
         const subs = await this.submissionsRepository
           .createQueryBuilder('sub')
           .leftJoin('sub.user', 'u')
+          .leftJoin(
+            'plan_vehicle_overrides',
+            'pvo',
+            'pvo.plan_id = sub.shipping_line_id AND pvo.driver_id = sub.user_id',
+          )
           .select('DISTINCT sub.shipping_line_id', 'planId')
           .where(
-            'COALESCE(sub.actual_vehicle_id, u.home_vehicle_id, sub.user_id) IN (:...visible)',
+            'COALESCE(pvo.vehicle_id, sub.actual_vehicle_id, u.home_vehicle_id, sub.user_id) IN (:...visible)',
             { visible },
           )
           .getRawMany();
