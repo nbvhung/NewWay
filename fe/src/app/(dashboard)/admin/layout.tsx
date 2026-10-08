@@ -17,6 +17,7 @@ const STAFF_PERMS = [
   'entry.view_all',
   'plan.view',
   'container.view',
+  'vehicle.view',
   'customer.view',
   'route.view',
   'salary.view',
@@ -25,7 +26,7 @@ const STAFF_PERMS = [
   'user.view',
   'zalo.chat',
   'tab.overview', 'tab.finance', 'tab.data', 'tab.plans', 'tab.monthly',
-  'tab.completed', 'tab.containers', 'tab.chat', 'tab.customers',
+  'tab.completed', 'tab.containers', 'tab.vehicles', 'tab.chat', 'tab.customers',
   'tab.routes', 'tab.salary', 'tab.users',
 ];
 
@@ -38,6 +39,7 @@ const PATH_TAB: { path: string; tab: string; fallback: string[] }[] = [
   { path: '/admin/monthly',    tab: 'tab.monthly',    fallback: ['entry.view_all'] },
   { path: '/admin/completed',  tab: 'tab.completed',  fallback: ['plan.view'] },
   { path: '/admin/containers', tab: 'tab.containers', fallback: ['container.view'] },
+  { path: '/admin/vehicles',   tab: 'tab.vehicles',   fallback: ['vehicle.view'] },
   { path: '/admin/chat',       tab: 'tab.chat',       fallback: ['zalo.chat'] },
   { path: '/admin/customers',  tab: 'tab.customers',  fallback: ['customer.view'] },
   { path: '/admin/routes',     tab: 'tab.routes',     fallback: ['route.view'] },
