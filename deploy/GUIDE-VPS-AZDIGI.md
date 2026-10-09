@@ -431,6 +431,20 @@ docker compose ps
 docker compose logs --tail=30 backend
 ```
 
+### Deploy nhanh (khuyến nghị) — `deploy/deploy.sh`
+
+Script tự động kéo GitHub + **chỉ build service đã đổi** và cảnh báo migration mới:
+
+```bash
+cd /opt/newway
+bash deploy/deploy.sh
+```
+
+- Chỉ đổi `fe/` → chỉ build frontend; chỉ đổi `be/` → chỉ build backend (nhanh ~một nửa so với build cả 2).
+- Chỉ đổi tài liệu / `.sql` (không đụng `be/` `fe/`) → **không build lại** (vài giây).
+- Có file `deploy/migrate-*.sql` mới → script in sẵn lệnh chạy tay; chạy các lệnh đó **trước** rồi chạy lại script.
+- Muốn build lại ép buộc: `docker compose up -d --build backend` (hoặc `frontend`).
+
 **Ví dụ thực tế (deploy 26/09/2026)** — phải chạy 3 file SQL trước khi build:
 ```bash
 docker exec -i newway-postgres-1 psql -U postgres -d newway -v ON_ERROR_STOP=1 < deploy/migrate-add-finance-vehicle-ben.sql
