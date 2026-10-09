@@ -63,6 +63,17 @@ export class UpdateScheduledMessageDto {
   content: string;
 }
 
+export class UpdateGroupScheduleDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000, { message: 'Nội dung không được vượt quá 2000 ký tự' })
+  content?: string;
+
+  @IsOptional()
+  @IsString()
+  sendTime?: string;
+}
+
 export class RenameZaloGroupDto {
   @IsString()
   @IsNotEmpty({ message: 'Vui lòng nhập tên nhóm' })

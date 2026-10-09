@@ -18,6 +18,7 @@ import {
   RenameZaloGroupDto,
   ScheduleZaloMessageDto,
   UpdateScheduledMessageDto,
+  UpdateGroupScheduleDto,
 } from './dto/schedule-zalo-message.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -120,6 +121,22 @@ export class ZaloMessagesController {
   async cancel(@Param('batchId') batchId: string) {
     const cancelled = await this.zaloMessagesService.cancel(batchId);
     return { data: { ok: true, cancelled } };
+  }
+
+  @Get('group-schedules')
+  @Permissions('zalo.schedule')
+  async groupSchedules() {
+    return { data: await this.zaloMessagesService.listGroupSchedules() };
+  }
+
+  @Put('group-schedules/:id')
+  @Permissions('zalo.schedule')
+  async updateGroupSchedule(
+    @Param('id') id: string,
+    @Body() dto: UpdateGroupScheduleDto,
+  ) {
+    const r = await this.zaloMessagesService.updateGroupSchedule(+id, dto);
+    return { data: r.ok ? { ok: true } : { ok: false, error: 'Không tìm thấy' } };
   }
 
   @Put('scheduled/:batchId')

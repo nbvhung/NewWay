@@ -6,6 +6,7 @@ import {
   zaloMessagesApi,
   ZaloScheduledBatch,
   ZaloGroup,
+  ZaloGroupSchedule,
 } from '@/lib/api-zalo-messages';
 import { fmtDateTime } from '@/lib/utils';
 import { User } from '@/types';
@@ -69,6 +70,11 @@ export function ScheduleMessageModal({ open, onClose, allUsers, toast }: Props) 
   const [editingBatchId, setEditingBatchId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+  const [groupSchedules, setGroupSchedules] = useState<ZaloGroupSchedule[]>([]);
+  const [editingSchedId, setEditingSchedId] = useState<number | null>(null);
+  const [schedContent, setSchedContent] = useState('');
+  const [schedTime, setSchedTime] = useState('');
+  const [savingSched, setSavingSched] = useState(false);
 
   const linkedUsers = allUsers.filter((u) => u.zaloId);
 
@@ -88,10 +94,18 @@ export function ScheduleMessageModal({ open, onClose, allUsers, toast }: Props) 
     } catch {}
   }, []);
 
+  const loadGroupSchedules = useCallback(async () => {
+    try {
+      const res = await zaloMessagesApi.getGroupSchedules();
+      setGroupSchedules(Array.isArray(res.data) ? res.data : (res.data as any).data || []);
+    } catch {}
+  }, []);
+
   useEffect(() => {
     if (open) {
       loadBatches();
       loadGroups();
+      loadGroupSchedules();
       setSelectedIds([]);
       setText('');
       setSendAt('');
@@ -100,8 +114,9 @@ export function ScheduleMessageModal({ open, onClose, allUsers, toast }: Props) 
       setRenaming(null);
       setEditingBatchId(null);
       setEditingContent('');
+      setEditingSchedId(null);
     }
-  }, [open, loadBatches, loadGroups]);
+  }, [open, loadBatches, loadGroups, loadGroupSchedules]);
 
   const toggle = (id: number) => {
     setSelectedIds((prev) =>
@@ -240,6 +255,27 @@ export function ScheduleMessageModal({ open, onClose, allUsers, toast }: Props) 
       toast('Sửa thất bại', 'error');
     }
     setSavingEdit(false);
+  };
+
+  const saveGroupSchedule = async (id: number) => {
+    if (!schedContent.trim()) { toast('Nội dung không được để trống', 'error'); return; }
+    setSavingSched(true);
+    try {
+      const res = await zaloMessagesApi.updateGroupSchedule(id, {
+        content: schedContent,
+        sendTime: schedTime || undefined,
+      });
+      if (res.data?.data?.ok) {
+        toast('Đã lưu template giao ca');
+        setEditingSchedId(null);
+        loadGroupSchedules();
+      } else {
+        toast('Lưu thất bại', 'error');
+      }
+    } catch {
+      toast('Lưu thất bại', 'error');
+    }
+    setSavingSched(false);
   };
 
   const hasPending = (b: ZaloScheduledBatch) => b.counts.pending > 0 || b.counts.processing > 0;
@@ -511,6 +547,46 @@ export function ScheduleMessageModal({ open, onClose, allUsers, toast }: Props) 
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+
+        {/* Template tin giao ca tự động theo nhóm */}
+        <div>
+          <div className="text-sm font-bold mb-2">🔁 Tin giao ca tự động theo nhóm</div>
+          {groupSchedules.length === 0 ? (
+            <div className="text-center py-4 text-[#78716c] text-sm">Chưa có template giao ca</div>
+          ) : (
+            <div className="flex flex-col gap-2 max-h-72 overflow-y-auto">
+              {groupSchedules.map((s) => (
+                <div key={s.id} className="border border-[#e7e5e4] rounded-lg p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-[#78716c] mb-1">👥 {s.groupName} · ⏰ {s.sendTime}</div>
+                      {editingSchedId === s.id ? (
+                        <div className="space-y-2">
+                          <input type="time" value={schedTime} onChange={(e) => setSchedTime(e.target.value)} className={inputCls} />
+                          <textarea value={schedContent} onChange={(e) => setSchedContent(e.target.value)} rows={3} maxLength={2000} className={`${inputCls} resize-none`} />
+                          <div className="flex justify-end gap-2">
+                            <button onClick={() => setEditingSchedId(null)} disabled={savingSched} className="px-2.5 py-1 rounded-md text-[11px] border border-[#e7e5e4] text-[#78716c] cursor-pointer">Hủy</button>
+                            <button onClick={() => saveGroupSchedule(s.id)} disabled={savingSched} className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white disabled:opacity-50 cursor-pointer">{savingSched ? 'Đang lưu...' : '💾 Lưu'}</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-sm leading-snug break-words whitespace-pre-wrap">{s.content}</div>
+                      )}
+                    </div>
+                    {editingSchedId !== s.id && (
+                      <button
+                        onClick={() => { setEditingSchedId(s.id); setSchedContent(s.content); setSchedTime((s.sendTime || '').slice(0, 5)); }}
+                        className="px-2.5 py-1 rounded-md text-[11px] font-medium text-[#d97706] border border-[#f59e0b]/50 hover:bg-amber-50 shrink-0 cursor-pointer"
+                      >
+                        ✏️ Sửa
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

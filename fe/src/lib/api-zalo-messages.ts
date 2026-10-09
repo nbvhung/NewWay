@@ -36,6 +36,14 @@ export interface ScheduleTargetPayload {
   text: string;
 }
 
+export interface ZaloGroupSchedule {
+  id: number;
+  groupId: number;
+  groupName: string;
+  sendTime: string;
+  content: string;
+}
+
 export const zaloMessagesApi = {
   getConversations: () =>
     api.get<{ data: Array<{ userId: number; lastAt: string; fullName: string | null; soXe: string | null }> }>('/admin/zalo-messages/conversations'),
@@ -66,4 +74,11 @@ export const zaloMessagesApi = {
 
   updateScheduled: (batchId: string, content: string) =>
     api.put<{ data: { ok: boolean; updated: number } }>(`/admin/zalo-messages/scheduled/${batchId}`, { content }),
+
+  // ── Template tin giao ca theo nhóm (tự động) ──
+  getGroupSchedules: () =>
+    api.get<{ data: ZaloGroupSchedule[] }>('/admin/zalo-messages/group-schedules'),
+
+  updateGroupSchedule: (id: number, data: { content?: string; sendTime?: string }) =>
+    api.put<{ data: { ok: boolean; error?: string } }>(`/admin/zalo-messages/group-schedules/${id}`, data),
 };

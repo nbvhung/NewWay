@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import { ZaloMessage } from '../database/entities/zalo-message.entity';
 import { ZaloScheduledMessage } from '../database/entities/zalo-scheduled-message.entity';
 import { ZaloGroup } from '../database/entities/zalo-group.entity';
+import { ZaloGroupSchedule } from '../database/entities/zalo-group-schedule.entity';
 import { User } from '../database/entities/user.entity';
 import { ZaloApiService } from '../zalo-bot/zalo-api.service';
 import { resolveVisibleDriverIds } from '../common/permissions/permissions';
@@ -20,6 +21,8 @@ export class ZaloMessagesService {
     private readonly zaloScheduledRepository: Repository<ZaloScheduledMessage>,
     @InjectRepository(ZaloGroup)
     private readonly zaloGroupsRepository: Repository<ZaloGroup>,
+    @InjectRepository(ZaloGroupSchedule)
+    private readonly groupSchedulesRepository: Repository<ZaloGroupSchedule>,
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
     private readonly zaloApi: ZaloApiService,
@@ -401,6 +404,37 @@ export class ZaloMessagesService {
       .andWhere("status = 'pending'")
       .execute();
     return res.affected || 0;
+  }
+
+  /** Danh sách template tin giao ca theo nhóm (để sửa nội dung). */
+  async listGroupSchedules(): Promise<Array<Record<string, any>>> {
+    const groups = await this.zaloGroupsRepository.find();
+    const nameById = new Map(groups.map((g) => [g.id, g.name || g.chatId]));
+    const rows = await this.groupSchedulesRepository.find({
+      order: { groupId: 'ASC', sendTime: 'ASC' },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      groupId: r.groupId,
+      groupName: nameById.get(r.groupId) || `Nhóm #${r.groupId}`,
+      sendTime: r.sendTime,
+      content: r.content,
+    }));
+  }
+
+  /** Sửa template tin giao ca (nội dung và/hoặc giờ gửi). */
+  async updateGroupSchedule(
+    id: number,
+    dto: { content?: string; sendTime?: string },
+  ): Promise<{ ok: boolean }> {
+    const row = await this.groupSchedulesRepository.findOne({
+      where: { id },
+    });
+    if (!row) return { ok: false };
+    if (dto.content !== undefined) row.content = dto.content;
+    if (dto.sendTime !== undefined) row.sendTime = dto.sendTime;
+    await this.groupSchedulesRepository.save(row);
+    return { ok: true };
   }
 
   /** Claim các tin đến hạn để gửi (atomic, tránh đa instance gửi trùng). */
