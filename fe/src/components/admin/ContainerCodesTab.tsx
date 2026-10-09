@@ -517,7 +517,14 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
                               : ''}
                         </td>
                         <td className="px-3 py-2 align-middle">
-                          <div className="flex items-center gap-1">{renderClaimTags(item)}</div>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {renderClaimTags(item)}
+                            {item.clampWith && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(236,72,153,0.15)] text-pink-700" title={`Kẹp với ${item.clampWith}`}>
+                                🔗 kẹp {item.clampWith}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-3 py-2 align-middle">
                           <div className="flex items-center justify-end gap-1.5">

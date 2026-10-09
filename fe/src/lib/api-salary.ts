@@ -26,6 +26,13 @@ export const salaryApi = {
   updateRecord: (id: number, data: Record<string, unknown>) =>
     api.put(`/admin/salary/records/${id}`, data),
 
+  /** Lưu "giá trị nền" của tài xế (HR có quyền salary.manage). */
+  updateDriverBase: (
+    id: number,
+    data: { allowanceFarHome?: number; oldCar?: boolean; payBhxh?: boolean },
+  ) =>
+    api.put(`/admin/salary/driver-base/${id}`, data),
+
   resetAdvanceDeduct: (id: number) =>
     api.put(`/admin/salary/records/${id}/reset-advance`),
 

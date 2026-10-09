@@ -15,6 +15,7 @@ export interface ContainerImport {
   hasKv?: boolean;
   hasKd2?: boolean;
   claimedAt?: string | null;
+  clampWith?: string;
   createdAt: string;
 }
 

@@ -36,6 +36,7 @@ export class CustomersController {
   constructor(private customersService: CustomersService) {}
 
   @Get()
+  @Permissions('customer.view', 'plan.create')
   findAll(@CurrentUser() user: any) {
     return this.customersService.findAll(user);
   }

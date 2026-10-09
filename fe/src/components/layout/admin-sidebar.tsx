@@ -26,7 +26,6 @@ const GROUPS: NavGroup[] = [
     icon: '📊',
     items: () => [
       { href: '/admin/overview', label: 'Tổng Quan', icon: '📊', tab: 'tab.overview', fallback: ['dashboard.view'] },
-      { href: '/admin/finance',  label: 'Tài Chính',  icon: '💰', tab: 'tab.finance',  fallback: ['finance.view', 'dashboard.view'] },
     ],
   },
   {

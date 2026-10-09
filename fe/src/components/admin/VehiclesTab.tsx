@@ -5,12 +5,25 @@ import {
   vehiclesApi,
   VehicleItem,
   VehicleOverride,
+  VehicleFinance,
 } from '@/lib/api-vehicles';
 import { dashboardApi, DashboardOverview } from '@/lib/api-dashboard';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
 import { Modal } from '@/components/ui/modal';
 import { confirmDelete } from '@/lib/delete-guard';
+import { financeApi } from '@/lib/api-finance';
+import { hasPerm } from '@/lib/permissions';
 import { User } from '@/types';
+
+/** Nhãn nhóm chi phí / vốn đầu tư (dùng ở Chi tiết xe). */
+const FIN_CAT_LABEL: Record<string, string> = {
+  suaChua: 'Sửa chữa',
+  nhienLieu: 'Nhiên liệu',
+  cpKhac: 'CP khác',
+  vonXe: 'Vốn xe',
+  vonMooc: 'Vốn mooc',
+  vonKhac: 'Vốn khác',
+};
 
 interface Props {
   currentUser: any;
@@ -29,7 +42,17 @@ const emptyForm = {
   ownerUserId: '' as number | '',
 };
 
-export function VehiclesTab({ allUsers, toast }: Props) {
+/** Loại khoản nhập kèm xe: chi phí hoặc vốn đầu tư. */
+const ITEM_CATEGORIES: { key: string; label: string; group: 'cost' | 'invest' }[] = [
+  { key: 'suaChua', label: 'Sửa chữa', group: 'cost' },
+  { key: 'nhienLieu', label: 'Nhiên liệu', group: 'cost' },
+  { key: 'cpKhac', label: 'CP khác', group: 'cost' },
+  { key: 'vonXe', label: 'Vốn xe', group: 'invest' },
+  { key: 'vonMooc', label: 'Vốn mooc', group: 'invest' },
+  { key: 'vonKhac', label: 'Vốn khác', group: 'invest' },
+];
+
+export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
   const now = new Date();
   const [view, setView] = useState<'list' | 'overrides' | 'detail'>('list');
   const [vehicles, setVehicles] = useState<VehicleItem[]>([]);
@@ -45,6 +68,12 @@ export function VehiclesTab({ allUsers, toast }: Props) {
   const [assignVehicle, setAssignVehicle] = useState<VehicleItem | null>(null);
   const [assignIds, setAssignIds] = useState<number[]>([]);
   const [driverSearch, setDriverSearch] = useState('');
+
+  // Nhập chi phí / vốn đầu tư kèm xe
+  const [itemModalOpen, setItemModalOpen] = useState(false);
+  const [itemVehicle, setItemVehicle] = useState<VehicleItem | null>(null);
+  const [itemForm, setItemForm] = useState({ category: 'suaChua', itemDate: '', name: '', amount: '', note: '', password: '' });
+  const [savingItem, setSavingItem] = useState(false);
 
   // Đảo lái xe
   const [overrides, setOverrides] = useState<VehicleOverride[]>([]);
@@ -150,6 +179,37 @@ export function VehiclesTab({ allUsers, toast }: Props) {
     if (res === undefined) return;
     toast('Đã xóa xe', 'success');
     load();
+  };
+
+  // ── Nhập chi phí / vốn đầu tư cho xe ──
+  const openAddItem = (v: VehicleItem | null, category = 'suaChua') => {
+    setItemVehicle(v);
+    setItemForm({ category, itemDate: '', name: '', amount: '', note: '', password: '' });
+    setItemModalOpen(true);
+  };
+  const submitItem = async () => {
+    if (!itemForm.password) { toast('Vui lòng nhập mật khẩu thao tác (3848)', 'error'); return; }
+    const amount = Number(itemForm.amount.replace(/[^0-9]/g, ''));
+    if (!amount || amount <= 0) { toast('Nhập số tiền', 'error'); return; }
+    setSavingItem(true);
+    try {
+      await financeApi.addCostItem(month, year, {
+        category: itemForm.category,
+        itemDate: itemForm.itemDate || null,
+        name: itemForm.name,
+        amount,
+        note: itemForm.note || null,
+        vehicleUserId: itemVehicle ? itemVehicle.id : null,
+      }, { password: itemForm.password });
+      setItemModalOpen(false);
+      toast('Đã thêm khoản', 'success');
+      if (detail && itemVehicle && detail.id === itemVehicle.id) openDetail(detail);
+      load();
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Thêm thất bại', 'error');
+    } finally {
+      setSavingItem(false);
+    }
   };
 
   // ── phân công lái xe ──
@@ -311,6 +371,12 @@ export function VehiclesTab({ allUsers, toast }: Props) {
             >
               + Thêm xe
             </button>
+            <button
+              onClick={() => openAddItem(null, 'cpKhac')}
+              className="px-4 py-2 rounded-lg text-[12px] font-semibold bg-white border border-[#e7e5e4] text-[#78716c] cursor-pointer"
+            >
+              + Chi phí chung
+            </button>
           </div>
           {loading ? (
             <div className="py-16 text-center text-[#78716c] text-sm">Đang tải...</div>
@@ -446,7 +512,7 @@ export function VehiclesTab({ allUsers, toast }: Props) {
                 ) : (
                   overrides.map((o) => (
                     <tr key={o.id} className="border-t border-[#e7e5e4] hover:bg-[#fafaf9]">
-                      <td className="px-3 py-2.5 text-[#1c1917]">{o.planName}{o.planNgay ? ` · ${o.planNgay}` : ''}</td>
+                      <td className="px-3 py-2.5 text-[#1c1917]">{o.planName}{o.routeName ? ` · ${o.routeName}` : ''}{o.planNgay ? ` · ${o.planNgay}` : ''}</td>
                       <td className="px-3 py-2.5 text-[#78716c]">{o.driverName}</td>
                       <td className="px-3 py-2.5 font-semibold text-[#1c1917]">🚛 {o.vehicleLabel}</td>
                       <td className="px-3 py-2.5 text-[#78716c]">{o.createdByName || '—'}</td>
@@ -477,6 +543,10 @@ export function VehiclesTab({ allUsers, toast }: Props) {
           onEdit={() => openEdit(detail)}
           onAssign={() => openAssign(detail)}
           onRemoveOverride={removeOverride}
+          onAddCost={() => openAddItem(detail, 'suaChua')}
+          onAddInvest={() => openAddItem(detail, 'vonXe')}
+          currentUser={currentUser}
+          toast={toast}
         />
       )}
 
@@ -546,13 +616,62 @@ export function VehiclesTab({ allUsers, toast }: Props) {
           })}
         </div>
       </Modal>
+
+      {/* Modal thêm khoản chi phí / vốn đầu tư */}
+      <Modal
+        open={itemModalOpen}
+        onClose={() => setItemModalOpen(false)}
+        title={`➕ ${itemVehicle ? `Thêm cho xe ${itemVehicle.soXe || '#' + itemVehicle.id}` : 'Thêm chi phí chung'}`}
+        footer={
+          <>
+            <button onClick={() => setItemModalOpen(false)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] cursor-pointer">Hủy</button>
+            <button onClick={submitItem} disabled={savingItem} className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white disabled:opacity-50 cursor-pointer">{savingItem ? 'Đang lưu...' : '💾 Lưu'}</button>
+          </>
+        }
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Loại khoản</label>
+            <select value={itemForm.category} onChange={(e) => setItemForm({ ...itemForm, category: e.target.value })} className="w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs cursor-pointer">
+              <optgroup label="Chi phí">
+                {ITEM_CATEGORIES.filter((c) => c.group === 'cost').map((c) => (<option key={c.key} value={c.key}>{c.label}</option>))}
+              </optgroup>
+              {itemVehicle && (
+                <optgroup label="Vốn đầu tư">
+                  {ITEM_CATEGORIES.filter((c) => c.group === 'invest').map((c) => (<option key={c.key} value={c.key}>{c.label}</option>))}
+                </optgroup>
+              )}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Ngày</label>
+            <input type="date" value={itemForm.itemDate} onChange={(e) => setItemForm({ ...itemForm, itemDate: e.target.value })} className="w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]" />
+          </div>
+          <div>
+            <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Số tiền (₫)</label>
+            <input value={itemForm.amount} inputMode="numeric" onChange={(e) => setItemForm({ ...itemForm, amount: e.target.value })} className="w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]" placeholder="0" />
+          </div>
+          <div className="col-span-2">
+            <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Tên khoản</label>
+            <input value={itemForm.name} onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })} className="w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]" placeholder="VD: Thay nhớt, Vốn mua xe..." />
+          </div>
+          <div className="col-span-2">
+            <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Ghi chú</label>
+            <input value={itemForm.note} onChange={(e) => setItemForm({ ...itemForm, note: e.target.value })} className="w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]" />
+          </div>
+          <div className="col-span-2">
+            <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Mật khẩu thao tác (3848)</label>
+            <input type="password" value={itemForm.password} onChange={(e) => setItemForm({ ...itemForm, password: e.target.value })} className="w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]" placeholder="•••" />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
 
 /* ─────────────────────────────────────────────────────────── */
 function VehicleDetail({
-  detail, overview, overrides, month, year, loading, setMonth, setYear, reload, onEdit, onAssign, onRemoveOverride,
+  detail, overview, overrides, month, year, loading, setMonth, setYear, reload, onEdit, onAssign, onRemoveOverride, onAddCost, onAddInvest, currentUser, toast,
 }: {
   detail: VehicleItem;
   overview: DashboardOverview | null;
@@ -566,24 +685,47 @@ function VehicleDetail({
   onEdit: () => void;
   onAssign: () => void;
   onRemoveOverride: (o: VehicleOverride) => void;
+  onAddCost: () => void;
+  onAddInvest: () => void;
+  currentUser: any;
+  toast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }) {
   const id = detail.id;
   const rev = overview?.revenue.byVehicle.find((v) => v.vehicleId === id) || null;
   const costV = (overview?.cost.byVehicle || []).find((v) => v.vehicleId === id) || null;
-  const sumItems = (group: 'cost' | 'investment', cat: string) =>
-    ((group === 'cost' ? overview?.cost.items?.[cat] : overview?.investment.items?.[cat]) ?? [])
-      .filter((it) => it.vehicleUserId === id)
-      .reduce((s, i) => s + Number(i.amount || 0), 0);
-  const suaChua = sumItems('cost', 'suaChua');
-  const nhienLieu = sumItems('cost', 'nhienLieu');
-  const cpKhac = sumItems('cost', 'cpKhac');
+
+  // Vốn + chi phí lấy theo CHỦ VỐN CỦA XE (mọi sổ), để luôn hiện đúng của xe.
+  const [fin, setFin] = useState<VehicleFinance | null>(null);
+  const [sheetCat, setSheetCat] = useState<string | null>(null);
+  const loadFin = async () => {
+    try {
+      const res = await vehiclesApi.getFinance(id, month, year);
+      setFin(res.data.data);
+    } catch {
+      /* ignore */
+    }
+  };
+  useEffect(() => {
+    loadFin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, month, year]);
+  const sumField = (cat: string) =>
+    (fin?.items?.[cat] ?? []).reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  const canEditFin =
+    currentUser?.role === 'supper_admin' ||
+    hasPerm(currentUser, 'finance.all') ||
+    (fin?.ownerUserId != null && currentUser?.id === fin.ownerUserId);
+
+  const suaChua = sumField('suaChua');
+  const nhienLieu = sumField('nhienLieu');
+  const cpKhac = sumField('cpKhac');
   const luong = (costV?.luongNguoiLai || 0) + (costV?.bhxhCty || 0);
   const totalCost = luong + suaChua + nhienLieu + cpKhac;
   const revenue = rev?.revenue || 0;
   const profit = revenue - totalCost;
-  const vonXe = sumItems('investment', 'vonXe');
-  const vonMooc = sumItems('investment', 'vonMooc');
-  const vonKhac = sumItems('investment', 'vonKhac');
+  const vonXe = sumField('vonXe');
+  const vonMooc = sumField('vonMooc');
+  const vonKhac = sumField('vonKhac');
   const capital = vonXe + vonMooc + vonKhac;
 
   return (
@@ -610,6 +752,8 @@ function VehicleDetail({
           <button onClick={reload} className="px-3 py-1.5 rounded-lg text-[12px] border border-[#e7e5e4] cursor-pointer">↻</button>
           <button onClick={onEdit} className="px-3 py-1.5 rounded-lg text-[12px] border border-[#e7e5e4] cursor-pointer">✏️ Sửa</button>
           <button onClick={onAssign} className="px-3 py-1.5 rounded-lg text-[12px] border border-[#e7e5e4] cursor-pointer">👥 Lái xe</button>
+          <button onClick={onAddCost} className="px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">➕ Chi phí</button>
+          <button onClick={onAddInvest} className="px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-[#2563eb] text-white cursor-pointer">➕ Vốn</button>
         </div>
       </div>
 
@@ -663,16 +807,19 @@ function VehicleDetail({
             <p className="text-[12px] font-bold text-[#1c1917] mb-2">💸 Chi phí & Vốn đầu tư</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <Stat label="Lương lái xe + BHXH" value={luong} color="#dc2626" />
-              <Stat label="Nhiên liệu" value={nhienLieu} color="#0891b2" />
-              <Stat label="Sửa chữa" value={suaChua} color="#7c3aed" />
-              <Stat label="CP khác" value={cpKhac} color="#059669" />
+              <Stat label="Nhiên liệu" value={nhienLieu} color="#0891b2" onClick={() => setSheetCat('nhienLieu')} />
+              <Stat label="Sửa chữa" value={suaChua} color="#7c3aed" onClick={() => setSheetCat('suaChua')} />
+              <Stat label="CP khác" value={cpKhac} color="#059669" onClick={() => setSheetCat('cpKhac')} />
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
-              <Stat label="Vốn xe" value={vonXe} color="#2563eb" />
-              <Stat label="Vốn mooc" value={vonMooc} color="#2563eb" />
-              <Stat label="Vốn khác" value={vonKhac} color="#78716c" />
+              <Stat label="Vốn xe" value={vonXe} color="#2563eb" onClick={() => setSheetCat('vonXe')} />
+              <Stat label="Vốn mooc" value={vonMooc} color="#2563eb" onClick={() => setSheetCat('vonMooc')} />
+              <Stat label="Vốn khác" value={vonKhac} color="#78716c" onClick={() => setSheetCat('vonKhac')} />
               <Stat label="Tổng vốn" value={capital} color="#2563eb" />
             </div>
+            <p className="text-[10px] text-[#a8a29e] mt-3">
+              * Vốn/chi phí lấy theo chủ vốn của xe. Bấm vào từng ô để xem/sửa chi tiết từng dòng.
+            </p>
           </div>
 
           {/* Lợi nhuận + chia vốn */}
@@ -699,7 +846,7 @@ function VehicleDetail({
               <div className="space-y-2">
                 {overrides.map((o) => (
                   <div key={o.id} className="flex items-center justify-between px-3 py-2 rounded-lg border border-[#e7e5e4]">
-                    <span className="text-[12px] text-[#1c1917]">{o.planName}{o.planNgay ? ` · ${o.planNgay}` : ''}</span>
+                    <span className="text-[12px] text-[#1c1917]">{o.planName}{o.routeName ? ` · ${o.routeName}` : ''}{o.planNgay ? ` · ${o.planNgay}` : ''}</span>
                     <span className="text-[12px] text-[#78716c]">👤 {o.driverName}</span>
                     <button onClick={() => onRemoveOverride(o)} className="px-2 py-1 text-[11px] rounded border border-[#fecaca] text-red-600 cursor-pointer">🗑</button>
                   </div>
@@ -709,16 +856,176 @@ function VehicleDetail({
           </div>
         </>
       )}
+
+      {sheetCat && (
+        <FinanceItemsModal
+          vehicleId={id}
+          ownerUserId={fin?.ownerUserId ?? null}
+          category={sheetCat}
+          label={FIN_CAT_LABEL[sheetCat] || sheetCat}
+          items={fin?.items?.[sheetCat] ?? []}
+          month={month}
+          year={year}
+          canEdit={canEditFin}
+          toast={toast}
+          onChanged={loadFin}
+          onClose={() => setSheetCat(null)}
+        />
+      )}
     </div>
   );
 }
 
-function Stat({ label, value, unit, color }: { label: string; value: number; unit?: string; color: string }) {
+function Stat({ label, value, unit, color, onClick }: { label: string; value: number; unit?: string; color: string; onClick?: () => void }) {
   return (
-    <div className="rounded-lg p-3 border border-[#e7e5e4] bg-[#fafaf9]">
+    <div
+      onClick={onClick}
+      title={onClick ? 'Bấm để xem/sửa chi tiết' : undefined}
+      className={`rounded-lg p-3 border border-[#e7e5e4] bg-[#fafaf9] ${onClick ? 'cursor-pointer hover:border-[#f59e0b] transition-colors' : ''}`}
+    >
       <p className="text-[10px] text-[#78716c] mb-0.5">{label}</p>
       <p className="text-[16px] font-extrabold" style={{ color }}>{fmt(value)}</p>
       <p className="text-[9px] text-[#a8a29e]">{unit || '₫'}</p>
     </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────── */
+function FinanceItemsModal({
+  vehicleId, ownerUserId, category, label, items, month, year, canEdit, toast, onChanged, onClose,
+}: {
+  vehicleId: number;
+  ownerUserId: number | null;
+  category: string;
+  label: string;
+  items: { id: number; itemDate: string | null; name: string; amount: number; note: string | null; month: number; year: number }[];
+  month: number;
+  year: number;
+  canEdit: boolean;
+  toast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+  onChanged: () => void;
+  onClose: () => void;
+}) {
+  const [password, setPassword] = useState('');
+  const [form, setForm] = useState({ itemDate: '', name: '', amount: '', note: '' });
+  const [editId, setEditId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const total = items.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+
+  const resetForm = () => {
+    setEditId(null);
+    setForm({ itemDate: '', name: '', amount: '', note: '' });
+  };
+  const startEdit = (it: (typeof items)[number]) => {
+    setEditId(it.id);
+    setForm({
+      itemDate: it.itemDate ? String(it.itemDate).slice(0, 10) : '',
+      name: it.name || '',
+      amount: String(it.amount || ''),
+      note: it.note || '',
+    });
+  };
+  const submit = async () => {
+    if (!canEdit) return;
+    if (!password) { toast('Nhập mật khẩu thao tác (3848)', 'error'); return; }
+    const amount = Number(String(form.amount).replace(/[^0-9]/g, ''));
+    if (!amount) { toast('Nhập số tiền', 'error'); return; }
+    setSaving(true);
+    try {
+      const payload = {
+        category,
+        itemDate: form.itemDate || null,
+        name: form.name,
+        amount,
+        note: form.note || null,
+        vehicleUserId: vehicleId,
+        targetUserId: ownerUserId ?? undefined,
+      } as any;
+      if (editId) await financeApi.updateCostItem(editId, payload, { password });
+      else await financeApi.addCostItem(month, year, payload, { password });
+      toast('Đã lưu khoản', 'success');
+      resetForm();
+      onChanged();
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Lưu thất bại', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const remove = async (it: (typeof items)[number]) => {
+    const res = await confirmDelete({
+      message: `Xoá khoản "${it.name || label}" (${fmt(it.amount)} ₫)?`,
+      action: () => financeApi.deleteCostItem(it.id, { password }),
+    });
+    if (res === undefined) return;
+    toast('Đã xoá', 'success');
+    onChanged();
+  };
+  const inputCls = 'w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]';
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`${label} — Theo xe`}
+      footer={
+        <>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] cursor-pointer">Đóng</button>
+          {canEdit && (
+            <button onClick={submit} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white disabled:opacity-50 cursor-pointer">
+              {saving ? 'Đang lưu...' : editId ? '💾 Cập nhật' : '➕ Thêm'}
+            </button>
+          )}
+        </>
+      }
+    >
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[12px] text-[#78716c]">{items.length} dòng · Tổng</span>
+        <span className="text-[14px] font-extrabold text-[#1c1917]">{fmt(total)} ₫</span>
+      </div>
+
+      <div className="max-h-[240px] overflow-y-auto rounded-lg border border-[#e7e5e4] divide-y divide-[#e7e5e4]">
+        {items.length === 0 ? (
+          <div className="px-3 py-6 text-center text-[12px] text-[#78716c]">Chưa có khoản nào</div>
+        ) : (
+          items.map((it) => (
+            <div key={it.id} className="flex items-center gap-2 px-3 py-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold truncate text-[#1c1917]">{it.name || '—'}</p>
+                <p className="text-[10px] text-[#78716c]">
+                  {it.itemDate ? String(it.itemDate).slice(0, 10) : '—'} · T{it.month}/{it.year}
+                  {it.note ? ` · ${it.note}` : ''}
+                </p>
+              </div>
+              <span className="text-[12px] font-bold whitespace-nowrap" style={{ color: '#dc2626' }}>{fmt(it.amount)} ₫</span>
+              {canEdit && (
+                <>
+                  <button onClick={() => startEdit(it)} className="px-1.5 py-0.5 rounded text-[10px] border border-[#e7e5e4] cursor-pointer">✏️</button>
+                  <button onClick={() => remove(it)} className="px-1.5 py-0.5 rounded text-[10px] border border-[#fecaca] text-red-600 cursor-pointer">🗑</button>
+                </>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {canEdit ? (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="col-span-2 text-[11px] font-semibold text-[#78716c]">{editId ? 'Sửa dòng khoản' : 'Thêm dòng khoản mới'}</div>
+          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Tên khoản (vd: Thay nhớt)" className={`${inputCls} col-span-2`} />
+          <input type="date" value={form.itemDate} onChange={(e) => setForm({ ...form, itemDate: e.target.value })} className={inputCls} />
+          <input value={form.amount} inputMode="numeric" onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="Số tiền (₫)" className={inputCls} />
+          <input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="Ghi chú" className={`${inputCls} col-span-2`} />
+          <div className="col-span-2 flex items-center gap-2">
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mật khẩu thao tác (3848)" className={inputCls} />
+            {editId && (
+              <button onClick={resetForm} className="px-3 py-2 rounded-lg text-xs border border-[#e7e5e4] text-[#78716c] whitespace-nowrap cursor-pointer">Huỷ sửa</button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <p className="mt-3 text-[11px] text-[#a8a29e]">Bạn chỉ xem được (cần là chủ vốn của xe hoặc có quyền tài chính để sửa).</p>
+      )}
+    </Modal>
   );
 }

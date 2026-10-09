@@ -13,6 +13,7 @@ import { Route } from '../database/entities/route.entity';
 import { FinanceEntry } from '../database/entities/finance-entry.entity';
 import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
 import { PlanVehicleOverride } from '../database/entities/plan-vehicle-override.entity';
+import { Vehicle } from '../database/entities/vehicle.entity';
 import {
   resolveVisibleDriverIds,
   hasPermission,
@@ -277,6 +278,8 @@ export class DashboardService {
     private costItemRepo: Repository<FinanceCostItem>,
     @InjectRepository(PlanVehicleOverride)
     private overrideRepo: Repository<PlanVehicleOverride>,
+    @InjectRepository(Vehicle)
+    private vehicleRepo: Repository<Vehicle>,
     private salaryService: SalaryService,
   ) {}
 
@@ -343,6 +346,16 @@ export class DashboardService {
     } else {
       allowedVehicles = ownerVisible;
     }
+
+    // ID XE (vehicles.id) được phép xem = xe nhà của các tài xế được phép.
+    const allowedHomeVids: Set<number> | null =
+      allowedVehicles === null
+        ? null
+        : new Set(
+            allLaixe
+              .filter((d) => allowedVehicles!.includes(d.id))
+              .map((d) => d.homeVehicleId ?? d.id),
+          );
 
     // 1. Kế hoạch trong tháng
     let plans = await this.slRepo
@@ -484,6 +497,9 @@ export class DashboardService {
     const allUsers = allLaixe;
     const userMap = new Map<number, User>();
     for (const u of allUsers) userMap.set(u.id, u);
+    const allVehicles = await this.vehicleRepo.find();
+    const vehicleMap = new Map<number, Vehicle>();
+    for (const v of allVehicles) vehicleMap.set(v.id, v);
 
     // 7b. Chi phí LƯƠNG LÁI XE = TỔNG THỰC NHẬN theo bảng lương tháng (đã gồm
     //     lương chuyến + cứng + chuyên cần + phụ cấp − khấu trừ) và BHXH phần
@@ -990,7 +1006,9 @@ export class DashboardService {
     //   - Lái phụ (mượn xe khác bên): chỉ lương chuyến sang xe đã chạy;
     //     lương cứng vẫn ở xe nhà (bên của họ).
     const isAllowed = (vid: number) =>
-      allowedVehicles === null || allowedVehicles.includes(vid);
+      allowedVehicles === null ||
+      allowedVehicles.includes(vid) ||
+      (allowedHomeVids?.has(vid) ?? false);
 
     const planById = new Map<number, ShippingLine>();
     for (const p of plans) planById.set(p.id, p);
@@ -1041,14 +1059,15 @@ export class DashboardService {
     const ensureVehicleRow = (vid: number): VehicleCostRow => {
       let row = costByVehicleMap.get(vid);
       if (!row) {
+        const vv = vehicleMap.get(vid);
         const u = userMap.get(vid);
         row = {
           vehicleId: vid,
-          soXe: u?.soXe || '',
-          soMooc: u?.soMooc || '',
+          soXe: vv?.soXe || u?.soXe || '',
+          soMooc: vv?.soMooc || u?.soMooc || '',
           fullName: u?.fullName || `Xe#${vid}`,
-          stt: u?.stt || '',
-          ngayHoatDong: u?.ngayHoatDong ?? null,
+          stt: vv?.stt || u?.stt || '',
+          ngayHoatDong: vv?.ngayHoatDong ?? u?.ngayHoatDong ?? null,
           ...emptyComp(),
           drivers: [],
         };
@@ -1058,7 +1077,8 @@ export class DashboardService {
     };
     // Đảm bảo mọi xe trong phạm vi xem đều có dòng (kể cả chưa có chuyến).
     for (const d of allUsers) {
-      if (isAllowed(d.id)) ensureVehicleRow(d.id);
+      const hv = d.homeVehicleId ?? d.id;
+      if (isAllowed(hv)) ensureVehicleRow(hv);
     }
 
     for (const d of allUsers) {
@@ -1081,7 +1101,7 @@ export class DashboardService {
         chiHo: Number(rec?.chiHo) || 0,
         advanceDeduct: Number(rec?.advanceDeduct) || 0,
       };
-      const homeVid = d.id;
+      const homeVid = d.homeVehicleId ?? d.id;
       // Lương cứng = phần thực nhận còn lại sau khi bỏ lương chuyến.
       const fixedNet = comp.luongNguoiLai - comp.luongKhoan;
 
@@ -1297,8 +1317,8 @@ export class DashboardService {
     // ngày, xe, tên khoản, số tiền, ghi chú, người nhập.
     const vehicleLabelOf = (vehicleUserId: number | null): string => {
       if (!vehicleUserId) return '';
-      const v: any = userMap.get(Number(vehicleUserId));
-      return v?.soXe || v?.fullName || `#${vehicleUserId}`;
+      const v = vehicleMap.get(Number(vehicleUserId));
+      return v?.soXe || `#${vehicleUserId}`;
     };
     const mapDetail = (rows: FinanceCostItem[], cat: string) =>
       rows
@@ -1323,23 +1343,26 @@ export class DashboardService {
     for (const c of INVEST_CATEGORIES)
       investItemsDetail[c] = mapDetail(investRows, c);
 
-    // Xe thuộc sở hữu của tài khoản đang xem (để lọc chi phí / lợi nhuận / vốn theo xe).
-    // - Tài khoản bị giới hạn `visibleDriverIds` → chỉ xe của họ.
-    // - Lọc theo bên → xe thuộc bên đó.
-    // - Tài khoản không giới hạn → tất cả lái xe.
-    const ownedDrivers = allUsers
-      .filter((u) => isAllowed(u.id))
-      .map((u: any) => ({
-        id: u.id,
+    // Xe thuộc sở hữu của tài khoản đang xem — theo XE (vehicles.id) để khớp với
+    // `cost.byVehicle` và các khoản chi phí/vốn (cũng keyed theo vehicles.id).
+    const ownedDriversMap = new Map<number, any>();
+    for (const u of allUsers) {
+      if (allowedVehicles !== null && !isAllowed(u.id)) continue;
+      const vid = u.homeVehicleId ?? u.id;
+      if (ownedDriversMap.has(vid)) continue;
+      const vv = vehicleMap.get(vid);
+      ownedDriversMap.set(vid, {
+        id: vid,
         fullName: u.fullName || '',
-        soXe: u.soXe || '',
-        soMooc: u.soMooc || '',
-        stt: u.stt || '',
-        ngayHoatDong: u.ngayHoatDong ?? null,
-      }))
-      .sort(
-        (a, b) => (parseInt(a.stt) || 999999) - (parseInt(b.stt) || 999999),
-      );
+        soXe: vv?.soXe || u.soXe || '',
+        soMooc: vv?.soMooc || u.soMooc || '',
+        stt: vv?.stt || u.stt || '',
+        ngayHoatDong: vv?.ngayHoatDong ?? u.ngayHoatDong ?? null,
+      });
+    }
+    const ownedDrivers = Array.from(ownedDriversMap.values()).sort(
+      (a, b) => (parseInt(a.stt) || 999999) - (parseInt(b.stt) || 999999),
+    );
 
     return {
       month,

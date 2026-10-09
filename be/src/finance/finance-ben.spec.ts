@@ -137,11 +137,13 @@ function build() {
     remove: jest.fn(async (v: any) => v),
   };
   const usersRepo = makeUsersRepo();
+  const vehiclesRepo = { find: jest.fn(async () => []), findOne: jest.fn(async () => null) };
   const svc = new FinanceService(
     repo as any,
     auditRepo as any,
     costRepo as any,
     usersRepo as any,
+    vehiclesRepo as any,
   );
   return { svc, repo, auditRepo, costRepo, usersRepo };
 }

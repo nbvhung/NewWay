@@ -8,7 +8,7 @@
  *
  * Client gửi mật khẩu qua header `x-cost-password` hoặc query `?pw=`.
  */
-export const ACTION_PASSWORD = '348';
+export const ACTION_PASSWORD = '3848';
 
 /** Header mang mật khẩu thao tác. */
 export const ACTION_PASSWORD_HEADER = 'x-cost-password';

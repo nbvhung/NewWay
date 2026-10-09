@@ -383,7 +383,6 @@ function CostItemsSheet({ category, items, month, year, onClose, variant = 'cost
                   <p className="text-[12px] font-bold whitespace-nowrap" style={{ color: accent }}>{fmt(it.amount)} ₫</p>
                 </div>
                 {it.note && <p className="text-[10px] mt-1" style={{ color: C.muted }}>📝 {it.note}</p>}
-                {it.createdByName && <p className="text-[9px] mt-0.5" style={{ color: '#a8a29e' }}>nhập bởi {it.createdByName}</p>}
               </div>
             ))}
           </div>
@@ -400,17 +399,20 @@ function CostItemsSheet({ category, items, month, year, onClose, variant = 'cost
    ─────────────────────────────────────────────────────────────── */
 type SalaryVehicleRow = NonNullable<DashboardOverview['cost']['byVehicle']>[number];
 
-function VehicleSalarySheet({ rows, month, year, onClose }: {
-  rows: SalaryVehicleRow[]; month: number; year: number; onClose: () => void;
+function VehicleSalarySheet({ rows, month, year, mode, onClose }: {
+  rows: SalaryVehicleRow[]; month: number; year: number; mode: 'chuyen' | 'cung'; onClose: () => void;
 }) {
   const [expanded, setExpanded] = useState<number | null>(null);
-  // Lái chính: tổng phải trả = thực nhận + BHXH Cty đóng.
-  // Lái phụ (mượn xe): chỉ tính lương chuyến.
-  const calcTotal = (r: SalaryVehicleRow) => r.luongNguoiLai + r.bhxhCty;
-  const driverTotal = (d: VehicleSalaryDriver) =>
-    d.isMain ? d.luongNguoiLai + d.bhxhCty : d.luongKhoan;
-  const totalAll = rows.reduce((s, r) => s + calcTotal(r), 0);
-  const sortedRows = [...rows].sort((a, b) => calcTotal(b) - calcTotal(a));
+  // mode 'chuyen' = tiền lương chuyến; mode 'cung' = lương cứng + chuyên cần
+  // + phụ cấp + tip + khoản khác − khấu trừ + BHXH Cty.
+  const isChuyen = mode === 'chuyen';
+  const rowValue = (r: SalaryVehicleRow) =>
+    isChuyen ? r.luongKhoan : r.luongNguoiLai + r.bhxhCty - r.luongKhoan;
+  const driverValue = (d: VehicleSalaryDriver) =>
+    isChuyen ? d.luongKhoan : (d.isMain ? d.luongNguoiLai + d.bhxhCty - d.luongKhoan : 0);
+  const totalAll = rows.reduce((s, r) => s + rowValue(r), 0);
+  const totalBhxh = rows.reduce((s, r) => s + r.bhxhCty, 0);
+  const sortedRows = [...rows].sort((a, b) => rowValue(b) - rowValue(a));
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/25" onClick={onClose}>
@@ -420,25 +422,29 @@ function VehicleSalarySheet({ rows, month, year, onClose }: {
         <div className="px-5 pt-5 pb-4 flex justify-between gap-3" style={{ background: C.surface }}>
           <div className="min-w-0">
             <p className="text-[11px]" style={{ color: C.muted }}>Chi phí lương · {MONTHS_VN[month]}/{year}</p>
-            <h3 className="text-[16px] font-bold mt-0.5">🚛 Lương Theo Xe</h3>
+            <h3 className="text-[16px] font-bold mt-0.5">{isChuyen ? '🚛 Lương chuyến theo xe' : '🚛 Lương cứng & BHXH theo xe'}</h3>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded hover:bg-white/60 cursor-pointer text-stone-400 flex-shrink-0">✕</button>
         </div>
         {/* Tổng */}
         <div className="px-5 py-3 border-b" style={{ borderColor: C.faint }}>
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-lg p-3" style={{ background: '#f0fdf4', border: `1px solid #86efac` }}>
-              <p className="text-[9px] mb-0.5" style={{ color: '#15803d' }}>BHXH Cty đóng (tổng)</p>
-              <p className="text-[15px] font-extrabold" style={{ color: '#16a34a' }}>{fmt(rows.reduce((s, r) => s + r.bhxhCty, 0))}</p>
+            <div className="rounded-lg p-3" style={{ background: isChuyen ? C.amberLt : '#eff6ff', border: `1px solid ${isChuyen ? '#fcd34d' : '#bfdbfe'}` }}>
+              <p className="text-[9px] mb-0.5" style={{ color: isChuyen ? C.amberDk : C.blue }}>{isChuyen ? 'Tổng lương chuyến' : 'Tổng lương cứng & BHXH'}</p>
+              <p className="text-[15px] font-extrabold" style={{ color: isChuyen ? C.amberDk : C.blue }}>{fmt(totalAll)}</p>
               <p className="text-[9px]" style={{ color: C.muted }}>₫</p>
             </div>
-            <div className="rounded-lg p-3" style={{ background: C.redLt, border: `1px solid ${C.red}30` }}>
-              <p className="text-[9px] mb-0.5" style={{ color: C.red }}>Tổng phải trả</p>
-              <p className="text-[15px] font-extrabold" style={{ color: C.red }}>{fmt(totalAll)}</p>
-              <p className="text-[9px]" style={{ color: C.muted }}>₫</p>
+            <div className="rounded-lg p-3" style={{ background: '#f0fdf4', border: `1px solid #86efac` }}>
+              <p className="text-[9px] mb-0.5" style={{ color: '#15803d' }}>{isChuyen ? 'Số xe' : 'BHXH Cty đóng (tổng)'}</p>
+              <p className="text-[15px] font-extrabold" style={{ color: '#16a34a' }}>{isChuyen ? rows.length : fmt(totalBhxh)}</p>
+              <p className="text-[9px]" style={{ color: C.muted }}>{isChuyen ? 'xe' : '₫'}</p>
             </div>
           </div>
-          <p className="text-[9px] mt-2" style={{ color: C.muted }}>* Lái chính = thực nhận + BHXH Cty đóng. Lái phụ (mượn xe) chỉ tính lương chuyến. Lương cứng của lái phụ nằm ở xe nhà (bên của họ).</p>
+          <p className="text-[9px] mt-2" style={{ color: C.muted }}>
+            {isChuyen
+              ? '* Lương chuyến = lương khoán theo sản lượng từng chuyến của lái xe.'
+              : '* Lương cứng & BHXH = lương cứng + chuyên cần + phụ cấp + tip + khoản khác − khấu trừ + BHXH Cty. Lái phụ (mượn xe) không tính phần này (ở xe nhà).'}
+          </p>
         </div>
         {/* Danh sách xe */}
         <div className="px-5 py-3 space-y-2">
@@ -448,7 +454,7 @@ function VehicleSalarySheet({ rows, month, year, onClose }: {
           ) : (
             sortedRows.map((r, i) => {
               const ini = (r.soXe || r.fullName || 'X').split(' ').map(w => w[0] ?? '').slice(-2).join('').toUpperCase();
-              const total = calcTotal(r);
+              const total = rowValue(r);
               const isExp = expanded === r.vehicleId;
               const subCount = r.drivers.filter(d => !d.isMain).length;
               return (
@@ -470,10 +476,10 @@ function VehicleSalarySheet({ rows, month, year, onClose }: {
                         {r.fullName}{subCount > 0 ? ` · ${subCount} lái phụ` : ''}
                       </p>
                     </div>
-                    {/* Tổng phải trả */}
+                    {/* Tổng */}
                     <div className="text-right flex-shrink-0">
-                      <p className="text-[12px] font-bold" style={{ color: C.red }}>{fmt(total)}</p>
-                      <p className="text-[9px]" style={{ color: C.muted }}>Phải trả</p>
+                      <p className="text-[12px] font-bold" style={{ color: isChuyen ? C.amberDk : C.blue }}>{fmt(total)}</p>
+                      <p className="text-[9px]" style={{ color: C.muted }}>{isChuyen ? 'Lương chuyến' : 'Cứng & BHXH'}</p>
                     </div>
                     <span className="text-[10px] ml-1" style={{ color: C.muted }}>{isExp ? '▲' : '▼'}</span>
                   </div>
@@ -485,18 +491,39 @@ function VehicleSalarySheet({ rows, month, year, onClose }: {
                           <>
                             <p className="text-[10px] font-semibold mb-1" style={{ color: C.muted }}>Tài xế ({r.drivers.length})</p>
                             {r.drivers.map((dv, k) => (
-                              <div key={k} className="flex justify-between items-center py-1">
-                                <span className="text-[11px] flex items-center gap-1.5 min-w-0" style={{ color: C.ink }}>
-                                  <span className="truncate">{dv.fullName}</span>
-                                  <span className="text-[9px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0"
-                                    style={dv.isMain ? { background: C.amberLt, color: C.amberDk } : { background: C.blueLt, color: C.blue }}>
-                                    {dv.isMain ? 'Lái chính' : 'Lái phụ'}
+                              <div key={k} className="py-1.5 border-b last:border-b-0" style={{ borderColor: '#f0e8d8' }}>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[11px] flex items-center gap-1.5 min-w-0" style={{ color: C.ink }}>
+                                    <span className="truncate">{dv.fullName}</span>
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0"
+                                      style={dv.isMain ? { background: C.amberLt, color: C.amberDk } : { background: C.blueLt, color: C.blue }}>
+                                      {dv.isMain ? 'Lái chính' : 'Lái phụ'}
+                                    </span>
                                   </span>
-                                </span>
-                                <span className="text-right flex-shrink-0">
-                                  <span className="text-[11px] font-semibold" style={{ color: C.red }}>{fmt(driverTotal(dv))} ₫</span>
-                                  {!dv.isMain && <span className="block text-[8px]" style={{ color: C.muted }}>lương chuyến</span>}
-                                </span>
+                                  <span className="text-right flex-shrink-0">
+                                    <span className="text-[11px] font-semibold" style={{ color: isChuyen ? C.amberDk : C.blue }}>{fmt(driverValue(dv))} ₫</span>
+                                    {!isChuyen && !dv.isMain && <span className="block text-[8px]" style={{ color: C.muted }}>ở xe nhà</span>}
+                                  </span>
+                                </div>
+                                {!isChuyen && dv.isMain && (
+                                  <div className="mt-1 ml-2 space-y-0.5">
+                                    {([
+                                      ['Lương cứng', dv.luongCung],
+                                      ['Chuyên cần', dv.chuyenCan],
+                                      ['Phụ cấp', dv.phuCap],
+                                      ['Tip', dv.tip],
+                                      ['Cộng khác', dv.itemSumAdd],
+                                      ['Khấu trừ', -(dv.itemSumDeduct + dv.advanceDeduct)],
+                                      ['BHXH NLĐ', -dv.bhxhNld],
+                                      ['BHXH Cty', dv.bhxhCty],
+                                    ] as [string, number][]).filter(([, v]) => v !== 0).map(([lbl, v]) => (
+                                      <div key={lbl} className="flex justify-between text-[10px]">
+                                        <span style={{ color: C.muted }}>{lbl}</span>
+                                        <span style={{ color: v < 0 ? C.red : C.ink }}>{v < 0 ? '-' : ''}{fmt(Math.abs(v))} ₫</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </>
@@ -581,7 +608,7 @@ export function DashboardTab() {
   const [selC, setSelC] = useState<CustomerRevenue | null>(null);
   const [selCost, setSelCost] = useState<string | null>(null);
   const [selInvest, setSelInvest] = useState<string | null>(null);
-  const [showDriverSalary, setShowDriverSalary] = useState(false);
+  const [salarySheet, setSalarySheet] = useState<null | 'chuyen' | 'cung'>(null);
   // Lọc theo xe ở 3 card Chi phí / Lợi nhuận / Vốn đầu tư ('' = tất cả xe)
 
   const [costDriver, setCostDriver] = useState<number | ''>('');
@@ -658,9 +685,7 @@ export function DashboardTab() {
       key: 'profit', emoji: '📈', label: 'Lợi Nhuận',
       value: profit, color: profit >= 0 ? C.green : C.red,
       colorLt: profit >= 0 ? C.greenLt : C.redLt,
-      sub: totalVon > 0
-        ? `${pc(profit, totalVon)}% lợi nhuận / vốn đầu tư`
-        : '0% lợi nhuận / vốn đầu tư',
+      sub: 'Lợi nhuận trước thuế',
     },
     {
       key: 'investment', emoji: '🏗️', label: 'Vốn Đầu Tư',
@@ -901,9 +926,12 @@ export function DashboardTab() {
           const suaChua   = isAll ? data.cost.suaChua     : sumCostItems('suaChua', sel as number);
           const nhienLieu = isAll ? data.cost.nhienLieu   : sumCostItems('nhienLieu', sel as number);
           const cpKhac    = isAll ? data.cost.cpKhac      : sumCostItems('cpKhac', sel as number);
+          const luongChuyen   = isAll ? data.cost.luongChuyen : (costDrv?.luongKhoan ?? 0);
+          const luongCungBhxh = (luong + bhxhCty) - luongChuyen;
           const sum = luong + bhxhCty + subvendor + suaChua + nhienLieu + cpKhac;
           const tiles: [string, number, string, string, string][] = [
-            ['Lương lái xe + BHXH Cty', luong + bhxhCty, C.amber, isAll ? '(bấm để xem chi tiết từng xe)' : '(thực nhận + BHXH Cty)', isAll ? 'driverSalary' : ''],
+            ['Lương chuyến', luongChuyen, C.amber, isAll ? '(bấm để xem chi tiết từng xe)' : '(lương khoán/chuyến)', 'salaryChuyen'],
+            ['Lương cứng & BHXH', luongCungBhxh, '#2563eb', isAll ? '(bấm để xem chi tiết từng xe)' : '(lương cứng, phụ cấp, khấu trừ, BHXH)', 'salaryCung'],
             ['Subvendor',    subvendor, C.red,     isAll ? '(phí thuê ngoài)'   : '(không gắn xe)', ''],
             ['Sửa chữa',    suaChua,   '#7c3aed', '(bấm để xem chi tiết)', 'suaChua'],
             ['Nhiên liệu',   nhienLieu, '#0891b2', '(bấm để xem chi tiết)', 'nhienLieu'],
@@ -917,11 +945,12 @@ export function DashboardTab() {
                 {tiles.map(([lbl, val, c, hint, cat]) => {
                   const pct = pc(val, sum || 1);
                   const clickable = !!cat;
+                  const isSalary = cat === 'salaryChuyen' || cat === 'salaryCung';
                   return (
                     <div key={lbl}
-                      onClick={cat === 'driverSalary' ? () => setShowDriverSalary(true) : (clickable ? () => setSelCost(cat) : undefined)}
+                      onClick={cat === 'salaryChuyen' ? () => setSalarySheet('chuyen') : cat === 'salaryCung' ? () => setSalarySheet('cung') : (clickable ? () => setSelCost(cat) : undefined)}
                       className={clickable ? 'rounded-xl p-4 cursor-pointer transition-colors hover:brightness-[0.98]' : 'rounded-xl p-4'}
-                      style={{ border: `1px solid ${clickable && cat === 'driverSalary' ? C.amber : C.faint}`, background: clickable && cat === 'driverSalary' ? C.amberLt : C.surface }}>
+                      style={{ border: `1px solid ${clickable && isSalary ? C.amber : C.faint}`, background: clickable && isSalary ? C.amberLt : C.surface }}>
                       <p className="text-[11px] font-semibold mb-1" style={{ color: C.muted }}>{lbl}</p>
                       <p className="text-[22px] font-extrabold leading-none" style={{ color: c }}>{fmt(val)}</p>
                       <p className="text-[9px] mt-0.5 mb-2" style={{ color: C.muted }}>₫ · {pct}% tổng chi phí</p>
@@ -959,12 +988,17 @@ export function DashboardTab() {
           const nhienLieu = isAll ? data.cost.nhienLieu   : sumCostItems('nhienLieu', sel as number);
           const cpKhac    = isAll ? data.cost.cpKhac      : sumCostItems('cpKhac', sel as number);
           const net = rev - luong - bhxhCty - subvendor - suaChua - nhienLieu - cpKhac;
+          const netSauThue = net * 0.8;
           const invSel = isAll
             ? totalVon
             : sumInvestItems('vonXe', sel as number) +
               sumInvestItems('vonMooc', sel as number) +
               sumInvestItems('vonKhac', sel as number);
-          const pctInv = invSel > 0 ? pc(net, invSel) : 0;
+          const capRaw = Number(investorCapital.replace(/[^0-9]/g, '')) || 0;
+          const pctOwn = invSel > 0 ? Math.min(100, (capRaw / invSel) * 100) : 0;
+          const hasCapital = capRaw > 0 && invSel > 0;
+          const myNet = (net * pctOwn) / 100;
+          const myNetSauThue = (netSauThue * pctOwn) / 100;
           const rows: [string, number, string][] = [
             ['(+) Doanh thu',      rev,        C.amber],
             ['(-) Lương lái xe',  -luong,      C.red],
@@ -977,241 +1011,90 @@ export function DashboardTab() {
           return (
             <div className="p-5">
               <DriverFilterBar title="📈 Chi tiết Lợi Nhuận" drivers={ownedDrivers} value={profitDriver} onChange={v => { setProfitDriver(v); setInvestorCapital(''); }} />
-              <div className="flex justify-end -mt-3 mb-4">
-                <span className="px-3 py-1.5 rounded-full text-[11px] font-bold"
-                  style={{ background: C.blueLt, color: C.blue, border: `1px solid ${C.blue}30` }}>
-                  {pctInv}% lợi nhuận / vốn đầu tư
-                </span>
+
+              {/* Ô nhập vốn đầu tư (của bạn) */}
+              <div className="mb-4 rounded-xl p-3 flex flex-wrap items-center gap-3" style={{ background: C.surface, border: `1px solid ${C.faint}` }}>
+                <span className="text-[12px] font-semibold" style={{ color: C.muted }}>💵 Số vốn đầu tư (của bạn)</span>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: '#fff', border: `1.5px solid ${C.blue}40` }}>
+                  <span style={{ color: C.blue, fontWeight: 900 }}>$</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={investorCapital}
+                    onChange={e => setInvestorCapital(e.target.value.replace(/[^0-9]/g, ''))}
+                    placeholder="0"
+                    className="outline-none text-[14px] font-bold w-[160px]"
+                    style={{ color: C.ink }}
+                  />
+                  <span className="text-[11px]" style={{ color: C.muted }}>₫</span>
+                </div>
+                {invSel > 0 && (
+                  <span className="text-[11px]" style={{ color: C.muted }}>
+                    / {fmt(invSel)} ₫ tổng vốn {isAll ? '(tất cả xe)' : 'của xe'}
+                  </span>
+                )}
               </div>
 
-              {/* Layout 2/3 + 1/3 */}
-              <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
-
-                {/* CỘT TRÁI 2/3 */}
-                <div style={{ flex: 2, minWidth: 0 }}>
-                  {rows.map(([lbl, val, c], i) => (
-                    <div key={i} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '11px 0',
-                      borderBottom: i < rows.length - 1 ? `1px solid ${C.faint}` : 'none',
-                    }}>
-                      <span style={{ fontSize: 13, color: C.muted }}>{lbl}</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: c }}>
-                        {val < 0 ? '-' : ''}{fmt(Math.abs(val))} ₫
-                      </span>
-                    </div>
-                  ))}
-                  <div style={{
+              <div className="max-w-3xl">
+                {rows.map(([lbl, val, c], i) => (
+                  <div key={i} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '12px 14px', marginTop: 6, borderRadius: 12,
-                    background: net >= 0 ? C.greenLt : C.redLt,
-                    border: `1px solid ${net >= 0 ? C.green : C.red}30`,
+                    padding: '11px 0',
+                    borderBottom: i < rows.length - 1 ? `1px solid ${C.faint}` : 'none',
                   }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: net >= 0 ? C.green : C.red }}>= Lợi nhuận ròng</span>
-                    <span style={{ fontSize: 18, fontWeight: 800, color: net >= 0 ? C.green : C.red }}>
-                      {net >= 0 ? '+' : '-'}{fmt(Math.abs(net))} ₫
+                    <span style={{ fontSize: 13, color: C.muted }}>{lbl}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: c }}>
+                      {val < 0 ? '-' : ''}{fmt(Math.abs(val))} ₫
                     </span>
                   </div>
+                ))}
+
+                {/* Lợi nhuận ròng (trước thuế) */}
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '12px 14px', marginTop: 6, borderRadius: 12,
+                  background: net >= 0 ? C.greenLt : C.redLt,
+                  border: `1px solid ${net >= 0 ? C.green : C.red}30`,
+                }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: net >= 0 ? C.green : C.red }}>= Lợi nhuận ròng (Trước thuế)</span>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: net >= 0 ? C.green : C.red }}>
+                    {net >= 0 ? '+' : '-'}{fmt(Math.abs(net))} ₫
+                  </span>
                 </div>
 
-                {/* CỘT PHẢI 1/3 — chỉ hiện khi đã chọn xe */}
-                {!isAll && (() => {
-                  const capRaw = Number(investorCapital.replace(/[^0-9]/g, '')) || 0;
-                  const pctOwn = invSel > 0 ? Math.min(100, (capRaw / invSel) * 100) : 0;
-                  const investorProfit = net * pctOwn / 100;
-                  const hasResult = capRaw > 0 && invSel > 0;
-                  const profitColor = investorProfit >= 0 ? '#22c55e' : '#ef4444';
-                  return (
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        background: '#111113',
-                        border: '2px solid #f59e0b',
-                        borderRadius: 14,
-                        overflow: 'hidden',
-                        boxShadow: '0 0 0 1px #27272a, 0 8px 32px rgba(245,158,11,0.2)',
-                      }}>
-                        {/* Hazard stripes top */}
-                        <div style={{
-                          height: 10,
-                          background: 'repeating-linear-gradient(45deg,#f59e0b 0px,#f59e0b 12px,#1c1917 12px,#1c1917 24px)',
-                        }}/>
+                {/* Lợi nhuận ròng sau thuế */}
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '12px 14px', marginTop: 6, borderRadius: 12,
+                  background: netSauThue >= 0 ? C.greenLt : C.redLt,
+                  border: `1px solid ${netSauThue >= 0 ? C.green : C.red}30`,
+                }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: netSauThue >= 0 ? C.green : C.red }}>
+                    = Lợi nhuận ròng sau thuế <span style={{ fontSize: 10, fontWeight: 500 }}>(× 0,8)</span>
+                  </span>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: netSauThue >= 0 ? C.green : C.red }}>
+                    {netSauThue >= 0 ? '+' : '-'}{fmt(Math.abs(netSauThue))} ₫
+                  </span>
+                </div>
 
-                        {/* Header */}
-                        <div style={{ padding: '12px 16px 8px', borderBottom: '1px solid #27272a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <div>
-                            <div style={{ color: '#f59e0b', fontSize: 10, fontWeight: 800, letterSpacing: 2.5, textTransform: 'uppercase' }}>FREIGHT PROFIT</div>
-                            <div style={{ color: '#52525b', fontSize: 8, fontWeight: 600, letterSpacing: 1, marginTop: 1 }}>CALCULATOR · SYS/v1.0</div>
-                          </div>
-                          <div style={{
-                            width: 28, height: 28, borderRadius: 6, background: '#1c1917',
-                            border: '1px solid #3f3f46', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}>
-                            <span style={{ color: '#f59e0b', fontSize: 14, fontWeight: 900, lineHeight: 1 }}>$</span>
-                          </div>
-                        </div>
-
-                        {/* Truck SVG — lớn hơn */}
-                        <div style={{ padding: '12px 16px 8px', borderBottom: '1px solid #1c1917', background: '#0d0d0f' }}>
-                          <svg viewBox="0 0 280 72" style={{ width: '100%', height: 58 }}>
-                            {/* Sky glow */}
-                            <defs>
-                              <radialGradient id="hglow" cx="85%" cy="50%" r="25%">
-                                <stop offset="0%" stopColor="#fef08a" stopOpacity="0.2"/>
-                                <stop offset="100%" stopColor="#fef08a" stopOpacity="0"/>
-                              </radialGradient>
-                            </defs>
-                            <rect x="0" y="0" width="280" height="72" fill="url(#hglow)"/>
-                            {/* Road */}
-                            <rect x="0" y="56" width="280" height="16" fill="#1c1917"/>
-                            <rect x="0" y="54" width="280" height="3" fill="#27272a"/>
-                            {/* Road center dashes */}
-                            {[0,46,92,138,184,230].map(x => <rect key={x} x={x} y="61" width="32" height="3.5" rx="1" fill="#f59e0b" opacity="0.45"/>)}
-                            {/* Container body */}
-                            <rect x="12" y="22" width="156" height="34" rx="3" fill="#292524"/>
-                            <rect x="12" y="22" width="156" height="4" fill="#3f3f46"/>
-                            {/* Container ribbing */}
-                            {[28,48,68,88,108,128,148].map(x => <line key={x} x1={x} y1="26" x2={x} y2="56" stroke="#1c1917" strokeWidth="1"/>)}
-                            {/* Container door outline */}
-                            <rect x="108" y="26" width="60" height="30" rx="1" fill="none" stroke="#3f3f46" strokeWidth="1.5"/>
-                            <line x1="138" y1="26" x2="138" y2="56" stroke="#3f3f46" strokeWidth="1"/>
-                            {/* NEW WAY label */}
-                            <rect x="22" y="32" width="72" height="14" rx="2" fill="#1c1917"/>
-                            <text x="58" y="43" fill="#f59e0b" fontSize="8.5" fontWeight="900" letterSpacing="1.5" textAnchor="middle" opacity="0.95">NEW WAY</text>
-                            {/* Cab */}
-                            <rect x="168" y="20" width="62" height="36" rx="4" fill="#292524"/>
-                            <rect x="222" y="24" width="14" height="22" rx="3" fill="#3f3f46"/>
-                            {/* Windshield */}
-                            <rect x="220" y="22" width="12" height="14" rx="2" fill="#fbbf24" opacity="0.65"/>
-                            {/* Headlight */}
-                            <rect x="234" y="32" width="5" height="8" rx="1" fill="#fef08a"/>
-                            {/* Headlight beam */}
-                            <polygon points="239,33 280,26 280,42 239,39" fill="#fef08a" opacity="0.12"/>
-                            <polygon points="239,34 268,29 268,40 239,38" fill="#fef08a" opacity="0.1"/>
-                            {/* Cab details */}
-                            <rect x="170" y="48" width="50" height="4" rx="1" fill="#3f3f46"/>
-                            {/* Stack/exhaust */}
-                            <rect x="172" y="10" width="5" height="14" rx="2" fill="#3f3f46"/>
-                            <rect x="180" y="13" width="4" height="11" rx="2" fill="#3f3f46"/>
-                            {/* Wheels container */}
-                            {[38,72,182,204,224].map(cx => (
-                              <g key={cx}>
-                                <circle cx={cx} cy="57" r="8.5" fill="#111113" stroke="#3f3f46" strokeWidth="2"/>
-                                <circle cx={cx} cy="57" r="4" fill="#1c1917"/>
-                                <circle cx={cx} cy="57" r="1.5" fill="#52525b"/>
-                              </g>
-                            ))}
-                            {/* $ sign big */}
-                            <text x="0" y="50" fill="#f59e0b" fontSize="26" fontWeight="900" opacity="0.7" fontFamily="monospace">$</text>
-                          </svg>
-                        </div>
-
-                        {/* Input section */}
-                        <div style={{ padding: '14px 16px' }}>
-                          {/* Label + tổng vốn */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-                            <span style={{ color: '#71717a', fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase' }}>VỐN ĐẦU TƯ</span>
-                            {invSel > 0
-                              ? <span style={{ color: '#52525b', fontSize: 9 }}>/ {fmt(invSel)} ₫</span>
-                              : <span style={{ color: '#f59e0b', fontSize: 8 }}>⚠ Chưa có dữ liệu vốn</span>
-                            }
-                          </div>
-
-                          {/* Input box */}
-                          <div style={{
-                            display: 'flex', alignItems: 'center', gap: 8,
-                            background: '#1c1917', border: '1.5px solid #3f3f46',
-                            borderRadius: 8, padding: '10px 14px',
-                            transition: 'border-color 0.2s',
-                          }}>
-                            <span style={{ color: '#f59e0b', fontSize: 22, fontWeight: 900, lineHeight: 1, fontFamily: 'monospace' }}>$</span>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              value={investorCapital}
-                              onChange={e => {
-                                const raw = e.target.value.replace(/[^0-9]/g, '');
-                                setInvestorCapital(raw ? Number(raw).toLocaleString('vi-VN') : '');
-                              }}
-                              placeholder="0"
-                              style={{
-                                flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                                color: '#fbbf24', fontSize: 20, fontWeight: 800,
-                                fontFamily: 'monospace', minWidth: 0,
-                              }}
-                            />
-                            <span style={{ color: '#52525b', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>₫</span>
-                          </div>
-
-                          {/* % bar */}
-                          {hasResult && (
-                            <div style={{ marginTop: 12 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                                <span style={{ color: '#71717a', fontSize: 9, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' }}>SỞ HỮU</span>
-                                <span style={{ color: '#f59e0b', fontSize: 18, fontWeight: 900, fontFamily: 'monospace', lineHeight: 1 }}>{pctOwn.toFixed(1)}<span style={{ fontSize: 12 }}>%</span></span>
-                              </div>
-                              <div style={{ height: 7, background: '#27272a', borderRadius: 4, overflow: 'hidden' }}>
-                                <div style={{
-                                  height: '100%',
-                                  width: `${Math.min(pctOwn, 100)}%`,
-                                  background: 'repeating-linear-gradient(90deg,#f59e0b 0px,#f59e0b 10px,#d97706 10px,#d97706 20px)',
-                                  transition: 'width 0.4s cubic-bezier(.4,0,.2,1)',
-                                  boxShadow: '0 0 8px rgba(245,158,11,0.4)',
-                                }}/>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Result box */}
-                          <div style={{ marginTop: 12 }}>
-                            {hasResult ? (
-                              <div style={{
-                                background: investorProfit >= 0 ? 'rgba(34,197,94,0.07)' : 'rgba(239,68,68,0.07)',
-                                border: `1.5px solid ${profitColor}35`,
-                                borderRadius: 10, padding: '12px 14px',
-                                boxShadow: `0 0 16px ${profitColor}15`,
-                              }}>
-                                <div style={{ color: '#52525b', fontSize: 8, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>
-                                  INVESTOR PROFIT / THÁNG NÀY
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, marginBottom: 4 }}>
-                                  <span style={{ color: profitColor, fontSize: 11, fontWeight: 900, lineHeight: '28px' }}>{investorProfit >= 0 ? '+' : '-'}</span>
-                                  <span style={{ color: profitColor, fontSize: 26, fontWeight: 900, fontFamily: 'monospace', lineHeight: 1 }}>
-                                    {fmt(Math.abs(Math.round(investorProfit)))}
-                                  </span>
-                                  <span style={{ color: profitColor, fontSize: 11, fontWeight: 700, lineHeight: '28px' }}>₫</span>
-                                </div>
-                                <div style={{ color: '#52525b', fontSize: 9, marginTop: 2 }}>
-                                  {pctOwn.toFixed(1)}% × {net >= 0 ? '+' : '-'}{fmt(Math.abs(net))} ₫ lợi nhuận
-                                </div>
-                              </div>
-                            ) : (
-                              <div style={{
-                                textAlign: 'center', padding: '16px 0',
-                                color: '#3f3f46', fontSize: 10, letterSpacing: 0.5,
-                              }}>
-                                ↑ Nhập số vốn của bạn để tính
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Hazard stripes bottom */}
-                        <div style={{
-                          height: 8,
-                          background: 'repeating-linear-gradient(45deg,#f59e0b 0px,#f59e0b 12px,#1c1917 12px,#1c1917 24px)',
-                        }}/>
-                      </div>
+                {/* Phần của bạn khi đã nhập vốn */}
+                {hasCapital && (
+                  <div style={{ marginTop: 12, padding: '12px 14px', borderRadius: 12, background: C.blueLt, border: `1px solid ${C.blue}30` }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: C.blue, marginBottom: 6 }}>💰 Phần của bạn</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0' }}>
+                      <span style={{ color: C.muted }}>Lợi nhuận ròng (Trước thuế)</span>
+                      <span style={{ fontWeight: 700, color: myNet >= 0 ? C.green : C.red }}>{myNet >= 0 ? '+' : '-'}{fmt(Math.abs(myNet))} ₫</span>
                     </div>
-                  );
-                })()}
-
-                {/* Placeholder 1/3 khi xem tất cả xe */}
-                {isAll && <div style={{ flex: 1 }}/>}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0' }}>
+                      <span style={{ color: C.muted }}>Lợi nhuận ròng sau thuế</span>
+                      <span style={{ fontWeight: 700, color: myNetSauThue >= 0 ? C.green : C.red }}>{myNetSauThue >= 0 ? '+' : '-'}{fmt(Math.abs(myNetSauThue))} ₫</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           );
         })()}
-
         {/* ─ Vốn đầu tư ──────────────────────────────────────── */}
         {activeCard === 'investment' && (() => {
           const sel = investDriver;
@@ -1286,12 +1169,15 @@ export function DashboardTab() {
           onClose={() => setSelInvest(null)}
         />
       )}
-      {showDriverSalary && (
+      {salarySheet && (
         <VehicleSalarySheet
-          rows={data.cost.byVehicle ?? []}
+          mode={salarySheet}
+          rows={(data.cost.byVehicle ?? []).filter(
+            r => costDriver === '' || r.vehicleId === costDriver,
+          )}
           month={data.month}
           year={data.year}
-          onClose={() => setShowDriverSalary(false)}
+          onClose={() => setSalarySheet(null)}
         />
       )}
     </div>

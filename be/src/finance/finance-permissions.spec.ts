@@ -1,14 +1,14 @@
-import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
+﻿import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { FinanceService } from './finance.service';
 import { FinanceController } from './finance.controller';
 
 /**
- * Ma trận quyền của khu Tài Chính:
- *  - chi phí    (suaChua/nhienLieu/cpKhac): admin cần mật khẩu; supper_admin được miễn
- *  - vốn đầu tư (vonXe/vonMooc/vonKhac)   : admin cần mật khẩu, supper_admin được miễn
- *  - ghi cho admin khác (targetUserId)    : chỉ supper_admin
+ * Ma tráº­n quyá»n cá»§a khu TĂ i ChĂ­nh:
+ *  - chi phĂ­    (suaChua/nhienLieu/cpKhac): admin cáº§n máº­t kháº©u; supper_admin Ä‘Æ°á»£c miá»…n
+ *  - vá»‘n Ä‘áº§u tÆ° (vonXe/vonMooc/vonKhac)   : admin cáº§n máº­t kháº©u, supper_admin Ä‘Æ°á»£c miá»…n
+ *  - ghi cho admin khĂ¡c (targetUserId)    : chá»‰ supper_admin
  */
-const PW = '348';
+const PW = '3848';
 
 const ADMIN = { sub: 6, role: 'admin', fullName: 'Mr Bach' };
 const SUPER = { sub: 4, role: 'supper_admin', fullName: 'Super' };
@@ -36,18 +36,19 @@ function build() {
     auditRepo as any,
     costRepo as any,
     usersRepo as any,
+    { find: jest.fn(async () => []), findOne: jest.fn(async () => null) } as any,
   );
   const ctrl = new FinanceController(svc);
   return { svc, ctrl, repo, auditRepo };
 }
 
-/** Gọi controller.upsert y như HTTP `PUT /admin/finance?month=9&year=2026`. */
+/** Gá»i controller.upsert y nhÆ° HTTP `PUT /admin/finance?month=9&year=2026`. */
 const put = (ctrl: any, actor: any, body: any, password?: string) =>
   ctrl.upsert('9', '2026', password, undefined, { user: actor }, body);
 
 /**
- * Controller ném lỗi ĐỒNG BỘ (method không phải `async`), service thì trả promise bị
- * reject → helper này bắt được cả hai kiểu.
+ * Controller nĂ©m lá»—i Äá»’NG Bá»˜ (method khĂ´ng pháº£i `async`), service thĂ¬ tráº£ promise bá»‹
+ * reject â†’ helper nĂ y báº¯t Ä‘Æ°á»£c cáº£ hai kiá»ƒu.
  */
 async function expectThrow(fn: () => any, type: any) {
   try {
@@ -56,18 +57,18 @@ async function expectThrow(fn: () => any, type: any) {
     expect(e).toBeInstanceOf(type);
     return;
   }
-  throw new Error('Mong đợi có lỗi ném ra nhưng không có');
+  throw new Error('Mong Ä‘á»£i cĂ³ lá»—i nĂ©m ra nhÆ°ng khĂ´ng cĂ³');
 }
 
-describe('Tài chính — mật khẩu & quyền nhập vốn đầu tư', () => {
-  it('mật khẩu đúng là 348', () => {
+describe('TĂ i chĂ­nh â€” máº­t kháº©u & quyá»n nháº­p vá»‘n Ä‘áº§u tÆ°', () => {
+  it('máº­t kháº©u Ä‘Ăºng lĂ  348', () => {
     const { svc } = build();
     expect(svc.verifyCostPassword(PW)).toBe(true);
     expect(svc.verifyCostPassword('349')).toBe(false);
     expect(svc.verifyCostPassword(undefined)).toBe(false);
   });
 
-  it('admin KHÔNG nhập mật mã => bị chặn khi ghi vốn đầu tư', async () => {
+  it('admin KHĂ”NG nháº­p máº­t mĂ£ => bá»‹ cháº·n khi ghi vá»‘n Ä‘áº§u tÆ°', async () => {
     const { ctrl } = build();
     await expectThrow(
       () => put(ctrl, ADMIN, { vonXe: 500 }),
@@ -75,7 +76,7 @@ describe('Tài chính — mật khẩu & quyền nhập vốn đầu tư', () =>
     );
   });
 
-  it('admin nhập mật mã => ghi được vốn đầu tư và có ghi lịch sử', async () => {
+  it('admin nháº­p máº­t mĂ£ => ghi Ä‘Æ°á»£c vá»‘n Ä‘áº§u tÆ° vĂ  cĂ³ ghi lá»‹ch sá»­', async () => {
     const { ctrl, auditRepo } = build();
     const saved: any = await put(ctrl, ADMIN, { vonXe: 500, vonMooc: 200 }, PW);
     expect(saved.vonXe).toBe(500);
@@ -86,26 +87,26 @@ describe('Tài chính — mật khẩu & quyền nhập vốn đầu tư', () =>
     expect(changes.vonMooc).toEqual({ old: 0, new: 200 });
   });
 
-  it('supper_admin ghi vốn đầu tư KHÔNG cần mật mã (giữ hành vi cũ)', async () => {
+  it('supper_admin ghi vá»‘n Ä‘áº§u tÆ° KHĂ”NG cáº§n máº­t mĂ£ (giá»¯ hĂ nh vi cÅ©)', async () => {
     const { ctrl } = build();
     const saved: any = await put(ctrl, SUPER, { vonXe: 700 });
     expect(saved.vonXe).toBe(700);
   });
 
-  it('chi phí: admin phải nhập mật mã, supper_admin được miễn', async () => {
+  it('chi phĂ­: admin pháº£i nháº­p máº­t mĂ£, supper_admin Ä‘Æ°á»£c miá»…n', async () => {
     const { ctrl } = build();
     await expectThrow(
       () => put(ctrl, ADMIN, { suaChua: 100 }),
       UnauthorizedException,
     );
-    // supper_admin sửa chi phí (kể cả của admin khác) KHÔNG cần mật mã
+    // supper_admin sá»­a chi phĂ­ (ká»ƒ cáº£ cá»§a admin khĂ¡c) KHĂ”NG cáº§n máº­t mĂ£
     const superOk: any = await put(ctrl, SUPER, { suaChua: 100 });
     expect(superOk.suaChua).toBe(100);
     const ok: any = await put(ctrl, ADMIN, { suaChua: 100 }, PW);
     expect(ok.suaChua).toBe(100);
   });
 
-  it('admin không được ghi vốn cho admin khác', async () => {
+  it('admin khĂ´ng Ä‘Æ°á»£c ghi vá»‘n cho admin khĂ¡c', async () => {
     const { ctrl } = build();
     await expectThrow(
       () => put(ctrl, ADMIN, { vonXe: 1, targetUserId: 4 }, PW),
@@ -113,7 +114,7 @@ describe('Tài chính — mật khẩu & quyền nhập vốn đầu tư', () =>
     );
   });
 
-  it('supper_admin được ghi vốn cho admin khác', async () => {
+  it('supper_admin Ä‘Æ°á»£c ghi vá»‘n cho admin khĂ¡c', async () => {
     const { ctrl } = build();
     const saved: any = await put(
       ctrl,
@@ -124,14 +125,14 @@ describe('Tài chính — mật khẩu & quyền nhập vốn đầu tư', () =>
     expect(saved.userId).toBe(6);
   });
 
-  it('mở khoá rồi chỉ gửi chi phí (không gửi vốn) vẫn lưu bình thường', async () => {
+  it('má»Ÿ khoĂ¡ rá»“i chá»‰ gá»­i chi phĂ­ (khĂ´ng gá»­i vá»‘n) váº«n lÆ°u bĂ¬nh thÆ°á»ng', async () => {
     const { ctrl } = build();
     const saved: any = await put(ctrl, ADMIN, { suaChua: 50 }, PW);
     expect(saved.suaChua).toBe(50);
     expect(saved.vonXe).toBeUndefined();
   });
 
-  it('vốn không đổi thì không sinh dòng lịch sử', async () => {
+  it('vá»‘n khĂ´ng Ä‘á»•i thĂ¬ khĂ´ng sinh dĂ²ng lá»‹ch sá»­', async () => {
     const { svc, repo, auditRepo } = build();
     repo.findOne.mockResolvedValueOnce({
       id: 1,
@@ -152,3 +153,4 @@ describe('Tài chính — mật khẩu & quyền nhập vốn đầu tư', () =>
     expect(auditRepo.save).not.toHaveBeenCalled();
   });
 });
+

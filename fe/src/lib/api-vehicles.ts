@@ -35,6 +35,7 @@ export interface VehicleOverride {
   planId: number;
   planName: string;
   planNgay: string | null;
+  routeName?: string;
   driverId: number;
   driverName: string;
   vehicleId: number;
@@ -43,12 +44,34 @@ export interface VehicleOverride {
   createdAt: string;
 }
 
+export interface VehicleFinanceItem {
+  id: number;
+  category: string;
+  vehicleUserId: number | null;
+  itemDate: string | null;
+  name: string;
+  amount: number;
+  note: string | null;
+  month: number;
+  year: number;
+}
+
+export interface VehicleFinance {
+  ownerUserId: number | null;
+  items: Record<string, VehicleFinanceItem[]>;
+}
+
 export const vehiclesApi = {
   getAll: () => api.get<{ data: VehicleItem[] }>('/admin/vehicles'),
 
   listForSelect: () => api.get<{ data: VehicleOption[] }>('/admin/vehicles/select'),
 
   getOne: (id: number) => api.get<{ data: VehicleItem }>(`/admin/vehicles/${id}`),
+
+  getFinance: (id: number, month: number, year: number) =>
+    api.get<{ data: VehicleFinance }>(`/admin/vehicles/${id}/finance`, {
+      params: { month, year },
+    }),
 
   create: (data: Record<string, unknown>) =>
     api.post('/admin/vehicles', data),

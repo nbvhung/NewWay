@@ -56,6 +56,13 @@ export class ScheduleZaloMessageDto {
   repeatDaily?: boolean;
 }
 
+export class UpdateScheduledMessageDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Vui lòng nhập nội dung tin nhắn' })
+  @MaxLength(2000, { message: 'Tin nhắn không được vượt quá 2000 ký tự' })
+  content: string;
+}
+
 export class RenameZaloGroupDto {
   @IsString()
   @IsNotEmpty({ message: 'Vui lòng nhập tên nhóm' })

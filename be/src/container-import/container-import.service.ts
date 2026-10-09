@@ -485,6 +485,46 @@ export class ContainerImportService {
     return result;
   }
 
+  /**
+   * Cặp KẸP: dòng claim `CLAMP` = container bị kẹp; claim ngay TRƯỚC đó (cùng
+   * submission) = container chính. Trả về map containerId → mã container còn lại
+   * trong cặp (để tab Mã số container hiện "kẹp với cont nào").
+   */
+  private async loadClampPairs(
+    rows: { id: number; containerCode: string }[],
+  ): Promise<Map<number, string>> {
+    const pair = new Map<number, string>();
+    const ids = [...new Set(rows.map((r) => r.id))];
+    if (ids.length === 0) return pair;
+    const codeById = new Map(rows.map((r) => [r.id, r.containerCode]));
+    const claims = await this.containerClaimsRepository
+      .createQueryBuilder('cl')
+      .where('cl.containerImportId IN (:...ids)', { ids })
+      .orderBy('cl.createdAt', 'ASC')
+      .addOrderBy('cl.id', 'ASC')
+      .getMany();
+    const lastBySubmission = new Map<number, ContainerClaim>();
+    for (const cl of claims) {
+      if (cl.claimType === 'CLAMP') {
+        const main = lastBySubmission.get(cl.submissionId);
+        if (
+          main &&
+          codeById.has(main.containerImportId) &&
+          codeById.has(cl.containerImportId)
+        ) {
+          const mainCode = codeById.get(main.containerImportId)!;
+          const clampCode = codeById.get(cl.containerImportId)!;
+          if (!pair.has(main.containerImportId))
+            pair.set(main.containerImportId, clampCode);
+          if (!pair.has(cl.containerImportId))
+            pair.set(cl.containerImportId, mainCode);
+        }
+      }
+      lastBySubmission.set(cl.submissionId, cl);
+    }
+    return pair;
+  }
+
   async findAll(
     planId?: number,
     user?: any,
@@ -497,6 +537,7 @@ export class ContainerImportService {
         hasKv?: boolean;
         hasKd2?: boolean;
         claimedAt?: Date | null;
+        clampWith?: string;
       }
     >
   > {
@@ -529,6 +570,9 @@ export class ContainerImportService {
     qb.orderBy('c.createdAt', 'DESC').take(5000);
     const rows = await qb.getMany();
     const claimInfo = await this.loadClaimInfo(rows.map((r) => r.id));
+    const clampPairs = await this.loadClampPairs(
+      rows.map((r) => ({ id: r.id, containerCode: r.containerCode })),
+    );
     return rows.map((r) => {
       const sub: any = (r as any).submissionRef;
       const importer: any = (r as any).importedByRef;
@@ -550,6 +594,7 @@ export class ContainerImportService {
         hasKd2: info.hasKd2,
         claimedAt:
           info.claimedAt || sub?.lastEditedAt || sub?.updatedAt || null,
+        clampWith: clampPairs.get(r.id) || '',
       };
     });
   }

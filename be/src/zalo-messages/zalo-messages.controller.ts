@@ -17,6 +17,7 @@ import { SendZaloMessageDto } from './dto/send-zalo-message.dto';
 import {
   RenameZaloGroupDto,
   ScheduleZaloMessageDto,
+  UpdateScheduledMessageDto,
 } from './dto/schedule-zalo-message.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -119,5 +120,18 @@ export class ZaloMessagesController {
   async cancel(@Param('batchId') batchId: string) {
     const cancelled = await this.zaloMessagesService.cancel(batchId);
     return { data: { ok: true, cancelled } };
+  }
+
+  @Put('scheduled/:batchId')
+  @Permissions('zalo.schedule')
+  async updateScheduled(
+    @Param('batchId') batchId: string,
+    @Body() dto: UpdateScheduledMessageDto,
+  ) {
+    const updated = await this.zaloMessagesService.updateScheduledContent(
+      batchId,
+      dto.content,
+    );
+    return { data: { ok: true, updated } };
   }
 }

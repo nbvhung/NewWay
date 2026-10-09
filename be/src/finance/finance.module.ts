@@ -4,6 +4,7 @@ import { FinanceEntry } from '../database/entities/finance-entry.entity';
 import { FinanceAuditLog } from '../database/entities/finance-audit-log.entity';
 import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
 import { User } from '../database/entities/user.entity';
+import { Vehicle } from '../database/entities/vehicle.entity';
 import { FinanceService } from './finance.service';
 import { FinanceController } from './finance.controller';
 
@@ -14,6 +15,7 @@ import { FinanceController } from './finance.controller';
       FinanceAuditLog,
       FinanceCostItem,
       User,
+      Vehicle,
     ]),
   ],
   providers: [FinanceService],

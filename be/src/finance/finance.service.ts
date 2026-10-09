@@ -11,6 +11,7 @@ import { FinanceEntry } from '../database/entities/finance-entry.entity';
 import { FinanceAuditLog } from '../database/entities/finance-audit-log.entity';
 import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
 import { User } from '../database/entities/user.entity';
+import { Vehicle } from '../database/entities/vehicle.entity';
 import { ACTION_PASSWORD } from '../common/security/action-password';
 import { hasPermission } from '../common/permissions/permissions';
 
@@ -117,6 +118,8 @@ export class FinanceService {
     private costRepo: Repository<FinanceCostItem>,
     @InjectRepository(User)
     private usersRepo: Repository<User>,
+    @InjectRepository(Vehicle)
+    private vehiclesRepo: Repository<Vehicle>,
   ) {}
 
   /**
@@ -189,6 +192,26 @@ export class FinanceService {
     return map;
   }
 
+  /** Map vehicleId → bên, suy từ chủ vốn sở hữu xe (`vehicles.owner_user_id`). */
+  async loadVehicleBenMap(): Promise<Map<number, string>> {
+    const owners = await this.usersRepo.find({
+      where: { ben: Not(IsNull()) },
+      order: { id: 'ASC' },
+    });
+    const ownerBen = new Map<number, string>();
+    for (const o of owners) {
+      const ben = (o.ben || '').trim().toUpperCase();
+      if (ben) ownerBen.set(o.id, ben);
+    }
+    const vehicles = await this.vehiclesRepo.find();
+    const map = new Map<number, string>();
+    for (const v of vehicles) {
+      const ben = v.ownerUserId != null ? ownerBen.get(v.ownerUserId) : undefined;
+      map.set(v.id, ben || DEFAULT_BEN);
+    }
+    return map;
+  }
+
   /**
    * Xác định "chủ vốn" của bản ghi finance đang thao tác:
    * `resolveUserId` đã chặn quyền chọn `targetUserId` (chỉ supper_admin).
@@ -218,20 +241,27 @@ export class FinanceService {
     targetUserId?: number,
   ): Promise<VehicleOption[]> {
     const { ben } = await this.resolveOwner(actor, targetUserId);
-    const drivers = await this.usersRepo.find({
-      where: { role: 'laixe' },
-      order: { id: 'ASC' },
+    const vehicles = await this.vehiclesRepo.find({
+      order: { stt: 'ASC', id: 'ASC' },
     });
-    const benMap = await this.loadDriverBenMap();
-    return drivers
-      .map((d) => ({
-        id: d.id,
-        fullName: d.fullName || d.username,
-        username: d.username,
-        soXe: d.soXe || '',
-        soMooc: d.soMooc || '',
-        stt: d.stt || '',
-        ben: this.normBen(benMap.get(d.id)),
+    const owners = await this.usersRepo.find({
+      where: { role: In(['admin', 'supper_admin']) },
+    });
+    const ownerName = new Map(
+      owners.map((o) => [o.id, o.fullName || o.username]),
+    );
+    const benMap = await this.loadVehicleBenMap();
+    return vehicles
+      .map((v) => ({
+        id: v.id,
+        fullName: v.ownerUserId
+          ? ownerName.get(v.ownerUserId) || `Xe #${v.id}`
+          : `Xe #${v.id}`,
+        username: '',
+        soXe: v.soXe || '',
+        soMooc: v.soMooc || '',
+        stt: v.stt || '',
+        ben: this.normBen(benMap.get(v.id)),
       }))
       .filter((v) => v.ben === ben);
   }
@@ -243,14 +273,14 @@ export class FinanceService {
   ): Promise<void> {
     if (vehicleUserId === null || vehicleUserId === undefined) return;
     const vid = Number(vehicleUserId);
-    const vehicle = await this.usersRepo.findOne({ where: { id: vid } });
-    if (!vehicle || vehicle.role !== 'laixe') {
+    const vehicle = await this.vehiclesRepo.findOne({ where: { id: vid } });
+    if (!vehicle) {
       throw new BadRequestException('Xe không hợp lệ');
     }
-    const benMap = await this.loadDriverBenMap();
+    const benMap = await this.loadVehicleBenMap();
     if (this.normBen(benMap.get(vid)) !== ben) {
       throw new BadRequestException(
-        `Xe ${vehicle.soXe || vehicle.fullName} không thuộc ${FinanceService.benLabel(ben)}`,
+        `Xe ${vehicle.soXe || `#${vid}`} không thuộc ${FinanceService.benLabel(ben)}`,
       );
     }
   }
@@ -503,20 +533,20 @@ export class FinanceService {
     }
 
     // Mọi xe phải thuộc đúng bên của bản ghi (không nhập xe bên B vào sổ bên A)
-    const vehicles = await this.usersRepo.find({
+    const vehicles = await this.vehiclesRepo.find({
       where: { id: In(rows.map((r) => Number(r.vehicleUserId))) },
     });
     const byId = new Map(vehicles.map((v) => [v.id, v]));
-    const benMap = await this.loadDriverBenMap();
+    const benMap = await this.loadVehicleBenMap();
     for (const r of rows) {
       const vid = Number(r.vehicleUserId);
       const v = byId.get(vid);
-      if (!v || v.role !== 'laixe') {
+      if (!v) {
         throw new BadRequestException('Xe không hợp lệ');
       }
       if (this.normBen(benMap.get(vid)) !== ben) {
         throw new BadRequestException(
-          `Xe ${v.soXe || v.fullName} không thuộc ${FinanceService.benLabel(ben)}`,
+          `Xe ${v.soXe || `#${vid}`} không thuộc ${FinanceService.benLabel(ben)}`,
         );
       }
     }
@@ -562,10 +592,10 @@ export class FinanceService {
   /** Tên khoản chi kèm số xe để hiện trong lịch sử, vd "Thay nhớt (15C 04717)". */
   private async itemNameWithVehicle(item: FinanceCostItem): Promise<string> {
     if (!item.vehicleUserId) return item.name || '';
-    const v = await this.usersRepo.findOne({
+    const v = await this.vehiclesRepo.findOne({
       where: { id: Number(item.vehicleUserId) },
     });
-    const label = v?.soXe || v?.fullName || `#${item.vehicleUserId}`;
+    const label = v?.soXe || `#${item.vehicleUserId}`;
     return item.name ? `${item.name} (${label})` : `(${label})`;
   }
 

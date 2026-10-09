@@ -388,6 +388,21 @@ export class ZaloMessagesService {
     return res.affected || 0;
   }
 
+  /** Sửa nội dung tin hẹn giờ (chỉ các dòng còn 'pending'). Trả về số dòng đã sửa. */
+  async updateScheduledContent(
+    batchId: string,
+    content: string,
+  ): Promise<number> {
+    const res = await this.zaloScheduledRepository
+      .createQueryBuilder()
+      .update()
+      .set({ content })
+      .where('batch_id = :batchId', { batchId })
+      .andWhere("status = 'pending'")
+      .execute();
+    return res.affected || 0;
+  }
+
   /** Claim các tin đến hạn để gửi (atomic, tránh đa instance gửi trùng). */
   async claimDue(): Promise<ZaloScheduledMessage[]> {
     const res = await this.zaloScheduledRepository

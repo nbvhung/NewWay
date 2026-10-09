@@ -63,4 +63,7 @@ export const zaloMessagesApi = {
 
   cancelScheduled: (batchId: string) =>
     api.delete<{ data: { ok: boolean; cancelled: number } }>(`/admin/zalo-messages/scheduled/${batchId}`),
+
+  updateScheduled: (batchId: string, content: string) =>
+    api.put<{ data: { ok: boolean; updated: number } }>(`/admin/zalo-messages/scheduled/${batchId}`, { content }),
 };

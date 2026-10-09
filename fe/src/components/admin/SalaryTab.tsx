@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { salaryApi } from '@/lib/api-salary';
-import { usersApi } from '@/lib/api-users';
 import { submissionsApi } from '@/lib/api-submissions';
 import { SalaryItem, SalaryRecordItem, SalarySettings, User, DriverAdvance, SalaryPaymentLog } from '@/types';
 import { confirmDelete } from '@/lib/delete-guard';
@@ -236,7 +235,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     if (!selectedDriver) return;
     setSavingBase(true);
     try {
-      await usersApi.update(selectedDriver.id, {
+      await salaryApi.updateDriverBase(selectedDriver.id, {
         allowanceFarHome: Number(baseFarHome.replace(/[^\d]/g, '')) || 0,
         oldCar: baseOldCar,
         payBhxh: baseBhxh,

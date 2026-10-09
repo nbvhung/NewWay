@@ -20,6 +20,7 @@ import {
   UpdateSalaryItemDto,
 } from './dto/update-salary-item.dto';
 import { CreateDriverAdvanceDto } from './dto/driver-advance.dto';
+import { UpdateDriverBaseDto } from './dto/update-driver-base.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Permissions } from '../common/decorators/permissions.decorator';
@@ -42,6 +43,15 @@ export class SalaryController {
   async updateSettings(@Body() dto: UpdateSalarySettingsDto) {
     const settings = await this.salaryService.updateSettings(dto);
     return { data: settings };
+  }
+
+  @Put('driver-base/:id')
+  @Permissions('salary.manage')
+  async updateDriverBase(
+    @Param('id') id: string,
+    @Body() dto: UpdateDriverBaseDto,
+  ) {
+    return { data: await this.salaryService.updateDriverBase(+id, dto) };
   }
 
   @Get('items')

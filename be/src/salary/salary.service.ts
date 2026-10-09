@@ -18,6 +18,7 @@ import {
   UpdateSalaryItemDto,
 } from './dto/update-salary-item.dto';
 import { CreateDriverAdvanceDto } from './dto/driver-advance.dto';
+import { UpdateDriverBaseDto } from './dto/update-driver-base.dto';
 import {
   calculateAttendanceBonus,
   nextAttendanceBonusRange,
@@ -44,6 +45,21 @@ export class SalaryService {
     private usersRepository: Repository<User>,
     private submissionsService: SubmissionsService,
   ) {}
+
+  /** Lưu "giá trị nền" của tài xế (phụ cấp nhà xa, xe cũ, đóng BHXH). */
+  async updateDriverBase(
+    id: number,
+    dto: UpdateDriverBaseDto,
+  ): Promise<{ message: string }> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('Không tìm thấy tài xế');
+    if (dto.allowanceFarHome !== undefined)
+      user.allowanceFarHome = dto.allowanceFarHome;
+    if (dto.oldCar !== undefined) user.oldCar = dto.oldCar;
+    if (dto.payBhxh !== undefined) user.payBhxh = dto.payBhxh;
+    await this.usersRepository.save(user);
+    return { message: 'Đã lưu giá trị nền' };
+  }
 
   nowVN(): { month: number; year: number } {
     const parts = new Intl.DateTimeFormat('en-GB', {
@@ -361,13 +377,10 @@ export class SalaryService {
     } else {
       fixedSalary = 7000000;
     }
-    // Override nếu admin nhập tay mức khác (không thuộc 3 mức tự động)
+    // Override nếu admin nhập tay mức khác (kể cả 0 = không có lương cứng).
     const recFixed = Number(record.fixedSalary);
     const setFixed = Number(settings.fixedSalary);
-    if (
-      recFixed !== 0 &&
-      ![5000000, 6000000, 7000000, setFixed].includes(recFixed)
-    ) {
+    if (![5000000, 6000000, 7000000, setFixed].includes(recFixed)) {
       fixedSalary = recFixed;
     }
 

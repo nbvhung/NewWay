@@ -25,28 +25,30 @@ export class VehiclesController {
 
   @Get()
   @Permissions('vehicle.view')
-  findAll(@Req() req: any) {
-    return this.vehiclesService.findAll(req.user);
+  async findAll(@Req() req: any) {
+    return { data: await this.vehiclesService.findAll(req.user) };
   }
 
   /** Danh sách gọn cho dropdown chọn xe. */
   @Get('select')
   @Permissions('vehicle.view')
-  listForSelect(@Req() req: any) {
-    return this.vehiclesService.listForSelect(req.user);
+  async listForSelect(@Req() req: any) {
+    return { data: await this.vehiclesService.listForSelect(req.user) };
   }
 
   // ── Đảo lái xe theo kế hoạch (khai báo TRƯỚC ':id') ──
   @Get('overrides')
   @Permissions('vehicle.view')
-  listOverrides(
+  async listOverrides(
     @Query('vehicleId') vehicleId?: string,
     @Query('planId') planId?: string,
   ) {
-    return this.vehiclesService.listOverrides({
-      vehicleId: vehicleId ? +vehicleId : undefined,
-      planId: planId ? +planId : undefined,
-    });
+    return {
+      data: await this.vehiclesService.listOverrides({
+        vehicleId: vehicleId ? +vehicleId : undefined,
+        planId: planId ? +planId : undefined,
+      }),
+    };
   }
 
   @Post('overrides')
@@ -61,16 +63,33 @@ export class VehiclesController {
     return this.vehiclesService.deleteOverride(+id);
   }
 
+  @Get(':id/finance')
+  @Permissions('vehicle.view')
+  async getFinance(
+    @Param('id') id: string,
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+  ) {
+    const now = new Date();
+    return {
+      data: await this.vehiclesService.getFinance(
+        +id,
+        month ? +month : now.getMonth() + 1,
+        year ? +year : now.getFullYear(),
+      ),
+    };
+  }
+
   @Get(':id')
   @Permissions('vehicle.view')
-  findOne(@Param('id') id: string) {
-    return this.vehiclesService.findOne(+id);
+  async findOne(@Param('id') id: string) {
+    return { data: await this.vehiclesService.findOne(+id) };
   }
 
   @Post()
   @Permissions('vehicle.manage')
-  create(@Body() dto: CreateVehicleDto) {
-    return this.vehiclesService.create(dto);
+  create(@Body() dto: CreateVehicleDto, @Req() req: any) {
+    return this.vehiclesService.create(dto, req.user);
   }
 
   @Put(':id')

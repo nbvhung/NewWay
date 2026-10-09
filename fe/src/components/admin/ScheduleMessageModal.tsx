@@ -66,6 +66,9 @@ export function ScheduleMessageModal({ open, onClose, allUsers, toast }: Props) 
   const [groups, setGroups] = useState<ZaloGroup[]>([]);
   const [groupRows, setGroupRows] = useState<GroupRow[]>([]);
   const [renaming, setRenaming] = useState<{ chatId: string; value: string } | null>(null);
+  const [editingBatchId, setEditingBatchId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const linkedUsers = allUsers.filter((u) => u.zaloId);
 
@@ -95,6 +98,8 @@ export function ScheduleMessageModal({ open, onClose, allUsers, toast }: Props) 
       setRepeatDaily(false);
       setGroupRows([]);
       setRenaming(null);
+      setEditingBatchId(null);
+      setEditingContent('');
     }
   }, [open, loadBatches, loadGroups]);
 
@@ -213,6 +218,28 @@ export function ScheduleMessageModal({ open, onClose, allUsers, toast }: Props) 
       toast('Đã hủy tin nhắn hẹn giờ');
       loadBatches();
     }
+  };
+
+  const saveScheduledEdit = async (batchId: string) => {
+    const content = editingContent.trim();
+    if (!content) {
+      toast('Nội dung không được để trống', 'error');
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      const res = await zaloMessagesApi.updateScheduled(batchId, content);
+      if (res.data?.data?.ok) {
+        toast('Đã sửa nội dung tin hẹn giờ');
+        setEditingBatchId(null);
+        loadBatches();
+      } else {
+        toast('Sửa thất bại', 'error');
+      }
+    } catch {
+      toast('Sửa thất bại', 'error');
+    }
+    setSavingEdit(false);
   };
 
   const hasPending = (b: ZaloScheduledBatch) => b.counts.pending > 0 || b.counts.processing > 0;
@@ -419,7 +446,35 @@ export function ScheduleMessageModal({ open, onClose, allUsers, toast }: Props) 
                             </span>
                           )}
                         </div>
-                        <div className="text-sm leading-snug break-words whitespace-pre-wrap mb-1">{b.content}</div>
+                        {editingBatchId === b.batchId ? (
+                          <div className="mb-1">
+                            <textarea
+                              value={editingContent}
+                              onChange={(e) => setEditingContent(e.target.value)}
+                              rows={3}
+                              maxLength={2000}
+                              className={`${inputCls} resize-none`}
+                            />
+                            <div className="flex justify-end gap-2 mt-1">
+                              <button
+                                onClick={() => setEditingBatchId(null)}
+                                disabled={savingEdit}
+                                className="px-2.5 py-1 rounded-md text-[11px] border border-[#e7e5e4] text-[#78716c] cursor-pointer"
+                              >
+                                Hủy
+                              </button>
+                              <button
+                                onClick={() => saveScheduledEdit(b.batchId)}
+                                disabled={savingEdit}
+                                className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white disabled:opacity-50 cursor-pointer"
+                              >
+                                {savingEdit ? 'Đang lưu...' : '💾 Lưu'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-sm leading-snug break-words whitespace-pre-wrap mb-1">{b.content}</div>
+                        )}
                         <div className="flex flex-wrap gap-1.5 mt-1">
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#fafaf9] text-[#475569]">
                             {b.recipients.length} đối tượng
@@ -437,12 +492,20 @@ export function ScheduleMessageModal({ open, onClose, allUsers, toast }: Props) 
                         </div>
                       </div>
                       {hasPending(b) && (
-                        <button
-                          onClick={() => cancelBatch(b.batchId)}
-                          className="px-2.5 py-1 rounded-md text-[11px] font-medium text-red-600 border border-red-200 hover:bg-red-50 shrink-0 transition-all cursor-pointer"
-                        >
-                          Hủy
-                        </button>
+                        <div className="flex flex-col gap-1 shrink-0">
+                          <button
+                            onClick={() => { setEditingBatchId(b.batchId); setEditingContent(b.content); }}
+                            className="px-2.5 py-1 rounded-md text-[11px] font-medium text-[#d97706] border border-[#f59e0b]/50 hover:bg-amber-50 transition-all cursor-pointer"
+                          >
+                            ✏️ Sửa
+                          </button>
+                          <button
+                            onClick={() => cancelBatch(b.batchId)}
+                            className="px-2.5 py-1 rounded-md text-[11px] font-medium text-red-600 border border-red-200 hover:bg-red-50 transition-all cursor-pointer"
+                          >
+                            Hủy
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>

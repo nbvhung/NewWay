@@ -54,12 +54,18 @@ export class VehiclesService {
   /** Danh sách xe kèm chủ vốn/bên + lái xe thuộc xe. */
   async findAll(user?: any): Promise<any[]> {
     const scope = this.scopeIds(user);
-    const where =
-      scope === null
-        ? {}
-        : scope.length === 0
-          ? { id: In([-1]) }
-          : { id: In(scope) };
+    const selfId = Number(user?.sub ?? user?.id);
+    let where: any;
+    if (scope === null) {
+      where = {};
+    } else {
+      const ids = scope.length ? scope : [-1];
+      // Tài khoản chủ xe: thấy xe trong `visible_driver_ids` HOẶC xe họ sở hữu
+      // (`owner_user_id`) — nhờ vậy xe mới tạo vẫn hiện.
+      where = Number.isFinite(selfId)
+        ? [{ id: In(ids) }, { ownerUserId: selfId }]
+        : { id: In(ids) };
+    }
     const vehicles = await this.vehiclesRepository.find({
       where,
       order: { stt: 'ASC', id: 'ASC' },
@@ -120,13 +126,55 @@ export class VehiclesService {
     };
   }
 
-  async create(dto: CreateVehicleDto): Promise<Vehicle> {
+  /** Vốn + chi phí của 1 xe (từ mọi sổ tài chính) — dùng ở tab Chi tiết xe. */
+  async getFinance(vehicleId: number, month: number, year: number) {
+    const v = await this.vehiclesRepository.findOne({
+      where: { id: vehicleId },
+    });
+    if (!v) throw new NotFoundException('Không tìm thấy xe');
+    const rows = await this.costItemsRepository.find({
+      where: { vehicleUserId: vehicleId },
+      order: { itemDate: 'DESC', id: 'DESC' },
+    });
+    const COST = ['suaChua', 'nhienLieu', 'cpKhac'];
+    const INVEST = ['vonXe', 'vonMooc', 'vonKhac'];
+    const isInvest = (c: string) => INVEST.includes(c);
+    const kept = rows.filter((r) =>
+      isInvest(r.category)
+        ? r.year < year || (r.year === year && r.month <= month)
+        : r.month === month && r.year === year,
+    );
+    const items: Record<string, any[]> = {};
+    for (const c of [...COST, ...INVEST]) {
+      items[c] = kept
+        .filter((r) => r.category === c)
+        .map((r) => ({
+          id: r.id,
+          category: r.category,
+          vehicleUserId: r.vehicleUserId ?? null,
+          itemDate: r.itemDate,
+          name: r.name,
+          amount: Number(r.amount) || 0,
+          note: r.note,
+          month: r.month,
+          year: r.year,
+        }));
+    }
+    return { ownerUserId: v.ownerUserId ?? null, items };
+  }
+
+  async create(dto: CreateVehicleDto, actor?: any): Promise<Vehicle> {
+    const selfId = Number(actor?.sub ?? actor?.id);
+    // Admin tạo xe mà không chọn chủ vốn → gán chính họ làm chủ vốn.
+    const ownerUserId =
+      dto.ownerUserId ??
+      (actor?.role === 'admin' && Number.isFinite(selfId) ? selfId : null);
     const v = this.vehiclesRepository.create({
       soXe: dto.soXe?.trim() || '',
       soMooc: dto.soMooc?.trim() || '',
       stt: dto.stt?.trim() || '',
       ngayHoatDong: dto.ngayHoatDong || null,
-      ownerUserId: dto.ownerUserId ?? null,
+      ownerUserId,
     });
     return this.vehiclesRepository.save(v);
   }
@@ -260,6 +308,7 @@ export class VehiclesService {
         planId: r.planId,
         planName: p?.name || `KH#${r.planId}`,
         planNgay: p?.ngay || null,
+        routeName: p?.routeName || '',
         driverId: r.driverId,
         driverName: d?.fullName || `LX#${r.driverId}`,
         vehicleId: r.vehicleId,
