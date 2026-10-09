@@ -72,7 +72,7 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
   // Nhập chi phí / vốn đầu tư kèm xe
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [itemVehicle, setItemVehicle] = useState<VehicleItem | null>(null);
-  const [itemForm, setItemForm] = useState({ category: 'suaChua', itemDate: '', name: '', amount: '', note: '', invoice: false, invoiceAmount: '' });
+  const [itemForm, setItemForm] = useState({ category: 'suaChua', itemDate: '', name: '', amount: '', note: '', password: '', invoice: false, invoiceAmount: '' });
   const [savingItem, setSavingItem] = useState(false);
 
   // Đảo lái xe
@@ -184,7 +184,7 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
   // ── Nhập chi phí / vốn đầu tư cho xe ──
   const openAddItem = (v: VehicleItem | null, category = 'suaChua') => {
     setItemVehicle(v);
-    setItemForm({ category, itemDate: '', name: '', amount: '', note: '', invoice: false, invoiceAmount: '' });
+    setItemForm({ category, itemDate: '', name: '', amount: '', note: '', password: '', invoice: false, invoiceAmount: '' });
     setItemModalOpen(true);
   };
   const submitItem = async () => {
@@ -193,6 +193,7 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
     const invoiceAmount = itemForm.invoice ? Number(itemForm.invoiceAmount.replace(/[^0-9]/g, '')) : null;
     if (itemForm.invoice && (!invoiceAmount || invoiceAmount <= 0)) { toast('Nhập số tiền xuất hoá đơn', 'error'); return; }
     if (invoiceAmount !== null && invoiceAmount > amount) { toast('Số tiền xuất HĐ không được lớn hơn khoản chi', 'error'); return; }
+    if (!itemForm.password) { toast('Nhập mật khẩu', 'error'); return; }
     setSavingItem(true);
     try {
       await financeApi.addCostItem(month, year, {
@@ -203,7 +204,7 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
         invoiceAmount,
         note: itemForm.note || null,
         vehicleUserId: itemVehicle ? itemVehicle.id : null,
-      });
+      }, { password: itemForm.password });
       setItemModalOpen(false);
       toast('Đã thêm khoản', 'success');
       if (detail && itemVehicle && detail.id === itemVehicle.id) openDetail(detail);
@@ -683,6 +684,9 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
               />
             )}
           </div>
+          <div className="col-span-2">
+            <input type="password" value={itemForm.password} onChange={(e) => setItemForm({ ...itemForm, password: e.target.value })} placeholder="Mật khẩu" className="w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]" />
+          </div>
         </div>
       </Modal>
     </div>
@@ -926,6 +930,7 @@ function FinanceItemsModal({
   onChanged: () => void;
   onClose: () => void;
 }) {
+  const [password, setPassword] = useState('');
   const [form, setForm] = useState({ itemDate: '', name: '', amount: '', note: '', invoice: false, invoiceAmount: '' });
   const [editId, setEditId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -948,6 +953,7 @@ function FinanceItemsModal({
   };
   const submit = async () => {
     if (!canEdit) return;
+    if (!password) { toast('Nhập mật khẩu', 'error'); return; }
     const amount = Number(String(form.amount).replace(/[^0-9]/g, ''));
     if (!amount) { toast('Nhập số tiền', 'error'); return; }
     const invoiceAmount = form.invoice ? Number(String(form.invoiceAmount).replace(/[^0-9]/g, '')) : null;
@@ -965,8 +971,8 @@ function FinanceItemsModal({
         vehicleUserId: vehicleId,
         targetUserId: ownerUserId ?? undefined,
       } as any;
-      if (editId) await financeApi.updateCostItem(editId, payload);
-      else await financeApi.addCostItem(month, year, payload);
+      if (editId) await financeApi.updateCostItem(editId, payload, { password });
+      else await financeApi.addCostItem(month, year, payload, { password });
       toast('Đã lưu khoản', 'success');
       resetForm();
       onChanged();
@@ -977,13 +983,14 @@ function FinanceItemsModal({
     }
   };
   const remove = async (it: (typeof items)[number]) => {
-    const res = await confirmDelete({
-      message: `Xoá khoản "${it.name || label}" (${fmt(it.amount)} ₫)?`,
-      action: (pw) => financeApi.deleteCostItem(it.id, { password: pw }),
-    });
-    if (res === undefined) return;
-    toast('Đã xoá', 'success');
-    onChanged();
+    if (!password) { toast('Nhập mật khẩu để xoá', 'error'); return; }
+    try {
+      await financeApi.deleteCostItem(it.id, { password });
+      toast('Đã xoá', 'success');
+      onChanged();
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Xoá thất bại', 'error');
+    }
   };
   const inputCls = 'w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]';
 
@@ -1055,6 +1062,9 @@ function FinanceItemsModal({
               <button onClick={resetForm} className="px-3 py-2 rounded-lg text-xs border border-[#e7e5e4] text-[#78716c] whitespace-nowrap cursor-pointer">Huỷ sửa</button>
             </div>
           )}
+          <div className="col-span-2">
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mật khẩu" className={inputCls} />
+          </div>
         </div>
       ) : (
         <p className="mt-3 text-[11px] text-[#a8a29e]">Bạn chỉ xem được (cần là chủ vốn của xe hoặc có quyền tài chính để sửa).</p>

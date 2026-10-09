@@ -205,6 +205,7 @@ export class FinanceController {
     @Req() req: any,
     @Body() body: CostItemDto,
   ) {
+    this.assertPw(pw, headerPw, req.user);
     const { m, y } = this.monthYear(month, year);
     const editorName = req.user?.fullName || req.user?.username || '';
     return this.financeService.addCostItem(m, y, req.user, body, editorName);
@@ -223,6 +224,7 @@ export class FinanceController {
     @Req() req: any,
     @Body() body: BulkCostItemDto,
   ) {
+    this.assertPw(pw, headerPw, req.user);
     const { m, y } = this.monthYear(month, year);
     const editorName = req.user?.fullName || req.user?.username || '';
     return this.financeService.addCostItemsBulk(
@@ -244,6 +246,7 @@ export class FinanceController {
     @Req() req: any,
     @Body() body: CostItemDto,
   ) {
+    this.assertPw(pw, headerPw, req.user);
     const editorName = req.user?.fullName || req.user?.username || '';
     return this.financeService.updateCostItem(+id, req.user, body, editorName);
   }
