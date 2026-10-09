@@ -72,7 +72,7 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
   // Nhập chi phí / vốn đầu tư kèm xe
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [itemVehicle, setItemVehicle] = useState<VehicleItem | null>(null);
-  const [itemForm, setItemForm] = useState({ category: 'suaChua', itemDate: '', name: '', amount: '', note: '', password: '' });
+  const [itemForm, setItemForm] = useState({ category: 'suaChua', itemDate: '', name: '', amount: '', note: '', password: '', invoice: false, invoiceAmount: '' });
   const [savingItem, setSavingItem] = useState(false);
 
   // Đảo lái xe
@@ -184,13 +184,16 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
   // ── Nhập chi phí / vốn đầu tư cho xe ──
   const openAddItem = (v: VehicleItem | null, category = 'suaChua') => {
     setItemVehicle(v);
-    setItemForm({ category, itemDate: '', name: '', amount: '', note: '', password: '' });
+    setItemForm({ category, itemDate: '', name: '', amount: '', note: '', password: '', invoice: false, invoiceAmount: '' });
     setItemModalOpen(true);
   };
   const submitItem = async () => {
     if (!itemForm.password) { toast('Vui lòng nhập mật khẩu thao tác (3848)', 'error'); return; }
     const amount = Number(itemForm.amount.replace(/[^0-9]/g, ''));
     if (!amount || amount <= 0) { toast('Nhập số tiền', 'error'); return; }
+    const invoiceAmount = itemForm.invoice ? Number(itemForm.invoiceAmount.replace(/[^0-9]/g, '')) : null;
+    if (itemForm.invoice && (!invoiceAmount || invoiceAmount <= 0)) { toast('Nhập số tiền xuất hoá đơn', 'error'); return; }
+    if (invoiceAmount !== null && invoiceAmount > amount) { toast('Số tiền xuất HĐ không được lớn hơn khoản chi', 'error'); return; }
     setSavingItem(true);
     try {
       await financeApi.addCostItem(month, year, {
@@ -198,6 +201,7 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
         itemDate: itemForm.itemDate || null,
         name: itemForm.name,
         amount,
+        invoiceAmount,
         note: itemForm.note || null,
         vehicleUserId: itemVehicle ? itemVehicle.id : null,
       }, { password: itemForm.password });
@@ -226,7 +230,8 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
       await vehiclesApi.assignDrivers(assignVehicle.id, assignIds);
       setAssignOpen(false);
       toast('Đã cập nhật phân công lái xe', 'success');
-      load();
+      if (detail && detail.id === assignVehicle.id) openDetail(detail);
+      await load();
     } catch (e: any) {
       toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
     } finally {
@@ -659,6 +664,26 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
             <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Ghi chú</label>
             <input value={itemForm.note} onChange={(e) => setItemForm({ ...itemForm, note: e.target.value })} className="w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]" />
           </div>
+          <div className="col-span-2 flex items-center gap-3 flex-wrap">
+            <label className="flex items-center gap-2 text-[11px] font-medium text-[#44403c] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={itemForm.invoice}
+                onChange={(e) => setItemForm({ ...itemForm, invoice: e.target.checked, invoiceAmount: e.target.checked ? itemForm.invoiceAmount : '' })}
+                className="w-4 h-4 accent-[#f59e0b] cursor-pointer"
+              />
+              Xuất HĐ
+            </label>
+            {itemForm.invoice && (
+              <input
+                value={itemForm.invoiceAmount}
+                inputMode="numeric"
+                onChange={(e) => setItemForm({ ...itemForm, invoiceAmount: e.target.value })}
+                placeholder="Số tiền xuất được hoá đơn (₫)"
+                className="flex-1 min-w-[200px] px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]"
+              />
+            )}
+          </div>
           <div className="col-span-2">
             <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Mật khẩu thao tác (3848)</label>
             <input type="password" value={itemForm.password} onChange={(e) => setItemForm({ ...itemForm, password: e.target.value })} className="w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]" placeholder="•••" />
@@ -898,7 +923,7 @@ function FinanceItemsModal({
   ownerUserId: number | null;
   category: string;
   label: string;
-  items: { id: number; itemDate: string | null; name: string; amount: number; note: string | null; month: number; year: number }[];
+  items: { id: number; itemDate: string | null; name: string; amount: number; invoiceAmount: number | null; note: string | null; month: number; year: number }[];
   month: number;
   year: number;
   canEdit: boolean;
@@ -907,14 +932,14 @@ function FinanceItemsModal({
   onClose: () => void;
 }) {
   const [password, setPassword] = useState('');
-  const [form, setForm] = useState({ itemDate: '', name: '', amount: '', note: '' });
+  const [form, setForm] = useState({ itemDate: '', name: '', amount: '', note: '', invoice: false, invoiceAmount: '' });
   const [editId, setEditId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const total = items.reduce((s, i) => s + (Number(i.amount) || 0), 0);
 
   const resetForm = () => {
     setEditId(null);
-    setForm({ itemDate: '', name: '', amount: '', note: '' });
+    setForm({ itemDate: '', name: '', amount: '', note: '', invoice: false, invoiceAmount: '' });
   };
   const startEdit = (it: (typeof items)[number]) => {
     setEditId(it.id);
@@ -923,6 +948,8 @@ function FinanceItemsModal({
       name: it.name || '',
       amount: String(it.amount || ''),
       note: it.note || '',
+      invoice: it.invoiceAmount != null,
+      invoiceAmount: it.invoiceAmount != null ? String(it.invoiceAmount) : '',
     });
   };
   const submit = async () => {
@@ -930,6 +957,9 @@ function FinanceItemsModal({
     if (!password) { toast('Nhập mật khẩu thao tác (3848)', 'error'); return; }
     const amount = Number(String(form.amount).replace(/[^0-9]/g, ''));
     if (!amount) { toast('Nhập số tiền', 'error'); return; }
+    const invoiceAmount = form.invoice ? Number(String(form.invoiceAmount).replace(/[^0-9]/g, '')) : null;
+    if (form.invoice && (!invoiceAmount || invoiceAmount <= 0)) { toast('Nhập số tiền xuất hoá đơn', 'error'); return; }
+    if (invoiceAmount !== null && invoiceAmount > amount) { toast('Số tiền xuất HĐ không được lớn hơn khoản chi', 'error'); return; }
     setSaving(true);
     try {
       const payload = {
@@ -937,6 +967,7 @@ function FinanceItemsModal({
         itemDate: form.itemDate || null,
         name: form.name,
         amount,
+        invoiceAmount,
         note: form.note || null,
         vehicleUserId: vehicleId,
         targetUserId: ownerUserId ?? undefined,
@@ -995,6 +1026,7 @@ function FinanceItemsModal({
                 <p className="text-[10px] text-[#78716c]">
                   {it.itemDate ? String(it.itemDate).slice(0, 10) : '—'} · T{it.month}/{it.year}
                   {it.note ? ` · ${it.note}` : ''}
+                  {it.invoiceAmount != null ? ` · 🧾 HĐ ${fmt(it.invoiceAmount)}` : ''}
                 </p>
               </div>
               <span className="text-[12px] font-bold whitespace-nowrap" style={{ color: '#dc2626' }}>{fmt(it.amount)} ₫</span>
@@ -1016,6 +1048,15 @@ function FinanceItemsModal({
           <input type="date" value={form.itemDate} onChange={(e) => setForm({ ...form, itemDate: e.target.value })} className={inputCls} />
           <input value={form.amount} inputMode="numeric" onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="Số tiền (₫)" className={inputCls} />
           <input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="Ghi chú" className={`${inputCls} col-span-2`} />
+          <div className="col-span-2 flex items-center gap-2 flex-wrap">
+            <label className="flex items-center gap-2 text-[11px] font-medium text-[#44403c] cursor-pointer">
+              <input type="checkbox" checked={form.invoice} onChange={(e) => setForm({ ...form, invoice: e.target.checked, invoiceAmount: e.target.checked ? form.invoiceAmount : '' })} className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
+              Xuất HĐ
+            </label>
+            {form.invoice && (
+              <input value={form.invoiceAmount} inputMode="numeric" onChange={(e) => setForm({ ...form, invoiceAmount: e.target.value })} placeholder="Số tiền xuất được hoá đơn (₫)" className={`${inputCls} flex-1 min-w-[160px]`} />
+            )}
+          </div>
           <div className="col-span-2 flex items-center gap-2">
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mật khẩu thao tác (3848)" className={inputCls} />
             {editId && (

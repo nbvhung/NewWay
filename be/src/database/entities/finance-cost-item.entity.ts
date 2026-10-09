@@ -55,6 +55,20 @@ export class FinanceCostItem {
   @Column({ type: 'decimal', precision: 18, scale: 0, default: 0 })
   amount: number;
 
+  /**
+   * Số tiền XUẤT ĐƯỢC HOÁ ĐƠN của khoản này (≤ amount).
+   * NULL = không xuất hoá đơn. VD amount 10tr, invoice 5tr → xuất được 5tr.
+   */
+  @Column({
+    name: 'invoice_amount',
+    type: 'decimal',
+    precision: 18,
+    scale: 0,
+    nullable: true,
+    default: null,
+  })
+  invoiceAmount: number | null;
+
   @Column({ type: 'varchar', length: 500, nullable: true })
   note: string | null;
 

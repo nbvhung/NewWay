@@ -32,6 +32,8 @@ export interface CostItemDto {
   itemDate?: string | null;
   name?: string;
   amount?: number;
+  /** Số tiền xuất được hoá đơn (≤ amount). Bỏ/null = không xuất hoá đơn. */
+  invoiceAmount?: number | null;
   note?: string | null;
   /** Xe mà khoản chi thuộc về (id lái xe). Bỏ trống = chi phí chung. */
   vehicleUserId?: number | null;
@@ -491,6 +493,10 @@ export class FinanceService {
       itemDate: dto.itemDate || null,
       name: (dto.name || '').trim(),
       amount: Number(dto.amount) || 0,
+      invoiceAmount:
+        dto.invoiceAmount === null || dto.invoiceAmount === undefined
+          ? null
+          : Number(dto.invoiceAmount),
       note: dto.note ?? null,
       createdById: selfId ?? null,
       createdByName: editorName || '',
@@ -618,6 +624,9 @@ export class FinanceService {
     if (dto.itemDate !== undefined) item.itemDate = dto.itemDate || null;
     if (dto.name !== undefined) item.name = (dto.name || '').trim();
     if (dto.amount !== undefined) item.amount = Number(dto.amount) || 0;
+    if (dto.invoiceAmount !== undefined)
+      item.invoiceAmount =
+        dto.invoiceAmount === null ? null : Number(dto.invoiceAmount);
     if (dto.note !== undefined) item.note = dto.note ?? null;
     if (dto.vehicleUserId !== undefined) {
       const owner = await this.usersRepo.findOne({

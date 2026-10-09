@@ -50,6 +50,8 @@ export interface FinanceCostItem {
   itemDate: string | null;
   name: string;
   amount: number;
+  /** Số tiền xuất được hoá đơn (≤ amount). null = không xuất. */
+  invoiceAmount?: number | null;
   note: string | null;
   createdById: number | null;
   createdByName: string;
@@ -62,6 +64,8 @@ export interface CostItemInput {
   itemDate?: string | null;
   name?: string;
   amount?: number;
+  /** Số tiền xuất được hoá đơn (≤ amount). null = không xuất. */
+  invoiceAmount?: number | null;
   note?: string | null;
   vehicleUserId?: number | null;
 }

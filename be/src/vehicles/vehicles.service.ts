@@ -155,6 +155,7 @@ export class VehiclesService {
           itemDate: r.itemDate,
           name: r.name,
           amount: Number(r.amount) || 0,
+          invoiceAmount: r.invoiceAmount != null ? Number(r.invoiceAmount) : null,
           note: r.note,
           month: r.month,
           year: r.year,

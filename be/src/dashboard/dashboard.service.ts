@@ -1330,6 +1330,7 @@ export class DashboardService {
           vehicleLabel: vehicleLabelOf(i.vehicleUserId),
           name: i.name,
           amount: Number(i.amount) || 0,
+          invoiceAmount: i.invoiceAmount != null ? Number(i.invoiceAmount) : null,
           note: i.note,
           createdByName: i.createdByName,
         }))

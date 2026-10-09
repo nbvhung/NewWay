@@ -51,6 +51,7 @@ export interface VehicleFinanceItem {
   itemDate: string | null;
   name: string;
   amount: number;
+  invoiceAmount: number | null;
   note: string | null;
   month: number;
   year: number;
