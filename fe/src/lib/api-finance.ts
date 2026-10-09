@@ -103,7 +103,8 @@ export interface FinanceAuditLog {
   createdAt: string;
 }
 
-const pwHeader = (password: string) => ({ headers: { 'x-cost-password': password } });
+const pwHeader = (password?: string) =>
+  password ? { headers: { 'x-cost-password': password } } : {};
 
 export const financeApi = {
   get: (month: number, year: number, opts?: { password?: string; targetUserId?: number }) =>
@@ -175,11 +176,11 @@ export const financeApi = {
     month: number,
     year: number,
     data: CostItemInput,
-    opts: { password: string },
+    opts?: { password?: string },
   ) =>
     axios.post<FinanceCostItem>('/admin/finance/cost-items', data, {
       params: { month, year },
-      ...pwHeader(opts.password),
+      ...pwHeader(opts?.password),
     }),
 
   /** Thêm 1 khoản chi cho nhiều xe — mỗi xe 1 dòng. */
@@ -187,20 +188,20 @@ export const financeApi = {
     month: number,
     year: number,
     data: BulkCostItemInput,
-    opts: { password: string },
+    opts?: { password?: string },
   ) =>
     axios.post<FinanceCostItem[]>('/admin/finance/cost-items/bulk', data, {
       params: { month, year },
-      ...pwHeader(opts.password),
+      ...pwHeader(opts?.password),
     }),
 
-  updateCostItem: (id: number, data: CostItemInput, opts: { password: string }) =>
+  updateCostItem: (id: number, data: CostItemInput, opts?: { password?: string }) =>
     axios.put<FinanceCostItem>(`/admin/finance/cost-items/${id}`, data, {
-      ...pwHeader(opts.password),
+      ...pwHeader(opts?.password),
     }),
 
-  deleteCostItem: (id: number, opts: { password: string }) =>
+  deleteCostItem: (id: number, opts?: { password?: string }) =>
     axios.delete<{ message: string }>(`/admin/finance/cost-items/${id}`, {
-      ...pwHeader(opts.password),
+      ...pwHeader(opts?.password),
     }),
 };

@@ -43,7 +43,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: 'export.data', group: 'Xuất dữ liệu', label: 'Xuất Excel dữ liệu', desc: 'Xuất Excel sản lượng theo filter' },
   { key: 'export.salary_col', group: 'Xuất dữ liệu', label: 'Xem cột / phiếu lương', desc: 'Xem & xuất cột lương trong dữ liệu' },
   { key: 'dashboard.view', group: 'Tổng quan', label: 'Xem tổng quan doanh thu', desc: 'Dashboard doanh thu/lợi nhuận' },
-  { key: 'finance.view', group: 'Tài chính', label: 'Xem chi phí & vốn đầu tư', desc: 'Vào tab Tài chính, xem chi phí / vốn (cần mật khẩu 3848 cho chi phí)' },
+  { key: 'finance.view', group: 'Tài chính', label: 'Xem chi phí & vốn đầu tư', desc: 'Vào tab Tài chính, xem chi phí / vốn' },
   { key: 'finance.manage', group: 'Tài chính', label: 'Nhập / sửa chi phí & vốn đầu tư', desc: 'Thêm, sửa, xoá khoản chi phí và vốn đầu tư' },
   { key: 'finance.all', group: 'Tài chính', label: 'Nhập tài chính cho mọi bên / admin', desc: 'Xem & nhập sổ Tài chính thay cho admin khác (cả bên A và B), không cần mật khẩu' },
   { key: 'tab.overview',   group: 'Hiển thị tab', label: 'Tab Tổng Quan',         desc: 'Hiện tab Tổng Quan trong menu' },

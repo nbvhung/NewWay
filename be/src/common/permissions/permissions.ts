@@ -245,7 +245,7 @@ export const PERMISSIONS: PermissionDef[] = [
     key: 'finance.view',
     group: 'Tài chính',
     label: 'Xem chi phí & vốn đầu tư',
-    desc: 'Vào tab Tài chính, xem chi phí / vốn (cần mật khẩu 3848 cho chi phí)',
+    desc: 'Vào tab Tài chính, xem chi phí / vốn',
   },
   {
     key: 'finance.manage',

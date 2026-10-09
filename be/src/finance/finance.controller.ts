@@ -194,7 +194,7 @@ export class FinanceController {
     );
   }
 
-  /** Thêm 1 khoản chi phí — yêu cầu mật khẩu. */
+  /** Thêm 1 khoản chi phí. */
   @Post('cost-items')
   @Permissions('finance.manage')
   addCostItem(
@@ -205,15 +205,13 @@ export class FinanceController {
     @Req() req: any,
     @Body() body: CostItemDto,
   ) {
-    this.assertPw(pw, headerPw, req.user);
     const { m, y } = this.monthYear(month, year);
     const editorName = req.user?.fullName || req.user?.username || '';
     return this.financeService.addCostItem(m, y, req.user, body, editorName);
   }
 
   /**
-   * Thêm 1 khoản chi cho NHIỀU xe cùng lúc — yêu cầu mật khẩu.
-   * Mỗi xe 1 số tiền riêng → mỗi xe 1 dòng chi phí.
+   * Thêm 1 khoản chi cho NHIỀU xe cùng lúc. Mỗi xe 1 số tiền riêng.
    */
   @Post('cost-items/bulk')
   @Permissions('finance.manage')
@@ -225,7 +223,6 @@ export class FinanceController {
     @Req() req: any,
     @Body() body: BulkCostItemDto,
   ) {
-    this.assertPw(pw, headerPw, req.user);
     const { m, y } = this.monthYear(month, year);
     const editorName = req.user?.fullName || req.user?.username || '';
     return this.financeService.addCostItemsBulk(
@@ -237,7 +234,7 @@ export class FinanceController {
     );
   }
 
-  /** Sửa 1 khoản chi phí — yêu cầu mật khẩu. */
+  /** Sửa 1 khoản chi phí. */
   @Put('cost-items/:id')
   @Permissions('finance.manage')
   updateCostItem(
@@ -247,7 +244,6 @@ export class FinanceController {
     @Req() req: any,
     @Body() body: CostItemDto,
   ) {
-    this.assertPw(pw, headerPw, req.user);
     const editorName = req.user?.fullName || req.user?.username || '';
     return this.financeService.updateCostItem(+id, req.user, body, editorName);
   }

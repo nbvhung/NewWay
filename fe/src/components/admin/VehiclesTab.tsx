@@ -72,7 +72,7 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
   // Nhập chi phí / vốn đầu tư kèm xe
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [itemVehicle, setItemVehicle] = useState<VehicleItem | null>(null);
-  const [itemForm, setItemForm] = useState({ category: 'suaChua', itemDate: '', name: '', amount: '', note: '', password: '', invoice: false, invoiceAmount: '' });
+  const [itemForm, setItemForm] = useState({ category: 'suaChua', itemDate: '', name: '', amount: '', note: '', invoice: false, invoiceAmount: '' });
   const [savingItem, setSavingItem] = useState(false);
 
   // Đảo lái xe
@@ -184,11 +184,10 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
   // ── Nhập chi phí / vốn đầu tư cho xe ──
   const openAddItem = (v: VehicleItem | null, category = 'suaChua') => {
     setItemVehicle(v);
-    setItemForm({ category, itemDate: '', name: '', amount: '', note: '', password: '', invoice: false, invoiceAmount: '' });
+    setItemForm({ category, itemDate: '', name: '', amount: '', note: '', invoice: false, invoiceAmount: '' });
     setItemModalOpen(true);
   };
   const submitItem = async () => {
-    if (!itemForm.password) { toast('Vui lòng nhập mật khẩu thao tác (3848)', 'error'); return; }
     const amount = Number(itemForm.amount.replace(/[^0-9]/g, ''));
     if (!amount || amount <= 0) { toast('Nhập số tiền', 'error'); return; }
     const invoiceAmount = itemForm.invoice ? Number(itemForm.invoiceAmount.replace(/[^0-9]/g, '')) : null;
@@ -204,7 +203,7 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
         invoiceAmount,
         note: itemForm.note || null,
         vehicleUserId: itemVehicle ? itemVehicle.id : null,
-      }, { password: itemForm.password });
+      });
       setItemModalOpen(false);
       toast('Đã thêm khoản', 'success');
       if (detail && itemVehicle && detail.id === itemVehicle.id) openDetail(detail);
@@ -684,10 +683,6 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
               />
             )}
           </div>
-          <div className="col-span-2">
-            <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Mật khẩu thao tác (3848)</label>
-            <input type="password" value={itemForm.password} onChange={(e) => setItemForm({ ...itemForm, password: e.target.value })} className="w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]" placeholder="•••" />
-          </div>
         </div>
       </Modal>
     </div>
@@ -931,7 +926,6 @@ function FinanceItemsModal({
   onChanged: () => void;
   onClose: () => void;
 }) {
-  const [password, setPassword] = useState('');
   const [form, setForm] = useState({ itemDate: '', name: '', amount: '', note: '', invoice: false, invoiceAmount: '' });
   const [editId, setEditId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -954,7 +948,6 @@ function FinanceItemsModal({
   };
   const submit = async () => {
     if (!canEdit) return;
-    if (!password) { toast('Nhập mật khẩu thao tác (3848)', 'error'); return; }
     const amount = Number(String(form.amount).replace(/[^0-9]/g, ''));
     if (!amount) { toast('Nhập số tiền', 'error'); return; }
     const invoiceAmount = form.invoice ? Number(String(form.invoiceAmount).replace(/[^0-9]/g, '')) : null;
@@ -972,8 +965,8 @@ function FinanceItemsModal({
         vehicleUserId: vehicleId,
         targetUserId: ownerUserId ?? undefined,
       } as any;
-      if (editId) await financeApi.updateCostItem(editId, payload, { password });
-      else await financeApi.addCostItem(month, year, payload, { password });
+      if (editId) await financeApi.updateCostItem(editId, payload);
+      else await financeApi.addCostItem(month, year, payload);
       toast('Đã lưu khoản', 'success');
       resetForm();
       onChanged();
@@ -986,7 +979,7 @@ function FinanceItemsModal({
   const remove = async (it: (typeof items)[number]) => {
     const res = await confirmDelete({
       message: `Xoá khoản "${it.name || label}" (${fmt(it.amount)} ₫)?`,
-      action: () => financeApi.deleteCostItem(it.id, { password }),
+      action: (pw) => financeApi.deleteCostItem(it.id, { password: pw }),
     });
     if (res === undefined) return;
     toast('Đã xoá', 'success');
@@ -1057,12 +1050,11 @@ function FinanceItemsModal({
               <input value={form.invoiceAmount} inputMode="numeric" onChange={(e) => setForm({ ...form, invoiceAmount: e.target.value })} placeholder="Số tiền xuất được hoá đơn (₫)" className={`${inputCls} flex-1 min-w-[160px]`} />
             )}
           </div>
-          <div className="col-span-2 flex items-center gap-2">
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mật khẩu thao tác (3848)" className={inputCls} />
-            {editId && (
+          {editId && (
+            <div className="col-span-2 flex justify-end">
               <button onClick={resetForm} className="px-3 py-2 rounded-lg text-xs border border-[#e7e5e4] text-[#78716c] whitespace-nowrap cursor-pointer">Huỷ sửa</button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       ) : (
         <p className="mt-3 text-[11px] text-[#a8a29e]">Bạn chỉ xem được (cần là chủ vốn của xe hoặc có quyền tài chính để sửa).</p>
