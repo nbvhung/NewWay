@@ -469,7 +469,7 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
                   <option value="">— Chọn kế hoạch —</option>
                   {plans.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {[p.name, p.ngay ? p.ngay.split('-').reverse().join('-') : ''].filter(Boolean).join(' / ')}
+                      {[p.name, p.soChuyen, p.routeName, p.ngay ? p.ngay.split('-').reverse().join('-') : ''].filter(Boolean).join(' / ')}
                     </option>
                   ))}
                 </select>
@@ -685,7 +685,7 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
             )}
           </div>
           <div className="col-span-2">
-            <input type="password" value={itemForm.password} onChange={(e) => setItemForm({ ...itemForm, password: e.target.value })} placeholder="Mật khẩu" className="w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]" />
+            <input type="password" value={itemForm.password} onChange={(e) => setItemForm({ ...itemForm, password: e.target.value })} className="w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]" />
           </div>
         </div>
       </Modal>
@@ -1063,7 +1063,7 @@ function FinanceItemsModal({
             </div>
           )}
           <div className="col-span-2">
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mật khẩu" className={inputCls} />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputCls} />
           </div>
         </div>
       ) : (
