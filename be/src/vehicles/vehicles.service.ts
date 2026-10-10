@@ -283,7 +283,7 @@ export class VehiclesService {
     const luong = num(costV?.luongNguoiLai) + num(costV?.bhxhCty);
     ws.addRow(['A. Lương lái xe + BHXH']).font = { bold: true };
     if ((costV?.drivers ?? []).length) {
-      tableHeader(['Lái xe', 'Vai trò', 'Thực nhận (₫)', 'BHXH Cty (₫)', 'Tổng (₫)']);
+      tableHeader(['Lái xe', 'Vai trò', 'Lương cứng & khác (₫)', 'BHXH Cty (₫)', 'Tổng (₫)']);
       for (const d of costV.drivers) {
         const total = num(d.luongNguoiLai) + num(d.bhxhCty);
         const r = ws.addRow([
@@ -415,7 +415,7 @@ export class VehiclesService {
     kv('Doanh thu (₫)', revenue);
     kv('Tổng chi phí (₫)', totalCost);
     kv('Lợi nhuận ròng — TRƯỚC THUẾ (₫)', profit);
-    kv('Lợi nhuận ròng — SAU THUẾ (×0,8) (₫)', Math.round(profit * 0.8));
+    kv('Lợi nhuận ròng — SAU THUẾ (×0,78) (₫)', Math.round(profit * 0.78));
 
     const safe = (v.soXe || `Xe${vehicleId}`).replace(/[^\w]+/g, '');
     const filename = `ThongKeXe_${safe}_T${String(month).padStart(2, '0')}-${year}.xlsx`;

@@ -515,7 +515,6 @@ function VehicleSalarySheet({ rows, month, year, mode, onClose }: {
                                       ['Tip', dv.tip],
                                       ['Cộng khác', dv.itemSumAdd],
                                       ['Khấu trừ', -(dv.itemSumDeduct + dv.advanceDeduct)],
-                                      ['BHXH NLĐ', -dv.bhxhNld],
                                     ] as [string, number][]).filter(([, v]) => v !== 0).map(([lbl, v]) => (
                                       <div key={lbl} className="flex justify-between text-[10px]">
                                         <span style={{ color: C.muted }}>{lbl}</span>
@@ -988,7 +987,7 @@ export function DashboardTab() {
           const nhienLieu = isAll ? data.cost.nhienLieu   : sumCostItems('nhienLieu', sel as number);
           const cpKhac    = isAll ? data.cost.cpKhac      : sumCostItems('cpKhac', sel as number);
           const net = rev - luong - bhxhCty - subvendor - suaChua - nhienLieu - cpKhac;
-          const netSauThue = net * 0.8;
+          const netSauThue = net * 0.78;
           const invSel = isAll
             ? totalVon
             : sumInvestItems('vonXe', sel as number) +
@@ -1070,7 +1069,7 @@ export function DashboardTab() {
                   border: `1px solid ${netSauThue >= 0 ? C.green : C.red}30`,
                 }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: netSauThue >= 0 ? C.green : C.red }}>
-                    = Lợi nhuận ròng sau thuế <span style={{ fontSize: 10, fontWeight: 500 }}>(× 0,8)</span>
+                    = Lợi nhuận ròng (Sau thuế) <span style={{ fontSize: 10, fontWeight: 500 }}>× 0,78</span>
                   </span>
                   <span style={{ fontSize: 18, fontWeight: 800, color: netSauThue >= 0 ? C.green : C.red }}>
                     {netSauThue >= 0 ? '+' : '-'}{fmt(Math.abs(netSauThue))} ₫

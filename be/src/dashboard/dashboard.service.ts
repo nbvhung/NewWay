@@ -1102,8 +1102,9 @@ export class DashboardService {
         advanceDeduct: Number(rec?.advanceDeduct) || 0,
       };
       const homeVid = d.homeVehicleId ?? d.id;
-      // Lương cứng = phần thực nhận còn lại sau khi bỏ lương chuyến.
-      const fixedNet = comp.luongNguoiLai - comp.luongKhoan;
+      // Chi phí lương cứng = thực nhận + BHXH NLĐ (Cty nộp hộ) − lương chuyến.
+      // (BHXH NLĐ bị trừ khỏi thực nhận nhưng vẫn là chi phí Cty bỏ ra.)
+      const fixedNet = comp.luongNguoiLai + comp.bhxhNld - comp.luongKhoan;
 
       // Các xe tài xế đã thực chạy trong phạm vi xem.
       const entries: { vid: number; count: number; salary: number }[] = [];
