@@ -508,7 +508,8 @@ function VehicleSalarySheet({ rows, month, year, mode, onClose }: {
                                 {!isChuyen && dv.isMain && (
                                   <div className="mt-1 ml-2 space-y-0.5">
                                     {([
-                                      ['Lương cứng & BHXH', dv.luongCung + dv.bhxhCty],
+                                      ['Lương cứng', dv.luongCung],
+                                      ['BHXH Cty', dv.bhxhCty],
                                       ['Chuyên cần', dv.chuyenCan],
                                       ['Phụ cấp', dv.phuCap],
                                       ['Tip', dv.tip],
