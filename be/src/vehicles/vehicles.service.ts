@@ -416,7 +416,10 @@ export class VehiclesService {
     kv('Doanh thu (₫)', revenue);
     kv('Tổng chi phí (₫)', totalCost);
     kv('Lợi nhuận ròng — TRƯỚC THUẾ (₫)', profit);
-    kv('Lợi nhuận ròng — SAU THUẾ (×0,78) (₫)', Math.round(profit * 0.78));
+    kv(
+      'Lợi nhuận ròng — SAU THUẾ (đã trừ 20% Thuế TNDN + 2% Quản lý) (₫)',
+      Math.round(profit * 0.78),
+    );
 
     const safe = (v.soXe || `Xe${vehicleId}`).replace(/[^\w]+/g, '');
     const filename = `ThongKeXe_${safe}_T${String(month).padStart(2, '0')}-${year}.xlsx`;
