@@ -1069,16 +1069,18 @@ export function DashboardTab() {
                   background: netSauThue >= 0 ? C.greenLt : C.redLt,
                   border: `1px solid ${netSauThue >= 0 ? C.green : C.red}30`,
                 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: netSauThue >= 0 ? C.green : C.red }}>
-                    = Lợi nhuận ròng (Sau thuế)
+                  <span style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: netSauThue >= 0 ? C.green : C.red }}>
+                      = Lợi nhuận ròng (Sau thuế)
+                    </span>
+                    <span style={{ fontSize: 10, fontWeight: 500, color: C.muted, marginTop: 2 }}>
+                      Đã trừ 20% Thuế TNDN và 2% Quản lý
+                    </span>
                   </span>
                   <span style={{ fontSize: 18, fontWeight: 800, color: netSauThue >= 0 ? C.green : C.red }}>
                     {netSauThue >= 0 ? '+' : '-'}{fmt(Math.abs(netSauThue))} ₫
                   </span>
                 </div>
-                <p style={{ fontSize: 10, color: C.muted, marginTop: 4 }}>
-                  * Đã trừ 20% Thuế TNDN và 2% Quản lý.
-                </p>
 
                 {/* Phần của bạn khi đã nhập vốn */}
                 {hasCapital && (
