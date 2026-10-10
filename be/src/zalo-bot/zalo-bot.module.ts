@@ -9,7 +9,6 @@ import { ZaloQueueService } from './zalo-queue.service';
 import { ZaloPollingService } from './zalo-polling.service';
 import { ZaloWebhookService } from './zalo-webhook.service';
 import { ZaloOpsNotifierService } from './zalo-ops-notifier.service';
-import { ZaloOpsSummaryService } from './zalo-ops-summary.service';
 import { ZaloPlanCompletedNotifierService } from './zalo-plan-completed-notifier.service';
 import { ContainerImportModule } from '../container-import/container-import.module';
 import { ZaloMessagesModule } from '../zalo-messages/zalo-messages.module';
@@ -49,7 +48,6 @@ import { ZaloMessage } from '../database/entities/zalo-message.entity';
     ZaloPollingService,
     ZaloWebhookService,
     ZaloOpsNotifierService,
-    ZaloOpsSummaryService,
     ZaloPlanCompletedNotifierService,
   ],
   exports: [ZaloBotService, ZaloPlanCompletedNotifierService],

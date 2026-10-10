@@ -8,6 +8,7 @@ import { User } from '../database/entities/user.entity';
 import { Submission } from '../database/entities/submission.entity';
 import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
+import { DashboardModule } from '../dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { ShippingLine } from '../database/entities/shipping-line.entity';
       FinanceCostItem,
       ShippingLine,
     ]),
+    DashboardModule,
   ],
   controllers: [VehiclesController],
   providers: [VehiclesService],

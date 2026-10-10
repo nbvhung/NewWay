@@ -34,6 +34,10 @@ export interface CostItemDto {
   amount?: number;
   /** Số tiền xuất được hoá đơn (≤ amount). Bỏ/null = không xuất hoá đơn. */
   invoiceAmount?: number | null;
+  /** Phần trả tiền mặt. cashAmount + transferAmount phải = amount. */
+  cashAmount?: number | null;
+  /** Phần chuyển khoản. cashAmount + transferAmount phải = amount. */
+  transferAmount?: number | null;
   note?: string | null;
   /** Xe mà khoản chi thuộc về (id lái xe). Bỏ trống = chi phí chung. */
   vehicleUserId?: number | null;
@@ -461,6 +465,31 @@ export class FinanceService {
     });
   }
 
+  /** Chuẩn hoá tiền mặt / chuyển khoản: bắt buộc cash + transfer = amount. */
+  private resolvePayment(
+    amount: number,
+    dto: { cashAmount?: number | null; transferAmount?: number | null },
+  ): { cashAmount: number | null; transferAmount: number | null } {
+    const hasCash = dto.cashAmount !== undefined && dto.cashAmount !== null;
+    const hasTransfer =
+      dto.transferAmount !== undefined && dto.transferAmount !== null;
+    if (!hasCash && !hasTransfer)
+      return { cashAmount: null, transferAmount: null };
+    let cash = hasCash ? Number(dto.cashAmount) : 0;
+    let transfer = hasTransfer ? Number(dto.transferAmount) : 0;
+    if (hasCash && !hasTransfer) transfer = amount - cash;
+    else if (!hasCash && hasTransfer) cash = amount - transfer;
+    if (cash < 0 || transfer < 0) {
+      throw new BadRequestException('Số tiền thanh toán không hợp lệ');
+    }
+    if (Math.round(cash + transfer) !== Math.round(amount)) {
+      throw new BadRequestException(
+        'Tiền mặt + chuyển khoản phải bằng tổng khoản',
+      );
+    }
+    return { cashAmount: cash, transferAmount: transfer };
+  }
+
   /** Thêm 1 khoản chi phí chi tiết (có thể gắn 1 xe). */
   async addCostItem(
     month: number,
@@ -481,6 +510,8 @@ export class FinanceService {
       await this.repo.save(entry);
     }
 
+    const amount = Number(dto.amount) || 0;
+    const pay = this.resolvePayment(amount, dto);
     const item = this.costRepo.create({
       month,
       year,
@@ -492,11 +523,13 @@ export class FinanceService {
           : Number(dto.vehicleUserId),
       itemDate: dto.itemDate || null,
       name: (dto.name || '').trim(),
-      amount: Number(dto.amount) || 0,
+      amount,
       invoiceAmount:
         dto.invoiceAmount === null || dto.invoiceAmount === undefined
           ? null
           : Number(dto.invoiceAmount),
+      cashAmount: pay.cashAmount,
+      transferAmount: pay.transferAmount,
       note: dto.note ?? null,
       createdById: selfId ?? null,
       createdByName: editorName || '',
@@ -627,6 +660,11 @@ export class FinanceService {
     if (dto.invoiceAmount !== undefined)
       item.invoiceAmount =
         dto.invoiceAmount === null ? null : Number(dto.invoiceAmount);
+    if (dto.cashAmount !== undefined || dto.transferAmount !== undefined) {
+      const pay = this.resolvePayment(Number(item.amount) || 0, dto);
+      item.cashAmount = pay.cashAmount;
+      item.transferAmount = pay.transferAmount;
+    }
     if (dto.note !== undefined) item.note = dto.note ?? null;
     if (dto.vehicleUserId !== undefined) {
       const owner = await this.usersRepo.findOne({

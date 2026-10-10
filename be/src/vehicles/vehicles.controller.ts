@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Res,
   UseGuards,
   Req,
 } from '@nestjs/common';
@@ -61,6 +62,26 @@ export class VehiclesController {
   @Permissions('vehicle.manage')
   deleteOverride(@Param('id') id: string) {
     return this.vehiclesService.deleteOverride(+id);
+  }
+
+  /** Xuất Excel thống kê 1 xe (1 tháng). */
+  @Get(':id/export')
+  @Permissions('export.data')
+  async export(
+    @Param('id') id: string,
+    @Res() res: any,
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+    @Req() req?: any,
+  ) {
+    const now = new Date();
+    await this.vehiclesService.exportVehicleExcel(
+      res,
+      +id,
+      month ? +month : now.getMonth() + 1,
+      year ? +year : now.getFullYear(),
+      req?.user,
+    );
   }
 
   @Get(':id/finance')

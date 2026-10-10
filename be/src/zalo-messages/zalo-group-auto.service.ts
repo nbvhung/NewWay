@@ -15,6 +15,7 @@ import { RedisService } from '../redis/redis.service';
 
 const SYNC_INTERVAL_MS = 60 * 1000;
 const LOCK_KEY = 'zalo:group-auto:lock';
+const ARM_LOCK_PREFIX = 'zalo:group-auto:arm:';
 const LOCK_TTL_MS = 30_000;
 /** Số mốc giao ca gửi mỗi chu kỳ (2 mốc sắp tới gần nhất với thời điểm ghi cont đầu). */
 const MAX_SECTIONS_PER_CYCLE = 2;
@@ -142,55 +143,95 @@ export class ZaloGroupAutoService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /** Huỷ mọi tin auto còn pending/processing của nhóm (chống double). */
+  private async cancelPendingAutoMessages(chatId: string): Promise<number> {
+    const res = await this.scheduledRepository
+      .createQueryBuilder()
+      .update()
+      .set({ status: 'cancelled' })
+      .where('target_type = :tt', { tt: 'group' })
+      .andWhere('chat_id = :chatId', { chatId })
+      .andWhere('is_auto = TRUE')
+      .andWhere("status IN ('pending','processing')")
+      .execute();
+    return res.affected || 0;
+  }
+
   /**
    * ARM: nếu nhóm đang tắt, tạo 2 tin giao ca (mốc sắp tới gần nhất so với
    * thời điểm ghi cont đầu) và đánh dấu nhóm active.
+   *
+   * Chống double message: khoá per-group (Redis) + đọc lại `active` mới nhất,
+   * và huỷ mọi tin auto pending cũ của nhóm trước khi tạo mốc mới.
    */
   private async armGroup(group: ZaloGroup, recordedAt: Date): Promise<void> {
-    if (group.active) return; // đã arm, không chồng chu kỳ
-    const schedules = await this.schedulesRepository.find({
-      where: { groupId: group.id },
-      order: { sendTime: 'ASC' },
-    });
-    if (schedules.length === 0) {
-      this.logger.warn(
-        `[GROUP-AUTO] Nhóm ${group.name} không có template giao ca, bỏ qua arm`,
-      );
-      return;
-    }
-
-    const candidates = schedules
-      .map((s) => ({ s, at: this.nextOccurrenceAfter(s.sendTime, recordedAt) }))
-      .sort((a, b) => a.at.getTime() - b.at.getTime())
-      .slice(0, MAX_SECTIONS_PER_CYCLE);
-
-    if (candidates.length === 0) return;
-
-    const batchId = `auto:${group.id}`;
-    for (let i = 0; i < candidates.length; i++) {
-      await this.scheduledRepository.save(
-        this.scheduledRepository.create({
-          batchId,
-          userId: null,
-          targetType: 'group',
-          chatId: group.chatId,
-          botIndex: group.botIndex,
-          repeatDaily: false,
-          isAuto: true,
-          sectionNo: i + 1,
-          content: candidates[i].s.content,
-          sendAt: candidates[i].at,
-          status: 'pending',
-          createdBy: null,
-        }),
-      );
-    }
-    await this.groupsRepository.update({ id: group.id }, { active: true });
-    this.logger.log(
-      `[GROUP-AUTO] ARM nhóm ${group.name} (${group.chatId}) — mốc: ${candidates
-        .map((c) => c.s.sendTime)
-        .join(', ')}`,
+    const lockKey = `${ARM_LOCK_PREFIX}${group.id}`;
+    const lockToken = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const locked = await this.redis.acquireLock(
+      lockKey,
+      lockToken,
+      LOCK_TTL_MS,
     );
+    if (!locked) return; // instance/lần gọi khác đang arm nhóm này
+    try {
+      // Đọc lại trạng thái mới nhất: nhóm có thể đã được arm ở lần gọi trước.
+      const fresh = await this.groupsRepository.findOne({
+        where: { id: group.id },
+      });
+      if (!fresh || fresh.active) return; // đã arm, không chồng chu kỳ
+
+      const schedules = await this.schedulesRepository.find({
+        where: { groupId: fresh.id },
+        order: { sendTime: 'ASC' },
+      });
+      if (schedules.length === 0) {
+        this.logger.warn(
+          `[GROUP-AUTO] Nhóm ${fresh.name} không có template giao ca, bỏ qua arm`,
+        );
+        return;
+      }
+
+      const candidates = schedules
+        .map((s) => ({
+          s,
+          at: this.nextOccurrenceAfter(s.sendTime, recordedAt),
+        }))
+        .sort((a, b) => a.at.getTime() - b.at.getTime())
+        .slice(0, MAX_SECTIONS_PER_CYCLE);
+
+      if (candidates.length === 0) return;
+
+      // Dọn tin auto pending cũ của nhóm trước khi tạo mốc mới — tránh gửi trùng.
+      const cancelled = await this.cancelPendingAutoMessages(fresh.chatId);
+
+      const batchId = `auto:${fresh.id}`;
+      for (let i = 0; i < candidates.length; i++) {
+        await this.scheduledRepository.save(
+          this.scheduledRepository.create({
+            batchId,
+            userId: null,
+            targetType: 'group',
+            chatId: fresh.chatId,
+            botIndex: fresh.botIndex,
+            repeatDaily: false,
+            isAuto: true,
+            sectionNo: i + 1,
+            content: candidates[i].s.content,
+            sendAt: candidates[i].at,
+            status: 'pending',
+            createdBy: null,
+          }),
+        );
+      }
+      await this.groupsRepository.update({ id: fresh.id }, { active: true });
+      this.logger.log(
+        `[GROUP-AUTO] ARM nhóm ${fresh.name} (${fresh.chatId}) — mốc: ${candidates
+          .map((c) => c.s.sendTime)
+          .join(', ')}${cancelled ? ` — đã huỷ ${cancelled} tin auto cũ` : ''}`,
+      );
+    } finally {
+      await this.redis.releaseLock(lockKey, lockToken);
+    }
   }
 
   /**
@@ -217,15 +258,7 @@ export class ZaloGroupAutoService implements OnModuleInit, OnModuleDestroy {
   /** Tắt hẳn: active=false + huỷ mọi tin auto còn pending/processing. */
   private async disarmGroup(group: ZaloGroup): Promise<void> {
     await this.groupsRepository.update({ id: group.id }, { active: false });
-    await this.scheduledRepository
-      .createQueryBuilder()
-      .update()
-      .set({ status: 'cancelled' })
-      .where('target_type = :tt', { tt: 'group' })
-      .andWhere('chat_id = :chatId', { chatId: group.chatId })
-      .andWhere('is_auto = TRUE')
-      .andWhere("status IN ('pending','processing')")
-      .execute();
+    await this.cancelPendingAutoMessages(group.chatId);
   }
 
   /** Dọn dẹp an toàn mỗi chu kỳ: nhóm đang arm nhưng hết tin auto → tắt. */

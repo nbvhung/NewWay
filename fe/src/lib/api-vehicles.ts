@@ -52,6 +52,8 @@ export interface VehicleFinanceItem {
   name: string;
   amount: number;
   invoiceAmount: number | null;
+  cashAmount: number | null;
+  transferAmount: number | null;
   note: string | null;
   month: number;
   year: number;
@@ -72,6 +74,12 @@ export const vehiclesApi = {
   getFinance: (id: number, month: number, year: number) =>
     api.get<{ data: VehicleFinance }>(`/admin/vehicles/${id}/finance`, {
       params: { month, year },
+    }),
+
+  exportExcel: (id: number, month: number, year: number) =>
+    api.get(`/admin/vehicles/${id}/export`, {
+      params: { month, year },
+      responseType: 'blob',
     }),
 
   create: (data: Record<string, unknown>) =>

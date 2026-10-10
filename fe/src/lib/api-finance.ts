@@ -66,6 +66,10 @@ export interface CostItemInput {
   amount?: number;
   /** Số tiền xuất được hoá đơn (≤ amount). null = không xuất. */
   invoiceAmount?: number | null;
+  /** Phần tiền mặt. cashAmount + transferAmount = amount. */
+  cashAmount?: number | null;
+  /** Phần chuyển khoản. cashAmount + transferAmount = amount. */
+  transferAmount?: number | null;
   note?: string | null;
   vehicleUserId?: number | null;
 }

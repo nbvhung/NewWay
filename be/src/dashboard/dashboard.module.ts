@@ -38,5 +38,6 @@ import { SalaryModule } from '../salary/salary.module';
   ],
   controllers: [DashboardController],
   providers: [DashboardService],
+  exports: [DashboardService],
 })
 export class DashboardModule {}

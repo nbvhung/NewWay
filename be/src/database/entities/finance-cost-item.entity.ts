@@ -69,6 +69,28 @@ export class FinanceCostItem {
   })
   invoiceAmount: number | null;
 
+  /** Phần trả TIỀN MẶT của khoản (cash_amount + transfer_amount = amount). */
+  @Column({
+    name: 'cash_amount',
+    type: 'decimal',
+    precision: 18,
+    scale: 0,
+    nullable: true,
+    default: null,
+  })
+  cashAmount: number | null;
+
+  /** Phần CHUYỂN KHOẢN của khoản (cash_amount + transfer_amount = amount). */
+  @Column({
+    name: 'transfer_amount',
+    type: 'decimal',
+    precision: 18,
+    scale: 0,
+    nullable: true,
+    default: null,
+  })
+  transferAmount: number | null;
+
   @Column({ type: 'varchar', length: 500, nullable: true })
   note: string | null;
 

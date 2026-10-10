@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import * as ExcelJS from 'exceljs';
 import { Vehicle } from '../database/entities/vehicle.entity';
 import { PlanVehicleOverride } from '../database/entities/plan-vehicle-override.entity';
 import { User } from '../database/entities/user.entity';
@@ -15,6 +16,7 @@ import { resolveVisibleDriverIds } from '../common/permissions/permissions';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 import { OverrideDto } from './dto/override.dto';
+import { DashboardService } from '../dashboard/dashboard.service';
 
 const DEFAULT_BEN = 'A';
 const normBen = (v?: string | null): string =>
@@ -35,6 +37,7 @@ export class VehiclesService {
     private readonly costItemsRepository: Repository<FinanceCostItem>,
     @InjectRepository(ShippingLine)
     private readonly shippingLinesRepository: Repository<ShippingLine>,
+    private readonly dashboardService: DashboardService,
   ) {}
 
   /** Phạm vi xe được xem: admin có visible_driver_ids → chỉ xe đó; ngược lại tất cả. */
@@ -156,12 +159,276 @@ export class VehiclesService {
           name: r.name,
           amount: Number(r.amount) || 0,
           invoiceAmount: r.invoiceAmount != null ? Number(r.invoiceAmount) : null,
+          cashAmount: r.cashAmount != null ? Number(r.cashAmount) : null,
+          transferAmount: r.transferAmount != null ? Number(r.transferAmount) : null,
           note: r.note,
           month: r.month,
           year: r.year,
         }));
     }
     return { ownerUserId: v.ownerUserId ?? null, items };
+  }
+
+  /** Xuất Excel thống kê 1 xe (doanh thu, chi phí, vốn, hoá đơn, lợi nhuận) — 1 tháng. */
+  async exportVehicleExcel(
+    res: any,
+    vehicleId: number,
+    month: number,
+    year: number,
+    user?: any,
+  ): Promise<void> {
+    const v: any = await this.findOne(vehicleId);
+    const overview: any = await this.dashboardService.getOverview(
+      month,
+      year,
+      user,
+      undefined,
+    );
+    const rev =
+      (overview?.revenue?.byVehicle ?? []).find(
+        (x: any) => x.vehicleId === vehicleId,
+      ) || null;
+    const costV =
+      (overview?.cost?.byVehicle ?? []).find(
+        (x: any) => x.vehicleId === vehicleId,
+      ) || null;
+    const fin = await this.getFinance(vehicleId, month, year);
+    const items: Record<string, any[]> = fin.items || {};
+
+    const num = (n: any) => Number(n) || 0;
+    const sumRows = (rows: any[]) =>
+      rows.reduce((s, r) => s + num(r.amount), 0);
+    const N = '#,##0';
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Hệ thống New Way';
+    wb.created = new Date();
+    const ws = wb.addWorksheet('Thống kê xe');
+    ws.columns = [
+      { width: 24 },
+      { width: 34 },
+      { width: 16 },
+      { width: 15 },
+      { width: 15 },
+      { width: 16 },
+    ];
+
+    const title = ws.addRow([
+      `THỐNG KÊ XE ${v.soXe || '#' + vehicleId} — Tháng ${month}/${year}`,
+    ]);
+    title.font = { bold: true, size: 14 };
+    ws.mergeCells(title.number, 1, title.number, 6);
+    const info = ws.addRow([
+      `Biển số: ${v.soXe || ''}`,
+      `Mooc: ${v.soMooc || ''}`,
+      `STT: ${v.stt || ''}`,
+      `Chủ vốn: ${v.ownerName || '—'}`,
+      `Bên: ${v.ben || ''}`,
+    ]);
+    info.font = { size: 10 };
+    ws.addRow([]);
+
+    const section = (t: string) => {
+      const r = ws.addRow([t]);
+      r.font = { bold: true, size: 12, color: { argb: 'FF1E3A5F' } };
+      ws.mergeCells(r.number, 1, r.number, 6);
+    };
+    const kv = (k: string, val: number) => {
+      const r = ws.addRow([k, val]);
+      r.getCell(2).numFmt = N;
+      r.font = { bold: true };
+    };
+    const tableHeader = (labels: string[]) => {
+      const r = ws.addRow(labels);
+      r.font = { bold: true };
+      r.eachCell((c: any) => {
+        c.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF5F5F4' },
+        };
+        c.border = { bottom: { style: 'thin', color: { argb: 'FFDDDDDD' } } };
+      });
+    };
+    const money = (r: ExcelJS.Row, from: number, to: number) => {
+      for (let c = from; c <= to; c++) r.getCell(c).numFmt = N;
+    };
+
+    // ── I. Doanh thu ──
+    section('I. DOANH THU');
+    kv('Tổng doanh thu (₫)', num(rev?.revenue));
+    kv('Sản lượng (cont)', num(rev?.totalCont));
+    kv('Lương khoán (₫)', num(rev?.luongKhoan));
+    ws.addRow([]);
+    if ((rev?.routes ?? []).length) {
+      tableHeader(['Tuyến đường', 'Loại cont', 'Số cont', 'Doanh thu (₫)']);
+      for (const rt of rev.routes) {
+        const r = ws.addRow([
+          rt.routeName || '—',
+          Object.entries(rt.contByType || {})
+            .map(([t, n]) => `${t}×${n}`)
+            .join(', '),
+          num(rt.contCount),
+          num(rt.revenue),
+        ]);
+        money(r, 3, 4);
+      }
+    } else {
+      ws.addRow(['(Chưa có tuyến nào)']);
+    }
+    ws.addRow([]);
+
+    // ── II. Chi phí ──
+    section('II. CHI PHÍ');
+    const luong = num(costV?.luongNguoiLai) + num(costV?.bhxhCty);
+    ws.addRow(['A. Lương lái xe + BHXH']).font = { bold: true };
+    if ((costV?.drivers ?? []).length) {
+      tableHeader(['Lái xe', 'Vai trò', 'Thực nhận (₫)', 'BHXH Cty (₫)', 'Tổng (₫)']);
+      for (const d of costV.drivers) {
+        const total = num(d.luongNguoiLai) + num(d.bhxhCty);
+        const r = ws.addRow([
+          d.fullName || '',
+          d.isMain ? 'Lái chính' : 'Lái phụ',
+          num(d.luongNguoiLai),
+          num(d.bhxhCty),
+          total,
+        ]);
+        money(r, 3, 5);
+      }
+    } else {
+      ws.addRow(['(Chưa có lái xe)']);
+    }
+    kv('Tổng lương + BHXH (₫)', luong);
+    ws.addRow([]);
+
+    const costCats: [string, string][] = [
+      ['nhienLieu', 'B. Nhiên liệu'],
+      ['suaChua', 'C. Sửa chữa'],
+      ['cpKhac', 'D. CP khác'],
+    ];
+    let otherCost = 0;
+    for (const [cat, label] of costCats) {
+      const rows = items[cat] ?? [];
+      ws.addRow([label]).font = { bold: true };
+      if (rows.length) {
+        tableHeader([
+          'Ngày',
+          'Tên khoản',
+          'Số tiền (₫)',
+          'Xuất HĐ (₫)',
+          'Tiền mặt (₫)',
+          'Chuyển khoản (₫)',
+        ]);
+        for (const it of rows) {
+          const r = ws.addRow([
+            it.itemDate ? String(it.itemDate).slice(0, 10) : '',
+            it.name || '',
+            num(it.amount),
+            num(it.invoiceAmount),
+            num(it.cashAmount),
+            num(it.transferAmount),
+          ]);
+          money(r, 3, 6);
+        }
+      } else {
+        ws.addRow(['(Không có)']);
+      }
+      const sub = sumRows(rows);
+      otherCost += sub;
+      kv(`Tổng ${label.slice(3)} (₫)`, sub);
+      ws.addRow([]);
+    }
+    kv('TỔNG CHI PHÍ (₫)', luong + otherCost);
+    ws.addRow([]);
+
+    // ── III. Vốn đầu tư ──
+    section('III. VỐN ĐẦU TƯ (cộng dồn)');
+    const investCats: [string, string][] = [
+      ['vonXe', 'Vốn xe'],
+      ['vonMooc', 'Vốn mooc'],
+      ['vonKhac', 'Vốn khác'],
+    ];
+    let capital = 0;
+    for (const [cat, label] of investCats) {
+      const rows = items[cat] ?? [];
+      ws.addRow([label]).font = { bold: true };
+      if (rows.length) {
+        tableHeader([
+          'Ngày',
+          'Tên khoản',
+          'Số tiền (₫)',
+          'Xuất HĐ (₫)',
+          'Tiền mặt (₫)',
+          'Chuyển khoản (₫)',
+        ]);
+        for (const it of rows) {
+          const r = ws.addRow([
+            it.itemDate ? String(it.itemDate).slice(0, 10) : '',
+            it.name || '',
+            num(it.amount),
+            num(it.invoiceAmount),
+            num(it.cashAmount),
+            num(it.transferAmount),
+          ]);
+          money(r, 3, 6);
+        }
+      } else {
+        ws.addRow(['(Không có)']);
+      }
+      const sub = sumRows(rows);
+      capital += sub;
+      kv(`Tổng ${label} (₫)`, sub);
+      ws.addRow([]);
+    }
+    kv('TỔNG VỐN ĐẦU TƯ (₫)', capital);
+    ws.addRow([]);
+
+    // ── IV. Tổng hợp thanh toán / hoá đơn ──
+    section('IV. TỔNG HỢP THANH TOÁN / HOÁ ĐƠN');
+    const allItems = [
+      ...(items.nhienLieu ?? []),
+      ...(items.suaChua ?? []),
+      ...(items.cpKhac ?? []),
+      ...(items.vonXe ?? []),
+      ...(items.vonMooc ?? []),
+      ...(items.vonKhac ?? []),
+    ];
+    kv(
+      'Tổng xuất hoá đơn (₫)',
+      allItems.reduce((s, i) => s + num(i.invoiceAmount), 0),
+    );
+    kv(
+      'Tổng tiền mặt (₫)',
+      allItems.reduce((s, i) => s + num(i.cashAmount), 0),
+    );
+    kv(
+      'Tổng chuyển khoản (₫)',
+      allItems.reduce((s, i) => s + num(i.transferAmount), 0),
+    );
+    ws.addRow([]);
+
+    // ── V. Lợi nhuận ──
+    section('V. LỢI NHUẬN');
+    const revenue = num(rev?.revenue);
+    const totalCost = luong + otherCost;
+    const profit = revenue - totalCost;
+    kv('Doanh thu (₫)', revenue);
+    kv('Tổng chi phí (₫)', totalCost);
+    kv('Lợi nhuận ròng — TRƯỚC THUẾ (₫)', profit);
+    kv('Lợi nhuận ròng — SAU THUẾ (×0,8) (₫)', Math.round(profit * 0.8));
+
+    const safe = (v.soXe || `Xe${vehicleId}`).replace(/[^\w]+/g, '');
+    const filename = `ThongKeXe_${safe}_T${String(month).padStart(2, '0')}-${year}.xlsx`;
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    );
+    await wb.xlsx.write(res);
+    res.end();
   }
 
   async create(dto: CreateVehicleDto, actor?: any): Promise<Vehicle> {

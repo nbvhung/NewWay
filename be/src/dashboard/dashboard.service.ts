@@ -1331,6 +1331,8 @@ export class DashboardService {
           name: i.name,
           amount: Number(i.amount) || 0,
           invoiceAmount: i.invoiceAmount != null ? Number(i.invoiceAmount) : null,
+          cashAmount: i.cashAmount != null ? Number(i.cashAmount) : null,
+          transferAmount: i.transferAmount != null ? Number(i.transferAmount) : null,
           note: i.note,
           createdByName: i.createdByName,
         }))
