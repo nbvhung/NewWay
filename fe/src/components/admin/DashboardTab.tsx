@@ -988,7 +988,7 @@ export function DashboardTab() {
           const nhienLieu = isAll ? data.cost.nhienLieu   : sumCostItems('nhienLieu', sel as number);
           const cpKhac    = isAll ? data.cost.cpKhac      : sumCostItems('cpKhac', sel as number);
           const net = rev - luong - bhxhCty - subvendor - suaChua - nhienLieu - cpKhac;
-          const netSauThue = net * 0.78;
+          const netSauThue = net > 0 ? net * 0.78 : net;
           const invSel = isAll
             ? totalVon
             : sumInvestItems('vonXe', sel as number) +
@@ -1074,7 +1074,7 @@ export function DashboardTab() {
                       = Lợi nhuận ròng (Sau thuế)
                     </span>
                     <span style={{ fontSize: 10, fontWeight: 500, color: C.muted, marginTop: 2 }}>
-                      Đã trừ 20% Thuế TNDN và 2% Quản lý
+                      20% Thuế TNDN và 2% Quản lý
                     </span>
                   </span>
                   <span style={{ fontSize: 18, fontWeight: 800, color: netSauThue >= 0 ? C.green : C.red }}>
