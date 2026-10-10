@@ -508,14 +508,13 @@ function VehicleSalarySheet({ rows, month, year, mode, onClose }: {
                                 {!isChuyen && dv.isMain && (
                                   <div className="mt-1 ml-2 space-y-0.5">
                                     {([
-                                      ['Lương cứng', dv.luongCung],
+                                      ['Lương cứng & BHXH', dv.luongCung + dv.bhxhCty],
                                       ['Chuyên cần', dv.chuyenCan],
                                       ['Phụ cấp', dv.phuCap],
                                       ['Tip', dv.tip],
                                       ['Cộng khác', dv.itemSumAdd],
                                       ['Khấu trừ', -(dv.itemSumDeduct + dv.advanceDeduct)],
                                       ['BHXH NLĐ', -dv.bhxhNld],
-                                      ['BHXH Cty', dv.bhxhCty],
                                     ] as [string, number][]).filter(([, v]) => v !== 0).map(([lbl, v]) => (
                                       <div key={lbl} className="flex justify-between text-[10px]">
                                         <span style={{ color: C.muted }}>{lbl}</span>
