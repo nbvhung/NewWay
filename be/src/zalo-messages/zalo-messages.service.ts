@@ -431,9 +431,29 @@ export class ZaloMessagesService {
       where: { id },
     });
     if (!row) return { ok: false };
+    const oldContent = row.content;
     if (dto.content !== undefined) row.content = dto.content;
     if (dto.sendTime !== undefined) row.sendTime = dto.sendTime;
     await this.groupSchedulesRepository.save(row);
+
+    // Đồng bộ luôn vào các tin AUTO đang CHỜ của nhóm (khớp nội dung cũ) —
+    // để tin đã ARM không giữ lời cũ sau khi sửa mẫu.
+    if (dto.content !== undefined && dto.content !== oldContent) {
+      const group = await this.zaloGroupsRepository.findOne({
+        where: { id: row.groupId },
+      });
+      if (group) {
+        await this.zaloScheduledRepository
+          .createQueryBuilder()
+          .update()
+          .set({ content: row.content })
+          .where('chat_id = :chatId', { chatId: group.chatId })
+          .andWhere('is_auto = TRUE')
+          .andWhere('status = :st', { st: 'pending' })
+          .andWhere('content = :old', { old: oldContent })
+          .execute();
+      }
+    }
     return { ok: true };
   }
 
