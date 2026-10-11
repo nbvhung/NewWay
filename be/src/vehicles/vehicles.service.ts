@@ -417,8 +417,8 @@ export class VehiclesService {
     kv('Tổng chi phí (₫)', totalCost);
     kv('Lợi nhuận ròng — TRƯỚC THUẾ (₫)', profit);
     kv(
-      'Lợi nhuận ròng — SAU THUẾ (20% Thuế TNDN + 2% Quản lý) (₫)',
-      profit > 0 ? Math.round(profit * 0.78) : Math.round(profit),
+      'Lợi nhuận ròng — SAU THUẾ (20% Thuế TNDN + 5% Quản lý) (₫)',
+      profit > 0 ? Math.round(profit * 0.75) : Math.round(profit),
     );
 
     const safe = (v.soXe || `Xe${vehicleId}`).replace(/[^\w]+/g, '');
