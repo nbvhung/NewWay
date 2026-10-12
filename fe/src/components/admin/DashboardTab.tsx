@@ -443,7 +443,7 @@ function VehicleSalarySheet({ rows, month, year, mode, onClose }: {
           <p className="text-[9px] mt-2" style={{ color: C.muted }}>
             {isChuyen
               ? '* Lương chuyến = lương khoán theo sản lượng từng chuyến của lái xe.'
-              : '* Chi phí lương cứng & BHXH (hướng chủ đầu tư) = lương cứng (thực trả) + BHXH NLĐ (Cty nộp hộ) + BHXH Cty + chuyên cần + phụ cấp + tip + khoản khác − khấu trừ. Lái phụ (mượn xe) không tính phần này (ở xe nhà).'}
+              : '* Chi phí lương cứng & BHXH (hướng chủ đầu tư) = lương cứng (gồm BHXH NLĐ) + BHXH Cty + chuyên cần + phụ cấp + tip + khoản khác − khấu trừ. Lái phụ (mượn xe) không tính phần này (ở xe nhà).'}
           </p>
         </div>
         {/* Danh sách xe */}
@@ -508,8 +508,7 @@ function VehicleSalarySheet({ rows, month, year, mode, onClose }: {
                                 {!isChuyen && dv.isMain && (
                                   <div className="mt-1 ml-2 space-y-0.5">
                                     {([
-                                      ['Lương cứng (thực trả)', dv.luongCung - dv.bhxhNld],
-                                      ['BHXH NLĐ (nộp hộ)', dv.bhxhNld],
+                                      ['Lương cứng + BHXH NLĐ', dv.luongCung],
                                       ['BHXH Cty', dv.bhxhCty],
                                       ['Chuyên cần', dv.chuyenCan],
                                       ['Phụ cấp', dv.phuCap],
