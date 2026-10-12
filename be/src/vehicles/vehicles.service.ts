@@ -283,18 +283,17 @@ export class VehiclesService {
     const luong = num(costV?.luongNguoiLai) + num(costV?.bhxhCty);
     ws.addRow(['A. Lương lái xe + BHXH']).font = { bold: true };
     if ((costV?.drivers ?? []).length) {
-      tableHeader(['Lái xe', 'Vai trò', 'Lương cứng (thực trả) (₫)', 'BHXH NLĐ (₫)', 'BHXH Cty (₫)', 'Tổng (₫)']);
+      tableHeader(['Lái xe', 'Vai trò', 'Lương cứng + BHXH NLĐ (₫)', 'BHXH Cty (₫)', 'Tổng (₫)']);
       for (const d of costV.drivers) {
         const total = num(d.luongNguoiLai) + num(d.bhxhCty);
         const r = ws.addRow([
           d.fullName || '',
           d.isMain ? 'Lái chính' : 'Lái phụ',
-          num(d.luongNguoiLai) - num(d.bhxhNld),
-          num(d.bhxhNld),
+          num(d.luongNguoiLai),
           num(d.bhxhCty),
           total,
         ]);
-        money(r, 3, 6);
+        money(r, 3, 5);
       }
     } else {
       ws.addRow(['(Chưa có lái xe)']);
