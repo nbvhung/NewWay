@@ -397,6 +397,16 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
                     {priceStatusBadge(p)}
                     <span className="text-[10px] text-[#a8a29e]">👷 {driversText(p)}</span>
                   </div>
+                  {Array.isArray(p.vehicleTags) && p.vehicleTags.length > 0 && (
+                    <div className="flex items-center gap-1 flex-wrap mt-1">
+                      {p.vehicleTags.map(v => (
+                        <span key={v}
+                          className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(59,130,246,0.12)] text-[#2563eb]">
+                          🚛 {v}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-1 shrink-0">
                   {canEdit && (

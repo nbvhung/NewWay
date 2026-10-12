@@ -49,6 +49,8 @@ export interface ShippingLine {
   createdAt: string;
   routeId?: number;
   route?: Route;
+  /** BKS các xe thực chạy đã ghi nhận container trong kế hoạch. */
+  vehicleTags?: string[];
 }
 
 export interface Customer {

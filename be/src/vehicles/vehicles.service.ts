@@ -420,6 +420,58 @@ export class VehiclesService {
       profit > 0 ? Math.round(profit * 0.75) : Math.round(profit),
     );
 
+    // ── Sheet 2: Danh sách container xe đã chạy ──
+    const containers = await this.dashboardService.listVehicleContainers(
+      vehicleId,
+      month,
+      year,
+    );
+    const ws2 = wb.addWorksheet('Container đã chạy');
+    ws2.columns = [
+      { width: 6 },
+      { width: 20 },
+      { width: 10 },
+      { width: 34 },
+      { width: 14 },
+      { width: 24 },
+    ];
+    const t2 = ws2.addRow([
+      `CONTAINER XE ${v.soXe || '#' + vehicleId} ĐÃ CHẠY — Tháng ${month}/${year}`,
+    ]);
+    t2.font = { bold: true, size: 13 };
+    ws2.mergeCells(t2.number, 1, t2.number, 6);
+    ws2.addRow([]);
+    const h2 = ws2.addRow([
+      'STT',
+      'Mã container',
+      'Loại',
+      'Kế hoạch',
+      'Ngày',
+      'Tài xế',
+    ]);
+    h2.font = { bold: true };
+    h2.eachCell((c: any) => {
+      c.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1E3A5F' },
+      };
+      c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    });
+    containers.forEach((ci, i) => {
+      ws2.addRow([
+        i + 1,
+        ci.containerCode,
+        ci.type,
+        ci.planName,
+        ci.planNgay,
+        ci.driverName,
+      ]);
+    });
+    const totalRow = ws2.addRow([`Tổng: ${containers.length} container`]);
+    totalRow.font = { bold: true };
+    ws2.mergeCells(totalRow.number, 1, totalRow.number, 6);
+
     const safe = (v.soXe || `Xe${vehicleId}`).replace(/[^\w]+/g, '');
     const filename = `ThongKeXe_${safe}_T${String(month).padStart(2, '0')}-${year}.xlsx`;
     res.setHeader(

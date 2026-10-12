@@ -9,6 +9,7 @@ import { ContainerImport } from '../database/entities/container-import.entity';
 import { ContainerClaim } from '../database/entities/container-claim.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
 import { User } from '../database/entities/user.entity';
+import { Vehicle } from '../database/entities/vehicle.entity';
 import { ZaloBotModule } from '../zalo-bot/zalo-bot.module';
 
 @Module({
@@ -21,6 +22,7 @@ import { ZaloBotModule } from '../zalo-bot/zalo-bot.module';
       ContainerClaim,
       EditHistory,
       User,
+      Vehicle,
     ]),
     ZaloBotModule,
   ],

@@ -518,9 +518,21 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
                   {plans.map((p) => (
                     <option key={p.id} value={p.id}>
                       {[p.name, p.soChuyen, p.routeName, p.ngay ? p.ngay.split('-').reverse().join('-') : ''].filter(Boolean).join(' / ')}
+                      {Array.isArray(p.vehicleTags) && p.vehicleTags.length > 0 ? ` — 🚛 ${p.vehicleTags.join(', ')}` : ''}
                     </option>
                   ))}
                 </select>
+                {(() => {
+                  const sel = plans.find((p) => p.id === ovForm.planId);
+                  const tags: string[] = Array.isArray(sel?.vehicleTags) ? sel.vehicleTags : [];
+                  return tags.length > 0 ? (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {tags.map((t) => (
+                        <span key={t} className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(59,130,246,0.12)] text-[#2563eb]">🚛 {t}</span>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
               </div>
               <div>
                 <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Lái xe (chạy xe đó)</label>
@@ -942,8 +954,9 @@ function VehicleDetail({
             ) : (
               <div className="space-y-2">
                 {overrides.map((o) => (
-                  <div key={o.id} className="flex items-center justify-between px-3 py-2 rounded-lg border border-[#e7e5e4]">
+                  <div key={o.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-[#e7e5e4]">
                     <span className="text-[12px] text-[#1c1917]">{o.planName}{o.routeName ? ` · ${o.routeName}` : ''}{o.planNgay ? ` · ${o.planNgay}` : ''}</span>
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(59,130,246,0.12)] text-[#2563eb]">🚛 {o.vehicleLabel}</span>
                     <span className="text-[12px] text-[#78716c]">👤 {o.driverName}</span>
                     <button onClick={() => onRemoveOverride(o)} className="px-2 py-1 text-[11px] rounded border border-[#fecaca] text-red-600 cursor-pointer">🗑</button>
                   </div>

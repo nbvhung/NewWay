@@ -13,6 +13,7 @@ import { ContainerImport } from '../database/entities/container-import.entity';
 import { ContainerClaim } from '../database/entities/container-claim.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
 import { User } from '../database/entities/user.entity';
+import { Vehicle } from '../database/entities/vehicle.entity';
 import { CreateShippingLineDto } from './dto/create-shipping-line.dto';
 import { UpdateShippingLineDto } from './dto/update-shipping-line.dto';
 import { ZaloPlanCompletedNotifierService } from '../zalo-bot/zalo-plan-completed-notifier.service';
@@ -51,6 +52,8 @@ export class ShippingLinesService {
     private editHistoryRepository: Repository<EditHistory>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Vehicle)
+    private vehiclesRepository: Repository<Vehicle>,
     private zaloPlanCompletedNotifier: ZaloPlanCompletedNotifierService,
   ) {}
 
@@ -122,7 +125,70 @@ export class ShippingLinesService {
         }
       }
     }
-    return qb.getMany();
+    const plans = await qb.getMany();
+    await this.attachVehicleTags(plans);
+    return plans;
+  }
+
+  /**
+   * Gắn `vehicleTags` = BKS các XE THỰC CHẠY đã ghi nhận container trong kế hoạch
+   * (xe thực chạy = đảo xe > actual_vehicle_id > xe nhà). Dùng để hiện tag xe ở
+   * từng card kế hoạch.
+   */
+  private async attachVehicleTags(plans: ShippingLine[]): Promise<void> {
+    if (plans.length === 0) return;
+    const ids = plans.map((p) => p.id);
+    const raw = await this.containerImportsRepository
+      .createQueryBuilder('ci')
+      .leftJoin('ci.submissionRef', 'sub')
+      .leftJoin('sub.user', 'u')
+      .leftJoin(
+        'plan_vehicle_overrides',
+        'pvo',
+        'pvo.plan_id = ci.shipping_line_id AND pvo.driver_id = sub.user_id',
+      )
+      .select('ci.shipping_line_id', 'planId')
+      .addSelect(
+        'COALESCE(pvo.vehicle_id, sub.actual_vehicle_id, u.home_vehicle_id, u.id)',
+        'vid',
+      )
+      .where('ci.shipping_line_id IN (:...ids)', { ids })
+      .andWhere('u.role = :r', { r: 'laixe' })
+      .distinct(true)
+      .getRawMany();
+
+    if (raw.length === 0) {
+      for (const p of plans) (p as any).vehicleTags = [];
+      return;
+    }
+
+    const vids = [
+      ...new Set(
+        raw.map((r) => Number(r.vid)).filter((n) => Number.isFinite(n)),
+      ),
+    ];
+    const [vehicles, users] = await Promise.all([
+      this.vehiclesRepository.find({ where: { id: In(vids) } }),
+      this.usersRepository.find({ where: { id: In(vids) } }),
+    ]);
+    const plateById = new Map<number, string>();
+    for (const u of users) plateById.set(u.id, u.soXe || '');
+    for (const v of vehicles)
+      plateById.set(v.id, v.soXe || plateById.get(v.id) || '');
+
+    const byPlan = new Map<number, Set<string>>();
+    for (const r of raw) {
+      const plate = plateById.get(Number(r.vid));
+      if (!plate) continue;
+      const planId = Number(r.planId);
+      const set = byPlan.get(planId) ?? new Set<string>();
+      set.add(plate);
+      byPlan.set(planId, set);
+    }
+    for (const p of plans) {
+      const set = byPlan.get(p.id);
+      (p as any).vehicleTags = set ? Array.from(set).sort() : [];
+    }
   }
 
   async create(dto: CreateShippingLineDto) {

@@ -1412,4 +1412,64 @@ export class DashboardService {
       ownedDrivers,
     };
   }
+
+  /**
+   * Danh sách container mà 1 XE đã chạy trong tháng (đã ghi nhận qua submission).
+   * Xe thực chạy = COALESCE(override, actual_vehicle_id, home_vehicle_id, user_id).
+   */
+  async listVehicleContainers(
+    vehicleId: number,
+    month: number,
+    year: number,
+  ): Promise<
+    Array<{
+      containerCode: string;
+      type: string;
+      planName: string;
+      planNgay: string;
+      driverName: string;
+    }>
+  > {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const fromDate = `${year}-${pad(month)}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const toDate = `${year}-${pad(month)}-${pad(lastDay)}`;
+    const plans = await this.slRepo
+      .createQueryBuilder('sl')
+      .where('sl.ngay BETWEEN :from AND :to', { from: fromDate, to: toDate })
+      .getMany();
+    const planIds = plans.map((p) => p.id);
+    if (planIds.length === 0) return [];
+    const planMap = new Map(plans.map((p) => [p.id, p]));
+
+    const rows = await this.ciRepo
+      .createQueryBuilder('ci')
+      .leftJoinAndSelect('ci.submissionRef', 'sub')
+      .leftJoinAndSelect('sub.user', 'u')
+      .leftJoin(
+        'plan_vehicle_overrides',
+        'pvo',
+        'pvo.plan_id = ci.shipping_line_id AND pvo.driver_id = sub.user_id',
+      )
+      .where('ci.shippingLineId IN (:...ids)', { ids: planIds })
+      .andWhere('u.role = :r', { r: 'laixe' })
+      .andWhere(
+        'COALESCE(pvo.vehicle_id, sub.actual_vehicle_id, u.home_vehicle_id, u.id) = :vid',
+        { vid: vehicleId },
+      )
+      .orderBy('ci.shipping_line_id', 'ASC')
+      .addOrderBy('ci.id', 'ASC')
+      .getMany();
+
+    return rows.map((ci) => {
+      const p = planMap.get(ci.shippingLineId ?? -1);
+      return {
+        containerCode: ci.containerCode,
+        type: ci.type,
+        planName: p?.name || `KH#${ci.shippingLineId ?? ''}`,
+        planNgay: isoStr(p?.ngay),
+        driverName: ci.submissionRef?.user?.fullName || '',
+      };
+    });
+  }
 }
