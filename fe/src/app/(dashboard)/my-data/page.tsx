@@ -327,9 +327,9 @@ export default function MyDataPage() {
                   {s.planDisplayName || s.shippingLine}
                   {s.leTet ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(239,68,68,0.2)] text-red-600">x3</span> : s.tangCuong ? <span className="ml-1.5 px-1 py-0.5 rounded text-[9px] font-bold bg-[rgba(245,158,11,0.2)] text-amber-700">+15%</span> : null}
                 </span>
-              {(s as any).actualVehicleSoXe && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(249,115,22,0.15)] text-orange-600 w-fit">
-                  🚚 Lái thay xe: {(s as any).actualVehicleSoXe}
+              {((s as any).actualVehicleSoXe || user?.soXe) && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(249,115,22,0.15)] text-orange-600 w-fit">
+                  {(s as any).actualVehicleSoXe || user?.soXe}
                 </span>
               )}
             </div>
@@ -403,9 +403,9 @@ export default function MyDataPage() {
                 <button onClick={() => openEdit(s)} className="px-2 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">✏️ Sửa</button>
               )}
               </div>
-              {(s as any).actualVehicleSoXe && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(249,115,22,0.15)] text-orange-600 w-fit">
-                  🚚 Lái thay: {(s as any).actualVehicleSoXe}
+              {((s as any).actualVehicleSoXe || user?.soXe) && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(249,115,22,0.15)] text-orange-600 w-fit">
+                  {(s as any).actualVehicleSoXe || user?.soXe}
                 </span>
               )}
               </div>
