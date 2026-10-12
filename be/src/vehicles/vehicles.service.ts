@@ -429,6 +429,7 @@ export class VehiclesService {
     const ws2 = wb.addWorksheet('Container đã chạy');
     ws2.columns = [
       { width: 6 },
+      { width: 18 },
       { width: 20 },
       { width: 10 },
       { width: 34 },
@@ -439,10 +440,11 @@ export class VehiclesService {
       `CONTAINER XE ${v.soXe || '#' + vehicleId} ĐÃ CHẠY — Tháng ${month}/${year}`,
     ]);
     t2.font = { bold: true, size: 13 };
-    ws2.mergeCells(t2.number, 1, t2.number, 6);
+    ws2.mergeCells(t2.number, 1, t2.number, 7);
     ws2.addRow([]);
     const h2 = ws2.addRow([
       'STT',
+      'Biển số xe',
       'Mã container',
       'Loại',
       'Kế hoạch',
@@ -461,6 +463,7 @@ export class VehiclesService {
     containers.forEach((ci, i) => {
       ws2.addRow([
         i + 1,
+        v.soXe || '',
         ci.containerCode,
         ci.type,
         ci.planName,
@@ -470,7 +473,7 @@ export class VehiclesService {
     });
     const totalRow = ws2.addRow([`Tổng: ${containers.length} container`]);
     totalRow.font = { bold: true };
-    ws2.mergeCells(totalRow.number, 1, totalRow.number, 6);
+    ws2.mergeCells(totalRow.number, 1, totalRow.number, 7);
 
     const safe = (v.soXe || `Xe${vehicleId}`).replace(/[^\w]+/g, '');
     const filename = `ThongKeXe_${safe}_T${String(month).padStart(2, '0')}-${year}.xlsx`;
