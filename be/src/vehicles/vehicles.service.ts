@@ -258,7 +258,7 @@ export class VehiclesService {
     section('I. DOANH THU');
     kv('Tổng doanh thu (₫)', num(rev?.revenue));
     kv('Sản lượng (cont)', num(rev?.totalCont));
-    kv('Lương khoán (₫)', num(rev?.luongKhoan));
+    kv('Lương chuyến (₫)', num(rev?.luongKhoan));
     ws.addRow([]);
     if ((rev?.routes ?? []).length) {
       tableHeader(['Tuyến đường', 'Loại cont', 'Số cont', 'Doanh thu (₫)']);
@@ -283,7 +283,7 @@ export class VehiclesService {
     const luong = num(costV?.luongNguoiLai) + num(costV?.bhxhCty);
     ws.addRow(['A. Lương lái xe + BHXH']).font = { bold: true };
     if ((costV?.drivers ?? []).length) {
-      tableHeader(['Lái xe', 'Vai trò', 'Lương cứng + BHXH NLĐ (₫)', 'BHXH Cty (₫)', 'Tổng (₫)']);
+      tableHeader(['Lái xe', 'Vai trò', 'Lương LX (₫)', 'BHXH Cty (₫)', 'Tổng (₫)']);
       for (const d of costV.drivers) {
         const total = num(d.luongNguoiLai) + num(d.bhxhCty);
         const r = ws.addRow([

@@ -169,7 +169,7 @@ function VehicleSheet({ d, totalP, onClose }: { d: VehicleRevenue; totalP: numbe
           {([
             ['Sản lượng', fmt(viewCont), 'cont', C.ink],
             ['Doanh thu', fmt(viewRevenue),   '₫',     C.amber],
-            ['Lương khoán', fmt(viewLuong), '₫',  C.red],
+            ['Lương chuyến', fmt(viewLuong), '₫',  C.red],
           ] as [string,string,string,string][]).map(([lbl,val,unit,c],i) => (
             <div key={i} className={i < 2 ? 'px-4 py-3 border-r' : 'px-4 py-3'} style={{ borderColor: C.faint }}>
               <p className="text-[9px] mb-1" style={{ color: C.muted }}>{lbl}</p>
@@ -442,7 +442,7 @@ function VehicleSalarySheet({ rows, month, year, mode, onClose }: {
           </div>
           <p className="text-[9px] mt-2" style={{ color: C.muted }}>
             {isChuyen
-              ? '* Lương chuyến = lương khoán theo sản lượng từng chuyến của lái xe.'
+              ? '* Lương chuyến = tiền lương theo sản lượng từng chuyến của lái xe.'
               : '* Chi phí lương cứng & BHXH (hướng chủ đầu tư) = lương cứng (gồm BHXH NLĐ) + BHXH Cty + chuyên cần + phụ cấp + tip + khoản khác − khấu trừ. Lái phụ (mượn xe) không tính phần này (ở xe nhà).'}
           </p>
         </div>
@@ -929,7 +929,7 @@ export function DashboardTab() {
           const luongCungBhxh = (luong + bhxhCty) - luongChuyen;
           const sum = luong + bhxhCty + subvendor + suaChua + nhienLieu + cpKhac;
           const tiles: [string, number, string, string, string][] = [
-            ['Lương chuyến', luongChuyen, C.amber, isAll ? '(bấm để xem chi tiết từng xe)' : '(lương khoán/chuyến)', 'salaryChuyen'],
+            ['Lương chuyến', luongChuyen, C.amber, isAll ? '(bấm để xem chi tiết từng xe)' : '(lương chuyến)', 'salaryChuyen'],
             ['Lương cứng & BHXH', luongCungBhxh, '#2563eb', isAll ? '(bấm để xem chi tiết từng xe)' : '(lương cứng, phụ cấp, khấu trừ, BHXH)', 'salaryCung'],
             ['Subvendor',    subvendor, C.red,     isAll ? '(phí thuê ngoài)'   : '(không gắn xe)', ''],
             ['Sửa chữa',    suaChua,   '#7c3aed', '(bấm để xem chi tiết)', 'suaChua'],

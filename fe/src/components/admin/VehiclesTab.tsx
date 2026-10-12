@@ -880,7 +880,7 @@ function VehicleDetail({
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
               <Stat label="Doanh thu" value={revenue} color="#d97706" />
               <Stat label="Sản lượng" value={rev?.totalCont || 0} unit="cont" color="#1c1917" />
-              <Stat label="Lương khoán" value={rev?.luongKhoan || 0} color="#dc2626" />
+              <Stat label="Lương chuyến" value={rev?.luongKhoan || 0} color="#dc2626" />
             </div>
             <div className="space-y-2 max-h-[260px] overflow-y-auto">
               {(rev?.routes?.length || 0) === 0 ? (

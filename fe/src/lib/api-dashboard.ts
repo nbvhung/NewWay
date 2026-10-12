@@ -42,7 +42,7 @@ export interface VehicleRevenue {
   sdt: string;
   ngayHoatDong?: string | null;
   revenue: number;
-  luongKhoan: number;    // lương khoán/chuyến thực tế
+  luongKhoan: number;    // lương chuyến thực tế
   planCount: number;
   totalPlanCount: number;
   totalCont: number;     // tổng sản lượng (container) của xe trong tháng

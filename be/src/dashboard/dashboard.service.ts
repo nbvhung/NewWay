@@ -91,7 +91,7 @@ export interface VehicleRevenue {
   sdt: string;
   ngayHoatDong: string | null;
   revenue: number;
-  luongKhoan: number; // lương khoán theo chuyến (tính đúng từ submissions)
+  luongKhoan: number; // lương chuyến (tính đúng từ submissions)
   planCount: number;
   totalPlanCount: number;
   totalCont: number; // tổng sản lượng (container đã ghi nhận) của xe trong tháng
@@ -192,7 +192,7 @@ export interface DashboardOverview {
   };
   cost: {
     subvendor: number;
-    luongChuyen: number; // tổng lương khoán/chuyến
+    luongChuyen: number; // tổng lương chuyến
     luongNguoiLai: number; // tổng THỰC NHẬN của lái xe (theo bảng lương)
     bhxhCty: number; // BHXH phần CÔNG TY đóng (21,5% lương cứng)
     suaChua: number;
@@ -577,7 +577,7 @@ export class DashboardService {
       return total;
     };
 
-    // ─── Helper: Tính lương khoán cho 1 submission ───────────────
+    // ─── Helper: Tính lương chuyến cho 1 submission ──────────────
     const calcSubSalary = (sub: Submission, sl: ShippingLine): number => {
       const routeName = sub.route || sl.routeName || '';
       const rt = routeMap.get(routeName);
@@ -835,7 +835,7 @@ export class DashboardService {
         entry.revenue += driverRevenue;
         entry.planCount += 1;
 
-        // Lương khoán: tìm submission theo xe hiệu dụng (gốc hoặc lái thay)
+        // Lương chuyến: tìm submission theo xe hiệu dụng (gốc hoặc lái thay)
         const driverSub = subs.find(
           (s) =>
             effectiveVehicleId(
