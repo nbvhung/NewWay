@@ -501,9 +501,9 @@ export class DashboardService {
     const vehicleMap = new Map<number, Vehicle>();
     for (const v of allVehicles) vehicleMap.set(v.id, v);
 
-    // 7b. Chi phí LƯƠNG LÁI XE = TỔNG THỰC NHẬN theo bảng lương tháng (đã gồm
-    //     lương chuyến + cứng + chuyên cần + phụ cấp − khấu trừ) và BHXH phần
-    //     CÔNG TY đóng (21,5% lương cứng, chỉ lái xe có đóng BHXH).
+    // 7b. Chi phí LƯƠNG LÁI XE = TỔNG THỰC NHẬN theo bảng lương tháng (lương chuyến
+    //     + cứng + chuyên cần + phụ cấp... KHÔNG trừ khấu trừ/tạm ứng — xem mục
+    //     (comp) bên dưới) và BHXH phần CÔNG TY đóng (21,5% lương cứng).
     const netSalaryByDriver = new Map<number, number>();
     const bhxhCtyByDriver = new Map<number, number>();
     // Lưu toàn bộ record lương chi tiết để đưa vào byVehicle
@@ -1083,8 +1083,15 @@ export class DashboardService {
 
     for (const d of allUsers) {
       const rec = salaryRecordMap.get(d.id);
+      // Chi phí lương KHÔNG trừ khoản khấu trừ (itemSumDeduct) và khấu trừ tạm ứng
+      // (advanceDeduct): tiền đó là khoản Cty đã/đang bỏ ra (tạm ứng = lái xe vay),
+      // không làm giảm chi phí lương. Vì `netSalaryByDriver` (thực nhận) đã trừ 2
+      // khoản này nên cộng lại để ra chi phí lương thực tế của Cty.
       const comp = {
-        luongNguoiLai: netSalaryByDriver.get(d.id) ?? 0,
+        luongNguoiLai:
+          (netSalaryByDriver.get(d.id) ?? 0) +
+          (Number(rec?.itemSumDeduct) || 0) +
+          (Number(rec?.advanceDeduct) || 0),
         bhxhCty: bhxhCtyByDriver.get(d.id) ?? 0,
         luongKhoan: Number(rec?.luongKhoan) || 0,
         luongCung: Number(rec?.fixedSalary) || 0,

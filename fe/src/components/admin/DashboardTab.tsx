@@ -443,7 +443,7 @@ function VehicleSalarySheet({ rows, month, year, mode, onClose }: {
           <p className="text-[9px] mt-2" style={{ color: C.muted }}>
             {isChuyen
               ? '* Lương chuyến = tiền lương theo sản lượng từng chuyến của lái xe.'
-              : '* Chi phí lương cứng & BHXH (hướng chủ đầu tư) = lương cứng (gồm BHXH NLĐ) + BHXH Cty + chuyên cần + phụ cấp + tip + khoản khác − khấu trừ. Lái phụ (mượn xe) không tính phần này (ở xe nhà).'}
+              : '* Chi phí lương cứng & BHXH (hướng chủ đầu tư) = lương cứng (gồm BHXH NLĐ) + BHXH Cty + chuyên cần + phụ cấp + tip + khoản khác (không trừ khấu trừ/tạm ứng — đó là khoản Cty đã chi). Lái phụ (mượn xe) không tính phần này (ở xe nhà).'}
           </p>
         </div>
         {/* Danh sách xe */}
@@ -514,7 +514,6 @@ function VehicleSalarySheet({ rows, month, year, mode, onClose }: {
                                       ['Phụ cấp', dv.phuCap],
                                       ['Tip', dv.tip],
                                       ['Cộng khác', dv.itemSumAdd],
-                                      ['Khấu trừ', -(dv.itemSumDeduct + dv.advanceDeduct)],
                                     ] as [string, number][]).filter(([, v]) => v !== 0).map(([lbl, v]) => (
                                       <div key={lbl} className="flex justify-between text-[10px]">
                                         <span style={{ color: C.muted }}>{lbl}</span>
