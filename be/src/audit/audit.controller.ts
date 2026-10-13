@@ -9,14 +9,17 @@ import {
 import { AuditService } from './audit.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
+/** Chỉ tài khoản này được xem nhật ký thao tác (superadmin = VHUN9). */
+const AUDIT_ALLOWED_USERNAMES = ['superadmin'];
+
 @Controller('admin/audit')
 @UseGuards(JwtAuthGuard)
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 
-  private assertAdmin(user: any): void {
-    if (user?.role !== 'admin' && user?.role !== 'supper_admin') {
-      throw new ForbiddenException('Chỉ admin xem được nhật ký thao tác');
+  private assertAllowed(user: any): void {
+    if (!AUDIT_ALLOWED_USERNAMES.includes(user?.username)) {
+      throw new ForbiddenException('Không có quyền xem nhật ký thao tác');
     }
   }
 
@@ -30,7 +33,7 @@ export class AuditController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    this.assertAdmin(req.user);
+    this.assertAllowed(req.user);
     return this.auditService.list({
       userId: userId ? +userId : undefined,
       from: from || undefined,

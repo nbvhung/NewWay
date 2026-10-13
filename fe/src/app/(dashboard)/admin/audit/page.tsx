@@ -61,10 +61,10 @@ export default function AdminAuditPage() {
     load();
   }, [load]);
 
-  if (user && user.role !== 'admin' && user.role !== 'supper_admin') {
+  if (user && user.username !== 'superadmin') {
     return (
       <div className="py-16 text-center text-[#78716c] text-sm">
-        Chỉ admin xem được nhật ký thao tác.
+        Chỉ quản trị viên xem được nhật ký thao tác.
       </div>
     );
   }
