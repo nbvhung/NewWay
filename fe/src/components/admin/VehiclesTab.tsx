@@ -1005,9 +1005,6 @@ function VehicleDetail({
       {showDriverSalary && (
         <Modal open={showDriverSalary} title="Chi phí lái xe (Chủ xe phải chi)" onClose={() => setShowDriverSalary(false)}>
           <div className="space-y-3 text-[12px]">
-            <p className="text-[11px] text-[#78716c] bg-[#fef3c7] rounded-lg px-3 py-2 border border-[#fcd34d]">
-              💡 <b>Góc nhìn chủ xe:</b> các khoản chủ xe phải bỏ ra. <b>Lái phụ mượn xe</b> chỉ có lương chuyến. BHXH NLĐ 10.5% chỉ để tham khảo, <b>không cộng vào TỔNG</b> (đã nằm trong lương cứng).
-            </p>
             {(!costV?.drivers || costV.drivers.length === 0) ? (
               <p className="text-center text-[#a8a29e] py-6">Chưa có dữ liệu lương lái xe tháng này.</p>
             ) : (
@@ -1021,7 +1018,6 @@ function VehicleDetail({
                   const pcKhac = isMain ? (d.itemSumAdd || 0) : 0;
                   const tipHoan = isMain ? (d.tip || 0) : 0;
                   const bhxhCty = isMain ? (d.bhxhCty || 0) : 0;
-                  const bhxhNld = isMain ? (d.bhxhNld || 0) : 0;
                   const chiHo = isMain ? (d.chiHo || 0) : 0;
                   const tamUng = isMain ? (d.advanceDeduct || 0) : 0;
                   const tong = luongChuyen + luongCung + chuyenCan + phuCap + pcKhac + tipHoan + bhxhCty + chiHo + tamUng;
@@ -1056,12 +1052,6 @@ function VehicleDetail({
                             <span className="font-medium" style={{ color: color || '#1c1917' }}>{fmt(v)} ₫</span>
                           </div>
                         ))}
-                        {isMain && (
-                          <div className="flex justify-between text-[11px] pt-1 mt-1 border-t border-dashed border-[#e7e5e4]">
-                            <span className="text-[#a8a29e] italic">BHXH NLĐ 10.5% (không cộng vào TỔNG)</span>
-                            <span className="text-[#a8a29e] italic">{fmt(bhxhNld)} ₫</span>
-                          </div>
-                        )}
                       </div>
                     </div>
                   );
@@ -1077,10 +1067,6 @@ function VehicleDetail({
                 </div>
               </div>
             )}
-            <div className="text-[10px] text-[#78716c] space-y-0.5 pt-2 border-t border-[#e7e5e4]">
-              <p>• <b>TỔNG</b> = Lương chuyến + Lương cứng + Chuyên cần + Phụ cấp + Cộng thêm + TIP + BHXH CTY 21.5% + Chi hộ + Tạm ứng <b>(không cộng BHXH NLĐ 10.5%)</b></p>
-              <p>• <b>Lái phụ mượn xe</b>: chỉ lương chuyến — lương cứng/BHXH/phụ cấp thuộc về xe nhà</p>
-            </div>
           </div>
         </Modal>
       )}
