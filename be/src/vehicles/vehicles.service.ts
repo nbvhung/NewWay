@@ -256,12 +256,12 @@ export class VehiclesService {
 
     // ── I. Doanh thu ──
     section('I. DOANH THU');
-    kv('Tổng doanh thu (₫)', num(rev?.revenue));
+    kv('Tổng doanh thu', num(rev?.revenue));
     kv('Sản lượng (cont)', num(rev?.totalCont));
-    kv('Lương chuyến (₫)', num(rev?.luongKhoan));
+    kv('Lương chuyến', num(rev?.luongKhoan));
     ws.addRow([]);
     if ((rev?.routes ?? []).length) {
-      tableHeader(['Tuyến đường', 'Loại cont', 'Số cont', 'Doanh thu (₫)']);
+      tableHeader(['Tuyến đường', 'Loại cont', 'Số cont', 'Doanh thu']);
       for (const rt of rev.routes) {
         const r = ws.addRow([
           rt.routeName || '—',
@@ -287,17 +287,16 @@ export class VehiclesService {
       tableHeader([
         'Lái xe',
         'Vai trò',
-        'Lương chuyến (₫)',
-        'Lương cứng (₫)',
-        'Chuyên cần (₫)',
-        'Phụ cấp (₫)',
-        'PC khác (₫)',
-        'TIP - Hoàn trả (₫)',
-        'BHXH CTY 21.5% (₫)',
-        'BHXH NLĐ 10.5% (₫)',
-        'Chi hộ (₫)',
-        'Tạm ứng (₫)',
-        'TỔNG CHỦ XE CHI (₫)',
+        'Lương chuyến',
+        'Lương cứng',
+        'Chuyên cần',
+        'Phụ cấp',
+        'PC khác',
+        'TIP - Hoàn trả',
+        'BHXH CTY 21.5%',
+        'Chi hộ',
+        'Tạm ứng',
+        'TỔNG',
       ]);
       for (const d of costV.drivers) {
         // Lái phụ mượn xe: không thuộc biên chế lương xe này → chỉ trả lương chuyến
@@ -307,14 +306,13 @@ export class VehiclesService {
         const chuyenCan     = d.isMain ? num(d.chuyenCan)     : 0;
         const phuCap        = d.isMain ? num(d.phuCap)        : 0;
         const pcKhac        = d.isMain ? num(d.itemSumAdd)    : 0;
-        const tipHoan       = d.isMain ? num(d.tip) * 1000    : 0; // TIP hoàn trả cho lái chính
+        const tipHoan       = d.isMain ? num(d.tip)           : 0; // TIP hoàn trả cho lái chính (đã là VND)
         const bhxhCty       = d.isMain ? num(d.bhxhCty)       : 0;
-        const bhxhNld       = d.isMain ? num(d.bhxhNld)       : 0; // Cty nộp hộ NLĐ lên NN
         const chiHo         = d.isMain ? num(d.chiHo)         : 0;
         const tamUng        = d.isMain ? num(d.advanceDeduct) : 0;
-        // TỔNG CHỦ XE CHI = tất cả khoản chủ xe phải bỏ ra (không phụ thuộc trừ/cộng phía lái xe)
+        // TỔNG = tất cả khoản chủ xe phải bỏ ra (không phụ thuộc trừ/cộng phía lái xe)
         const tongChuXeChi = luongChuyen + luongCung + chuyenCan + phuCap + pcKhac
-          + tipHoan + bhxhCty + bhxhNld + chiHo + tamUng;
+          + tipHoan + bhxhCty + chiHo + tamUng;
         const r = ws.addRow([
           d.fullName || '',
           d.isMain ? 'Lái chính' : 'Lái phụ (mượn)',
@@ -325,16 +323,15 @@ export class VehiclesService {
           pcKhac,
           tipHoan,
           bhxhCty,
-          bhxhNld,
           chiHo,
           tamUng,
           tongChuXeChi,
         ]);
-        money(r, 3, 13);
+        money(r, 3, 12);
         // Tô màu khác cho lái phụ để dễ phân biệt
         if (!d.isMain) {
           r.eachCell((cell, col) => {
-            if (col >= 4 && col <= 12) {
+            if (col >= 4 && col <= 11) {
               cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F5F5' } };
               cell.font = { color: { argb: 'FFB0B0B0' } };
             }
@@ -344,7 +341,7 @@ export class VehiclesService {
     } else {
       ws.addRow(['(Chưa có lái xe)']);
     }
-    kv('Tổng chủ xe chi (lương + BHXH) (₫)', luong);
+    kv('Tổng chủ xe chi (lương + BHXH)', luong);
     ws.addRow([]);
 
     const costCats: [string, string][] = [
@@ -360,10 +357,10 @@ export class VehiclesService {
         tableHeader([
           'Ngày',
           'Tên khoản',
-          'Số tiền (₫)',
-          'Xuất HĐ (₫)',
-          'Tiền mặt (₫)',
-          'Chuyển khoản (₫)',
+          'Số tiền',
+          'Xuất HĐ',
+          'Tiền mặt',
+          'Chuyển khoản',
         ]);
         for (const it of rows) {
           const r = ws.addRow([
@@ -381,10 +378,10 @@ export class VehiclesService {
       }
       const sub = sumRows(rows);
       otherCost += sub;
-      kv(`Tổng ${label.slice(3)} (₫)`, sub);
+      kv(`Tổng ${label.slice(3)}`, sub);
       ws.addRow([]);
     }
-    kv('TỔNG CHI PHÍ (₫)', luong + otherCost);
+    kv('TỔNG CHI PHÍ', luong + otherCost);
     ws.addRow([]);
 
     // ── III. Vốn đầu tư ──
@@ -402,10 +399,10 @@ export class VehiclesService {
         tableHeader([
           'Ngày',
           'Tên khoản',
-          'Số tiền (₫)',
-          'Xuất HĐ (₫)',
-          'Tiền mặt (₫)',
-          'Chuyển khoản (₫)',
+          'Số tiền',
+          'Xuất HĐ',
+          'Tiền mặt',
+          'Chuyển khoản',
         ]);
         for (const it of rows) {
           const r = ws.addRow([
@@ -423,10 +420,10 @@ export class VehiclesService {
       }
       const sub = sumRows(rows);
       capital += sub;
-      kv(`Tổng ${label} (₫)`, sub);
+      kv(`Tổng ${label}`, sub);
       ws.addRow([]);
     }
-    kv('TỔNG VỐN ĐẦU TƯ (₫)', capital);
+    kv('TỔNG VỐN ĐẦU TƯ', capital);
     ws.addRow([]);
 
     // ── IV. Tổng hợp thanh toán / hoá đơn ──
@@ -440,15 +437,15 @@ export class VehiclesService {
       ...(items.vonKhac ?? []),
     ];
     kv(
-      'Tổng xuất hoá đơn (₫)',
+      'Tổng xuất hoá đơn',
       allItems.reduce((s, i) => s + num(i.invoiceAmount), 0),
     );
     kv(
-      'Tổng tiền mặt (₫)',
+      'Tổng tiền mặt',
       allItems.reduce((s, i) => s + num(i.cashAmount), 0),
     );
     kv(
-      'Tổng chuyển khoản (₫)',
+      'Tổng chuyển khoản',
       allItems.reduce((s, i) => s + num(i.transferAmount), 0),
     );
     ws.addRow([]);
@@ -458,11 +455,11 @@ export class VehiclesService {
     const revenue = num(rev?.revenue);
     const totalCost = luong + otherCost;
     const profit = revenue - totalCost;
-    kv('Doanh thu (₫)', revenue);
-    kv('Tổng chi phí (₫)', totalCost);
-    kv('Lợi nhuận ròng — TRƯỚC THUẾ (₫)', profit);
+    kv('Doanh thu', revenue);
+    kv('Tổng chi phí', totalCost);
+    kv('Lợi nhuận ròng — TRƯỚC THUẾ', profit);
     kv(
-      'Lợi nhuận ròng — SAU THUẾ (20% Thuế TNDN + 5% Quản lý) (₫)',
+      'Lợi nhuận ròng — SAU THUẾ (20% Thuế TNDN + 5% Quản lý)',
       profit > 0 ? Math.round(profit * 0.75) : Math.round(profit),
     );
 

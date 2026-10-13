@@ -1011,7 +1011,7 @@ function VehicleDetail({
                       const chuyenCan    = isMain ? (d.chuyenCan || 0)     : 0;
                       const phuCap       = isMain ? (d.phuCap || 0)        : 0;
                       const pcKhac       = isMain ? (d.itemSumAdd || 0)    : 0;
-                      const tipHoan      = isMain ? (d.tip || 0) * 1000    : 0;
+                      const tipHoan      = isMain ? (d.tip || 0)    : 0;
                       const bhxhCty      = isMain ? (d.bhxhCty || 0)       : 0;
                       const bhxhNld      = isMain ? (d.bhxhNld || 0)       : 0;
                       const chiHo        = isMain ? (d.chiHo || 0)         : 0;
@@ -1050,7 +1050,7 @@ function VehicleDetail({
                           acc.cc  += m ? (d.chuyenCan || 0)     : 0;
                           acc.pc  += m ? (d.phuCap || 0)        : 0;
                           acc.pk  += m ? (d.itemSumAdd || 0)    : 0;
-                          acc.tip += m ? (d.tip || 0) * 1000    : 0;
+                          acc.tip += m ? (d.tip || 0)    : 0;
                           acc.bc  += m ? (d.bhxhCty || 0)       : 0;
                           acc.bn  += m ? (d.bhxhNld || 0)       : 0;
                           acc.ch  += m ? (d.chiHo || 0)         : 0;

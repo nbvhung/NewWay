@@ -511,7 +511,7 @@ function VehicleSalarySheet({ rows, month, year, mode, onClose }: {
                                       ['Lương cứng + BHXH NLĐ', dv.luongCung],
                                       ['BHXH CTY 21.5%', dv.bhxhCty],
                                       ['Chuyên cần', dv.chuyenCan],
-                                      ['Phụ cấp', dv.phuCap],                                       ['TIP (ho\u00e0n tr\u1ea3)', (dv.tip || 0) * 1000],
+                                      ['Phụ cấp', dv.phuCap],                                       ['TIP (ho\u00e0n tr\u1ea3)', (dv.tip || 0)],
                                        ['(-) BHXH NL\u0110 10.5%', -(dv.bhxhNld || 0)],
                                        ['(-) Chi h\u1ed9', -(dv.chiHo || 0)],
                                        ['(-) T\u1ea1m \u1ee9ng', -(dv.advanceDeduct || 0)],
