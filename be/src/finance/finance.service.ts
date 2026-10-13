@@ -292,6 +292,40 @@ export class FinanceService {
   }
 
   /**
+   * Xác định "sổ" (userId) để ghi khoản chi/vốn:
+   * - Có `targetUserId` (khác bản thân) → sổ của admin đó (chỉ super được phép).
+   * - Super (supper_admin / `finance.all`) + thao tác gắn XE + không chỉ định
+   *   targetUserId → ghi vào sổ của CHỦ VỐN của xe (để khoản chi về đúng bên),
+   *   và bỏ qua kiểm tra bên (chủ cả A lẫn B đều nhập được).
+   * - Còn lại → sổ của actor (kiểm tra bên như cũ).
+   */
+  private async resolveCostBook(
+    actor: any,
+    targetUserId: number | undefined,
+    vehicleUserId: number | null | undefined,
+  ): Promise<{ userId: number; ben: string; skipBenCheck: boolean }> {
+    const selfId: number = actor?.sub ?? actor?.id;
+    const hasTarget = !!targetUserId && targetUserId !== selfId;
+    if (!hasTarget && this.isSuperAdmin(actor) && vehicleUserId != null) {
+      const v = await this.vehiclesRepo.findOne({
+        where: { id: Number(vehicleUserId) },
+      });
+      if (v && v.ownerUserId) {
+        const owner = await this.usersRepo.findOne({
+          where: { id: v.ownerUserId },
+        });
+        return {
+          userId: v.ownerUserId,
+          ben: this.normBen(owner?.ben),
+          skipBenCheck: true,
+        };
+      }
+    }
+    const { userId, ben } = await this.resolveOwner(actor, targetUserId);
+    return { userId, ben, skipBenCheck: false };
+  }
+
+  /**
    * Xác định userId của finance entry:
    * - `targetUserId` (khác bản thân) → chỉ supper_admin được phép.
    * - Ngược lại → chính actor.
@@ -500,8 +534,12 @@ export class FinanceService {
   ): Promise<FinanceCostItem> {
     this.assertCategory(dto.category);
     const selfId: number = actor?.sub ?? actor?.id;
-    const { userId, ben } = await this.resolveOwner(actor, dto.targetUserId);
-    await this.assertVehicleInBen(dto.vehicleUserId, ben);
+    const { userId, ben, skipBenCheck } = await this.resolveCostBook(
+      actor,
+      dto.targetUserId,
+      dto.vehicleUserId,
+    );
+    if (!skipBenCheck) await this.assertVehicleInBen(dto.vehicleUserId, ben);
 
     // Đảm bảo finance entry tồn tại
     let entry = await this.repo.findOne({ where: { month, year, userId } });
@@ -562,7 +600,6 @@ export class FinanceService {
   ): Promise<FinanceCostItem[]> {
     this.assertCategory(dto.category);
     const selfId: number = actor?.sub ?? actor?.id;
-    const { userId, ben } = await this.resolveOwner(actor, dto.targetUserId);
 
     const rows = (dto.vehicles || []).filter(
       (v) => v && Number.isFinite(Number(v.vehicleUserId)),
@@ -570,6 +607,12 @@ export class FinanceService {
     if (rows.length === 0) {
       throw new BadRequestException('Vui lòng chọn ít nhất 1 xe');
     }
+
+    const { userId, ben, skipBenCheck } = await this.resolveCostBook(
+      actor,
+      dto.targetUserId,
+      Number(rows[0].vehicleUserId),
+    );
 
     // Mọi xe phải thuộc đúng bên của bản ghi (không nhập xe bên B vào sổ bên A)
     const vehicles = await this.vehiclesRepo.find({
@@ -583,6 +626,7 @@ export class FinanceService {
       if (!v) {
         throw new BadRequestException('Xe không hợp lệ');
       }
+      if (skipBenCheck) continue;
       if (this.normBen(benMap.get(vid)) !== ben) {
         throw new BadRequestException(
           `Xe ${v.soXe || `#${vid}`} không thuộc ${FinanceService.benLabel(ben)}`,
