@@ -280,9 +280,8 @@ export class VehiclesService {
 
     // ── II. Chi phí ──
     section('II. CHI PHÍ');
-    const luong = num(costV?.luongNguoiLai) + num(costV?.bhxhCty);
+    let luong = 0;
     ws.addRow(['A. Chi phí lái xe (góc nhìn chủ xe)']).font = { bold: true };
-    ws.addRow(['* Lái phụ mượn xe không thuộc biên chế lương của xe này → chỉ có lương chuyến, còn lại = 0']).font = { italic: true, color: { argb: 'FF78716C' } };
     if ((costV?.drivers ?? []).length) {
       tableHeader([
         'Lái xe',
@@ -291,12 +290,13 @@ export class VehiclesService {
         'Lương cứng',
         'Chuyên cần',
         'Phụ cấp',
-        'PC khác',
-        'TIP - Hoàn trả',
+        'Cộng thêm',
+        'TIP',
         'BHXH CTY 21.5%',
         'Chi hộ',
         'Tạm ứng',
         'TỔNG',
+        'Chi tiết cộng thêm',
       ]);
       for (const d of costV.drivers) {
         // Lái phụ mượn xe: không thuộc biên chế lương xe này → chỉ trả lương chuyến
@@ -310,9 +310,18 @@ export class VehiclesService {
         const bhxhCty       = d.isMain ? num(d.bhxhCty)       : 0;
         const chiHo         = d.isMain ? num(d.chiHo)         : 0;
         const tamUng        = d.isMain ? num(d.advanceDeduct) : 0;
+        // Nội dung các khoản "cộng thêm" (thay cho nhãn "PC khác" mơ hồ)
+        const addDetail = d.isMain
+          ? (
+              (d.itemAddDetail ?? []) as Array<{ name: string; amount: number }>
+            )
+              .map((x) => `${x.name}: ${x.amount.toLocaleString('vi-VN')}`)
+              .join('; ')
+          : '';
         // TỔNG = tất cả khoản chủ xe phải bỏ ra (không phụ thuộc trừ/cộng phía lái xe)
         const tongChuXeChi = luongChuyen + luongCung + chuyenCan + phuCap + pcKhac
           + tipHoan + bhxhCty + chiHo + tamUng;
+        luong += tongChuXeChi;
         const r = ws.addRow([
           d.fullName || '',
           d.isMain ? 'Lái chính' : 'Lái phụ (mượn)',
@@ -326,6 +335,7 @@ export class VehiclesService {
           chiHo,
           tamUng,
           tongChuXeChi,
+          addDetail,
         ]);
         money(r, 3, 12);
         // Tô màu khác cho lái phụ để dễ phân biệt
@@ -340,8 +350,9 @@ export class VehiclesService {
       }
     } else {
       ws.addRow(['(Chưa có lái xe)']);
+      luong = num(costV?.luongNguoiLai) + num(costV?.bhxhCty);
     }
-    kv('Tổng chủ xe chi (lương + BHXH)', luong);
+    kv('Tổng chủ xe chi', luong);
     ws.addRow([]);
 
     const costCats: [string, string][] = [

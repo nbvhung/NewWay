@@ -826,7 +826,24 @@ function VehicleDetail({
   const suaChua = sumField('suaChua');
   const nhienLieu = sumField('nhienLieu');
   const cpKhac = sumField('cpKhac');
-  const luong = (costV?.luongNguoiLai || 0) + (costV?.bhxhCty || 0);
+  // "Chủ xe chi" = tổng mọi khoản chủ xe phải bỏ ra (khớp bảng chi tiết + Excel).
+  const luong = (costV?.drivers ?? []).reduce((s: number, d: any) => {
+    const m = d.isMain;
+    return (
+      s +
+      (d.luongKhoan || 0) +
+      (m
+        ? (d.luongCung || 0) +
+          (d.chuyenCan || 0) +
+          (d.phuCap || 0) +
+          (d.itemSumAdd || 0) +
+          (d.tip || 0) +
+          (d.bhxhCty || 0) +
+          (d.chiHo || 0) +
+          (d.advanceDeduct || 0)
+        : 0)
+    );
+  }, 0);
   const totalCost = luong + suaChua + nhienLieu + cpKhac;
   const revenue = rev?.revenue || 0;
   const profit = revenue - totalCost;

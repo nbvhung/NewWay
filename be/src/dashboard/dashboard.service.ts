@@ -124,6 +124,8 @@ export interface VehicleSalaryDriver {
   bhxhNld: number;
   chiHo: number;
   advanceDeduct: number;
+  /** Chi tiết các khoản "cộng thêm" (kind=add) của bảng lương — để hiện rõ nội dung. */
+  itemAddDetail?: { name: string; amount: number }[];
 }
 
 /** Chi phí lương gom theo XE: lương lái chính + các lái phụ mượn xe. */
@@ -1087,6 +1089,24 @@ export class DashboardService {
       // (advanceDeduct): tiền đó là khoản Cty đã/đang bỏ ra (tạm ứng = lái xe vay),
       // không làm giảm chi phí lương. Vì `netSalaryByDriver` (thực nhận) đã trừ 2
       // khoản này nên cộng lại để ra chi phí lương thực tế của Cty.
+      const itemAddDetail = (
+        (rec?.recordItems ?? []) as Array<{
+          name?: string;
+          kind?: string;
+          enabled?: boolean;
+          amount?: number;
+        }>
+      )
+        .filter(
+          (it) =>
+            it.enabled &&
+            it.kind === 'add' &&
+            (Number(it.amount) || 0) !== 0,
+        )
+        .map((it) => ({
+          name: String(it.name || ''),
+          amount: Number(it.amount) || 0,
+        }));
       const comp = {
         luongNguoiLai:
           (netSalaryByDriver.get(d.id) ?? 0) +
@@ -1107,6 +1127,7 @@ export class DashboardService {
         bhxhNld: Number(rec?.bhxh) || 0,
         chiHo: Number(rec?.chiHo) || 0,
         advanceDeduct: Number(rec?.advanceDeduct) || 0,
+        itemAddDetail,
       };
       const homeVid = d.homeVehicleId ?? d.id;
       // Chi phí lương cứng = thực nhận + BHXH NLĐ (Cty nộp hộ) − lương chuyến.
