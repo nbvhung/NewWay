@@ -29,6 +29,7 @@ import { FinanceAuditLog } from './entities/finance-audit-log.entity';
 import { FinanceCostItem } from './entities/finance-cost-item.entity';
 import { Vehicle } from './entities/vehicle.entity';
 import { PlanVehicleOverride } from './entities/plan-vehicle-override.entity';
+import { AuditLog } from './entities/audit-log.entity';
 import { SeedService } from './seed.service';
 
 @Module({
@@ -71,6 +72,7 @@ import { SeedService } from './seed.service';
               FinanceEntry,
               FinanceAuditLog,
               FinanceCostItem,
+              AuditLog,
             ],
             synchronize: !isProd,
             logging: false,
@@ -111,17 +113,18 @@ import { SeedService } from './seed.service';
             CustomerPrice,
             CustomerSurcharge,
             CustomerAuditLog,
-            FinanceEntry,
-            FinanceAuditLog,
-            FinanceCostItem,
-          ],
-          synchronize: !isProd,
-          logging: false,
-          ssl:
-            process.env.DB_SSL === 'true'
-              ? { rejectUnauthorized: false }
-              : undefined,
-        };
+          FinanceEntry,
+          FinanceAuditLog,
+          FinanceCostItem,
+          AuditLog,
+        ],
+        synchronize: !isProd,
+        logging: false,
+        ssl:
+          process.env.DB_SSL === 'true'
+            ? { rejectUnauthorized: false }
+            : undefined,
+      };
       },
     }),
     TypeOrmModule.forFeature([

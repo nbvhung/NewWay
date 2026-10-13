@@ -18,6 +18,7 @@ import { CustomersModule } from './customers/customers.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { FinanceModule } from './finance/finance.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
+import { AuditModule } from './audit/audit.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { DeletePasswordGuard } from './common/guards/delete-password.guard';
 
@@ -41,6 +42,7 @@ import { DeletePasswordGuard } from './common/guards/delete-password.guard';
     DashboardModule,
     FinanceModule,
     VehiclesModule,
+    AuditModule,
   ],
   providers: [
     {

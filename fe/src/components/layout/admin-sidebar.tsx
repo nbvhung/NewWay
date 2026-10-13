@@ -12,6 +12,8 @@ interface NavItem {
   tab: string;
   /** Quyền chức năng fallback cho tài khoản chưa cấu hình quyền tab */
   fallback: string[];
+  /** Nếu có: chỉ hiện cho các role này (bỏ qua hệ thống phân quyền tab). */
+  roleOnly?: string[];
 }
 
 interface NavGroup {
@@ -60,6 +62,7 @@ const GROUPS: NavGroup[] = [
     items: () => [
       { href: '/admin/users', label: 'Tài khoản', icon: '🧑‍💼', tab: 'tab.users', fallback: ['user.view'] },
       { href: '/admin/vehicles', label: 'Quản lý XE', icon: '🚛', tab: 'tab.vehicles', fallback: ['vehicle.view'] },
+      { href: '/admin/audit', label: 'Lịch sử thao tác', icon: '📜', tab: 'tab.audit', fallback: ['audit.view'], roleOnly: ['admin', 'supper_admin'] },
     ],
   },
 ];
@@ -70,7 +73,11 @@ export function AdminSidebar({ user }: { user: any }) {
 
   const groups = GROUPS.map((g) => ({
     ...g,
-    items: g.items(user.role).filter((item) => canSeeTab(user, item.tab, item.fallback)),
+    items: g.items(user.role).filter((item) =>
+      item.roleOnly
+        ? item.roleOnly.includes(user.role)
+        : canSeeTab(user, item.tab, item.fallback),
+    ),
   })).filter((g) => g.items.length > 0);
 
   return (
@@ -112,7 +119,11 @@ export function MobileAdminNav({ user }: { user: any }) {
   if (!user) return null;
   const groups = GROUPS.map((g) => ({
     ...g,
-    items: g.items(user.role).filter((item) => canSeeTab(user, item.tab, item.fallback)),
+    items: g.items(user.role).filter((item) =>
+      item.roleOnly
+        ? item.roleOnly.includes(user.role)
+        : canSeeTab(user, item.tab, item.fallback),
+    ),
   })).filter((g) => g.items.length > 0);
   return (
     <div className="lg:hidden flex flex-col gap-1 mb-4">
