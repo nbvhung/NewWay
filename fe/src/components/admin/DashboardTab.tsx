@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import {
@@ -443,7 +443,7 @@ function VehicleSalarySheet({ rows, month, year, mode, onClose }: {
           <p className="text-[9px] mt-2" style={{ color: C.muted }}>
             {isChuyen
               ? '* Lương chuyến = tiền lương theo sản lượng từng chuyến của lái xe.'
-              : '* Chi phí lương cứng & BHXH (hướng chủ đầu tư) = lương cứng (gồm BHXH NLĐ) + BHXH Cty + chuyên cần + phụ cấp + tip + khoản khác (không trừ khấu trừ/tạm ứng — đó là khoản Cty đã chi). Lái phụ (mượn xe) không tính phần này (ở xe nhà).'}
+              : '* Chi phí lương cứng & BHXH (chi phí thực của Xe) = Lương cứng + Chuyên cần + Phụ cấp + BHXH CTY 21.5% + BHXH NLĐ 10.5% (nộp hộ). TIP không tính vào chi phí xe (lái xe đã chi hộ trước → Cty hoàn trả). Lái phụ (mượn xe) không tính phần này.'}
           </p>
         </div>
         {/* Danh sách xe */}
@@ -509,10 +509,13 @@ function VehicleSalarySheet({ rows, month, year, mode, onClose }: {
                                   <div className="mt-1 ml-2 space-y-0.5">
                                     {([
                                       ['Lương cứng + BHXH NLĐ', dv.luongCung],
-                                      ['BHXH Cty', dv.bhxhCty],
+                                      ['BHXH CTY 21.5%', dv.bhxhCty],
                                       ['Chuyên cần', dv.chuyenCan],
-                                      ['Phụ cấp', dv.phuCap],
-                                      ['Tip', dv.tip],
+                                      ['Phụ cấp', dv.phuCap],                                       ['TIP (ho\u00e0n tr\u1ea3)', (dv.tip || 0) * 1000],
+                                       ['(-) BHXH NL\u0110 10.5%', -(dv.bhxhNld || 0)],
+                                       ['(-) Chi h\u1ed9', -(dv.chiHo || 0)],
+                                       ['(-) T\u1ea1m \u1ee9ng', -(dv.advanceDeduct || 0)],
+                                       ['(-) Kh\u1ea5u tr\u1eeb kh\u00e1c', -(dv.itemSumDeduct || 0)],
                                       ['Cộng khác', dv.itemSumAdd],
                                     ] as [string, number][]).filter(([, v]) => v !== 0).map(([lbl, v]) => (
                                       <div key={lbl} className="flex justify-between text-[10px]">

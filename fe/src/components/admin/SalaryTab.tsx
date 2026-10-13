@@ -124,7 +124,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       setRecords(data.records || []);
       setItems(data.items || []);
       setFixedSalary(fmtMoney(data.settings?.fixedSalary));
-      setStandardDays(String(data.settings?.standardDays ?? 26));
+      setStandardDays(String(data.settings?.standardDays ?? 21));
       setOldCarAllowance(fmtMoney(data.settings?.oldCarAllowance));
       setBhxhNld(String(data.settings?.bhxhNld ?? 10.5));
       setParkingHph2(fmtMoney(data.settings?.parkingHph2));
@@ -185,7 +185,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     try {
       await salaryApi.updateSettings({
         fixedSalary: Number(fixedSalary.replace(/[^\d]/g, '')) || 0,
-        standardDays: Number(standardDays) || 26,
+        standardDays: Number(standardDays) || 21,
         oldCarAllowance: Number(oldCarAllowance.replace(/[^\d]/g, '')) || 0,
         bhxhNld: Number(bhxhNld.replace(',', '.')) || 0,
         parkingHph2: Number(parkingHph2.replace(/[^\d]/g, '')) || 0,
@@ -659,8 +659,9 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
             <input value={fixedSalary} onChange={e => setFixedSalary(e.target.value)} inputMode="numeric" placeholder="7.000.000" className={inputCls} />
           </div>
           <div>
-            <label className={labelCls}>Số ngày công chuẩn</label>
-            <input value={standardDays} onChange={e => setStandardDays(e.target.value)} inputMode="numeric" placeholder="26" className={inputCls} />
+            <label className={labelCls}>Số ngày công chuẩn (= 100% lương cứng)</label>
+            <input value={standardDays} onChange={e => setStandardDays(e.target.value)} inputMode="numeric" placeholder="21" className={inputCls} />
+            <p className="text-[10px] text-[#78716c] mt-1">21 ngày = tháng 30 ngày trừ ~4 Chủ nhật + ngự lễ. Khi ngày công &ge; 21 thì lương cứng = 100% (7 triệu).</p>
           </div>
           <div>
             <label className={labelCls}>Phụ cấp xe cũ (VNĐ/tháng)</label>

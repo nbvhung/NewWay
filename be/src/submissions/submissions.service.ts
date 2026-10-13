@@ -2161,13 +2161,17 @@ export class SubmissionsService {
         { header: 'Kéo về', key: 'keoVe', width: 10 },
         { header: 'TIP (Nghìn đ)', key: 'tip', width: 12 },
         { header: 'Số chuyến', key: 'soChuyen', width: 10 },
-        { header: 'Lương', key: 'luong', width: 16 },
+        { header: 'Lương chuyến', key: 'luong', width: 16 },
         { header: 'Lương cứng', key: 'luongCung', width: 16 },
         { header: 'Chuyên cần', key: 'chuyenCan', width: 16 },
         { header: 'Phụ cấp nhà xa', key: 'phuCapNhaXa', width: 16 },
         { header: 'Phụ cấp chờ đóng hàng', key: 'phuCapChoDong', width: 18 },
         { header: 'Phụ cấp xe cũ', key: 'phuCapXeCu', width: 16 },
-        { header: 'Tổng thanh toán', key: 'tongThanhToan', width: 16 },
+        { header: 'BHXH NLĐ 10.5% (trừ)', key: 'bhxhNld', width: 18 },
+        { header: 'Chi hộ (trừ)', key: 'chiHo', width: 14 },
+        { header: 'Khấu trừ khác', key: 'itemSumDeduct', width: 14 },
+        { header: 'Tạm ứng (trừ)', key: 'advanceDeduct', width: 14 },
+        { header: 'Tổng thanh toán (thực nhận)', key: 'tongThanhToan', width: 22 },
         { header: 'Tàu tăng cường', key: 'tangCuong', width: 12 },
         { header: 'Tàu Lễ, Tết', key: 'leTet', width: 12 },
       ];
@@ -2244,7 +2248,16 @@ export class SubmissionsService {
             allowanceFarHome: 0,
             allowanceWaitLoading: 0,
             allowanceOldCar: 0,
+            bhxh: 0,
+            chiHo: 0,
+            deductions: [] as { name: string; amount: number }[],
+            advanceDeduct: 0,
           };
+          // tongThanhToan = Thực nhận = Lương chuyến + Lương cứng + Chuyên cần + Phụ cấp + TIP − BHXH NLĐ − Chi hộ − Khấu trừ − Tạm ứng
+          const bhxhNld = (comp as any).bhxh || 0;
+          const chiHo = (comp as any).chiHo || 0;
+          const itemSumDeduct = ((comp as any).deductions || []).reduce((s: number, d: { amount: number }) => s + d.amount, 0);
+          const advanceDeduct = (comp as any).advanceDeduct || 0;
           const tongThanhToan =
             luong +
             tip * 1000 +
@@ -2252,7 +2265,11 @@ export class SubmissionsService {
             comp.chuyenCan +
             comp.allowanceFarHome +
             comp.allowanceWaitLoading +
-            comp.allowanceOldCar;
+            comp.allowanceOldCar
+            - bhxhNld
+            - chiHo
+            - itemSumDeduct
+            - advanceDeduct;
 
           rowIdx++;
           const row = wsSummary.addRow({
@@ -2277,11 +2294,15 @@ export class SubmissionsService {
             tip: tip || '',
             soChuyen: tong + kv,
             luong: luong,
-            luongCung: comp.fixedSalary || 0,
+            luongCung: rowIdx === 1 || true ? comp.fixedSalary || 0 : '',
             chuyenCan: comp.chuyenCan || 0,
             phuCapNhaXa: comp.allowanceFarHome || 0,
             phuCapChoDong: comp.allowanceWaitLoading || 0,
             phuCapXeCu: comp.allowanceOldCar || 0,
+            bhxhNld: bhxhNld || 0,
+            chiHo: chiHo || 0,
+            itemSumDeduct: itemSumDeduct || 0,
+            advanceDeduct: advanceDeduct || 0,
             tongThanhToan: tongThanhToan,
             tangCuong: sl?.tangCuong ? 'x' : '',
             leTet: sl?.leTet ? 'x' : '',
@@ -2300,13 +2321,16 @@ export class SubmissionsService {
             });
           }
         }
-        wsSummary.getColumn(15).numFmt = '#,##0';
         wsSummary.getColumn(16).numFmt = '#,##0';
         wsSummary.getColumn(17).numFmt = '#,##0';
         wsSummary.getColumn(18).numFmt = '#,##0';
         wsSummary.getColumn(19).numFmt = '#,##0';
         wsSummary.getColumn(20).numFmt = '#,##0';
         wsSummary.getColumn(21).numFmt = '#,##0';
+        wsSummary.getColumn(22).numFmt = '#,##0';
+        wsSummary.getColumn(23).numFmt = '#,##0';
+        wsSummary.getColumn(24).numFmt = '#,##0';
+        wsSummary.getColumn(25).numFmt = '#,##0';
       }
     }
 
@@ -3109,12 +3133,15 @@ export class SubmissionsService {
       );
       wsSalary.columns = [
         { header: 'Tên', key: 'name', width: 30 },
-        { header: 'Lương', key: 'luong', width: 20 },
+        { header: 'Lương chuyến', key: 'luong', width: 20 },
         { header: 'Lương cứng', key: 'luongCung', width: 16 },
         { header: 'Chuyên cần', key: 'chuyenCan', width: 16 },
         { header: 'Phụ cấp nhà xa', key: 'phuCapNhaXa', width: 16 },
         { header: 'Phụ cấp chờ đóng hàng', key: 'phuCapChoDong', width: 18 },
-        { header: 'Tổng thanh toán', key: 'tongThanhToan', width: 20 },
+        { header: 'BHXH NLĐ 10.5% (trừ)', key: 'bhxhNld', width: 18 },
+        { header: 'Chi hộ (trừ)', key: 'chiHo', width: 14 },
+        { header: 'Tạm ứng (trừ)', key: 'advanceDeduct', width: 14 },
+        { header: 'Tổng thanh toán (thực nhận)', key: 'tongThanhToan', width: 22 },
       ];
       const salaryRow = wsSalary.getRow(1);
       salaryRow.eachCell((cell) => {
@@ -3134,6 +3161,9 @@ export class SubmissionsService {
           phuCapNhaXa: number;
           phuCapChoDong: number;
           phuCapXeCu: number;
+          bhxhNld: number;
+          chiHo: number;
+          advanceDeduct: number;
           tongThanhToan: number;
         }
       >();
@@ -3177,8 +3207,15 @@ export class SubmissionsService {
           phuCapNhaXa: 0,
           phuCapChoDong: 0,
           phuCapXeCu: 0,
+          bhxhNld: 0,
+          chiHo: 0,
+          advanceDeduct: 0,
           tongThanhToan: 0,
         };
+        const compBhxhNld = (comp as any).bhxh || 0;
+        const compChiHo = (comp as any).chiHo || 0;
+        const compAdvanceDeduct = (comp as any).advanceDeduct || 0;
+        const compItemSumDeduct = ((comp as any).deductions || []).reduce((s: number, d: { amount: number }) => s + d.amount, 0);
         salaryMap.set(name, {
           luong: prev.luong + luong,
           luongCung: comp.fixedSalary,
@@ -3186,6 +3223,9 @@ export class SubmissionsService {
           phuCapNhaXa: comp.allowanceFarHome,
           phuCapChoDong: comp.allowanceWaitLoading,
           phuCapXeCu: comp.allowanceOldCar,
+          bhxhNld: compBhxhNld,
+          chiHo: compChiHo,
+          advanceDeduct: compAdvanceDeduct,
           tongThanhToan:
             prev.tongThanhToan +
             luong +
@@ -3194,7 +3234,11 @@ export class SubmissionsService {
             comp.chuyenCan +
             comp.allowanceFarHome +
             comp.allowanceWaitLoading +
-            comp.allowanceOldCar,
+            comp.allowanceOldCar
+            - compBhxhNld
+            - compChiHo
+            - compItemSumDeduct
+            - compAdvanceDeduct,
         });
       }
 
@@ -3208,7 +3252,9 @@ export class SubmissionsService {
           chuyenCan: val.chuyenCan,
           phuCapNhaXa: val.phuCapNhaXa,
           phuCapChoDong: val.phuCapChoDong,
-          phuCapXeCu: val.phuCapXeCu,
+          bhxhNld: val.bhxhNld,
+          chiHo: val.chiHo,
+          advanceDeduct: val.advanceDeduct,
           tongThanhToan: val.tongThanhToan,
         });
         row.eachCell((cell) => {
@@ -3232,6 +3278,8 @@ export class SubmissionsService {
       wsSalary.getColumn(6).numFmt = '#,##0';
       wsSalary.getColumn(7).numFmt = '#,##0';
       wsSalary.getColumn(8).numFmt = '#,##0';
+      wsSalary.getColumn(9).numFmt = '#,##0';
+      wsSalary.getColumn(10).numFmt = '#,##0';
     }
 
     let filename: string;

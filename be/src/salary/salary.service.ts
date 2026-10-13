@@ -81,7 +81,7 @@ export class SalaryService {
       settings = await this.settingsRepository.save({
         fixedSalary: 7000000,
         attendanceBonus: 0,
-        standardDays: 26,
+        standardDays: 21,
         oldCarAllowance: 0,
         bhxhNld: 10.5,
         parkingHph2: 0,

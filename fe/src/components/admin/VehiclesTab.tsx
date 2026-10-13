@@ -788,6 +788,7 @@ function VehicleDetail({
   // Vốn + chi phí lấy theo CHỦ VỐN CỦA XE (mọi sổ), để luôn hiện đúng của xe.
   const [fin, setFin] = useState<VehicleFinance | null>(null);
   const [sheetCat, setSheetCat] = useState<string | null>(null);
+  const [showDriverSalary, setShowDriverSalary] = useState(false);
   const loadFin = async () => {
     try {
       const res = await vehiclesApi.getFinance(id, month, year);
@@ -915,7 +916,7 @@ function VehicleDetail({
           <div className="rounded-xl border border-[#e7e5e4] p-4">
             <p className="text-[12px] font-bold text-[#1c1917] mb-2">💸 Chi phí & Vốn đầu tư</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Stat label="Lương lái xe + BHXH" value={luong} color="#dc2626" />
+              <Stat label="Lương lái xe + BHXH" value={luong} color="#dc2626" onClick={() => setShowDriverSalary(true)} />
               <Stat label="Nhiên liệu" value={nhienLieu} color="#0891b2" onClick={() => setSheetCat('nhienLieu')} />
               <Stat label="Sửa chữa" value={suaChua} color="#7c3aed" onClick={() => setSheetCat('suaChua')} />
               <Stat label="CP khác" value={cpKhac} color="#059669" onClick={() => setSheetCat('cpKhac')} />
@@ -982,7 +983,109 @@ function VehicleDetail({
           onClose={() => setSheetCat(null)}
         />
       )}
-    </div>
+
+      {/* Modal chi tiết lương — góc nhìn chủ xe */}
+      {showDriverSalary && (
+        <Modal open={showDriverSalary} title="Chi phí lái xe (Chủ xe phải chi)" onClose={() => setShowDriverSalary(false)}>
+          <div className="space-y-4 text-[12px]">
+            <p className="text-[11px] text-[#78716c] bg-[#fef3c7] rounded-lg px-3 py-2 border border-[#fcd34d]">
+              💡 <b>Góc nhìn chủ xe:</b> Hiển thị tất cả khoản chủ xe phải bỏ ra. <b>Lái phụ mượn xe</b> không thuộc biên chế → chỉ có lương chuyến, các ô còn lại = 0. BHXH CTY + BHXH NLĐ đều là tiền chủ xe phải chi.
+            </p>
+            {(!costV?.drivers || costV.drivers.length === 0) ? (
+              <p className="text-center text-[#a8a29e] py-6">Chưa có dữ liệu lương lái xe tháng này.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-[11px]">
+                  <thead>
+                    <tr className="bg-[#f5f3ff]">
+                      {['Lái xe','Vai trò','Lương chuyến','Lương cứng','Chuyên cần','Phụ cấp','PC khác','TIP (hoàn)','BHXH CTY 21.5%','BHXH NLĐ 10.5%','Chi hộ','Tạm ứng','TỔNG CHỦ XE CHI'].map((h) => (
+                        <th key={h} className={`px-2 py-1.5 text-left font-semibold border border-[#e7e5e4] whitespace-nowrap ${h === 'TỔNG CHỦ XE CHI' ? 'text-[#dc2626] bg-[#fef2f2]' : 'text-[#4c1d95]'}`}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {costV.drivers.map((d: any, i: number) => {
+                      const isMain = d.isMain;
+                      const luongChuyen  = d.luongKhoan || 0;
+                      const luongCung    = isMain ? (d.luongCung || 0)      : 0;
+                      const chuyenCan    = isMain ? (d.chuyenCan || 0)     : 0;
+                      const phuCap       = isMain ? (d.phuCap || 0)        : 0;
+                      const pcKhac       = isMain ? (d.itemSumAdd || 0)    : 0;
+                      const tipHoan      = isMain ? (d.tip || 0) * 1000    : 0;
+                      const bhxhCty      = isMain ? (d.bhxhCty || 0)       : 0;
+                      const bhxhNld      = isMain ? (d.bhxhNld || 0)       : 0;
+                      const chiHo        = isMain ? (d.chiHo || 0)         : 0;
+                      const tamUng       = isMain ? (d.advanceDeduct || 0) : 0;
+                      const tongChuXeChi = luongChuyen + luongCung + chuyenCan + phuCap + pcKhac + tipHoan + bhxhCty + bhxhNld + chiHo + tamUng;
+                      const dimCls = "text-[#c0c0c0] bg-[#f9f9f9]";
+                      return (
+                        <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-[#fafaf9]'}>
+                          <td className="px-2 py-1.5 border border-[#e7e5e4] font-medium text-[#1c1917] whitespace-nowrap">{d.fullName || '—'}</td>
+                          <td className="px-2 py-1.5 border border-[#e7e5e4] text-center">
+                            <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${isMain ? 'bg-[#d1fae5] text-[#065f46]' : 'bg-[#dbeafe] text-[#1e40af]'}`}>
+                              {isMain ? 'Chính' : 'Phụ (mượn)'}
+                            </span>
+                          </td>
+                          <td className="px-2 py-1.5 border border-[#e7e5e4] text-right text-[#059669] font-medium">{fmt(luongChuyen)}</td>
+                          <td className={`px-2 py-1.5 border border-[#e7e5e4] text-right ${!isMain ? dimCls : ''}`}>{fmt(luongCung)}</td>
+                          <td className={`px-2 py-1.5 border border-[#e7e5e4] text-right ${!isMain ? dimCls : ''}`}>{fmt(chuyenCan)}</td>
+                          <td className={`px-2 py-1.5 border border-[#e7e5e4] text-right ${!isMain ? dimCls : ''}`}>{fmt(phuCap)}</td>
+                          <td className={`px-2 py-1.5 border border-[#e7e5e4] text-right ${!isMain ? dimCls : ''}`}>{fmt(pcKhac)}</td>
+                          <td className={`px-2 py-1.5 border border-[#e7e5e4] text-right ${!isMain ? dimCls : 'text-[#d97706]'}`}>{fmt(tipHoan)}</td>
+                          <td className={`px-2 py-1.5 border border-[#e7e5e4] text-right ${!isMain ? dimCls : 'text-[#dc2626]'}`}>{fmt(bhxhCty)}</td>
+                          <td className={`px-2 py-1.5 border border-[#e7e5e4] text-right ${!isMain ? dimCls : 'text-[#b45309]'}`}>{fmt(bhxhNld)}</td>
+                          <td className={`px-2 py-1.5 border border-[#e7e5e4] text-right ${!isMain ? dimCls : 'text-[#7c3aed]'}`}>{fmt(chiHo)}</td>
+                          <td className={`px-2 py-1.5 border border-[#e7e5e4] text-right ${!isMain ? dimCls : 'text-[#6b7280]'}`}>{fmt(tamUng)}</td>
+                          <td className="px-2 py-1.5 border border-[#e7e5e4] text-right font-bold text-[#dc2626] bg-[#fef2f2]">{fmt(tongChuXeChi)}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="bg-[#fef9c3] font-bold">
+                      <td className="px-2 py-1.5 border border-[#e7e5e4]" colSpan={2}>TỔNG CỘNG</td>
+                      {(() => {
+                        const tots = costV.drivers.reduce((acc: any, d: any) => {
+                          const m = d.isMain;
+                          acc.lc  += d.luongKhoan || 0;
+                          acc.lg  += m ? (d.luongCung || 0)      : 0;
+                          acc.cc  += m ? (d.chuyenCan || 0)     : 0;
+                          acc.pc  += m ? (d.phuCap || 0)        : 0;
+                          acc.pk  += m ? (d.itemSumAdd || 0)    : 0;
+                          acc.tip += m ? (d.tip || 0) * 1000    : 0;
+                          acc.bc  += m ? (d.bhxhCty || 0)       : 0;
+                          acc.bn  += m ? (d.bhxhNld || 0)       : 0;
+                          acc.ch  += m ? (d.chiHo || 0)         : 0;
+                          acc.tu  += m ? (d.advanceDeduct || 0) : 0;
+                          return acc;
+                        }, { lc:0, lg:0, cc:0, pc:0, pk:0, tip:0, bc:0, bn:0, ch:0, tu:0 });
+                        const total = tots.lc+tots.lg+tots.cc+tots.pc+tots.pk+tots.tip+tots.bc+tots.bn+tots.ch+tots.tu;
+                        return [
+                          <td key="lc"  className="px-2 py-1.5 border border-[#e7e5e4] text-right">{fmt(tots.lc)}</td>,
+                          <td key="lg"  className="px-2 py-1.5 border border-[#e7e5e4] text-right">{fmt(tots.lg)}</td>,
+                          <td key="cc"  className="px-2 py-1.5 border border-[#e7e5e4] text-right">{fmt(tots.cc)}</td>,
+                          <td key="pc"  className="px-2 py-1.5 border border-[#e7e5e4] text-right">{fmt(tots.pc)}</td>,
+                          <td key="pk"  className="px-2 py-1.5 border border-[#e7e5e4] text-right">{fmt(tots.pk)}</td>,
+                          <td key="tip" className="px-2 py-1.5 border border-[#e7e5e4] text-right text-[#d97706]">{fmt(tots.tip)}</td>,
+                          <td key="bc"  className="px-2 py-1.5 border border-[#e7e5e4] text-right text-[#dc2626]">{fmt(tots.bc)}</td>,
+                          <td key="bn"  className="px-2 py-1.5 border border-[#e7e5e4] text-right">{fmt(tots.bn)}</td>,
+                          <td key="ch"  className="px-2 py-1.5 border border-[#e7e5e4] text-right">{fmt(tots.ch)}</td>,
+                          <td key="tu"  className="px-2 py-1.5 border border-[#e7e5e4] text-right">{fmt(tots.tu)}</td>,
+                          <td key="tot" className="px-2 py-1.5 border border-[#e7e5e4] text-right text-[#dc2626] bg-[#fef2f2]">{fmt(total)}</td>,
+                        ];
+                      })()}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="text-[10px] text-[#78716c] space-y-0.5 pt-2 border-t border-[#e7e5e4]">
+              <p>• <b>TỔNG CHỦ XE CHI</b> = Lương chuyến + Lương cứng + Chuyên cần + Phụ cấp + TIP hoàn + BHXH CTY 21.5% + BHXH NLĐ 10.5% + Chi hộ + Tạm ứng</p>
+              <p>• <b>Lái phụ mượn xe</b>: chỉ trả lương chuyến — lương cứng/BHXH/phụ cấp thuộc về xe nhà</p>
+              <p>• <b>BHXH 32%</b> = CTY 21.5% + NLĐ 10.5% (trích lương, cty nộp hộ nhà nước)</p>
+            </div>
+          </div>
+        </Modal>
+      )}
+      </div>
   );
 }
 
