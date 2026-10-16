@@ -654,7 +654,7 @@ export function FinanceTab(_props: Props) {
             </div>
             {capitalLocked ? (
               <p className="text-[10px] text-red-600 mt-2">
-                🔒 Nguồn vốn đang bị khoá — chỉ xem. Cần MR BACH hoặc VHUN9 mở khoá.
+                🔒 Nguồn vốn đang bị khoá — chỉ xem.
               </p>
             ) : !canEditItems && (
               <p className="text-[10px] text-[#a8a29e] mt-2">

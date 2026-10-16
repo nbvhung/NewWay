@@ -137,7 +137,7 @@ export class FinanceService {
   private async assertInvestUnlocked(): Promise<void> {
     if (await this.settingsService.isCapitalLocked()) {
       throw new ForbiddenException(
-        'Nguồn vốn đang bị khoá. Cần MR BACH hoặc VHUN9 mở khoá để chỉnh sửa.',
+        'Nguồn vốn đang bị khoá.',
       );
     }
   }

@@ -1405,7 +1405,7 @@ function FinanceItemsModal({
       ) : (
         <p className="mt-3 text-[11px] text-[#a8a29e]">
           {locked
-            ? '🔒 Nguồn vốn đang bị khoá — chỉ xem, không thể thêm/sửa/xoá. Cần MR BACH hoặc VHUN9 mở khoá.'
+            ? '🔒 Nguồn vốn đang bị khoá — chỉ xem, không thể thêm/sửa/xoá.'
             : 'Bạn chỉ xem được (cần là chủ vốn của xe hoặc có quyền tài chính để sửa).'}
         </p>
       )}
