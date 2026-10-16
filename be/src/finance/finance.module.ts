@@ -7,6 +7,7 @@ import { User } from '../database/entities/user.entity';
 import { Vehicle } from '../database/entities/vehicle.entity';
 import { FinanceService } from './finance.service';
 import { FinanceController } from './finance.controller';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { FinanceController } from './finance.controller';
       User,
       Vehicle,
     ]),
+    SettingsModule,
   ],
   providers: [FinanceService],
   controllers: [FinanceController],

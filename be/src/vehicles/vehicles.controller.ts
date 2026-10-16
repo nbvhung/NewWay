@@ -37,6 +37,27 @@ export class VehiclesController {
     return { data: await this.vehiclesService.listForSelect(req.user) };
   }
 
+  // ── Khoá nguồn vốn (khai báo TRƯỚC ':id') ──
+  @Get('capital-lock')
+  @Permissions('vehicle.view')
+  getCapitalLock(@Req() req: any) {
+    return this.vehiclesService.getCapitalLockState(req.user);
+  }
+
+  /** Bật/tắt khoá — chỉ MR BACH / VHUN9, xác thực bằng mật khẩu đăng nhập. */
+  @Post('capital-lock')
+  @Permissions('vehicle.view')
+  setCapitalLock(
+    @Body() body: { locked?: boolean; password?: string },
+    @Req() req: any,
+  ) {
+    return this.vehiclesService.setCapitalLock(
+      req.user,
+      body?.locked === true,
+      body?.password,
+    );
+  }
+
   // ── Đảo lái xe theo kế hoạch (khai báo TRƯỚC ':id') ──
   @Get('overrides')
   @Permissions('vehicle.view')

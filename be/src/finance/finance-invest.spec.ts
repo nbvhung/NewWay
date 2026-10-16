@@ -180,6 +180,7 @@ function build(opts: { entry?: any; items?: any[]; entries?: any[] } = {}) {
     costRepo as any,
     usersRepo as any,
     { find: jest.fn(async () => []), findOne: jest.fn(async () => null) } as any,
+    { isCapitalLocked: jest.fn(async () => false) } as any,
   );
   return { svc, repo, auditRepo, costRepo, usersRepo };
 }

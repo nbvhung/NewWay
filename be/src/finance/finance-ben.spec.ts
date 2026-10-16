@@ -144,6 +144,7 @@ function build() {
     costRepo as any,
     usersRepo as any,
     vehiclesRepo as any,
+    { isCapitalLocked: jest.fn(async () => false) } as any,
   );
   return { svc, repo, auditRepo, costRepo, usersRepo };
 }

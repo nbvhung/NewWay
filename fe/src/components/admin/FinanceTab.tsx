@@ -10,6 +10,7 @@ import { hasPerm } from '@/lib/permissions';
 import { Modal } from '@/components/ui/modal';
 import { VehicleSelect } from './VehicleSelect';
 import { confirmDelete } from '@/lib/delete-guard';
+import { vehiclesApi } from '@/lib/api-vehicles';
 
 interface Props { user?: any; }
 
@@ -205,10 +206,19 @@ export function FinanceTab(_props: Props) {
   const [pwChecking, setPwChecking] = useState(false);
   const unlocked = costPassword !== '';
 
+  // Nguồn vốn bị khoá toàn hệ thống (chỉ MR BACH / VHUN9 mở được) → chặn sửa Vốn đầu tư.
+  const [capitalLocked, setCapitalLocked] = useState(false);
+  useEffect(() => {
+    vehiclesApi
+      .getCapitalLock()
+      .then((r) => setCapitalLocked(!!r.data?.locked))
+      .catch(() => {});
+  }, []);
+
   // Quyền nhập/sửa tài chính (BE cũng kiểm `finance.manage`).
   const canManage = isSuperAdmin || hasPerm(user, 'finance.manage');
   // Admin phải mở khoá bằng mật khẩu mới nhập được vốn đầu tư; supper_admin được miễn.
-  const canEditInvest = canManage && (isSuperAdmin || unlocked);
+  const canEditInvest = canManage && (isSuperAdmin || unlocked) && !capitalLocked;
   // supper_admin cũng được sửa CHI PHÍ (kể cả của admin khác) không cần mật khẩu.
   const canEditCost = canManage && (isSuperAdmin || unlocked);
 
@@ -638,11 +648,15 @@ export function FinanceTab(_props: Props) {
                   onDelete={deleteItem}
                   vehicleLabel={vehicleLabel}
                   accentClass="text-blue-600"
-                  readOnly={!canEditItems}
+                  readOnly={!canEditItems || capitalLocked}
                 />
               ))}
             </div>
-            {!canEditItems && (
+            {capitalLocked ? (
+              <p className="text-[10px] text-red-600 mt-2">
+                🔒 Nguồn vốn đang bị khoá — chỉ xem. Cần MR BACH hoặc VHUN9 mở khoá.
+              </p>
+            ) : !canEditItems && (
               <p className="text-[10px] text-[#a8a29e] mt-2">
                 * Nhập mật khẩu ở trên để thêm / sửa các khoản vốn chi tiết.
               </p>
@@ -695,8 +709,8 @@ export function FinanceTab(_props: Props) {
 
       {/* Save button */}
       <div className="flex justify-end">
-        <button onClick={save} disabled={saving || !canEditInvest}
-          title={!canEditInvest ? 'Nhập mật khẩu để chỉnh sửa chi phí & vốn đầu tư' : undefined}
+        <button onClick={save} disabled={saving || !(canEditCost || canEditInvest)}
+          title={!(canEditCost || canEditInvest) ? 'Nhập mật khẩu để chỉnh sửa chi phí & vốn đầu tư' : undefined}
           className="px-6 py-2.5 rounded-xl text-[13px] font-semibold text-white bg-gradient-to-r from-[#f59e0b] to-[#d97706] shadow-[0_4px_15px_rgba(245,158,11,0.35)] hover:shadow-[0_4px_20px_rgba(245,158,11,0.5)] transition-shadow disabled:opacity-50 cursor-pointer">
           {saving ? 'Đang lưu...' : saved ? '✅ Đã lưu!' : '💾 Lưu tháng này'}
         </button>

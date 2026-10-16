@@ -197,6 +197,24 @@ Bảng `finance_entries` (unique month+year+userId) lưu chi phí + vốn đầu
   thay cho admin khác qua param `targetUserId`.
 - `DashboardService.getOverview` vẫn đọc finance trực tiếp theo userId (không cần mật khẩu) cho phần tổng quan.
 
+### Khoá nguồn vốn (Vốn đầu tư) — chỉ MR BACH / VHUN9 khoá–mở
+
+Ở tab **Quản lý XE** (Chi tiết xe, cùng dòng tiêu đề **"💸 Chi phí & Vốn đầu tư"**) có nút
+**🔒 Khoá nguồn vốn**. Khi bật, **không ai** (kể cả supper_admin)
+được thêm/sửa/xoá các khoản **Vốn đầu tư** (`vonXe`, `vonMooc`, `vonKhac`) — ở cả tab Quản lý XE,
+Chi tiết xe lẫn tab Tài chính. Chi phí (`suaChua/nhienLieu/cpKhac`) **không** bị ảnh hưởng.
+
+- Trạng thái lưu ở Redis (`settings:capital_lock`), quản lý bởi `SettingsService.isCapitalLocked/setCapitalLocked`.
+- **Chỉ 2 tài khoản** trong `be/src/common/security/capital-lock.ts`
+  (`CAPITAL_LOCK_ALLOWED_USERNAMES = ['bach', 'superadmin']`) được khoá/mở.
+- Xác thực bằng **chính mật khẩu đăng nhập** của người thao tác (`bcrypt.compare` với `users.password_hash`).
+- Endpoint (cần `vehicle.view`): `GET /api/admin/vehicles/capital-lock` (trạng thái + `canLock`),
+  `POST /api/admin/vehicles/capital-lock` body `{ locked, password }`.
+- Chặn ghi ở `FinanceService.assertInvestUnlocked()` cho `addCostItem`, `addCostItemsBulk`,
+  `updateCostItem`, `deleteCostItem` (nhóm vốn) và `upsert` (khi `touchesInvestment`).
+- FE: nút + popup nhập mật khẩu ở `VehiclesTab`; `FinanceTab` ẩn nút thêm/sửa nhóm vốn khi khoá.
+- Test: `be/src/finance/finance-capital-lock.spec.ts` (10 ca).
+
 ### Xoá dữ liệu = BẮT BUỘC nhập mật khẩu `348` (chống xoá nhầm)
 
 **Mọi** request `DELETE` của API đều phải kèm mật khẩu thao tác, gửi qua header

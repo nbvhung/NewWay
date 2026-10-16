@@ -37,6 +37,7 @@ function build() {
     costRepo as any,
     usersRepo as any,
     { find: jest.fn(async () => []), findOne: jest.fn(async () => null) } as any,
+    { isCapitalLocked: jest.fn(async () => false) } as any,
   );
   const ctrl = new FinanceController(svc);
   return { svc, ctrl, repo, auditRepo };

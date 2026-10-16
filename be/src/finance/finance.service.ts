@@ -14,6 +14,7 @@ import { User } from '../database/entities/user.entity';
 import { Vehicle } from '../database/entities/vehicle.entity';
 import { ACTION_PASSWORD } from '../common/security/action-password';
 import { hasPermission } from '../common/permissions/permissions';
+import { SettingsService } from '../settings/settings.service';
 
 export interface UpsertFinanceDto {
   suaChua?: number;
@@ -126,7 +127,24 @@ export class FinanceService {
     private usersRepo: Repository<User>,
     @InjectRepository(Vehicle)
     private vehiclesRepo: Repository<Vehicle>,
+    private readonly settingsService: SettingsService,
   ) {}
+
+  /**
+   * Chặn thao tác lên VỐN ĐẦU TƯ khi "nguồn vốn" đang bị khoá.
+   * Xem `SettingsService.isCapitalLocked` / `VehiclesService.setCapitalLock`.
+   */
+  private async assertInvestUnlocked(): Promise<void> {
+    if (await this.settingsService.isCapitalLocked()) {
+      throw new ForbiddenException(
+        'Nguồn vốn đang bị khoá. Cần MR BACH hoặc VHUN9 mở khoá để chỉnh sửa.',
+      );
+    }
+  }
+
+  private isInvestCategory(category: string): boolean {
+    return (INVEST_CATEGORIES as readonly string[]).includes(category);
+  }
 
   /**
    * Tài khoản được quản lý Tài chính như supper_admin: hoặc role supper_admin,
@@ -533,6 +551,7 @@ export class FinanceService {
     editorName: string,
   ): Promise<FinanceCostItem> {
     this.assertCategory(dto.category);
+    if (this.isInvestCategory(dto.category)) await this.assertInvestUnlocked();
     const selfId: number = actor?.sub ?? actor?.id;
     const { userId, ben, skipBenCheck } = await this.resolveCostBook(
       actor,
@@ -599,6 +618,7 @@ export class FinanceService {
     editorName: string,
   ): Promise<FinanceCostItem[]> {
     this.assertCategory(dto.category);
+    if (this.isInvestCategory(dto.category)) await this.assertInvestUnlocked();
     const selfId: number = actor?.sub ?? actor?.id;
 
     const rows = (dto.vehicles || []).filter(
@@ -696,6 +716,7 @@ export class FinanceService {
     if (item.userId !== selfId && !this.isSuperAdmin(actor)) {
       throw new ForbiddenException('Bạn không có quyền sửa khoản chi phí này');
     }
+    if (this.isInvestCategory(item.category)) await this.assertInvestUnlocked();
 
     const oldAmount = Number(item.amount) || 0;
     if (dto.itemDate !== undefined) item.itemDate = dto.itemDate || null;
@@ -756,6 +777,7 @@ export class FinanceService {
     if (item.userId !== selfId && !this.isSuperAdmin(actor)) {
       throw new ForbiddenException('Bạn không có quyền xóa khoản chi phí này');
     }
+    if (this.isInvestCategory(item.category)) await this.assertInvestUnlocked();
 
     const itemName = await this.itemNameWithVehicle(item);
     await this.costRepo.remove(item);
@@ -826,6 +848,7 @@ export class FinanceService {
 
     // Quyền ghi vốn đầu tư: admin phải nhập mật mã; supper_admin được miễn.
     const touchesInvestment = INVEST_FIELDS.some((f) => dto[f] !== undefined);
+    if (touchesInvestment) await this.assertInvestUnlocked();
     if (
       touchesInvestment &&
       !this.isSuperAdmin(actor) &&

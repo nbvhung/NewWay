@@ -6,6 +6,7 @@ import {
   VehicleItem,
   VehicleOverride,
   VehicleFinance,
+  CapitalLockState,
 } from '@/lib/api-vehicles';
 import { dashboardApi, DashboardOverview } from '@/lib/api-dashboard';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
@@ -24,6 +25,10 @@ const FIN_CAT_LABEL: Record<string, string> = {
   vonMooc: 'Vốn mooc',
   vonKhac: 'Vốn khác',
 };
+
+/** Nhóm VỐN ĐẦU TƯ — bị chặn chỉnh sửa khi "nguồn vốn" đang khoá. */
+const INVEST_KEYS = ['vonXe', 'vonMooc', 'vonKhac'];
+const isInvestKey = (k: string) => INVEST_KEYS.includes(k);
 
 /** Tải blob về máy, lấy tên file từ Content-Disposition nếu có. */
 function downloadBlob(res: any, fallback: string) {
@@ -78,6 +83,13 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
   const [saving, setSaving] = useState(false);
   const [q, setQ] = useState('');
 
+  // Khoá nguồn vốn (Vốn đầu tư) — chỉ MR BACH / VHUN9 bật/tắt được.
+  const [capLock, setCapLock] = useState<CapitalLockState | null>(null);
+  const [lockModalOpen, setLockModalOpen] = useState(false);
+  const [lockPw, setLockPw] = useState('');
+  const [lockSaving, setLockSaving] = useState(false);
+  const [lockError, setLockError] = useState('');
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
@@ -130,6 +142,47 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
     }
   };
 
+  const loadCapitalLock = async () => {
+    try {
+      const res = await vehiclesApi.getCapitalLock();
+      setCapLock(res.data as any);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const capitalLocked = capLock?.locked === true;
+  const canLock = capLock?.canLock === true;
+
+  const openLockModal = () => {
+    setLockPw('');
+    setLockError('');
+    setLockModalOpen(true);
+  };
+
+  const submitLock = async () => {
+    if (!lockPw) {
+      setLockError('Nhập mật khẩu đăng nhập');
+      return;
+    }
+    setLockSaving(true);
+    setLockError('');
+    try {
+      const res = await vehiclesApi.setCapitalLock(!capitalLocked, lockPw);
+      setCapLock(res.data as any);
+      setLockModalOpen(false);
+      setLockPw('');
+      toast(
+        capitalLocked ? 'Đã MỞ KHOÁ nguồn vốn' : 'Đã KHOÁ nguồn vốn',
+        'success',
+      );
+    } catch (e: any) {
+      setLockError(e?.response?.data?.message || 'Thao tác thất bại');
+    } finally {
+      setLockSaving(false);
+    }
+  };
+
   const loadOverrides = async () => {
     try {
       const [ov, pl] = await Promise.all([
@@ -145,6 +198,7 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
 
   useEffect(() => {
     load();
+    loadCapitalLock();
   }, []);
 
   useEffect(() => {
@@ -610,6 +664,9 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
           onRemoveOverride={removeOverride}
           onAddCost={() => openAddItem(detail, 'suaChua')}
           onAddInvest={() => openAddItem(detail, 'vonXe')}
+          capitalLocked={capitalLocked}
+          canLock={canLock}
+          onToggleLock={openLockModal}
           currentUser={currentUser}
           toast={toast}
         />
@@ -756,13 +813,42 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
           </div>
         </div>
       </Modal>
+
+      {/* Modal xác nhận mật khẩu để khoá/mở khoá nguồn vốn */}
+      <Modal
+        open={lockModalOpen}
+        onClose={() => setLockModalOpen(false)}
+        title={capitalLocked ? '🔓 Mở khoá nguồn vốn' : '🔒 Khoá nguồn vốn'}
+        footer={
+          <>
+            <button onClick={() => setLockModalOpen(false)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] cursor-pointer">Huỷ</button>
+            <button onClick={submitLock} disabled={lockSaving} className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white disabled:opacity-50 cursor-pointer">{lockSaving ? 'Đang xử lý...' : capitalLocked ? 'Mở khoá' : 'Khoá'}</button>
+          </>
+        }
+      >
+        <p className="text-[12px] text-[#78716c] mb-3">
+          {capitalLocked
+            ? 'Nhập mật khẩu đăng nhập của bạn để MỞ KHOÁ nguồn vốn (Vốn đầu tư).'
+            : 'Nhập mật khẩu đăng nhập của bạn để KHOÁ nguồn vốn (Vốn đầu tư) — sau đó không ai thêm/sửa/xoá được.'}
+        </p>
+        <input
+          type="password"
+          autoFocus
+          value={lockPw}
+          onChange={(e) => { setLockPw(e.target.value); setLockError(''); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') submitLock(); }}
+          placeholder="Mật khẩu đăng nhập..."
+          className="w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]"
+        />
+        {lockError && <p className="text-[11px] text-red-600 mt-2">{lockError}</p>}
+      </Modal>
     </div>
   );
 }
 
 /* ─────────────────────────────────────────────────────────── */
 function VehicleDetail({
-  detail, overview, overrides, month, year, loading, setMonth, setYear, reload, onEdit, onAssign, onRemoveOverride, onAddCost, onAddInvest, currentUser, toast,
+  detail, overview, overrides, month, year, loading, setMonth, setYear, reload, onEdit, onAssign, onRemoveOverride, onAddCost, onAddInvest, capitalLocked, canLock, onToggleLock, currentUser, toast,
 }: {
   detail: VehicleItem;
   overview: DashboardOverview | null;
@@ -778,6 +864,9 @@ function VehicleDetail({
   onRemoveOverride: (o: VehicleOverride) => void;
   onAddCost: () => void;
   onAddInvest: () => void;
+  capitalLocked: boolean;
+  canLock: boolean;
+  onToggleLock: () => void;
   currentUser: any;
   toast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }) {
@@ -877,7 +966,12 @@ function VehicleDetail({
           <button onClick={onEdit} className="px-3 py-1.5 rounded-lg text-[12px] border border-[#e7e5e4] cursor-pointer">✏️ Sửa</button>
           <button onClick={onAssign} className="px-3 py-1.5 rounded-lg text-[12px] border border-[#e7e5e4] cursor-pointer">👥 Lái xe</button>
           <button onClick={onAddCost} className="px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white cursor-pointer">➕ Chi phí</button>
-          <button onClick={onAddInvest} className="px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-[#2563eb] text-white cursor-pointer">➕ Vốn</button>
+          <button
+            onClick={onAddInvest}
+            disabled={capitalLocked}
+            title={capitalLocked ? 'Nguồn vốn đang bị khoá — không thể thêm vốn đầu tư' : undefined}
+            className="px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-[#2563eb] text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >{capitalLocked ? '🔒 Vốn' : '➕ Vốn'}</button>
           {hasPerm(currentUser, 'export.data') && (
             <button onClick={doExport} disabled={exporting} className="px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-[#16a34a] text-white disabled:opacity-50 cursor-pointer">{exporting ? 'Đang xuất...' : '📥 Xuất Excel'}</button>
           )}
@@ -931,7 +1025,29 @@ function VehicleDetail({
 
           {/* Chi phí + vốn */}
           <div className="rounded-xl border border-[#e7e5e4] p-4">
-            <p className="text-[12px] font-bold text-[#1c1917] mb-2">💸 Chi phí & Vốn đầu tư</p>
+            <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+              <p className="text-[12px] font-bold text-[#1c1917]">💸 Chi phí &amp; Vốn đầu tư</p>
+              {canLock ? (
+                <button
+                  onClick={onToggleLock}
+                  title={capitalLocked ? 'Mở khoá để chỉnh sửa nguồn vốn' : 'Khoá để không ai chỉnh sửa nguồn vốn'}
+                  className={`px-3 py-1 rounded-lg text-[11px] font-semibold cursor-pointer whitespace-nowrap border ${
+                    capitalLocked
+                      ? 'bg-[#fef2f2] border-[#fecaca] text-red-600'
+                      : 'bg-white border-[#e7e5e4] text-[#78716c]'
+                  }`}
+                >
+                  {capitalLocked ? '🔓 Mở khoá nguồn vốn' : '🔒 Khoá nguồn vốn'}
+                </button>
+              ) : capitalLocked ? (
+                <span
+                  className="px-3 py-1 rounded-lg text-[11px] font-semibold bg-[#fef2f2] text-red-600 border border-[#fecaca] whitespace-nowrap"
+                  title="Nguồn vốn (Vốn đầu tư) đang bị khoá — không thể thêm/sửa/xoá"
+                >
+                  🔒 Nguồn vốn đã khoá
+                </span>
+              ) : null}
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <Stat label="Lương lái xe + BHXH" value={luong} color="#dc2626" onClick={() => setShowDriverSalary(true)} />
               <Stat label="Nhiên liệu" value={nhienLieu} color="#0891b2" onClick={() => setSheetCat('nhienLieu')} />
@@ -995,6 +1111,7 @@ function VehicleDetail({
           month={month}
           year={year}
           canEdit={canEditFin}
+          locked={capitalLocked && isInvestKey(sheetCat)}
           toast={toast}
           onChanged={loadFin}
           onClose={() => setSheetCat(null)}
@@ -1090,7 +1207,7 @@ function Stat({ label, value, unit, color, onClick }: { label: string; value: nu
 
 /* ─────────────────────────────────────────────────────────── */
 function FinanceItemsModal({
-  vehicleId, ownerUserId, category, label, items, month, year, canEdit, toast, onChanged, onClose,
+  vehicleId, ownerUserId, category, label, items, month, year, canEdit, locked, toast, onChanged, onClose,
 }: {
   vehicleId: number;
   ownerUserId: number | null;
@@ -1100,10 +1217,13 @@ function FinanceItemsModal({
   month: number;
   year: number;
   canEdit: boolean;
+  /** Nguồn vốn đang bị khoá — chỉ xem, không cho thêm/sửa/xoá. */
+  locked?: boolean;
   toast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   onChanged: () => void;
   onClose: () => void;
 }) {
+  const editable = canEdit && !locked;
   const [password, setPassword] = useState('');
   const [form, setForm] = useState({ itemDate: '', name: '', amount: '', note: '', invoice: false, invoiceAmount: '', cashAmount: '', transferAmount: '' });
   const [editId, setEditId] = useState<number | null>(null);
@@ -1152,6 +1272,7 @@ function FinanceItemsModal({
     });
   };
   const submit = async () => {
+    if (locked) { toast('Nguồn vốn đang bị khoá', 'error'); return; }
     if (!canEdit) return;
     if (!password) { toast('Nhập mật khẩu', 'error'); return; }
     const amount = Number(String(form.amount).replace(/[^0-9]/g, ''));
@@ -1188,6 +1309,7 @@ function FinanceItemsModal({
     }
   };
   const remove = async (it: (typeof items)[number]) => {
+    if (locked) { toast('Nguồn vốn đang bị khoá', 'error'); return; }
     if (!password) { toast('Nhập mật khẩu để xoá', 'error'); return; }
     try {
       await financeApi.deleteCostItem(it.id, { password });
@@ -1207,7 +1329,7 @@ function FinanceItemsModal({
       footer={
         <>
           <button onClick={onClose} className="px-4 py-2 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] cursor-pointer">Đóng</button>
-          {canEdit && (
+          {editable && (
             <button onClick={submit} disabled={saving} className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white disabled:opacity-50 cursor-pointer">
               {saving ? 'Đang lưu...' : editId ? '💾 Cập nhật' : '➕ Thêm'}
             </button>
@@ -1237,7 +1359,7 @@ function FinanceItemsModal({
                 </p>
               </div>
               <span className="text-[12px] font-bold whitespace-nowrap" style={{ color: '#dc2626' }}>{fmt(it.amount)} ₫</span>
-              {canEdit && (
+              {editable && (
                 <>
                   <button onClick={() => startEdit(it)} className="px-1.5 py-0.5 rounded text-[10px] border border-[#e7e5e4] cursor-pointer">✏️</button>
                   <button onClick={() => remove(it)} className="px-1.5 py-0.5 rounded text-[10px] border border-[#fecaca] text-red-600 cursor-pointer">🗑</button>
@@ -1248,7 +1370,7 @@ function FinanceItemsModal({
         )}
       </div>
 
-      {canEdit ? (
+      {editable ? (
         <div className="mt-3 grid grid-cols-2 gap-2">
           <div className="col-span-2 text-[11px] font-semibold text-[#78716c]">{editId ? 'Sửa dòng khoản' : 'Thêm dòng khoản mới'}</div>
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Tên khoản (vd: Thay nhớt)" className={`${inputCls} col-span-2`} />
@@ -1281,7 +1403,11 @@ function FinanceItemsModal({
           </div>
         </div>
       ) : (
-        <p className="mt-3 text-[11px] text-[#a8a29e]">Bạn chỉ xem được (cần là chủ vốn của xe hoặc có quyền tài chính để sửa).</p>
+        <p className="mt-3 text-[11px] text-[#a8a29e]">
+          {locked
+            ? '🔒 Nguồn vốn đang bị khoá — chỉ xem, không thể thêm/sửa/xoá. Cần MR BACH hoặc VHUN9 mở khoá.'
+            : 'Bạn chỉ xem được (cần là chủ vốn của xe hoặc có quyền tài chính để sửa).'}
+        </p>
       )}
     </Modal>
   );

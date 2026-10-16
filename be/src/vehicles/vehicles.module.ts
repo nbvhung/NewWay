@@ -9,6 +9,7 @@ import { Submission } from '../database/entities/submission.entity';
 import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { DashboardModule } from '../dashboard/dashboard.module';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { DashboardModule } from '../dashboard/dashboard.module';
       ShippingLine,
     ]),
     DashboardModule,
+    SettingsModule,
   ],
   controllers: [VehiclesController],
   providers: [VehiclesService],

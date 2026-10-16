@@ -2,10 +2,13 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import * as ExcelJS from 'exceljs';
+import * as bcrypt from 'bcryptjs';
 import { Vehicle } from '../database/entities/vehicle.entity';
 import { PlanVehicleOverride } from '../database/entities/plan-vehicle-override.entity';
 import { User } from '../database/entities/user.entity';
@@ -13,10 +16,12 @@ import { Submission } from '../database/entities/submission.entity';
 import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { resolveVisibleDriverIds } from '../common/permissions/permissions';
+import { canManageCapitalLock } from '../common/security/capital-lock';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 import { OverrideDto } from './dto/override.dto';
 import { DashboardService } from '../dashboard/dashboard.service';
+import { SettingsService } from '../settings/settings.service';
 
 const DEFAULT_BEN = 'A';
 const normBen = (v?: string | null): string =>
@@ -38,7 +43,45 @@ export class VehiclesService {
     @InjectRepository(ShippingLine)
     private readonly shippingLinesRepository: Repository<ShippingLine>,
     private readonly dashboardService: DashboardService,
+    private readonly settingsService: SettingsService,
   ) {}
+
+  // ── Khoá nguồn vốn (Vốn đầu tư) ──────────────────────────────────
+
+  /** Trạng thái khoá nguồn vốn + quyền của người đang đăng nhập. */
+  async getCapitalLockState(user?: any): Promise<{
+    locked: boolean;
+    canLock: boolean;
+  }> {
+    return {
+      locked: await this.settingsService.isCapitalLocked(),
+      canLock: canManageCapitalLock(user),
+    };
+  }
+
+  /**
+   * Bật/tắt khoá nguồn vốn. Chỉ tài khoản trong `CAPITAL_LOCK_ALLOWED_USERNAMES`
+   * (MR BACH / VHUN9) được phép; xác thực bằng chính mật khẩu đăng nhập của họ.
+   */
+  async setCapitalLock(
+    user: any,
+    locked: boolean,
+    password?: string,
+  ): Promise<{ locked: boolean; canLock: boolean }> {
+    if (!canManageCapitalLock(user)) {
+      throw new ForbiddenException(
+        'Chỉ MR BACH và VHUN9 được khoá/mở khoá nguồn vốn',
+      );
+    }
+    const actor = await this.usersRepository.findOne({
+      where: { id: Number(user?.sub ?? user?.id) },
+    });
+    if (!actor || !bcrypt.compareSync(password || '', actor.passwordHash)) {
+      throw new UnauthorizedException('Mật khẩu không đúng');
+    }
+    const state = await this.settingsService.setCapitalLocked(locked === true);
+    return { locked: state, canLock: true };
+  }
 
   /** Phạm vi xe được xem: admin có visible_driver_ids → chỉ xe đó; ngược lại tất cả. */
   private scopeIds(user?: any): number[] | null {

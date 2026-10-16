@@ -64,8 +64,24 @@ export interface VehicleFinance {
   items: Record<string, VehicleFinanceItem[]>;
 }
 
+/** Trạng thái khoá nguồn vốn (Vốn đầu tư) + quyền của người đang đăng nhập. */
+export interface CapitalLockState {
+  locked: boolean;
+  canLock: boolean;
+}
+
 export const vehiclesApi = {
   getAll: () => api.get<{ data: VehicleItem[] }>('/admin/vehicles'),
+
+  getCapitalLock: () =>
+    api.get<CapitalLockState>('/admin/vehicles/capital-lock'),
+
+  /** Bật/tắt khoá nguồn vốn — xác thực bằng mật khẩu đăng nhập (MR BACH / VHUN9). */
+  setCapitalLock: (locked: boolean, password: string) =>
+    api.post<CapitalLockState>('/admin/vehicles/capital-lock', {
+      locked,
+      password,
+    }),
 
   listForSelect: () => api.get<{ data: VehicleOption[] }>('/admin/vehicles/select'),
 
