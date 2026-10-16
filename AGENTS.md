@@ -206,7 +206,8 @@ Chi tiết xe lẫn tab Tài chính. Chi phí (`suaChua/nhienLieu/cpKhac`) **kh�
 
 - Trạng thái lưu ở Redis (`settings:capital_lock`), quản lý bởi `SettingsService.isCapitalLocked/setCapitalLocked`.
 - **Chỉ 2 tài khoản** trong `be/src/common/security/capital-lock.ts`
-  (`CAPITAL_LOCK_ALLOWED_USERNAMES = ['bach', 'superadmin']`) được khoá/mở.
+  (`CAPITAL_LOCK_ALLOWED_USERNAMES = ['mrbach', 'bach', 'superadmin']`, không phân biệt hoa/thường)
+  được khoá/mở. Trên production: MR BACH = username `MRBACH`, VHUN9 = `superadmin`.
 - Xác thực bằng **chính mật khẩu đăng nhập** của người thao tác (`bcrypt.compare` với `users.password_hash`).
 - Endpoint (cần `vehicle.view`): `GET /api/admin/vehicles/capital-lock` (trạng thái + `canLock`),
   `POST /api/admin/vehicles/capital-lock` body `{ locked, password }`.

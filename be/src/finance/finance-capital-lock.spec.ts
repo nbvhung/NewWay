@@ -166,6 +166,17 @@ describe('Khoa nguon von - quyen & mat khau', () => {
     expect(settings.setCapitalLocked).toHaveBeenCalledWith(true);
   });
 
+  it('username MRBACH (hoa) van duoc phep', async () => {
+    const { svc, settings } = buildVehicles();
+    const res = await svc.setCapitalLock(
+      { sub: 33, username: 'MRBACH' },
+      true,
+      'secret',
+    );
+    expect(res.locked).toBe(true);
+    expect(settings.setCapitalLocked).toHaveBeenCalledWith(true);
+  });
+
   it('superadmin duoc phep', async () => {
     const { svc } = buildVehicles();
     const res = await svc.setCapitalLock(
