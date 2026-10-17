@@ -1194,7 +1194,10 @@ export class SubmissionsService {
         const driverSubs = subs.filter(
           (s: any) => s.user && s.user.role === 'laixe',
         );
-        const opsSub = subs.find((s: any) => s.userId === user.id) || null;
+        // Sản lượng "SL TỔNG TÀU" do tài khoản OPS nhập (role 'ops'), KHÔNG
+        // phải tài khoản đang bấm xuất file → tìm theo role, không theo user.id.
+        const opsSub =
+          subs.find((s: any) => s.user && s.user.role === 'ops') || null;
 
         // Build sheet name from plan info; replace chars not allowed by Excel
         const sheetName = this.sanitizeSheetName(
@@ -2967,7 +2970,9 @@ export class SubmissionsService {
     }
 
     if (role === 'ops') {
-      const opsSub = submissions.find((s: any) => s.userId === user.id) || null;
+      // Tìm theo role 'ops' (không theo user.id) để mọi tài khoản xuất đều thấy.
+      const opsSub =
+        submissions.find((s: any) => s.user && s.user.role === 'ops') || null;
       const row = ws.addRow({
         stt: '',
         username: '',
