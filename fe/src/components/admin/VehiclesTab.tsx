@@ -804,7 +804,7 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
           <div className="col-span-2 flex items-center gap-2 flex-wrap">
             <span className="text-[11px] font-medium text-[#44403c]">💵 Tiền mặt</span>
             <input value={itemForm.cashAmount} inputMode="numeric" onChange={(e) => onCashChange(e.target.value)} placeholder="0" className="w-[120px] px-2 py-1.5 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]" />
-            <span className="text-[11px] font-medium text-[#44403c] ml-2">🏦 Chuyển khoản</span>
+            <span className="text-[11px] font-medium text-[#44403c] ml-2">🏦 Chuyển khoản (TK CTY)</span>
             <input value={itemForm.transferAmount} inputMode="numeric" onChange={(e) => onTransferChange(e.target.value)} placeholder="0" className="w-[120px] px-2 py-1.5 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]" />
             <span className="text-[10px] text-[#a8a29e]">(mặt + CK = số tiền)</span>
           </div>
@@ -1389,7 +1389,7 @@ function FinanceItemsModal({
           <div className="col-span-2 flex items-center gap-2 flex-wrap">
             <span className="text-[11px] font-medium text-[#44403c]">💵 Tiền mặt</span>
             <input value={form.cashAmount} inputMode="numeric" onChange={(e) => onCashChange(e.target.value)} placeholder="0" className="w-[110px] px-2 py-1.5 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]" />
-            <span className="text-[11px] font-medium text-[#44403c] ml-2">🏦 Chuyển khoản</span>
+            <span className="text-[11px] font-medium text-[#44403c] ml-2">🏦 Chuyển khoản (TK CTY)</span>
             <input value={form.transferAmount} inputMode="numeric" onChange={(e) => onTransferChange(e.target.value)} placeholder="0" className="w-[110px] px-2 py-1.5 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]" />
             <span className="text-[10px] text-[#a8a29e]">(mặt + CK = số tiền)</span>
           </div>

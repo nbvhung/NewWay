@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Zalo Forwarder",
+  "version": "1.0.0",
+  "description": "Tự động chuyển tiếp tin nhắn (chữ, ảnh, file) mà người khác gửi tới tài khoản Zalo vào một nhóm cố định.",
+  "permissions": ["storage", "scripting", "tabs"],
+  "host_permissions": ["https://chat.zalo.me/*"],
+  "action": {
+    "default_title": "Zalo Forwarder",
+    "default_popup": "src/popup.html"
+  },
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://chat.zalo.me/*"],
+      "js": ["src/content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

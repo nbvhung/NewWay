@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zalo Forwarder</title>
+    <style>
+      :root {
+        --bg: #0b1220;
+        --card: #111a2c;
+        --line: #223049;
+        --ink: #e8eefc;
+        --muted: #8fa2c4;
+        --accent: #0ea5e9;
+        --ok: #22c55e;
+        --warn: #f59e0b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        width: 340px;
+        background: var(--bg);
+        color: var(--ink);
+        font: 13px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      header {
+        padding: 14px 16px;
+        background: linear-gradient(135deg, #0ea5e9, #6366f1);
+        font-weight: 700;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .body { padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+      .row { display: flex; flex-direction: column; gap: 5px; }
+      label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+      input[type="text"], input[type="number"] {
+        width: 100%; padding: 8px 10px; border-radius: 8px;
+        border: 1px solid var(--line); background: var(--card); color: var(--ink);
+        outline: none; font-size: 13px;
+      }
+      input:focus { border-color: var(--accent); }
+      .switch { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+      .switch b { font-size: 13px; }
+      .toggle { position: relative; width: 44px; height: 24px; flex: 0 0 auto; }
+      .toggle input { opacity: 0; width: 0; height: 0; }
+      .slider { position: absolute; inset: 0; background: #334155; border-radius: 999px; transition: .2s; cursor: pointer; }
+      .slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; top: 3px;
+        background: #fff; border-radius: 50%; transition: .2s; }
+      .toggle input:checked + .slider { background: var(--ok); }
+      .toggle input:checked + .slider:before { transform: translateX(20px); }
+      .checks { display: flex; gap: 12px; flex-wrap: wrap; }
+      .checks label { display: flex; align-items: center; gap: 6px; text-transform: none; font-size: 12px; color: var(--ink); font-weight: 500; }
+      .hint { font-size: 11px; color: var(--muted); line-height: 1.5; }
+      .status { border-radius: 10px; padding: 10px 12px; background: var(--card); border: 1px solid var(--line); font-size: 12px; }
+      .status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+      .dot.on { background: var(--ok); }
+      .dot.off { background: #64748b; }
+      .dot.warn { background: var(--warn); }
+      .actions { display: flex; gap: 8px; }
+      button {
+        flex: 1; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line);
+        background: var(--card); color: var(--ink); font-weight: 600; font-size: 12px; cursor: pointer;
+      }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #04263a; }
+      button:hover { filter: brightness(1.1); }
+      .saved { color: var(--ok); font-size: 11px; height: 12px; }
+    </style>
+  </head>
+  <body>
+    <header>📤 Zalo Forwarder</header>
+    <div class="body">
+      <div class="switch">
+        <div>
+          <b>Bật chuyển tiếp</b>
+          <div class="hint">Tin nhắn người khác gửi tới sẽ được chuyển vào nhóm cố định.</div>
+        </div>
+        <label class="toggle">
+          <input id="enabled" type="checkbox" />
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="row">
+        <label for="targetGroup">Nhóm đích (tên nhóm Zalo)</label>
+        <input id="targetGroup" type="text" placeholder="VD: Nhóm OPS New Way" />
+        <div class="hint">Phải là tên hiển thị của nhóm mà tài khoản này đã tham gia.</div>
+      </div>
+
+      <div class="row">
+        <label for="prefix">Tiền tố (tuỳ chọn)</label>
+        <input id="prefix" type="text" placeholder="VD: 📷 Tin chuyển tiếp" />
+      </div>
+
+      <div class="row">
+        <label for="delayMs">Độ trễ giữa các lần gửi (ms)</label>
+        <input id="delayMs" type="number" min="300" step="100" />
+      </div>
+
+      <div class="checks">
+        <label><input id="includeText" type="checkbox" /> Chữ</label>
+        <label><input id="includeImages" type="checkbox" /> Ảnh</label>
+        <label><input id="includeFiles" type="checkbox" /> File</label>
+        <label><input id="debug" type="checkbox" /> Debug</label>
+      </div>
+
+      <div class="switch">
+        <div>
+          <b>Quét hội thoại chưa đọc</b>
+          <div class="hint">Tự mở từng hội thoại có tin chưa đọc để chuyển tiếp (không chỉ hội thoại đang mở).</div>
+        </div>
+        <label class="toggle">
+          <input id="autoScanUnread" type="checkbox" />
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="status" id="status">
+        <span class="dot off" id="dot"></span><span id="statusText">Đang kiểm tra...</span>
+      </div>
+
+      <div class="actions">
+        <button id="save" class="primary">💾 Lưu</button>
+        <button id="test">🧪 Gửi thử</button>
+      </div>
+      <div class="saved" id="saved"></div>
+
+      <div class="hint">
+        Cần mở tab <b>chat.zalo.me</b> và đăng nhập. Extension chỉ chạy khi tab Zalo Web đang mở.
+        Nếu Zalo đổi giao diện, có thể cần cập nhật selector.
+      </div>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
