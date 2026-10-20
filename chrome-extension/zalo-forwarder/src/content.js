@@ -74,6 +74,8 @@
     debug: false,
     autoScanUnread: false,
     scanIntervalMs: 20000,
+    /** true = chuột phải tin nhắn → "Chuyển tiếp" (giữ ảnh gốc, không gửi link). */
+    useForward: true,
   };
 
   let settings = { ...DEFAULTS };
@@ -666,6 +668,206 @@
     return false;
   }
 
+  // ───────── Chuyển tiếp bằng CHUỘT PHẢI → "Chuyển tiếp" ─────────
+
+  function findLastIncomingNode() {
+    const nodes = getMessageNodes();
+    for (let i = nodes.length - 1; i >= 0; i--) {
+      if (!isOutgoing(nodes[i])) return nodes[i];
+    }
+    return null;
+  }
+
+  /** Tìm mục trong menu chuột phải theo chữ (ưu tiên gần điểm click). */
+  function findMenuItemByText(re, near) {
+    const all = Array.from(
+      document.querySelectorAll(
+        '[role="menuitem"], [class*="menu"] li, [class*="menu"] div, [class*="context"] li, [class*="context"] div, [class*="popup"] div, li',
+      ),
+    ).filter(isVisible);
+    const seen = new Set();
+    const cands = [];
+    for (const e of all) {
+      if (seen.has(e)) continue;
+      seen.add(e);
+      const t = (e.innerText || '').trim();
+      if (!t || t.length > 40 || !re.test(t)) continue;
+      const r = e.getBoundingClientRect();
+      if (r.width > 420 || r.height > 100) continue;
+      const dist = near ? Math.hypot(r.left - near.x, r.top - near.y) : 0;
+      cands.push({ e, dist, area: r.width * r.height });
+    }
+    cands.sort((a, b) => a.dist - b.dist || a.area - b.area);
+    return cands[0]?.e || null;
+  }
+
+  /** Tìm hộp thoại "Chuyển tiếp" (modal có ô tìm kiếm). */
+  function findForwardDialog() {
+    const sels = [
+      '[role="dialog"]',
+      '[class*="modal"]',
+      '[class*="dialog"]',
+      '[class*="forward"]',
+      '[class*="popup"]',
+    ];
+    const seen = new Set();
+    const cands = [];
+    for (const s of sels) {
+      for (const d of document.querySelectorAll(s)) {
+        if (seen.has(d) || !isVisible(d)) continue;
+        seen.add(d);
+        const hasInput = !!d.querySelector('input');
+        const looksForward = /chuyển tiếp|forward|người nhận|chọn nhóm/i.test(
+          d.innerText || '',
+        );
+        if (!hasInput && !looksForward) continue;
+        const r = d.getBoundingClientRect();
+        if (r.width < 200 || r.height < 120) continue;
+        cands.push(d);
+      }
+    }
+    cands.sort((a, b) => {
+      const ra = a.getBoundingClientRect();
+      const rb = b.getBoundingClientRect();
+      return rb.width * rb.height - ra.width * ra.height;
+    });
+    return cands[0] || null;
+  }
+
+  async function clickForwardConfirm(dialog) {
+    const scope = dialog || document;
+    const btns = Array.from(
+      scope.querySelectorAll('button, [role="button"], div[class*="btn"]'),
+    ).filter(isVisible);
+    const prefer = btns.filter((b) => {
+      const meta = `${b.innerText || ''} ${b.getAttribute('aria-label') || ''}`;
+      return /chuyển tiếp|gửi|xong|hoàn tất|done|forward/i.test(meta);
+    });
+    const target = prefer.find((b) => (b.innerText || '').trim().length < 30);
+    if (target) {
+      target.click();
+      return true;
+    }
+    return false;
+  }
+
+  /** Chuột phải tin nhắn → "Chuyển tiếp" → chọn nhóm đích → xác nhận. */
+  async function forwardMessageElement(el, groupName) {
+    if (!el || !el.isConnected) throw new Error('Tin nhắn không còn trên màn hình');
+    el.scrollIntoView({ block: 'center', inline: 'nearest' });
+    await sleep(350);
+
+    const r = el.getBoundingClientRect();
+    const at = {
+      x: r.left + Math.min(30, Math.max(5, r.width / 2)),
+      y: r.top + Math.min(18, Math.max(5, r.height / 2)),
+    };
+    const opts = {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX: at.x,
+      clientY: at.y,
+      button: 2,
+      buttons: 2,
+    };
+    el.dispatchEvent(new MouseEvent('mousedown', opts));
+    el.dispatchEvent(new MouseEvent('mouseup', opts));
+    el.dispatchEvent(new MouseEvent('contextmenu', opts));
+    await sleep(500);
+
+    let item = findMenuItemByText(/chuyển tiếp|forward/i, at);
+    if (!item) {
+      el.dispatchEvent(new MouseEvent('contextmenu', opts));
+      await sleep(450);
+      item = findMenuItemByText(/chuyển tiếp|forward/i, at);
+    }
+    if (!item) {
+      const menuTexts = Array.from(
+        document.querySelectorAll('[role="menuitem"], li'),
+      )
+        .filter(isVisible)
+        .map((e) => (e.innerText || '').trim())
+        .filter(Boolean)
+        .slice(0, 12)
+        .join(' | ');
+      throw new Error(
+        `Không thấy mục "Chuyển tiếp" trong menu chuột phải${menuTexts ? ` (menu: ${menuTexts})` : ''}`,
+      );
+    }
+    report('info', 'Bấm "Chuyển tiếp"');
+    item.click();
+    await sleep(900);
+
+    let dialog = findForwardDialog();
+    for (let i = 0; i < 3 && !dialog; i++) {
+      await sleep(800);
+      dialog = findForwardDialog();
+    }
+    if (!dialog) throw new Error('Không thấy hộp thoại chuyển tiếp');
+    report('info', 'Đã mở hộp thoại chuyển tiếp');
+
+    const search = dialog.querySelector(
+      'input[type="search"], input[placeholder*="Tìm"], input[placeholder*="tìm"], input[placeholder*="Search"], input',
+    );
+    if (search) {
+      search.focus();
+      await setNativeValue(search, '');
+      await sleep(150);
+      await setNativeValue(search, groupName);
+      for (const type of ['keydown', 'keyup']) {
+        search.dispatchEvent(
+          new KeyboardEvent(type, {
+            key: 'Enter',
+            code: 'Enter',
+            keyCode: 13,
+            which: 13,
+            bubbles: true,
+          }),
+        );
+      }
+      await sleep(1300);
+    } else {
+      report('warn', 'Hộp thoại không có ô tìm kiếm — thử chọn trong danh sách');
+    }
+
+    const targetNorm = norm(groupName);
+    const rowSel = '[role="option"], [role="listitem"], [class*="item"], li, label';
+    let hit = Array.from(dialog.querySelectorAll(rowSel))
+      .filter(isVisible)
+      .find((x) => norm(x.innerText || '').includes(targetNorm));
+    if (!hit && search) {
+      await sleep(1000);
+      hit = Array.from(dialog.querySelectorAll(rowSel))
+        .filter(isVisible)
+        .find((x) => norm(x.innerText || '').includes(targetNorm));
+    }
+    if (!hit) {
+      throw new Error(`Không thấy nhóm "${groupName}" trong hộp thoại chuyển tiếp`);
+    }
+    hit.click();
+    await sleep(500);
+
+    let ok = await clickForwardConfirm(dialog);
+    if (!ok) {
+      await sleep(300);
+      ok = await clickForwardConfirm(null);
+    }
+    if (!ok) throw new Error('Không thấy nút xác nhận chuyển tiếp');
+    await sleep(900);
+
+    const still = findForwardDialog();
+    if (still) {
+      await clickForwardConfirm(still);
+      await sleep(600);
+    }
+    if (findForwardDialog()) {
+      throw new Error('Hộp thoại chuyển tiếp vẫn còn — chưa xác nhận được');
+    }
+    report('success', `Đã chuyển tiếp vào "${groupName}"`);
+    return true;
+  }
+
   // ─────────────────────────── Forward ───────────────────────────
   async function forwardOne(job) {
     const originHash = currentHash();
@@ -682,6 +884,21 @@
       return;
     }
 
+    // ── Cách 1 (mặc định): chuột phải tin nhắn → "Chuyển tiếp" ──
+    if (settings.useForward && job.el) {
+      if (!job.el.isConnected) {
+        report('warn', 'Tin nhắn không còn hiển thị — bỏ qua (không gửi link)');
+        return;
+      }
+      try {
+        await forwardMessageElement(job.el, groupName);
+      } catch (e) {
+        report('error', `Chuyển tiếp lỗi: ${e.message}`);
+      }
+      return;
+    }
+
+    // ── Cách 2 (dự phòng): mở nhóm đích rồi gửi lại nội dung ──
     const imageUrls = job.images || [];
     try {
       report('info', `Mở nhóm đích: ${groupName}`);
@@ -768,7 +985,7 @@
       if (!content.text && !content.images.length && !content.files.length) continue;
 
       const signature = messageSignature(el, content);
-      enqueue({ signature, ...content });
+      enqueue({ signature, ...content, el });
     }
   }
 
@@ -935,6 +1152,8 @@
           text: msg.text || 'Test forward từ Zalo Forwarder',
           images: [],
           files: [],
+          // Có tin gần nhất → chuyển tiếp chính tin đó (chuột phải).
+          el: findLastIncomingNode(),
         });
         sendResponse({ ok: true });
       }
