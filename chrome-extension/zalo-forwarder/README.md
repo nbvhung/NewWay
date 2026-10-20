@@ -22,16 +22,16 @@ Tự động chuyển tiếp **tin nhắn mà người khác gửi tới tài kh
 1. Mở **một** tab `https://chat.zalo.me` và đăng nhập.
 2. Bấm icon extension → bật **Bật chuyển tiếp**.
 3. Nhập **Nhóm đích** = tên hiển thị đúng của nhóm (vd `Nhóm OPS New Way`).
-4. Giữ bật **Chuyển tiếp gốc (giữ ảnh)** → **Lưu**.
+4. Giữ bật **Chia sẻ gốc (giữ ảnh)** → **Lưu**.
 
-Khi có tin **đến**, extension sẽ **chuột phải tin nhắn → "Chuyển tiếp"**, chọn
-**nhóm đích** trong hộp thoại rồi xác nhận. Tin được chuyển tiếp **nguyên bản**
-(giữ ảnh/file), **không lấy link và không gửi lại link**.
+Khi có tin **đến**, extension sẽ **chuột phải nội dung tin nhắn → "Chia sẻ"**,
+nhập tên **nhóm đích** vào ô tìm kiếm, chọn nhóm rồi bấm nút **"Chia sẻ"**. Tin
+được chia sẻ **nguyên bản** (giữ ảnh/file), **không lấy link và không gửi link**.
 
-**Gửi thử:** bấm **🧪 Gửi thử** — extension chuyển tiếp tin nhắn gần nhất.
+**Gửi thử:** bấm **🧪 Gửi thử** — extension chia sẻ tin nhắn gần nhất.
 **Quét ngay:** bấm **🔄 Quét hội thoại chưa đọc ngay** để quét một lượt.
-**Log:** khung **Log gần đây** hiển thị từng bước (mở menu, bấm Chuyển tiếp, chọn
-nhóm, xác nhận, thành công/lỗi) giúp kiểm tra nhanh.
+**Log:** khung **Log gần đây** hiển thị từng bước (mở menu, bấm Chia sẻ, nhập tên
+nhóm, chọn nhóm, bấm Chia sẻ, thành công/lỗi) giúp kiểm tra nhanh.
 
 ### Phạm vi hoạt động
 - Mặc định chỉ theo dõi **hội thoại đang mở**.
@@ -40,14 +40,14 @@ nhóm, xác nhận, thành công/lỗi) giúp kiểm tra nhanh.
 - **Không** forward tin do chính bạn gửi đi.
 - **Chống lặp:** nếu đang ở chính nhóm đích thì bỏ qua.
 
-> Nếu tắt **Chuyển tiếp gốc**, extension dùng cách cũ: mở nhóm đích rồi gửi lại
+> Nếu tắt **Chia sẻ gốc**, extension dùng cách cũ: mở nhóm đích rồi gửi lại
 > nội dung (chữ/ảnh/file).
 
 ## 3. Cơ chế hoạt động
 
 | Thành phần | Vai trò |
 |---|---|
-| `src/content.js` | Phát hiện tin đến; chuột phải tin → "Chuyển tiếp" → chọn nhóm đích → xác nhận |
+| `src/content.js` | Phát hiện tin đến; chuột phải tin → "Chia sẻ" → tìm & chọn nhóm đích → bấm Chia sẻ |
 | `src/background.js` | Mở tab Zalo khi bật extension + lưu log |
 | `src/popup.*` | Giao diện cấu hình |
 
@@ -75,11 +75,11 @@ Bật **Debug** trong popup rồi mở DevTools (F12) tab Zalo để xem log `[Z
 
 | Log | Nguyên nhân / cách xử lý |
 |---|---|
-| `Không thấy mục "Chuyển tiếp" trong menu chuột phải` | Zalo đổi menu hoặc không nhận sự kiện chuột phải tổng hợp → gửi tôi dòng log (có kèm danh sách menu) để chỉnh. Thử tắt/bật lại "Chuyển tiếp gốc". |
-| `Không thấy hộp thoại chuyển tiếp` | Menu đã bấm nhưng hộp thoại chưa mở → F5 tab Zalo, thử lại; nếu vẫn lỗi gửi log. |
-| `Không thấy nhóm "…" trong hộp thoại chuyển tiếp` | Nhập đúng tên hiển thị của nhóm; nhóm phải có trong danh sách chọn người nhận. |
-| `Hộp thoại chuyển tiếp vẫn còn — chưa xác nhận được` | Nút xác nhận khác tên → gửi log để chỉnh. |
-| `Không tìm thấy ô soạn tin` (chế độ gửi lại) | Chỉ dùng khi tắt "Chuyển tiếp gốc" → F5 tab Zalo. |
+| `Không thấy mục "Chia sẻ" trong menu chuột phải` | Zalo đổi menu hoặc không nhận sự kiện chuột phải tổng hợp → gửi tôi dòng log (có kèm danh sách mục gần đó) để chỉnh. |
+| `Không thấy hộp thoại chia sẻ` | Menu đã bấm nhưng hộp thoại chưa mở → F5 tab Zalo, thử lại; nếu vẫn lỗi gửi log. |
+| `Không thấy nhóm "…" trong hộp thoại chia sẻ` | Nhập đúng tên hiển thị của nhóm; nhóm phải có trong danh sách chọn người nhận. |
+| `Hộp thoại chia sẻ vẫn còn — chưa xác nhận được` | Nút xác nhận khác tên → gửi log để chỉnh. |
+| `Không tìm thấy ô soạn tin` (chế độ gửi lại) | Chỉ dùng khi tắt "Chia sẻ gốc" → F5 tab Zalo. |
 | Quét chưa đọc = 0 nhưng có tin chưa đọc | Zalo đổi badge → bật Debug, gửi tôi log; hoặc mở trực tiếp hội thoại đó. |
 
 Sau khi cập nhật extension: **Reload** ở `chrome://extensions` và **F5** tab Zalo.

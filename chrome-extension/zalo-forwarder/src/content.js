@@ -678,11 +678,27 @@
     return null;
   }
 
+  /** Phần tử nội dung tin nhắn để bấm chuột phải (bong bóng/tin nhắn). */
+  function contextTarget(el) {
+    const cands = [
+      '[class*="content"]',
+      '[class*="bubble"]',
+      '[class*="text"]',
+      'p',
+      'span',
+    ];
+    for (const s of cands) {
+      const c = el.querySelector(s);
+      if (c && isVisible(c)) return c;
+    }
+    return el;
+  }
+
   /** Tìm mục trong menu chuột phải theo chữ (ưu tiên gần điểm click). */
-  function findMenuItemByText(re, near) {
+  function findMenuItemByText(re, near, excludeEl) {
     const all = Array.from(
       document.querySelectorAll(
-        '[role="menuitem"], [class*="menu"] li, [class*="menu"] div, [class*="context"] li, [class*="context"] div, [class*="popup"] div, li',
+        '[role="menuitem"], [class*="menu"] div, [class*="menu"] span, [class*="context"] div, [class*="context"] span, [class*="popup"] div, li, span, div',
       ),
     ).filter(isVisible);
     const seen = new Set();
@@ -690,14 +706,19 @@
     for (const e of all) {
       if (seen.has(e)) continue;
       seen.add(e);
+      if (excludeEl && (e.contains(excludeEl) || excludeEl.contains(e))) continue;
       const t = (e.innerText || '').trim();
-      if (!t || t.length > 40 || !re.test(t)) continue;
+      if (!t || t.length > 30 || !re.test(t)) continue;
       const r = e.getBoundingClientRect();
-      if (r.width > 420 || r.height > 100) continue;
-      const dist = near ? Math.hypot(r.left - near.x, r.top - near.y) : 0;
-      cands.push({ e, dist, area: r.width * r.height });
+      if (r.width > 360 || r.height > 80) continue;
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const dist = near ? Math.hypot(cx - near.x, cy - near.y) : 0;
+      if (near && dist > 350) continue;
+      const exact = t.replace(/\s+/g, ' ').length <= 12 ? 0 : 1;
+      cands.push({ e, dist, area: r.width * r.height, exact });
     }
-    cands.sort((a, b) => a.dist - b.dist || a.area - b.area);
+    cands.sort((a, b) => a.exact - b.exact || a.dist - b.dist || a.area - b.area);
     return cands[0]?.e || null;
   }
 
@@ -708,6 +729,9 @@
       '[class*="modal"]',
       '[class*="dialog"]',
       '[class*="forward"]',
+      '[class*="share"]',
+      '[class*="sheet"]',
+      '[class*="drawer"]',
       '[class*="popup"]',
     ];
     const seen = new Set();
@@ -717,10 +741,10 @@
         if (seen.has(d) || !isVisible(d)) continue;
         seen.add(d);
         const hasInput = !!d.querySelector('input');
-        const looksForward = /chuyển tiếp|forward|người nhận|chọn nhóm/i.test(
+        const looksShare = /chia sẻ|share|chuyển tiếp|forward|người nhận|chọn nhóm/i.test(
           d.innerText || '',
         );
-        if (!hasInput && !looksForward) continue;
+        if (!hasInput && !looksShare) continue;
         const r = d.getBoundingClientRect();
         if (r.width < 200 || r.height < 120) continue;
         cands.push(d);
@@ -740,8 +764,9 @@
       scope.querySelectorAll('button, [role="button"], div[class*="btn"]'),
     ).filter(isVisible);
     const prefer = btns.filter((b) => {
+      if (b.disabled || b.getAttribute('aria-disabled') === 'true') return false;
       const meta = `${b.innerText || ''} ${b.getAttribute('aria-label') || ''}`;
-      return /chuyển tiếp|gửi|xong|hoàn tất|done|forward/i.test(meta);
+      return /chia sẻ|share|chuyển tiếp|gửi|xong|hoàn tất|done|forward/i.test(meta);
     });
     const target = prefer.find((b) => (b.innerText || '').trim().length < 30);
     if (target) {
@@ -754,10 +779,11 @@
   /** Chuột phải tin nhắn → "Chuyển tiếp" → chọn nhóm đích → xác nhận. */
   async function forwardMessageElement(el, groupName) {
     if (!el || !el.isConnected) throw new Error('Tin nhắn không còn trên màn hình');
-    el.scrollIntoView({ block: 'center', inline: 'nearest' });
+    const target = contextTarget(el);
+    target.scrollIntoView({ block: 'center', inline: 'nearest' });
     await sleep(350);
 
-    const r = el.getBoundingClientRect();
+    const r = target.getBoundingClientRect();
     const at = {
       x: r.left + Math.min(30, Math.max(5, r.width / 2)),
       y: r.top + Math.min(18, Math.max(5, r.height / 2)),
@@ -771,31 +797,39 @@
       button: 2,
       buttons: 2,
     };
-    el.dispatchEvent(new MouseEvent('mousedown', opts));
-    el.dispatchEvent(new MouseEvent('mouseup', opts));
-    el.dispatchEvent(new MouseEvent('contextmenu', opts));
-    await sleep(500);
+    target.dispatchEvent(new MouseEvent('mousedown', opts));
+    target.dispatchEvent(new MouseEvent('mouseup', opts));
+    target.dispatchEvent(new MouseEvent('contextmenu', opts));
+    await sleep(600);
 
-    let item = findMenuItemByText(/chuyển tiếp|forward/i, at);
+    const SHARE_RE = /chia sẻ|share|chuyển tiếp|forward/i;
+    let item = findMenuItemByText(SHARE_RE, at, target);
     if (!item) {
-      el.dispatchEvent(new MouseEvent('contextmenu', opts));
-      await sleep(450);
-      item = findMenuItemByText(/chuyển tiếp|forward/i, at);
+      target.dispatchEvent(new MouseEvent('contextmenu', opts));
+      await sleep(500);
+      item = findMenuItemByText(SHARE_RE, at, target);
     }
     if (!item) {
-      const menuTexts = Array.from(
-        document.querySelectorAll('[role="menuitem"], li'),
+      const nearby = Array.from(
+        document.querySelectorAll('div, span, li, [role="menuitem"]'),
       )
         .filter(isVisible)
+        .filter((e) => {
+          if (e.contains(target) || target.contains(e)) return false;
+          const rr = e.getBoundingClientRect();
+          const cx = rr.left + rr.width / 2;
+          const cy = rr.top + rr.height / 2;
+          return Math.hypot(cx - at.x, cy - at.y) < 350;
+        })
         .map((e) => (e.innerText || '').trim())
-        .filter(Boolean)
-        .slice(0, 12)
+        .filter((t) => t && t.length <= 30)
+        .slice(0, 20)
         .join(' | ');
       throw new Error(
-        `Không thấy mục "Chuyển tiếp" trong menu chuột phải${menuTexts ? ` (menu: ${menuTexts})` : ''}`,
+        `Không thấy mục "Chia sẻ" trong menu chuột phải${nearby ? ` (gần: ${nearby})` : ''}`,
       );
     }
-    report('info', 'Bấm "Chuyển tiếp"');
+    report('info', 'Bấm "Chia sẻ"');
     item.click();
     await sleep(900);
 
@@ -804,12 +838,15 @@
       await sleep(800);
       dialog = findForwardDialog();
     }
-    if (!dialog) throw new Error('Không thấy hộp thoại chuyển tiếp');
-    report('info', 'Đã mở hộp thoại chuyển tiếp');
+    if (!dialog) throw new Error('Không thấy hộp thoại chia sẻ');
+    report('info', 'Đã mở hộp thoại chia sẻ');
 
     const search = dialog.querySelector(
       'input[type="search"], input[placeholder*="Tìm"], input[placeholder*="tìm"], input[placeholder*="Search"], input',
     );
+    const searchEditable = !search
+      ? Array.from(dialog.querySelectorAll('[contenteditable="true"]')).find(isVisible)
+      : null;
     if (search) {
       search.focus();
       await setNativeValue(search, '');
@@ -827,6 +864,10 @@
         );
       }
       await sleep(1300);
+    } else if (searchEditable) {
+      searchEditable.focus();
+      await insertText(searchEditable, groupName);
+      await sleep(1300);
     } else {
       report('warn', 'Hộp thoại không có ô tìm kiếm — thử chọn trong danh sách');
     }
@@ -843,17 +884,16 @@
         .find((x) => norm(x.innerText || '').includes(targetNorm));
     }
     if (!hit) {
-      throw new Error(`Không thấy nhóm "${groupName}" trong hộp thoại chuyển tiếp`);
+      throw new Error(`Không thấy nhóm "${groupName}" trong hộp thoại chia sẻ`);
     }
     hit.click();
-    await sleep(500);
 
-    let ok = await clickForwardConfirm(dialog);
-    if (!ok) {
-      await sleep(300);
-      ok = await clickForwardConfirm(null);
+    let ok = false;
+    for (let i = 0; i < 6 && !ok; i++) {
+      await sleep(600);
+      ok = (await clickForwardConfirm(dialog)) || (await clickForwardConfirm(null));
     }
-    if (!ok) throw new Error('Không thấy nút xác nhận chuyển tiếp');
+    if (!ok) throw new Error('Không thấy nút "Chia sẻ" để xác nhận');
     await sleep(900);
 
     const still = findForwardDialog();
@@ -862,9 +902,9 @@
       await sleep(600);
     }
     if (findForwardDialog()) {
-      throw new Error('Hộp thoại chuyển tiếp vẫn còn — chưa xác nhận được');
+      throw new Error('Hộp thoại chia sẻ vẫn còn — chưa xác nhận được');
     }
-    report('success', `Đã chuyển tiếp vào "${groupName}"`);
+    report('success', `Đã chia sẻ vào "${groupName}"`);
     return true;
   }
 
@@ -893,7 +933,7 @@
       try {
         await forwardMessageElement(job.el, groupName);
       } catch (e) {
-        report('error', `Chuyển tiếp lỗi: ${e.message}`);
+        report('error', `Chia sẻ lỗi: ${e.message}`);
       }
       return;
     }
