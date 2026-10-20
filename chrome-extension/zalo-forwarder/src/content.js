@@ -82,6 +82,10 @@
   const queue = [];
   const seen = new Set(); // chữ ký tin đã xử lý (chống trùng)
 
+  // Hàng đợi gửi riêng cho TAB GỬI (tránh gửi chồng khi nhiều tin đến dồn dập)
+  const directQueue = [];
+  let directProcessing = false;
+
   // ─────────────────────────── Tiện ích ───────────────────────────
   const log = (...a) => {
     if (settings.debug) console.log('%c[ZF]', 'color:#0ea5e9;font-weight:bold', ...a);
@@ -114,6 +118,16 @@
     }
     return [];
   };
+
+  /**
+   * Hiển thị thật sự. KHÔNG dùng offsetParent vì phần tử trong khung
+   * position:fixed (như ô soạn tin Zalo) có offsetParent = null.
+   */
+  function isVisible(el) {
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  }
 
   const norm = (s) =>
     (s || '')
@@ -300,7 +314,7 @@
         const text = norm(el.innerText || '');
         const title = norm(el.getAttribute('title') || '');
         if (!text && !title) continue;
-        if (el.offsetParent === null) continue;
+        if (!isVisible(el)) continue;
         if (text.includes(target) || title.includes(target)) candidates.push(el);
       }
     }
@@ -386,13 +400,17 @@
     await sleep(1200);
   }
 
-  /** Tìm ô soạn tin (contenteditable hiển thị, nằm dưới cùng). */
+  /**
+   * Tìm ô soạn tin. Zalo có thể dùng contenteditable="true" | "plaintext-only"
+   * | "" hoặc chỉ có thuộc tính contenteditable. Không dựa vào offsetParent.
+   */
   async function getComposer() {
-    for (let i = 0; i < 20; i++) {
-      // Cách chuẩn: contenteditable thật sự
+    for (let i = 0; i < 60; i++) {
       const editables = Array.from(
-        document.querySelectorAll('[contenteditable="true"]'),
-      ).filter((e) => e.offsetParent !== null);
+        document.querySelectorAll(
+          '[contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""], [contenteditable]',
+        ),
+      ).filter(isVisible);
       if (editables.length) {
         editables.sort(
           (a, b) =>
@@ -402,16 +420,22 @@
       }
       // Fallback theo selector cấu hình
       const c = pick(SELECTORS.composer);
-      if (c) return c;
+      if (c && isVisible(c)) return c;
+      if (i === 20) {
+        report('warn', 'Chưa thấy ô soạn tin, tiếp tục chờ...');
+      }
       await sleep(250);
     }
+    // Thử lần cuối kiểu textarea
+    const ta = Array.from(document.querySelectorAll('textarea')).filter(isVisible).pop();
+    if (ta) return ta;
     throw new Error('Không tìm thấy ô soạn tin');
   }
 
   function findSendButton() {
     const cands = Array.from(
       document.querySelectorAll('button, [role="button"]'),
-    ).filter((b) => b.offsetParent !== null);
+    ).filter(isVisible);
     const scored = cands
       .map((b) => {
         const meta = `${b.className || ''} ${b.getAttribute('aria-label') || ''} ${b.title || ''} ${b.id || ''}`;
@@ -429,14 +453,28 @@
     return scored.length ? scored[0].b : null;
   }
 
+  function composerText(el) {
+    if (!el) return '';
+    if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+      return String(el.value || '');
+    }
+    return String(el.innerText || el.textContent || '');
+  }
+
   function composerEmpty(el) {
-    const text = (el.innerText || el.textContent || '').trim();
-    const hasImage = !!el.querySelector('img');
+    const text = composerText(el).trim();
+    const hasImage = !!el.querySelector && !!el.querySelector('img');
     return !text && !hasImage;
   }
 
   async function insertText(composer, text) {
     composer.focus();
+    if (composer.tagName === 'TEXTAREA' || composer.tagName === 'INPUT') {
+      composer.value = text;
+      composer.dispatchEvent(new Event('input', { bubbles: true }));
+      composer.dispatchEvent(new Event('change', { bubbles: true }));
+      return;
+    }
     try {
       const sel = window.getSelection();
       const range = document.createRange();
@@ -446,7 +484,7 @@
       document.execCommand('insertText', false, text);
     } catch {}
     await sleep(150);
-    if (!(composer.innerText || composer.textContent || '').trim()) {
+    if (!composerText(composer).trim()) {
       // Fallback: đặt trực tiếp + phát sự kiện input
       composer.textContent = text;
       try {
@@ -495,7 +533,7 @@
     const composer = await getComposer();
     report('info', `Đang gửi: ${content.slice(0, 60)}${content.length > 60 ? '…' : ''}`);
     await insertText(composer, content);
-    if (!(composer.innerText || composer.textContent || '').trim()) {
+    if (!composerText(composer).trim()) {
       report('error', 'Không chèn được chữ vào ô soạn tin');
       return false;
     }
@@ -549,14 +587,17 @@
       bubbles: true,
       cancelable: true,
     });
-    const before = (composer.innerText || '').trim();
+    const before = composerText(composer).trim();
     composer.dispatchEvent(evt);
     await sleep(2200);
 
     // Nếu paste không tạo preview ảnh/file và ô soạn không đổi → coi như thất bại
     const hasPreview =
-      !!composer.querySelector('img, [class*="preview"], [class*="attachment"], [class*="file"]');
-    const after = (composer.innerText || '').trim();
+      !!composer.querySelector &&
+      !!composer.querySelector(
+        'img, [class*="preview"], [class*="attachment"], [class*="file"]',
+      );
+    const after = composerText(composer).trim();
     const changed = hasPreview || after !== before;
 
     if (!changed) {
@@ -681,10 +722,34 @@
           }
         }
       }
-      report(ok ? 'success' : 'warn', `Đã gửi trực tiếp (${job.signature})`);
+      report(
+        ok ? 'success' : 'error',
+        ok
+          ? `Đã gửi trực tiếp vào nhóm đích (${job.signature})`
+          : `GỬI THẤT BẠI (${job.signature}) — xem log phía trên`,
+      );
     } catch (e) {
       report('error', `Gửi trực tiếp lỗi: ${e.message}`);
     }
+  }
+
+  async function drainDirect() {
+    if (directProcessing) return;
+    directProcessing = true;
+    try {
+      while (directQueue.length) {
+        const job = directQueue.shift();
+        await sendDirect(job);
+        await sleep(Math.max(300, settings.delayMs));
+      }
+    } finally {
+      directProcessing = false;
+    }
+  }
+
+  function enqueueDirect(job) {
+    directQueue.push(job);
+    void drainDirect();
   }
 
   async function drainQueue() {
@@ -765,55 +830,96 @@
   }
 
   // ─────────── Quét hội thoại CHƯA ĐỌC (tuỳ chọn) ───────────
-  const UNREAD_SELECTORS = [
-    '[class*="unread"]',
-    '[class*="badge"]',
-    '[class*="notify"]',
-  ];
 
-  function unreadConversations() {
-    const items = pickAll(SELECTORS.conversationItem);
+  /** Lấy các dòng hội thoại ở cột trái (không phụ thuộc class cụ thể). */
+  function getConversationItems() {
     const out = [];
-    for (const it of items) {
-      let hasUnread = false;
-      for (const sel of UNREAD_SELECTORS) {
-        const badge = it.querySelector(sel);
-        if (badge && (badge.innerText || '').trim()) {
-          hasUnread = true;
-          break;
-        }
+    const seen = new Set();
+    const selectors = [
+      '[class*="conv-item"]',
+      '[class*="conversation-item"]',
+      '[class*="contact-item"]',
+      '[class*="thread-item"]',
+      '[role="listitem"]',
+      '[role="button"]',
+      'li',
+    ];
+    for (const sel of selectors) {
+      for (const el of document.querySelectorAll(sel)) {
+        if (seen.has(el)) continue;
+        seen.add(el);
+        if (!isVisible(el)) continue;
+        const r = el.getBoundingClientRect();
+        // Chỉ lấy dòng trong cột danh sách hội thoại bên trái
+        if (r.left > 440 || r.width < 90 || r.height < 36 || r.height > 140) continue;
+        const text = (el.innerText || '').trim();
+        if (!text || text.length > 300) continue;
+        out.push(el);
       }
-      if (!hasUnread) {
-        // Fallback: class của item chứa "unread"
-        if (/unread/i.test(String(it.className || ''))) hasUnread = true;
-      }
-      if (hasUnread) out.push(it);
     }
     return out;
   }
 
+  function hasUnreadBadge(el) {
+    if (/unread/i.test(String(el.className || ''))) return true;
+    const label = String(el.getAttribute('aria-label') || '');
+    if (/chưa đọc|unread|未读/i.test(label)) return true;
+    const badgeSelectors = [
+      '[class*="unread"]',
+      '[class*="badge"]',
+      '[class*="count"]',
+      '[class*="notify"]',
+    ];
+    for (const sel of badgeSelectors) {
+      for (const b of el.querySelectorAll(sel)) {
+        if (!isVisible(b)) continue;
+        const t = (b.innerText || '').trim();
+        if (/^\d+$/.test(t)) return true;
+        if (/unread/i.test(String(b.className || ''))) return true;
+      }
+    }
+    return false;
+  }
+
+  function unreadConversations() {
+    return getConversationItems().filter(hasUnreadBadge);
+  }
+
   let scanningUnread = false;
-  async function scanUnreadLoop() {
+  async function scanUnreadLoop(force = false) {
     if (isWorkerTab) return;
-    if (scanningUnread || !settings.enabled || !settings.autoScanUnread) return;
+    if (scanningUnread) return;
+    if (!settings.enabled) {
+      if (force) report('warn', 'Chưa bật "Bật chuyển tiếp"');
+      return;
+    }
+    if (!force && !settings.autoScanUnread) return;
     if (processing) return;
     scanningUnread = true;
     const originHash = currentHash();
     try {
-      const items = unreadConversations();
-      if (items.length) log(`Có ${items.length} hội thoại chưa đọc`);
-      for (const item of items.slice(0, 5)) {
-        if (!settings.enabled || !settings.autoScanUnread) break;
+      const all = getConversationItems();
+      const items = all.filter(hasUnreadBadge);
+      report(
+        'info',
+        `Quét hội thoại: thấy ${all.length} dòng, ${items.length} có tin chưa đọc`,
+      );
+      const maxPerRun = 5;
+      for (const item of items.slice(0, maxPerRun)) {
+        if (!settings.enabled) break;
         item.click();
-        await sleep(1500);
+        await sleep(1800);
         scan();
-        // đợi queue xử lý xong trước khi sang hội thoại khác
-        for (let i = 0; i < 60 && (processing || queue.length); i++) {
+        // đợi queue nội bộ xử lý xong (nếu chạy chế độ dự phòng)
+        for (let i = 0; i < 40 && (processing || queue.length); i++) {
           await sleep(500);
         }
       }
+      if (items.length > maxPerRun) {
+        report('info', `Còn ${items.length - maxPerRun} hội thoại, sẽ quét tiếp vòng sau`);
+      }
     } catch (e) {
-      warn('scanUnread lỗi:', e.message);
+      report('error', `Quét chưa đọc lỗi: ${e.message}`);
     } finally {
       await openConversationByHash(originHash);
       scanningUnread = false;
@@ -824,7 +930,7 @@
     setInterval(() => {
       if (settings.enabled && settings.autoScanUnread) void scanUnreadLoop();
     }, Math.max(5000, Number(settings.scanIntervalMs) || 20000));
-    log('Unread scanner đã bật');
+    report('info', 'Bộ quét hội thoại chưa đọc đã chạy');
   }
 
   // ─────────────────────────── Khởi động ───────────────────────────
@@ -852,7 +958,10 @@
         report('info', isWorkerTab ? 'Đã đặt làm TAB GỬI' : 'Không còn là TAB GỬI');
         sendResponse({ ok: true });
       } else if (msg?.type === 'ZF_SEND_DIRECT') {
-        void sendDirect(msg.job);
+        enqueueDirect(msg.job);
+        sendResponse({ ok: true });
+      } else if (msg?.type === 'ZF_SCAN_NOW') {
+        void scanUnreadLoop(true);
         sendResponse({ ok: true });
       } else if (msg?.type === 'ZF_STATUS') {
         sendResponse({

@@ -76,7 +76,19 @@ const SELECTORS = {
 
 Bật **Debug** trong popup rồi mở DevTools (F12) tab Zalo để xem log `[ZF]`.
 
-## 5. Hạn chế & lưu ý
+## 5. Xử lý sự cố (xem "Log gần đây" trong popup)
+
+| Log | Nguyên nhân / cách xử lý |
+|---|---|
+| `Không tìm thấy ô soạn tin` | TAB GỬI chưa mở đúng hội thoại hoặc Zalo chưa render xong → bấm F5 tab đó, mở đúng nhóm đích rồi thử lại. |
+| `Không chèn được chữ vào ô soạn tin` | Ô soạn tin chưa focus/khác cấu trúc → F5 lại tab, hoặc bật Debug để xem DOM. |
+| `Ô soạn vẫn còn nội dung — gửi thất bại` | Nút Gửi/Enter không kích hoạt → thử gửi tay 1 tin trong tab đó để chắc tài khoản không bị hạn chế. |
+| `Không tìm thấy nhóm/hội thoại` (chế độ dự phòng) | Tên nhóm không khớp → dùng TAB GỬI, hoặc nhập đúng tên hiển thị. |
+| Quét chưa đọc = 0 nhưng có tin chưa đọc | Zalo đổi badge → bật Debug, gửi tôi log; hoặc mở trực tiếp hội thoại đó (chế độ theo dõi hội thoại đang mở vẫn chạy). |
+
+Tab GỬI phải **mở đúng nhóm đích** và **được F5 sau khi cập nhật extension**.
+
+## 6. Hạn chế & lưu ý
 
 - Tab Zalo phải **mở thường trực** (nên ghim tab); tắt máy/ngủ là ngừng.
 - Phụ thuộc giao diện Zalo → có thể hỏng sau khi Zalo cập nhật.

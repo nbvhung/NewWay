@@ -110,6 +110,25 @@ $('setWorker').addEventListener('click', async () => {
   });
 });
 
+$('scanNow').addEventListener('click', async () => {
+  save(false);
+  const tabs = await chrome.tabs.query({ url: 'https://chat.zalo.me/*' });
+  if (!tabs.length) {
+    $('saved').textContent = '⚠ Chưa mở tab chat.zalo.me';
+    setTimeout(() => ($('saved').textContent = ''), 2200);
+    return;
+  }
+  const { workerTabId } = await chrome.storage.local.get({ workerTabId: null });
+  const target = tabs.find((t) => t.id !== workerTabId) || tabs[0];
+  try {
+    await chrome.tabs.sendMessage(target.id, { type: 'ZF_SCAN_NOW' });
+    $('saved').textContent = '✓ Đã yêu cầu quét — xem Log';
+  } catch {
+    $('saved').textContent = '⚠ Tab Zalo chưa sẵn sàng (F5 lại tab Zalo)';
+  }
+  setTimeout(() => ($('saved').textContent = ''), 2500);
+});
+
 $('test').addEventListener('click', async () => {
   save(false);
   const tab = await getZaloTab();
