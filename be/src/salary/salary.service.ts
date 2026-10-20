@@ -53,11 +53,41 @@ export class SalaryService {
   ): Promise<{ message: string }> {
     const user = await this.usersRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException('Không tìm thấy tài xế');
+    const oldPayBhxh = user.payBhxh;
+    const oldOldCar = user.oldCar;
     if (dto.allowanceFarHome !== undefined)
       user.allowanceFarHome = dto.allowanceFarHome;
     if (dto.oldCar !== undefined) user.oldCar = dto.oldCar;
     if (dto.payBhxh !== undefined) user.payBhxh = dto.payBhxh;
     await this.usersRepository.save(user);
+
+    // Áp dụng giá trị nền cho các bản ghi lương TƯƠNG LAI (tháng sau trở đi)
+    // chưa thanh toán và đang mang đúng giá trị nền CŨ (tức chưa bị sửa tay khác đi).
+    const now = this.nowVN();
+    const futureScope = '(year > :y OR (year = :y AND month > :m))';
+    const params = { id, y: now.year, m: now.month };
+    if (dto.payBhxh !== undefined && dto.payBhxh !== oldPayBhxh) {
+      await this.recordsRepository
+        .createQueryBuilder()
+        .update()
+        .set({ hasBhxh: dto.payBhxh })
+        .where('driver_id = :id', params)
+        .andWhere(futureScope, params)
+        .andWhere('has_bhxh = :old', { old: oldPayBhxh })
+        .andWhere('salary_paid = false')
+        .execute();
+    }
+    if (dto.oldCar !== undefined && dto.oldCar !== oldOldCar) {
+      await this.recordsRepository
+        .createQueryBuilder()
+        .update()
+        .set({ hasOldCar: dto.oldCar })
+        .where('driver_id = :id', params)
+        .andWhere(futureScope, params)
+        .andWhere('has_old_car = :old', { old: oldOldCar })
+        .andWhere('salary_paid = false')
+        .execute();
+    }
     return { message: 'Đã lưu giá trị nền' };
   }
 
@@ -326,11 +356,12 @@ export class SalaryService {
       allowanceFarHome: prev?.allowanceFarHome ?? null,
       hasFarHome: prev?.hasFarHome ?? false,
       allowanceWaitLoadingRate: prev?.allowanceWaitLoadingRate ?? 0,
-      hasOldCar: prev?.hasOldCar ?? user.oldCar ?? false,
+      // "Giá trị nền" là mặc định cho tháng mới → ưu tiên giá trị nền của tài xế.
+      hasOldCar: user.oldCar ?? prev?.hasOldCar ?? false,
       oldCarAllowance: prev?.oldCarAllowance ?? null,
       hasParkingHph2: prev?.hasParkingHph2 ?? false,
       parkingHph2: prev?.parkingHph2 ?? null,
-      hasBhxh: prev?.hasBhxh ?? user.payBhxh ?? true,
+      hasBhxh: user.payBhxh ?? prev?.hasBhxh ?? true,
       chiHo: 0,
       advanceDeduct: 0,
       advanceDeductOverridden: false,

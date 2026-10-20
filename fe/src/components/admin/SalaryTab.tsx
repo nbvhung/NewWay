@@ -525,6 +525,22 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     }
   };
 
+  // Tick là lưu ngay (optimistic) cho các cờ phụ cấp/BHXH — không cần bấm nút Lưu.
+  const toggleRecordFlag = async (
+    field: 'hasBhxh' | 'hasOldCar' | 'hasParkingHph2',
+    checked: boolean,
+  ) => {
+    if (!selectedRecord) return;
+    setForm(f => ({ ...f, [field]: checked }));
+    try {
+      await salaryApi.updateRecord(selectedRecord.id, { [field]: checked });
+      await loadData(true);
+    } catch (e: any) {
+      setForm(f => ({ ...f, [field]: !checked }));
+      toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
+    }
+  };
+
   const updateFarHomeAmount = async (amountStr: string) => {
     if (!selectedRecord) return;
     try {
@@ -860,7 +876,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                     {/* Xe cũ */}
                     <div className="border border-[#e7e5e4] rounded-lg p-3">
                       <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
-                        <input type="checkbox" checked={form.hasOldCar} onChange={e => setForm(f => ({ ...f, hasOldCar: e.target.checked }))}
+                        <input type="checkbox" checked={form.hasOldCar} onChange={e => toggleRecordFlag('hasOldCar', e.target.checked)}
                           className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
                         🚚 Xe cũ
                       </label>
@@ -873,7 +889,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                     {/* Gửi xe HPH 2 */}
                     <div className="border border-[#e7e5e4] rounded-lg p-3">
                       <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
-                        <input type="checkbox" checked={form.hasParkingHph2} onChange={e => setForm(f => ({ ...f, hasParkingHph2: e.target.checked }))}
+                        <input type="checkbox" checked={form.hasParkingHph2} onChange={e => toggleRecordFlag('hasParkingHph2', e.target.checked)}
                           className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
                         🅿️ Gửi xe HPH 2
                       </label>
@@ -886,7 +902,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                     {/* Đóng bảo hiểm (BHXH) */}
                     <div className="border border-[#e7e5e4] rounded-lg p-3">
                       <label className={`${labelCls} cursor-pointer flex items-center gap-2`}>
-                        <input type="checkbox" checked={form.hasBhxh} onChange={e => setForm(f => ({ ...f, hasBhxh: e.target.checked }))}
+                        <input type="checkbox" checked={form.hasBhxh} onChange={e => toggleRecordFlag('hasBhxh', e.target.checked)}
                           className="w-4 h-4 accent-[#f59e0b] cursor-pointer" />
                         🛡️ Đóng bảo hiểm (BHXH)
                       </label>
