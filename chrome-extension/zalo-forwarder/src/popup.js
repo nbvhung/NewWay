@@ -60,6 +60,7 @@ async function refreshStatus() {
   const dot = $('dot');
   const text = $('statusText');
   const tab = await getZaloTab();
+  const { workerTabId } = await chrome.storage.local.get({ workerTabId: null });
   if (!tab) {
     dot.className = 'dot warn';
     text.textContent = 'Chưa mở tab chat.zalo.me — hãy mở và đăng nhập';
@@ -71,6 +72,7 @@ async function refreshStatus() {
       dot.className = res.enabled ? 'dot on' : 'dot off';
       const parts = [res.enabled ? 'Đang bật' : 'Đang tắt'];
       if (res.targetGroup) parts.push(`→ ${res.targetGroup}`);
+      parts.push(workerTabId ? (tab.id === workerTabId ? 'TAB GỬI' : 'có TAB GỬI') : 'chưa đặt TAB GỬI');
       if (res.queued) parts.push(`${res.queued} đang chờ`);
       text.textContent = parts.join(' · ');
     }
@@ -83,6 +85,29 @@ async function refreshStatus() {
 $('save').addEventListener('click', async () => {
   save();
   await refreshStatus();
+});
+
+$('setWorker').addEventListener('click', async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id || !String(tab.url || '').startsWith('https://chat.zalo.me')) {
+    $('saved').textContent = '⚠ Mở tab chat.zalo.me ở đúng nhóm đích rồi bấm lại';
+    setTimeout(() => ($('saved').textContent = ''), 2500);
+    return;
+  }
+  // Lấy tên hội thoại đang mở để điền vào "Nhóm đích" nếu trống
+  try {
+    const st = await chrome.tabs.sendMessage(tab.id, { type: 'ZF_STATUS' });
+    if (st?.header) {
+      const name = String(st.header).split('\n')[0].trim();
+      if (name) $('targetGroup').value = name;
+    }
+  } catch {}
+  save(false);
+  chrome.runtime.sendMessage({ type: 'ZF_SET_WORKER', tabId: tab.id }, (res) => {
+    $('saved').textContent = res?.ok ? '✓ Đã đặt TAB GỬI' : '⚠ Không đặt được tab gửi';
+    setTimeout(() => ($('saved').textContent = ''), 2200);
+    refreshStatus();
+  });
 });
 
 $('test').addEventListener('click', async () => {
@@ -104,7 +129,33 @@ $('test').addEventListener('click', async () => {
   setTimeout(() => ($('saved').textContent = ''), 2200);
 });
 
+function renderLogs(logs) {
+  const box = $('logList');
+  if (!box) return;
+  if (!Array.isArray(logs) || logs.length === 0) {
+    box.textContent = 'Chưa có log';
+    return;
+  }
+  box.innerHTML = '';
+  logs.slice(0, 120).forEach((l) => {
+    const div = document.createElement('div');
+    div.className = `l-${l.level || 'info'}`;
+    div.textContent = l.msg || '';
+    box.appendChild(div);
+  });
+}
+
+$('clearLogs')?.addEventListener('click', () => {
+  chrome.storage.local.set({ zfLogs: [] }, () => renderLogs([]));
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.zfLogs) renderLogs(changes.zfLogs.newValue);
+});
+
 chrome.storage.sync.get(DEFAULTS, (s) => {
   fill(s);
   refreshStatus();
 });
+
+chrome.storage.local.get({ zfLogs: [] }, ({ zfLogs }) => renderLogs(zfLogs));

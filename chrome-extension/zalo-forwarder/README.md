@@ -19,14 +19,26 @@ Tự động chuyển tiếp **tin nhắn mà người khác gửi tới tài kh
 
 ## 2. Sử dụng
 
+### Cách khuyến nghị: TAB GỬI riêng (ổn định nhất)
+1. Mở một tab `https://chat.zalo.me`, **mở đúng nhóm đích**.
+2. Bấm icon extension → **📌 Đặt tab đang mở (nhóm đích) làm TAB GỬI**.
+   (Tên nhóm được tự điền vào ô **Nhóm đích**.)
+3. Bật **Bật chuyển tiếp** → **Lưu**.
+4. Mở (các) tab Zalo khác ở hội thoại cần theo dõi. Khi có tin **đến**, extension
+   sẽ gửi thẳng vào TAB GỬI (không cần tìm/đổi nhóm).
+
+Giữ tab GỬI luôn mở (có thể ghim). Nếu tab GỬI bị đóng, extension tự xử lý theo
+cách dự phòng (mở nhóm đích theo tên trong tab nguồn).
+
+### Cách dự phòng (không đặt TAB GỬI)
 1. Mở `https://chat.zalo.me` và đăng nhập.
 2. Bấm icon extension → bật **Bật chuyển tiếp**.
-3. Nhập **Nhóm đích** = tên hiển thị đúng của nhóm (vd `Nhóm OPS New Way`).
-4. Chọn loại nội dung cần chuyển (Chữ / Ảnh / File), tuỳ chọn **Tiền tố**, **Độ trễ**.
-5. Bấm **Lưu**. Từ giờ, khi có tin nhắn **đến** trong hội thoại đang mở,
-   extension sẽ tự mở nhóm đích, gửi nội dung rồi quay lại.
+3. Nhập **Nhóm đích** = tên hiển thị đúng của nhóm.
+4. Chọn loại nội dung cần chuyển (Chữ / Ảnh / File), **Tiền tố**, **Độ trễ** → **Lưu**.
 
-**Gửi thử:** bấm **🧪 Gửi thử** để kiểm tra cấu hình nhóm đích.
+**Gửi thử:** bấm **🧪 Gửi thử** để kiểm tra.
+**Log:** khung **Log gần đây** trong popup hiển thị từng bước (phát hiện tin,
+mở nhóm, gửi thành công/lỗi) giúp kiểm tra nhanh.
 
 ### Phạm vi hoạt động
 - Mặc định chỉ theo dõi **hội thoại đang mở**.
@@ -39,8 +51,8 @@ Tự động chuyển tiếp **tin nhắn mà người khác gửi tới tài kh
 
 | Thành phần | Vai trò |
 |---|---|
-| `src/content.js` | Theo dõi DOM Zalo, phát hiện tin đến, trích chữ/ảnh/file, mở nhóm đích và gửi |
-| `src/background.js` | Mở tab Zalo khi bật extension / khởi động Chrome |
+| `src/content.js` | Theo dõi DOM Zalo, phát hiện tin đến, trích chữ/ảnh/file; gửi trực tiếp ở TAB GỬI hoặc tự mở nhóm đích (dự phòng) |
+| `src/background.js` | Điều phối TAB GỬI (worker tab), lưu log, mở tab Zalo khi bật extension |
 | `src/popup.*` | Giao diện cấu hình |
 
 - Ảnh/file được tải bằng `fetch()` (cùng phiên đăng nhập) → tạo `File` → dán vào ô

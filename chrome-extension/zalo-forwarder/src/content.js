@@ -78,6 +78,7 @@
 
   let settings = { ...DEFAULTS };
   let processing = false;
+  let isWorkerTab = false; // true = tab đang mở nhóm đích (chỉ gửi, không quét)
   const queue = [];
   const seen = new Set(); // chữ ký tin đã xử lý (chống trùng)
 
@@ -87,6 +88,17 @@
   };
   const warn = (...a) => console.warn('[ZF]', ...a);
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  /** Ghi log ra popup (chrome.storage) + console để dễ kiểm tra. */
+  function report(level, msg) {
+    const line = `[${new Date().toLocaleTimeString('vi-VN')}] ${msg}`;
+    try {
+      chrome.runtime.sendMessage({ type: 'ZF_LOG', level, msg: line });
+    } catch {}
+    if (level === 'error') console.error('[ZF]', msg);
+    else if (level === 'warn') console.warn('[ZF]', msg);
+    else log(msg);
+  }
 
   const pick = (list) => {
     for (const sel of list) {
@@ -265,30 +277,107 @@
     return el ? (el.innerText || '').trim() : '';
   }
 
-  /** Mở hội thoại theo tên (dùng ô tìm kiếm của Zalo). */
-  async function openConversationByName(name) {
-    const search = pick(SELECTORS.searchInput);
-    if (!search) throw new Error('Không tìm thấy ô tìm kiếm hội thoại');
-
-    search.focus();
-    await setNativeValue(search, name);
-    await sleep(900);
-
+  /** Tìm phần tử hội thoại có tên khớp trong toàn bộ trang (fallback). */
+  function findConversationByName(name) {
     const target = norm(name);
-    const items = pickAll(SELECTORS.conversationItem);
-    const hit =
-      items.find((it) => norm(it.innerText).includes(target)) ||
-      items.find((it) => norm(it.getAttribute('title') || '').includes(target));
+    if (!target) return null;
+    const seenEls = new Set();
+    const candidates = [];
 
-    if (!hit) {
-      // thử bỏ từ khoá tìm kiếm rồi tìm lại
-      await setNativeValue(search, '');
-      throw new Error(`Không tìm thấy nhóm/hội thoại "${name}"`);
+    // Ưu tiên các item theo selector quen thuộc
+    const itemLists = [
+      '[class*="contact-item"]',
+      '[class*="conversation-item"]',
+      '[class*="conv-item"]',
+      '[class*="contact"] [class*="item"]',
+      '[role="listitem"]',
+      'li',
+    ];
+    for (const sel of itemLists) {
+      for (const el of document.querySelectorAll(sel)) {
+        if (seenEls.has(el)) continue;
+        seenEls.add(el);
+        const text = norm(el.innerText || '');
+        const title = norm(el.getAttribute('title') || '');
+        if (!text && !title) continue;
+        if (el.offsetParent === null) continue;
+        if (text.includes(target) || title.includes(target)) candidates.push(el);
+      }
     }
-    hit.click();
-    await sleep(1200);
-    await setNativeValue(search, '');
+    if (!candidates.length) return null;
+    // Ưu tiên item có văn bản ngắn nhất (tránh khớp cả khung lớn)
+    candidates.sort(
+      (a, b) => (a.innerText || '').length - (b.innerText || '').length,
+    );
+    return candidates[0];
+  }
+
+  /** Mở hội thoại/nhóm theo tên (ô tìm kiếm + fallback quét DOM). */
+  async function openConversationByName(name) {
+    const cleanName = String(name || '').trim();
+    if (!cleanName) throw new Error('Chưa cấu hình nhóm đích');
+
+    // Nếu đã ở đúng hội thoại rồi thì thôi
+    if (norm(headerText()).includes(norm(cleanName))) {
+      report('info', `Đang ở nhóm đích "${cleanName}"`);
+      return;
+    }
+
+    const search = pick(SELECTORS.searchInput);
+    if (search) {
+      try {
+        search.focus();
+        await setNativeValue(search, '');
+        await sleep(150);
+        await setNativeValue(search, cleanName);
+        // Gửi Enter để Zalo chạy tìm kiếm
+        for (const type of ['keydown', 'keyup']) {
+          search.dispatchEvent(
+            new KeyboardEvent(type, {
+              key: 'Enter',
+              code: 'Enter',
+              keyCode: 13,
+              which: 13,
+              bubbles: true,
+            }),
+          );
+        }
+        await sleep(1200);
+      } catch (e) {
+        report('warn', `Lỗi nhập ô tìm kiếm: ${e.message}`);
+      }
+    } else {
+      report('warn', 'Không thấy ô tìm kiếm — thử quét danh sách hội thoại');
+    }
+
+    let hit = findConversationByName(cleanName);
+    if (!hit) {
+      // thử đợi thêm rồi tìm lại
+      await sleep(1200);
+      hit = findConversationByName(cleanName);
+    }
+    if (!hit) {
+      if (search) await setNativeValue(search, '');
+      throw new Error(`Không tìm thấy nhóm/hội thoại "${cleanName}"`);
+    }
+
+    // Click vào item hoặc phần tử cha có thể click
+    let clickable = hit;
+    for (let i = 0; i < 4 && clickable; i++) {
+      const cls = String(clickable.className || '');
+      if (/item|conv|contact|row/i.test(cls) || clickable.tagName === 'A' || clickable.tagName === 'LI') break;
+      clickable = clickable.parentElement;
+    }
+    (clickable || hit).click();
+    await sleep(1400);
+    if (search) await setNativeValue(search, '');
     await sleep(300);
+
+    if (!norm(headerText()).includes(norm(cleanName))) {
+      report('warn', `Đã click "${cleanName}" nhưng tiêu đề hiện tại: "${headerText()}"`);
+    } else {
+      report('info', `Đã mở nhóm đích "${cleanName}"`);
+    }
   }
 
   async function openConversationByHash(hash) {
@@ -297,8 +386,21 @@
     await sleep(1200);
   }
 
+  /** Tìm ô soạn tin (contenteditable hiển thị, nằm dưới cùng). */
   async function getComposer() {
     for (let i = 0; i < 20; i++) {
+      // Cách chuẩn: contenteditable thật sự
+      const editables = Array.from(
+        document.querySelectorAll('[contenteditable="true"]'),
+      ).filter((e) => e.offsetParent !== null);
+      if (editables.length) {
+        editables.sort(
+          (a, b) =>
+            b.getBoundingClientRect().top - a.getBoundingClientRect().top,
+        );
+        return editables[0];
+      }
+      // Fallback theo selector cấu hình
       const c = pick(SELECTORS.composer);
       if (c) return c;
       await sleep(250);
@@ -306,34 +408,118 @@
     throw new Error('Không tìm thấy ô soạn tin');
   }
 
-  async function sendText(text) {
-    if (!text) return;
-    const composer = await getComposer();
-    composer.focus();
-    // Chèn text như người dùng gõ
-    try {
-      document.execCommand('insertText', false, text);
-    } catch {
-      composer.textContent = text;
-    }
-    composer.dispatchEvent(new Event('input', { bubbles: true }));
-    await sleep(200);
+  function findSendButton() {
+    const cands = Array.from(
+      document.querySelectorAll('button, [role="button"]'),
+    ).filter((b) => b.offsetParent !== null);
+    const scored = cands
+      .map((b) => {
+        const meta = `${b.className || ''} ${b.getAttribute('aria-label') || ''} ${b.title || ''} ${b.id || ''}`;
+        let score = 0;
+        if (/send/i.test(meta)) score += 3;
+        if (/gửi|gui/i.test(meta)) score += 2;
+        if (/submit/i.test(meta)) score += 1;
+        const rect = b.getBoundingClientRect();
+        // nút gửi thường ở gần đáy màn hình
+        score += rect.top / window.innerHeight;
+        return { b, score };
+      })
+      .filter((x) => x.score >= 1)
+      .sort((a, b) => b.score - a.score);
+    return scored.length ? scored[0].b : null;
+  }
 
-    const btn = pick(SELECTORS.sendBtn);
-    if (btn && !btn.disabled) {
+  function composerEmpty(el) {
+    const text = (el.innerText || el.textContent || '').trim();
+    const hasImage = !!el.querySelector('img');
+    return !text && !hasImage;
+  }
+
+  async function insertText(composer, text) {
+    composer.focus();
+    try {
+      const sel = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(composer);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      document.execCommand('insertText', false, text);
+    } catch {}
+    await sleep(150);
+    if (!(composer.innerText || composer.textContent || '').trim()) {
+      // Fallback: đặt trực tiếp + phát sự kiện input
+      composer.textContent = text;
+      try {
+        composer.dispatchEvent(
+          new InputEvent('beforeinput', {
+            bubbles: true,
+            cancelable: true,
+            inputType: 'insertText',
+            data: text,
+          }),
+        );
+        composer.dispatchEvent(
+          new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }),
+        );
+      } catch {
+        composer.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  }
+
+  async function submitComposer(composer) {
+    const btn = findSendButton();
+    if (btn && !btn.disabled && btn.getAttribute('aria-disabled') !== 'true') {
       btn.click();
-    } else {
+      return 'button';
+    }
+    for (const type of ['keydown', 'keypress', 'keyup']) {
       composer.dispatchEvent(
-        new KeyboardEvent('keydown', {
+        new KeyboardEvent(type, {
           key: 'Enter',
           code: 'Enter',
           keyCode: 13,
           which: 13,
           bubbles: true,
+          cancelable: true,
         }),
       );
     }
-    await sleep(settings.delayMs);
+    return 'enter';
+  }
+
+  /** Gửi text và xác minh ô soạn đã trống (tức đã gửi). */
+  async function sendText(text) {
+    const content = String(text || '').trim();
+    if (!content) return true;
+    const composer = await getComposer();
+    report('info', `Đang gửi: ${content.slice(0, 60)}${content.length > 60 ? '…' : ''}`);
+    await insertText(composer, content);
+    if (!(composer.innerText || composer.textContent || '').trim()) {
+      report('error', 'Không chèn được chữ vào ô soạn tin');
+      return false;
+    }
+    await submitComposer(composer);
+    for (let i = 0; i < 12; i++) {
+      await sleep(250);
+      if (composerEmpty(composer)) {
+        report('success', 'Đã gửi tin');
+        await sleep(Math.max(300, settings.delayMs));
+        return true;
+      }
+    }
+    // Thử lần 2
+    await submitComposer(composer);
+    for (let i = 0; i < 8; i++) {
+      await sleep(250);
+      if (composerEmpty(composer)) {
+        report('success', 'Đã gửi tin (lần 2)');
+        await sleep(Math.max(300, settings.delayMs));
+        return true;
+      }
+    }
+    report('error', 'Ô soạn vẫn còn nội dung — gửi thất bại');
+    return false;
   }
 
   async function fileFromUrl(url, fallbackName) {
@@ -348,8 +534,11 @@
     return new File([blob], name, { type: blob.type || 'application/octet-stream' });
   }
 
-  /** Dán ảnh/file vào ô soạn tin bằng sự kiện paste tổng hợp. */
-  async function pasteFiles(files) {
+  /**
+   * Dán ảnh/file vào ô soạn tin bằng sự kiện paste tổng hợp.
+   * Trả về true nếu gửi được; false để nơi gọi fallback sang gửi link.
+   */
+  async function pasteFiles(files, fallbackUrls = []) {
     const composer = await getComposer();
     composer.focus();
     const dt = new DataTransfer();
@@ -360,23 +549,44 @@
       bubbles: true,
       cancelable: true,
     });
+    const before = (composer.innerText || '').trim();
     composer.dispatchEvent(evt);
-    await sleep(1500);
+    await sleep(2200);
 
-    const btn = pick(SELECTORS.sendBtn);
-    if (btn && !btn.disabled) btn.click();
-    else {
-      composer.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'Enter',
-          code: 'Enter',
-          keyCode: 13,
-          which: 13,
-          bubbles: true,
-        }),
-      );
+    // Nếu paste không tạo preview ảnh/file và ô soạn không đổi → coi như thất bại
+    const hasPreview =
+      !!composer.querySelector('img, [class*="preview"], [class*="attachment"], [class*="file"]');
+    const after = (composer.innerText || '').trim();
+    const changed = hasPreview || after !== before;
+
+    if (!changed) {
+      report('warn', 'Dán tệp vào ô soạn không được — thử gửi link thay thế');
+      if (fallbackUrls.length) {
+        await sendText(fallbackUrls.join('\n'));
+        return false;
+      }
+      return false;
     }
-    await sleep(settings.delayMs);
+
+    await submitComposer(composer);
+    // Chờ ô soạn trống (đã gửi) — nếu không, thử lần 2
+    for (let i = 0; i < 12; i++) {
+      await sleep(300);
+      if (composerEmpty(composer)) {
+        report('success', `Đã gửi ${files.length} tệp`);
+        await sleep(Math.max(300, settings.delayMs));
+        return true;
+      }
+    }
+    await submitComposer(composer);
+    await sleep(1200);
+    if (composerEmpty(composer)) {
+      report('success', `Đã gửi ${files.length} tệp (lần 2)`);
+      return true;
+    }
+    report('warn', 'Có thể chưa gửi được tệp — thử gửi link thay thế');
+    if (fallbackUrls.length) await sendText(fallbackUrls.join('\n'));
+    return false;
   }
 
   // ─────────────────────────── Forward ───────────────────────────
@@ -384,53 +594,96 @@
     const originHash = currentHash();
     const groupName = settings.targetGroup.trim();
     if (!groupName) {
-      warn('Chưa cấu hình nhóm đích');
+      report('error', 'Chưa cấu hình nhóm đích');
       return;
     }
 
     // Nếu đang ở chính nhóm đích → không forward (chống vòng lặp)
     if (norm(headerText()).includes(norm(groupName))) {
-      log('Đang ở nhóm đích, bỏ qua (chống loop)');
+      report('warn', 'Đang ở nhóm đích — bỏ qua (chống loop)');
       return;
     }
 
+    const imageUrls = job.images || [];
     try {
-      log('Mở nhóm đích:', groupName);
+      report('info', `Mở nhóm đích: ${groupName}`);
       await openConversationByName(groupName);
 
+      let ok = true;
       if (settings.prefix) {
-        await sendText(settings.prefix);
+        ok = (await sendText(settings.prefix)) && ok;
       }
       if (settings.includeText && job.text) {
-        await sendText(job.text);
+        const prefixed = settings.prefix
+          ? `${settings.prefix}\n${job.text}`
+          : job.text;
+        ok = (await sendText(prefixed)) && ok;
       }
-      if (settings.includeImages && job.images.length) {
+      if (settings.includeImages && imageUrls.length) {
         const files = [];
-        for (const url of job.images) {
+        for (const url of imageUrls) {
           try {
             files.push(await fileFromUrl(url));
           } catch (e) {
-            warn('Bỏ qua ảnh lỗi', url, e.message);
+            report('warn', `Bỏ qua ảnh lỗi: ${e.message}`);
           }
         }
-        if (files.length) await pasteFiles(files);
+        if (files.length) await pasteFiles(files, imageUrls);
       }
       if (settings.includeFiles && job.files.length) {
         for (const f of job.files) {
           try {
             const file = await fileFromUrl(f.url, f.name);
-            await pasteFiles([file]);
+            await pasteFiles([file], [f.url]);
           } catch (e) {
-            warn('Bỏ qua file lỗi', f.url, e.message);
+            report('warn', `Bỏ qua file lỗi: ${e.message}`);
           }
         }
       }
-      log('Đã forward xong:', job.signature);
+      report(ok ? 'success' : 'warn', `Xong forward (${job.signature})`);
     } catch (e) {
-      warn('Forward lỗi:', e.message);
+      report('error', `Forward lỗi: ${e.message}`);
     } finally {
       // Quay lại hội thoại ban đầu
       await openConversationByHash(originHash);
+    }
+  }
+
+  /** Gửi trực tiếp vào hội thoại đang mở (dùng ở TAB GỬI). */
+  async function sendDirect(job) {
+    const imageUrls = job.images || [];
+    try {
+      let ok = true;
+      const parts = [];
+      if (settings.prefix) parts.push(settings.prefix);
+      if (settings.includeText && job.text) parts.push(job.text);
+      const caption = parts.join('\n').trim();
+      if (caption) ok = (await sendText(caption)) && ok;
+
+      if (settings.includeImages && imageUrls.length) {
+        const files = [];
+        for (const url of imageUrls) {
+          try {
+            files.push(await fileFromUrl(url));
+          } catch (e) {
+            report('warn', `Bỏ qua ảnh lỗi: ${e.message}`);
+          }
+        }
+        if (files.length) await pasteFiles(files, imageUrls);
+      }
+      if (settings.includeFiles && job.files?.length) {
+        for (const f of job.files) {
+          try {
+            const file = await fileFromUrl(f.url, f.name);
+            await pasteFiles([file], [f.url]);
+          } catch (e) {
+            report('warn', `Bỏ qua file lỗi: ${e.message}`);
+          }
+        }
+      }
+      report(ok ? 'success' : 'warn', `Đã gửi trực tiếp (${job.signature})`);
+    } catch (e) {
+      report('error', `Gửi trực tiếp lỗi: ${e.message}`);
     }
   }
 
@@ -453,13 +706,25 @@
     if (seen.has(job.signature)) return;
     seen.add(job.signature);
     if (seen.size > 2000) seen.clear();
-    queue.push(job);
-    log('Xếp hàng forward:', job);
-    void drainQueue();
+    report('info', `Phát hiện tin mới → chuẩn bị chuyển (${job.signature})`);
+
+    // Ưu tiên chuyển sang TAB GỬI. Nếu chưa đặt tab gửi → tab này tự xử lý.
+    try {
+      chrome.runtime.sendMessage({ type: 'ZF_JOB', job }, (res) => {
+        if (!res || !res.routed) {
+          queue.push(job);
+          void drainQueue();
+        }
+      });
+    } catch {
+      queue.push(job);
+      void drainQueue();
+    }
   }
 
   // ─────────────────────────── Quan sát DOM ───────────────────────────
   function scan() {
+    if (isWorkerTab) return; // tab gửi không quét (chống loop)
     if (!settings.enabled) return;
     const nodes = getMessageNodes();
     if (!nodes.length) return;
@@ -529,6 +794,7 @@
 
   let scanningUnread = false;
   async function scanUnreadLoop() {
+    if (isWorkerTab) return;
     if (scanningUnread || !settings.enabled || !settings.autoScanUnread) return;
     if (processing) return;
     scanningUnread = true;
@@ -564,18 +830,37 @@
   // ─────────────────────────── Khởi động ───────────────────────────
   (async () => {
     await loadSettings();
+
+    // Hỏi background xem tab này có phải TAB GỬI không
+    try {
+      chrome.runtime.sendMessage({ type: 'ZF_GET_CONTEXT' }, (res) => {
+        if (res && res.workerTabId && res.tabId === res.workerTabId) {
+          isWorkerTab = true;
+          report('info', 'Tab này là TAB GỬI (nhóm đích)');
+        }
+      });
+    } catch {}
+
     // Đợi Zalo render xong
     await sleep(1500);
     startObserver();
     startUnreadScanner();
 
     chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-      if (msg?.type === 'ZF_STATUS') {
+      if (msg?.type === 'ZF_SET_WORKER') {
+        isWorkerTab = !!msg.value;
+        report('info', isWorkerTab ? 'Đã đặt làm TAB GỬI' : 'Không còn là TAB GỬI');
+        sendResponse({ ok: true });
+      } else if (msg?.type === 'ZF_SEND_DIRECT') {
+        void sendDirect(msg.job);
+        sendResponse({ ok: true });
+      } else if (msg?.type === 'ZF_STATUS') {
         sendResponse({
           enabled: settings.enabled,
           targetGroup: settings.targetGroup,
           queued: queue.length,
           processing,
+          isWorkerTab,
           header: headerText(),
         });
       } else if (msg?.type === 'ZF_TEST_FORWARD') {
