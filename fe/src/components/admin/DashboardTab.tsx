@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import {
@@ -1013,29 +1013,6 @@ export function DashboardTab() {
             <div className="p-5">
               <DriverFilterBar title="📈 Chi tiết Lợi Nhuận" drivers={ownedDrivers} value={profitDriver} onChange={v => { setProfitDriver(v); setInvestorCapital(''); }} />
 
-              {/* Ô nhập vốn đầu tư (của bạn) */}
-              <div className="mb-4 rounded-xl p-3 flex flex-wrap items-center gap-3" style={{ background: C.surface, border: `1px solid ${C.faint}` }}>
-                <span className="text-[12px] font-semibold" style={{ color: C.muted }}>💵 Số vốn đầu tư (của bạn)</span>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: '#fff', border: `1.5px solid ${C.blue}40` }}>
-                  <span style={{ color: C.blue, fontWeight: 900 }}>$</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={investorCapital}
-                    onChange={e => setInvestorCapital(e.target.value.replace(/[^0-9]/g, ''))}
-                    placeholder="0"
-                    className="outline-none text-[14px] font-bold w-[160px]"
-                    style={{ color: C.ink }}
-                  />
-                  <span className="text-[11px]" style={{ color: C.muted }}>₫</span>
-                </div>
-                {invSel > 0 && (
-                  <span className="text-[11px]" style={{ color: C.muted }}>
-                    / {fmt(invSel)} ₫ tổng vốn {isAll ? '(tất cả xe)' : 'của xe'}
-                  </span>
-                )}
-              </div>
-
               <div className="max-w-3xl">
                 {rows.map(([lbl, val, c], i) => (
                   <div key={i} style={{
@@ -1072,7 +1049,7 @@ export function DashboardTab() {
                 }}>
                   <span style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: 14, fontWeight: 700, color: netSauThue >= 0 ? C.green : C.red }}>
-                      = Lợi nhuận ròng (Sau thuế)
+                      = Lợi nhuận ròng (Sau thuế và Phí quản lý)
                     </span>
                     <span style={{ fontSize: 10, fontWeight: 500, color: C.muted, marginTop: 2 }}>
                       20% Thuế TNDN và 5% Quản lý
@@ -1083,20 +1060,42 @@ export function DashboardTab() {
                   </span>
                 </div>
 
-                {/* Phần của bạn khi đã nhập vốn */}
-                {hasCapital && (
-                  <div style={{ marginTop: 12, padding: '12px 14px', borderRadius: 12, background: C.blueLt, border: `1px solid ${C.blue}30` }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: C.blue, marginBottom: 6 }}>💰 Phần của bạn</div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0' }}>
-                      <span style={{ color: C.muted }}>Lợi nhuận ròng (Trước thuế)</span>
-                      <span style={{ fontWeight: 700, color: myNet >= 0 ? C.green : C.red }}>{myNet >= 0 ? '+' : '-'}{fmt(Math.abs(myNet))} ₫</span>
+                {/* LN của bạn: nhập vốn + % tổng vốn */}
+                <div style={{ marginTop: 12, padding: '12px 14px', borderRadius: 12, background: C.blueLt, border: `1px solid ${C.blue}30` }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.blue, marginBottom: 8 }}>LN của bạn</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 12, color: C.muted }}>Số vốn đầu tư của bạn</span>
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: '#fff', border: `1.5px solid ${C.blue}40` }}>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={investorCapital ? Number(investorCapital).toLocaleString('vi-VN') : ''}
+                        onChange={e => setInvestorCapital(e.target.value.replace(/[^0-9]/g, ''))}
+                        placeholder="0"
+                        className="outline-none text-[14px] font-bold w-[150px]"
+                        style={{ color: C.ink }}
+                      />
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0' }}>
-                      <span style={{ color: C.muted }}>Lợi nhuận ròng sau thuế</span>
-                      <span style={{ fontWeight: 700, color: myNetSauThue >= 0 ? C.green : C.red }}>{myNetSauThue >= 0 ? '+' : '-'}{fmt(Math.abs(myNetSauThue))} ₫</span>
-                    </div>
+                    {invSel > 0 && (
+                      <span style={{ fontSize: 12, color: C.muted }}>
+                        / {fmt(invSel)} tổng vốn {isAll ? '(tất cả xe)' : 'của xe'}
+                        {capRaw > 0 && <b style={{ color: C.blue }}> = {pctOwn.toFixed(2)}% tổng vốn</b>}
+                      </span>
+                    )}
                   </div>
-                )}
+                  {hasCapital && (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0' }}>
+                        <span style={{ color: C.muted }}>Lợi nhuận ròng (Trước thuế)</span>
+                        <span style={{ fontWeight: 700, color: myNet >= 0 ? C.green : C.red }}>{myNet >= 0 ? '+' : '-'}{fmt(Math.abs(myNet))}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0' }}>
+                        <span style={{ color: C.muted }}>Lợi nhuận ròng sau thuế và phí quản lý</span>
+                        <span style={{ fontWeight: 700, color: myNetSauThue >= 0 ? C.green : C.red }}>{myNetSauThue >= 0 ? '+' : '-'}{fmt(Math.abs(myNetSauThue))}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           );
