@@ -829,68 +829,127 @@
     return cands[0]?.e || null;
   }
 
-  /** Tìm 1 emoji cảm xúc bất kỳ trong thanh reaction (fallback nếu không thấy 👍). */
-  function findAnyEmojiControl(near) {
-    const els = Array.from(
-      document.querySelectorAll('span, div, button, img, i'),
-    ).filter(isVisible);
-    const cands = [];
-    for (const e of els) {
+  /** Chụp nhanh các phần tử emoji nhỏ đang hiển thị (để biết cái nào MỚI xuất hiện). */
+  function snapshotEmojis() {
+    const set = new Set();
+    for (const e of document.querySelectorAll('span, div, img, i, button')) {
+      if (!isVisible(e)) continue;
+      const r = e.getBoundingClientRect();
+      if (r.width > 70 || r.height > 70) continue;
       const t = (e.innerText || '').trim();
       const alt = e.getAttribute('alt') || '';
-      const isEmoji =
-        (t && t.length <= 2 && EMOJI_RE.test(t)) ||
-        (alt && EMOJI_RE.test(alt));
-      if (!isEmoji) continue;
-      const meta = `${e.className || ''} ${e.getAttribute('aria-label') || ''} ${e.getAttribute('title') || ''} ${e.parentElement?.className || ''} ${e.parentElement?.getAttribute?.('aria-label') || ''}`;
-      if (!/react|emotion|cảm xúc|cam xuc|like|thích|thich/i.test(meta)) continue;
+      const aria = e.getAttribute('aria-label') || '';
+      if (
+        (t && t.length <= 3 && EMOJI_RE.test(t)) ||
+        (alt && EMOJI_RE.test(alt)) ||
+        (aria && EMOJI_RE.test(aria))
+      ) {
+        set.add(e);
+      }
+    }
+    return set;
+  }
+
+  /** Chọn emoji MỚI xuất hiện (ưu tiên 👍), gần điểm `near`. */
+  function pickNewEmoji(before, near) {
+    const cands = [];
+    for (const e of document.querySelectorAll('span, div, img, i, button')) {
+      if (before && before.has(e)) continue;
+      if (!isVisible(e)) continue;
       const r = e.getBoundingClientRect();
-      if (r.width > 60 || r.height > 60) continue;
+      if (r.width > 70 || r.height > 70) continue;
+      const t = (e.innerText || '').trim();
+      const alt = e.getAttribute('alt') || '';
+      const aria = e.getAttribute('aria-label') || '';
+      const emojiText = t && t.length <= 3 && EMOJI_RE.test(t);
+      const emojiAttr =
+        (alt && EMOJI_RE.test(alt)) || (aria && EMOJI_RE.test(aria));
+      if (!emojiText && !emojiAttr) continue;
       const cx = r.left + r.width / 2;
       const cy = r.top + r.height / 2;
       const dist = near ? Math.hypot(cx - near.x, cy - near.y) : 0;
-      if (near && dist > 340) continue;
-      cands.push({ e, dist, area: r.width * r.height });
+      if (near && dist > 400) continue;
+      const like = t === '👍' || alt === '👍' || aria === '👍';
+      cands.push({ e, dist, like: like ? 0 : 1, area: r.width * r.height });
     }
-    cands.sort((a, b) => a.dist - b.dist || a.area - b.area);
+    cands.sort((a, b) => a.like - b.like || a.dist - b.dist || a.area - b.area);
     return cands[0]?.e || null;
   }
 
-  /** Thả 👍 Like vào tin. Trả về true nếu thấy badge cảm xúc xuất hiện. */
+  /** Liệt kê phần tử mới xuất hiện quanh điểm click (debug). */
+  function debugNewElements(before, near) {
+    const out = [];
+    for (const e of document.querySelectorAll('span, div, img, i, button')) {
+      if (before && before.has(e)) continue;
+      if (!isVisible(e)) continue;
+      const t = (e.innerText || '').trim();
+      const alt = e.getAttribute('alt') || '';
+      const aria = e.getAttribute('aria-label') || '';
+      const title = e.getAttribute('title') || '';
+      if (!t && !alt && !aria && !title) continue;
+      const r = e.getBoundingClientRect();
+      if (r.width > 120 || r.height > 80) continue;
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      if (near && Math.hypot(cx - near.x, cy - near.y) > 400) continue;
+      out.push(
+        `${(t || alt || aria || title).slice(0, 20)}|${String(e.className || '').slice(0, 24)}`,
+      );
+    }
+    return out.slice(0, 20).join(' ; ');
+  }
+
+  /** Thả 👍 Like vào tin. Trả về true nếu thấy badge cảm xúc (hoặc đã click emoji mới). */
   async function reactMessage(el) {
     if (!el || !el.isConnected) return false;
     const target = contextTarget(el);
+    target.scrollIntoView({ block: 'center', inline: 'nearest' });
+    await sleep(200);
     const r = target.getBoundingClientRect();
-    const at = {
-      x: Math.min(r.right - 8, r.left + r.width - 5),
-      y: r.top + r.height / 2,
-    };
+    const at = { x: r.right - 10, y: r.top + r.height / 2 };
 
-    // 1) Hover để hiện thanh cảm xúc trong bong bóng
-    for (const type of ['mouseenter', 'mouseover', 'mousemove']) {
-      target.dispatchEvent(
-        new MouseEvent(type, {
-          bubbles: true,
-          clientX: at.x,
-          clientY: at.y,
-          view: window,
-        }),
-      );
+    // 1) Hover → thanh cảm xúc mới xuất hiện
+    const beforeHover = snapshotEmojis();
+    const hoverTypes = [
+      'pointerover',
+      'pointerenter',
+      'pointermove',
+      'mouseenter',
+      'mouseover',
+      'mousemove',
+    ];
+    for (const node of [target, el]) {
+      for (const type of hoverTypes) {
+        const Ctor =
+          type.startsWith('pointer') && window.PointerEvent
+            ? window.PointerEvent
+            : MouseEvent;
+        try {
+          node.dispatchEvent(
+            new Ctor(type, {
+              bubbles: true,
+              clientX: at.x,
+              clientY: at.y,
+              view: window,
+              pointerType: 'mouse',
+            }),
+          );
+        } catch {}
+      }
     }
-    await sleep(350);
-    let like =
-      findReactionControl(at, target) ||
-      findReactionControl(at, null) ||
-      findAnyEmojiControl(at);
-    if (like) {
+    await sleep(700);
+    let clickedEmoji = false;
+    let emoji = pickNewEmoji(beforeHover, at) || findReactionControl(at, null);
+    if (emoji) {
       try {
-        like.click();
-        await sleep(500);
+        emoji.click();
+        clickedEmoji = true;
+        await sleep(600);
       } catch {}
       if (hasReaction(el)) return true;
     }
 
-    // 2) Mở menu chuột phải → "Thả cảm xúc"/emoji 👍
+    // 2) Menu chuột phải → "Thả cảm xúc" hoặc hàng emoji
     const opts = {
       bubbles: true,
       cancelable: true,
@@ -903,34 +962,51 @@
     target.dispatchEvent(new MouseEvent('mousedown', opts));
     target.dispatchEvent(new MouseEvent('mouseup', opts));
     target.dispatchEvent(new MouseEvent('contextmenu', opts));
-    await sleep(500);
+    await sleep(600);
 
+    const beforeMenu = snapshotEmojis();
     const item = findMenuItemByText(
-      /thả cảm xúc|cảm xúc|cam xuc|yêu thích|yeu thich|like|react/i,
+      /thả cảm xúc|cảm xúc|cam xuc|yêu thích|yeu thich|like|react|thích|thich/i,
       at,
       target,
     );
     if (item) {
       try {
         item.click();
-        await sleep(500);
+        await sleep(700);
       } catch {}
     }
-    like = findReactionControl(at, null) || findAnyEmojiControl(at);
-    if (like) {
+    emoji =
+      pickNewEmoji(beforeMenu, at) ||
+      pickNewEmoji(null, at) ||
+      findReactionControl(at, null);
+    if (emoji) {
       try {
-        like.click();
-        await sleep(500);
+        emoji.click();
+        clickedEmoji = true;
+        await sleep(700);
       } catch {}
     }
-    // Đóng menu nếu còn
+
     try {
       document.body.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true }),
+        new KeyboardEvent('keydown', {
+          key: 'Escape',
+          code: 'Escape',
+          keyCode: 27,
+          which: 27,
+          bubbles: true,
+        }),
       );
     } catch {}
     await sleep(200);
-    return hasReaction(el);
+
+    if (hasReaction(el)) return true;
+
+    const dbg = debugNewElements(beforeMenu, at);
+    if (dbg) report('info', `Ứng viên cảm xúc: ${dbg}`);
+    // Nếu đã click 1 emoji mới (thanh reaction/picker) thì coi như đã thả.
+    return clickedEmoji;
   }
 
   /** Tìm hộp thoại "Chuyển tiếp" (modal có ô tìm kiếm). */
