@@ -20,7 +20,7 @@ import {
 import { CreateDriverAdvanceDto } from './dto/driver-advance.dto';
 import { UpdateDriverBaseDto } from './dto/update-driver-base.dto';
 import {
-  calculateAttendanceBonus,
+  attendanceBonusForMonth,
   nextAttendanceBonusRange,
 } from './attendance-bonus';
 
@@ -398,7 +398,11 @@ export class SalaryService {
     const ngayCong =
       this.daysInMonth(record.month, record.year) -
       (record.daysOff?.length || 0);
-    const chuyenCan = calculateAttendanceBonus(tripSalary);
+    const chuyenCan = attendanceBonusForMonth(
+      record.month,
+      record.year,
+      tripSalary,
+    );
     // Lương cứng theo ngày công (thang mới +1tr so với chính sách cũ)
     let fixedSalary: number;
     if (ngayCong <= 10) {

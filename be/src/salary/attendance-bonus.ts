@@ -3,6 +3,27 @@ const SALARY_STEP = 500_000;
 const BONUS_STEP = 50_000;
 const MAX_BONUS = 1_500_000;
 
+/**
+ * Mốc chuyển chính sách chuyên cần:
+ * - Trước tháng 10/2026: mức CỐ ĐỊNH 500.000đ/tháng.
+ * - Từ tháng 10/2026: tính theo lương chuyến (`calculateAttendanceBonus`).
+ */
+export const ATTENDANCE_BONUS_SWITCH = { year: 2026, month: 10 };
+export const ATTENDANCE_BONUS_FLAT = 500_000;
+
+/** Chuyên cần theo đúng chính sách của TỪNG tháng. */
+export function attendanceBonusForMonth(
+  month: number,
+  year: number,
+  tripSalary: number,
+): number {
+  const ym = Number(year) * 100 + Number(month);
+  const switchYm =
+    ATTENDANCE_BONUS_SWITCH.year * 100 + ATTENDANCE_BONUS_SWITCH.month;
+  if (!Number.isFinite(ym) || ym < switchYm) return ATTENDANCE_BONUS_FLAT;
+  return calculateAttendanceBonus(tripSalary);
+}
+
 export function calculateAttendanceBonus(tripSalary: number): number {
   if (!Number.isFinite(tripSalary) || tripSalary < MIN_TRIP_SALARY) return 0;
 

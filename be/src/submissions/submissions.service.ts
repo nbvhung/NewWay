@@ -30,7 +30,7 @@ import {
   resolveVisibleDriverIds,
 } from '../common/permissions/permissions';
 import {
-  calculateAttendanceBonus,
+  attendanceBonusForMonth,
   nextAttendanceBonusRange,
 } from '../salary/attendance-bonus';
 
@@ -647,7 +647,9 @@ export class SubmissionsService {
         }
       }
 
-      const chuyenCan = calculateAttendanceBonus(
+      const chuyenCan = attendanceBonusForMonth(
+        month,
+        year,
         tripSalaryByDriver.get(d.id) || 0,
       );
       const nextCC = nextAttendanceBonusRange(
@@ -3741,7 +3743,11 @@ export class SubmissionsService {
 
       // --- Các tổng mục ---
       const tong4ChiHo = hasOldCar ? oldCarAllowance : 0;
-      const chuyenCan = calculateAttendanceBonus(planTotalMoney);
+      const chuyenCan = attendanceBonusForMonth(
+        month,
+        year,
+        planTotalMoney,
+      );
       const tong4GuiXe = hasParkingHph2 ? parkingHph2 : 0;
       const tongPhuCap =
         tong4ChiHo +

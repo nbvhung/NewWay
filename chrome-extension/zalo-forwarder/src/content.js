@@ -839,10 +839,12 @@
       const t = (e.innerText || '').trim();
       const alt = e.getAttribute('alt') || '';
       const aria = e.getAttribute('aria-label') || '';
+      const title = e.getAttribute('title') || '';
       if (
         (t && t.length <= 3 && EMOJI_RE.test(t)) ||
         (alt && EMOJI_RE.test(alt)) ||
-        (aria && EMOJI_RE.test(aria))
+        (aria && EMOJI_RE.test(aria)) ||
+        (title && EMOJI_RE.test(title))
       ) {
         set.add(e);
       }
@@ -850,7 +852,17 @@
     return set;
   }
 
-  /** Chọn emoji MỚI xuất hiện (ưu tiên 👍), gần điểm `near`. */
+  /** Chỉ chấp nhận cảm xúc LIKE (👍) hoặc HEART (❤️) — không lấy haha/wow... */
+  function reactionRank(t, alt, aria, title) {
+    const all = `${t} ${alt} ${aria} ${title}`;
+    if (/haha|wow|sad|angry|😆|😮|😢|😡|😂|😍/i.test(all)) return -1;
+    if (all.includes('👍')) return 0;
+    if (all.includes('❤')) return 1;
+    if (/(like|thích|thich|love|heart)/i.test(all)) return 2;
+    return -1;
+  }
+
+  /** Chọn emoji MỚI xuất hiện là Like/Heart, gần điểm `near`. */
   function pickNewEmoji(before, near) {
     const cands = [];
     for (const e of document.querySelectorAll('span, div, img, i, button')) {
@@ -861,18 +873,23 @@
       const t = (e.innerText || '').trim();
       const alt = e.getAttribute('alt') || '';
       const aria = e.getAttribute('aria-label') || '';
+      const title = e.getAttribute('title') || '';
+      const rank = reactionRank(t, alt, aria, title);
+      if (rank < 0) continue; // bỏ qua haha/wow/sad/angry...
       const emojiText = t && t.length <= 3 && EMOJI_RE.test(t);
       const emojiAttr =
-        (alt && EMOJI_RE.test(alt)) || (aria && EMOJI_RE.test(aria));
-      if (!emojiText && !emojiAttr) continue;
+        (alt && EMOJI_RE.test(alt)) ||
+        (aria && EMOJI_RE.test(aria)) ||
+        (title && EMOJI_RE.test(title));
+      const named = /(like|thích|thich|love|heart)/i.test(`${alt} ${aria} ${title}`);
+      if (!emojiText && !emojiAttr && !named) continue;
       const cx = r.left + r.width / 2;
       const cy = r.top + r.height / 2;
       const dist = near ? Math.hypot(cx - near.x, cy - near.y) : 0;
       if (near && dist > 400) continue;
-      const like = t === '👍' || alt === '👍' || aria === '👍';
-      cands.push({ e, dist, like: like ? 0 : 1, area: r.width * r.height });
+      cands.push({ e, dist, rank, area: r.width * r.height });
     }
-    cands.sort((a, b) => a.like - b.like || a.dist - b.dist || a.area - b.area);
+    cands.sort((a, b) => a.rank - b.rank || a.dist - b.dist || a.area - b.area);
     return cands[0]?.e || null;
   }
 
@@ -939,7 +956,18 @@
     }
     await sleep(700);
     let clickedEmoji = false;
-    let emoji = pickNewEmoji(beforeHover, at) || findReactionControl(at, null);
+    let emoji = pickNewEmoji(beforeHover, at);
+    if (!emoji) {
+      // Hover có thể chỉ hiện nút "cảm xúc" → bấm để mở thanh chọn emoji.
+      const reactBtn = findReactionControl(at, null);
+      if (reactBtn) {
+        try {
+          reactBtn.click();
+          await sleep(600);
+        } catch {}
+        emoji = pickNewEmoji(null, at);
+      }
+    }
     if (emoji) {
       try {
         emoji.click();
@@ -976,10 +1004,7 @@
         await sleep(700);
       } catch {}
     }
-    emoji =
-      pickNewEmoji(beforeMenu, at) ||
-      pickNewEmoji(null, at) ||
-      findReactionControl(at, null);
+    emoji = pickNewEmoji(beforeMenu, at) || pickNewEmoji(null, at);
     if (emoji) {
       try {
         emoji.click();
