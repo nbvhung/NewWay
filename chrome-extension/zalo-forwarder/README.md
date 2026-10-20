@@ -17,28 +17,21 @@ Tự động chuyển tiếp **tin nhắn mà người khác gửi tới tài kh
    `D:\NWW\NewWay\chrome-extension\zalo-forwarder`
 4. Ghim extension lên thanh công cụ (biểu tượng ➜)
 
-## 2. Sử dụng
+## 2. Sử dụng (chỉ cần **1 tab Zalo**)
 
-### Cách khuyến nghị: TAB GỬI riêng (ổn định nhất)
-1. Mở một tab `https://chat.zalo.me`, **mở đúng nhóm đích**.
-2. Bấm icon extension → **📌 Đặt tab đang mở (nhóm đích) làm TAB GỬI**.
-   (Tên nhóm được tự điền vào ô **Nhóm đích**.)
-3. Bật **Bật chuyển tiếp** → **Lưu**.
-4. Mở (các) tab Zalo khác ở hội thoại cần theo dõi. Khi có tin **đến**, extension
-   sẽ gửi thẳng vào TAB GỬI (không cần tìm/đổi nhóm).
-
-Giữ tab GỬI luôn mở (có thể ghim). Nếu tab GỬI bị đóng, extension tự xử lý theo
-cách dự phòng (mở nhóm đích theo tên trong tab nguồn).
-
-### Cách dự phòng (không đặt TAB GỬI)
-1. Mở `https://chat.zalo.me` và đăng nhập.
+1. Mở **một** tab `https://chat.zalo.me` và đăng nhập.
 2. Bấm icon extension → bật **Bật chuyển tiếp**.
-3. Nhập **Nhóm đích** = tên hiển thị đúng của nhóm.
+3. Nhập **Nhóm đích** = tên hiển thị đúng của nhóm (vd `Nhóm OPS New Way`).
 4. Chọn loại nội dung cần chuyển (Chữ / Ảnh / File), **Tiền tố**, **Độ trễ** → **Lưu**.
 
+Khi có tin **đến** ở hội thoại đang mở, extension sẽ:
+mở nhóm đích (ô tìm kiếm / danh sách bên trái) → gửi nội dung → **quay lại**
+hội thoại cũ. Bạn không cần mở 2 tab Zalo.
+
 **Gửi thử:** bấm **🧪 Gửi thử** để kiểm tra.
-**Log:** khung **Log gần đây** trong popup hiển thị từng bước (phát hiện tin,
-mở nhóm, gửi thành công/lỗi) giúp kiểm tra nhanh.
+**Quét ngay:** bấm **🔄 Quét hội thoại chưa đọc ngay** để quét một lượt.
+**Log:** khung **Log gần đây** hiển thị từng bước (phát hiện tin, mở nhóm, gửi
+thành công/lỗi) giúp kiểm tra nhanh.
 
 ### Phạm vi hoạt động
 - Mặc định chỉ theo dõi **hội thoại đang mở**.
@@ -47,12 +40,15 @@ mở nhóm, gửi thành công/lỗi) giúp kiểm tra nhanh.
 - **Không** forward tin do chính bạn gửi đi.
 - **Chống lặp:** nếu đang ở chính nhóm đích thì bỏ qua.
 
+> Trong lúc extension chuyển sang nhóm đích để gửi, tab Zalo sẽ tạm đổi hội thoại
+> vài giây rồi tự quay lại — đây là đặc điểm của cách chạy 1 tab.
+
 ## 3. Cơ chế hoạt động
 
 | Thành phần | Vai trò |
 |---|---|
-| `src/content.js` | Theo dõi DOM Zalo, phát hiện tin đến, trích chữ/ảnh/file; gửi trực tiếp ở TAB GỬI hoặc tự mở nhóm đích (dự phòng) |
-| `src/background.js` | Điều phối TAB GỬI (worker tab), lưu log, mở tab Zalo khi bật extension |
+| `src/content.js` | Theo dõi DOM Zalo, phát hiện tin đến, trích chữ/ảnh/file; mở nhóm đích, gửi rồi quay lại hội thoại cũ |
+| `src/background.js` | Mở tab Zalo khi bật extension + lưu log |
 | `src/popup.*` | Giao diện cấu hình |
 
 - Ảnh/file được tải bằng `fetch()` (cùng phiên đăng nhập) → tạo `File` → dán vào ô
@@ -80,13 +76,13 @@ Bật **Debug** trong popup rồi mở DevTools (F12) tab Zalo để xem log `[Z
 
 | Log | Nguyên nhân / cách xử lý |
 |---|---|
-| `Không tìm thấy ô soạn tin` | TAB GỬI chưa mở đúng hội thoại hoặc Zalo chưa render xong → bấm F5 tab đó, mở đúng nhóm đích rồi thử lại. |
+| `Không tìm thấy ô soạn tin` | Zalo chưa render xong hoặc đang ở màn hình không có ô soạn → bấm F5 tab Zalo rồi thử lại. |
 | `Không chèn được chữ vào ô soạn tin` | Ô soạn tin chưa focus/khác cấu trúc → F5 lại tab, hoặc bật Debug để xem DOM. |
-| `Ô soạn vẫn còn nội dung — gửi thất bại` | Nút Gửi/Enter không kích hoạt → thử gửi tay 1 tin trong tab đó để chắc tài khoản không bị hạn chế. |
-| `Không tìm thấy nhóm/hội thoại` (chế độ dự phòng) | Tên nhóm không khớp → dùng TAB GỬI, hoặc nhập đúng tên hiển thị. |
+| `Ô soạn vẫn còn nội dung — gửi thất bại` | Nút Gửi/Enter không kích hoạt → thử gửi tay 1 tin để chắc tài khoản không bị hạn chế. |
+| `Không tìm thấy nhóm/hội thoại` | Tên nhóm không khớp → nhập đúng tên hiển thị trong Zalo. |
 | Quét chưa đọc = 0 nhưng có tin chưa đọc | Zalo đổi badge → bật Debug, gửi tôi log; hoặc mở trực tiếp hội thoại đó (chế độ theo dõi hội thoại đang mở vẫn chạy). |
 
-Tab GỬI phải **mở đúng nhóm đích** và **được F5 sau khi cập nhật extension**.
+Sau khi cập nhật extension: **Reload** ở `chrome://extensions` và **F5** tab Zalo.
 
 ## 6. Hạn chế & lưu ý
 

@@ -60,7 +60,6 @@ async function refreshStatus() {
   const dot = $('dot');
   const text = $('statusText');
   const tab = await getZaloTab();
-  const { workerTabId } = await chrome.storage.local.get({ workerTabId: null });
   if (!tab) {
     dot.className = 'dot warn';
     text.textContent = 'Chưa mở tab chat.zalo.me — hãy mở và đăng nhập';
@@ -72,7 +71,6 @@ async function refreshStatus() {
       dot.className = res.enabled ? 'dot on' : 'dot off';
       const parts = [res.enabled ? 'Đang bật' : 'Đang tắt'];
       if (res.targetGroup) parts.push(`→ ${res.targetGroup}`);
-      parts.push(workerTabId ? (tab.id === workerTabId ? 'TAB GỬI' : 'có TAB GỬI') : 'chưa đặt TAB GỬI');
       if (res.queued) parts.push(`${res.queued} đang chờ`);
       text.textContent = parts.join(' · ');
     }
@@ -87,27 +85,21 @@ $('save').addEventListener('click', async () => {
   await refreshStatus();
 });
 
-$('setWorker').addEventListener('click', async () => {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id || !String(tab.url || '').startsWith('https://chat.zalo.me')) {
-    $('saved').textContent = '⚠ Mở tab chat.zalo.me ở đúng nhóm đích rồi bấm lại';
-    setTimeout(() => ($('saved').textContent = ''), 2500);
+$('openTarget').addEventListener('click', async () => {
+  save(false);
+  const tab = await getZaloTab();
+  if (!tab) {
+    $('saved').textContent = '⚠ Chưa mở tab chat.zalo.me';
+    setTimeout(() => ($('saved').textContent = ''), 2200);
     return;
   }
-  // Lấy tên hội thoại đang mở để điền vào "Nhóm đích" nếu trống
   try {
-    const st = await chrome.tabs.sendMessage(tab.id, { type: 'ZF_STATUS' });
-    if (st?.header) {
-      const name = String(st.header).split('\n')[0].trim();
-      if (name) $('targetGroup').value = name;
-    }
-  } catch {}
-  save(false);
-  chrome.runtime.sendMessage({ type: 'ZF_SET_WORKER', tabId: tab.id }, (res) => {
-    $('saved').textContent = res?.ok ? '✓ Đã đặt TAB GỬI' : '⚠ Không đặt được tab gửi';
-    setTimeout(() => ($('saved').textContent = ''), 2200);
-    refreshStatus();
-  });
+    await chrome.tabs.sendMessage(tab.id, { type: 'ZF_OPEN_TARGET' });
+    $('saved').textContent = '… Đang mở — xem Log';
+  } catch {
+    $('saved').textContent = '⚠ Tab Zalo chưa sẵn sàng (F5 lại tab Zalo)';
+  }
+  setTimeout(() => ($('saved').textContent = ''), 2500);
 });
 
 $('scanNow').addEventListener('click', async () => {
@@ -118,10 +110,8 @@ $('scanNow').addEventListener('click', async () => {
     setTimeout(() => ($('saved').textContent = ''), 2200);
     return;
   }
-  const { workerTabId } = await chrome.storage.local.get({ workerTabId: null });
-  const target = tabs.find((t) => t.id !== workerTabId) || tabs[0];
   try {
-    await chrome.tabs.sendMessage(target.id, { type: 'ZF_SCAN_NOW' });
+    await chrome.tabs.sendMessage(tabs[0].id, { type: 'ZF_SCAN_NOW' });
     $('saved').textContent = '✓ Đã yêu cầu quét — xem Log';
   } catch {
     $('saved').textContent = '⚠ Tab Zalo chưa sẵn sàng (F5 lại tab Zalo)';

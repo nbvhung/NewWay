@@ -78,13 +78,8 @@
 
   let settings = { ...DEFAULTS };
   let processing = false;
-  let isWorkerTab = false; // true = tab đang mở nhóm đích (chỉ gửi, không quét)
   const queue = [];
   const seen = new Set(); // chữ ký tin đã xử lý (chống trùng)
-
-  // Hàng đợi gửi riêng cho TAB GỬI (tránh gửi chồng khi nhiều tin đến dồn dập)
-  const directQueue = [];
-  let directProcessing = false;
 
   // ─────────────────────────── Tiện ích ───────────────────────────
   const log = (...a) => {
@@ -326,6 +321,21 @@
     return candidates[0];
   }
 
+  /** Mở ô tìm kiếm nếu Zalo đang ẩn (bấm icon kính lúp). */
+  async function ensureSearchOpen() {
+    if (pick(SELECTORS.searchInput)) return true;
+    const btn = document.querySelector(
+      '[class*="search"], [aria-label*="Tìm"], [aria-label*="tìm"], [aria-label*="Search"], [title*="Tìm"]',
+    );
+    if (btn) {
+      try {
+        btn.click();
+        await sleep(600);
+      } catch {}
+    }
+    return !!pick(SELECTORS.searchInput);
+  }
+
   /** Mở hội thoại/nhóm theo tên (ô tìm kiếm + fallback quét DOM). */
   async function openConversationByName(name) {
     const cleanName = String(name || '').trim();
@@ -337,6 +347,7 @@
       return;
     }
 
+    await ensureSearchOpen();
     const search = pick(SELECTORS.searchInput);
     if (search) {
       try {
@@ -398,6 +409,31 @@
     if (!hash || hash === currentHash()) return;
     location.hash = hash;
     await sleep(1200);
+  }
+
+  function firstLine(s) {
+    return (
+      String(s || '')
+        .split('\n')
+        .map((x) => x.trim())
+        .filter(Boolean)[0] || ''
+    );
+  }
+
+  /** Quay lại hội thoại ban đầu: thử hash trước, rồi theo tên. */
+  async function restoreConversation(hash, name) {
+    if (name && norm(headerText()).includes(norm(name))) return;
+    if (hash && hash !== currentHash()) {
+      await openConversationByHash(hash);
+      if (name && norm(headerText()).includes(norm(name))) return;
+    }
+    if (name) {
+      try {
+        await openConversationByName(name);
+      } catch (e) {
+        report('warn', `Không quay lại được "${name}": ${e.message}`);
+      }
+    }
   }
 
   /**
@@ -633,6 +669,7 @@
   // ─────────────────────────── Forward ───────────────────────────
   async function forwardOne(job) {
     const originHash = currentHash();
+    const originName = firstLine(headerText());
     const groupName = settings.targetGroup.trim();
     if (!groupName) {
       report('error', 'Chưa cấu hình nhóm đích');
@@ -686,70 +723,8 @@
       report('error', `Forward lỗi: ${e.message}`);
     } finally {
       // Quay lại hội thoại ban đầu
-      await openConversationByHash(originHash);
+      await restoreConversation(originHash, originName);
     }
-  }
-
-  /** Gửi trực tiếp vào hội thoại đang mở (dùng ở TAB GỬI). */
-  async function sendDirect(job) {
-    const imageUrls = job.images || [];
-    try {
-      let ok = true;
-      const parts = [];
-      if (settings.prefix) parts.push(settings.prefix);
-      if (settings.includeText && job.text) parts.push(job.text);
-      const caption = parts.join('\n').trim();
-      if (caption) ok = (await sendText(caption)) && ok;
-
-      if (settings.includeImages && imageUrls.length) {
-        const files = [];
-        for (const url of imageUrls) {
-          try {
-            files.push(await fileFromUrl(url));
-          } catch (e) {
-            report('warn', `Bỏ qua ảnh lỗi: ${e.message}`);
-          }
-        }
-        if (files.length) await pasteFiles(files, imageUrls);
-      }
-      if (settings.includeFiles && job.files?.length) {
-        for (const f of job.files) {
-          try {
-            const file = await fileFromUrl(f.url, f.name);
-            await pasteFiles([file], [f.url]);
-          } catch (e) {
-            report('warn', `Bỏ qua file lỗi: ${e.message}`);
-          }
-        }
-      }
-      report(
-        ok ? 'success' : 'error',
-        ok
-          ? `Đã gửi trực tiếp vào nhóm đích (${job.signature})`
-          : `GỬI THẤT BẠI (${job.signature}) — xem log phía trên`,
-      );
-    } catch (e) {
-      report('error', `Gửi trực tiếp lỗi: ${e.message}`);
-    }
-  }
-
-  async function drainDirect() {
-    if (directProcessing) return;
-    directProcessing = true;
-    try {
-      while (directQueue.length) {
-        const job = directQueue.shift();
-        await sendDirect(job);
-        await sleep(Math.max(300, settings.delayMs));
-      }
-    } finally {
-      directProcessing = false;
-    }
-  }
-
-  function enqueueDirect(job) {
-    directQueue.push(job);
-    void drainDirect();
   }
 
   async function drainQueue() {
@@ -772,24 +747,12 @@
     seen.add(job.signature);
     if (seen.size > 2000) seen.clear();
     report('info', `Phát hiện tin mới → chuẩn bị chuyển (${job.signature})`);
-
-    // Ưu tiên chuyển sang TAB GỬI. Nếu chưa đặt tab gửi → tab này tự xử lý.
-    try {
-      chrome.runtime.sendMessage({ type: 'ZF_JOB', job }, (res) => {
-        if (!res || !res.routed) {
-          queue.push(job);
-          void drainQueue();
-        }
-      });
-    } catch {
-      queue.push(job);
-      void drainQueue();
-    }
+    queue.push(job);
+    void drainQueue();
   }
 
   // ─────────────────────────── Quan sát DOM ───────────────────────────
   function scan() {
-    if (isWorkerTab) return; // tab gửi không quét (chống loop)
     if (!settings.enabled) return;
     const nodes = getMessageNodes();
     if (!nodes.length) return;
@@ -887,7 +850,6 @@
 
   let scanningUnread = false;
   async function scanUnreadLoop(force = false) {
-    if (isWorkerTab) return;
     if (scanningUnread) return;
     if (!settings.enabled) {
       if (force) report('warn', 'Chưa bật "Bật chuyển tiếp"');
@@ -897,6 +859,7 @@
     if (processing) return;
     scanningUnread = true;
     const originHash = currentHash();
+    const originName = firstLine(headerText());
     try {
       const all = getConversationItems();
       const items = all.filter(hasUnreadBadge);
@@ -921,7 +884,7 @@
     } catch (e) {
       report('error', `Quét chưa đọc lỗi: ${e.message}`);
     } finally {
-      await openConversationByHash(originHash);
+      await restoreConversation(originHash, originName);
       scanningUnread = false;
     }
   }
@@ -937,31 +900,26 @@
   (async () => {
     await loadSettings();
 
-    // Hỏi background xem tab này có phải TAB GỬI không
-    try {
-      chrome.runtime.sendMessage({ type: 'ZF_GET_CONTEXT' }, (res) => {
-        if (res && res.workerTabId && res.tabId === res.workerTabId) {
-          isWorkerTab = true;
-          report('info', 'Tab này là TAB GỬI (nhóm đích)');
-        }
-      });
-    } catch {}
-
     // Đợi Zalo render xong
     await sleep(1500);
     startObserver();
     startUnreadScanner();
 
     chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-      if (msg?.type === 'ZF_SET_WORKER') {
-        isWorkerTab = !!msg.value;
-        report('info', isWorkerTab ? 'Đã đặt làm TAB GỬI' : 'Không còn là TAB GỬI');
-        sendResponse({ ok: true });
-      } else if (msg?.type === 'ZF_SEND_DIRECT') {
-        enqueueDirect(msg.job);
-        sendResponse({ ok: true });
-      } else if (msg?.type === 'ZF_SCAN_NOW') {
+      if (msg?.type === 'ZF_SCAN_NOW') {
         void scanUnreadLoop(true);
+        sendResponse({ ok: true });
+      } else if (msg?.type === 'ZF_OPEN_TARGET') {
+        (async () => {
+          try {
+            const g = settings.targetGroup.trim();
+            if (!g) throw new Error('Chưa cấu hình nhóm đích');
+            await openConversationByName(g);
+            report('success', `Đã mở nhóm đích "${g}"`);
+          } catch (e) {
+            report('error', `Không mở được nhóm đích: ${e.message}`);
+          }
+        })();
         sendResponse({ ok: true });
       } else if (msg?.type === 'ZF_STATUS') {
         sendResponse({
@@ -969,7 +927,6 @@
           targetGroup: settings.targetGroup,
           queued: queue.length,
           processing,
-          isWorkerTab,
           header: headerText(),
         });
       } else if (msg?.type === 'ZF_TEST_FORWARD') {
