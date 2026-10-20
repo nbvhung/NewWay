@@ -259,13 +259,34 @@
   }
 
   function messageSignature(el, content) {
-    const id =
-      el.getAttribute?.('data-msgid') ||
-      el.getAttribute?.('data-id') ||
-      (el.id && el.id.startsWith('msg-') ? el.id : '');
-    if (id) return `id:${id}`;
+    const attrs = ['data-msgid', 'data-message-id', 'data-msg-id', 'data-id'];
+    let id = '';
+    for (const a of attrs) {
+      const v = el.getAttribute?.(a);
+      if (v) {
+        id = v;
+        break;
+      }
+    }
+    // Zalo đặt data-id chung cho cả loại tin (vd div_ReceivedMsg_Text/Photo) —
+    // KHÔNG dùng làm khoá vì mọi tin cùng loại sẽ trùng nhau.
+    const generic =
+      /receivedmsg|div_msg|_msg_text|_msg_photo|_msg_sticker|message_text|message_photo/i.test(
+        id,
+      ) ||
+      !/\d/.test(id) ||
+      id.length < 4;
+    if (id && !generic) return `id:${id}`;
+
+    // Khoá dự phòng: nội dung + thời gian hiển thị của tin (nếu có).
+    const timeEl = el.querySelector(
+      '[class*="time"], [class*="Time"], [class*="date"], [class*="Date"]',
+    );
+    const time = (timeEl?.innerText || '').trim();
     return `h:${hashSig(
-      `${content.text}|${content.images.join(',')}|${content.files.map((f) => f.url).join(',')}`,
+      `${content.text}|${content.images.join(',')}|${content.files
+        .map((f) => f.url)
+        .join(',')}|${time}`,
     )}`;
   }
 
@@ -345,7 +366,7 @@
 
     // Nếu đã ở đúng hội thoại rồi thì thôi
     if (norm(headerText()).includes(norm(cleanName))) {
-      report('info', `Đang ở nhóm đích "${cleanName}"`);
+      report('info', `Đang ở hội thoại "${cleanName}"`);
       return;
     }
 
@@ -403,7 +424,7 @@
     if (!norm(headerText()).includes(norm(cleanName))) {
       report('warn', `Đã click "${cleanName}" nhưng tiêu đề hiện tại: "${headerText()}"`);
     } else {
-      report('info', `Đã mở nhóm đích "${cleanName}"`);
+      report('info', `Đã mở hội thoại "${cleanName}"`);
     }
   }
 
@@ -917,6 +938,12 @@
       report('error', 'Chưa cấu hình nhóm đích');
       return;
     }
+    report(
+      'info',
+      `Xử lý tin (${settings.useForward === false ? 'gửi lại' : 'chia sẻ'}${
+        job.el ? ', có tin' : ', KHÔNG có tin'
+      })`,
+    );
 
     // Nếu đang ở chính nhóm đích → không forward (chống vòng lặp)
     if (norm(headerText()).includes(norm(groupName))) {
@@ -924,9 +951,9 @@
       return;
     }
 
-    // ── Cách 1 (mặc định): chuột phải tin nhắn → "Chuyển tiếp" ──
-    if (settings.useForward && job.el) {
-      if (!job.el.isConnected) {
+    // ── Cách 1 (mặc định): chuột phải nội dung tin → "Chia sẻ" ──
+    if (settings.useForward !== false) {
+      if (!job.el || !job.el.isConnected) {
         report('warn', 'Tin nhắn không còn hiển thị — bỏ qua (không gửi link)');
         return;
       }
@@ -934,6 +961,9 @@
         await forwardMessageElement(job.el, groupName);
       } catch (e) {
         report('error', `Chia sẻ lỗi: ${e.message}`);
+      } finally {
+        // Chia sẻ có thể khiến Zalo mở nhóm đích → quay lại hội thoại ban đầu.
+        await restoreConversation(originHash, originName);
       }
       return;
     }
