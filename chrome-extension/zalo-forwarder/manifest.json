@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Zalo Forwarder",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Tự động chuyển tiếp tin nhắn (chữ, ảnh, file) mà người khác gửi tới tài khoản Zalo vào một nhóm cố định.",
   "permissions": ["storage", "scripting", "tabs"],
   "host_permissions": ["https://chat.zalo.me/*"],

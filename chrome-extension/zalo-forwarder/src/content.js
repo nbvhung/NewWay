@@ -184,7 +184,12 @@
     for (const [k, v] of Object.entries(changes)) {
       settings[k] = v.newValue;
     }
-    log('settings changed', settings);
+    report(
+      'info',
+      `Cài đặt đã cập nhật: ${settings.enabled ? 'BẬT' : 'TẮT'}${
+        settings.targetGroup ? ` → ${settings.targetGroup}` : ''
+      }`,
+    );
   });
 
   // ─────────────────────────── Nhận diện tin nhắn ───────────────────────────
@@ -1276,30 +1281,31 @@
 
   /**
    * Xử lý 1 tin: bỏ qua tin của mình, tin đã có cảm xúc, tin đã xử lý trước đó.
-   * `allowBaseline` dùng cho quét chưa đọc (tin cũ nhưng chưa react).
+   * Trả về true nếu đã đưa vào hàng đợi.
    */
-  function processNode(el, { allowBaseline = false } = {}) {
-    if (!el || !el.isConnected) return;
-    if (!allowBaseline && el.dataset.zfBase === '1') return;
-    if (el.dataset.zfDone === '1') return;
-    el.dataset.zfDone = '1';
+  function processNode(el) {
+    if (!el || !el.isConnected) return false;
+    const content = extractContent(el);
+    if (!content.text && !content.images.length && !content.files.length) {
+      return false;
+    }
+    const signature = messageSignature(el, content);
+    // Lưu chữ ký lên node để phát hiện cả trường hợp Zalo tái sử dụng node.
+    el.dataset.zfSig = signature;
 
-    if (isOutgoing(el)) return;
+    if (isOutgoing(el)) return false;
     if (hasReaction(el)) {
       report('info', 'Bỏ qua tin đã có cảm xúc');
-      return;
+      return false;
     }
-
-    const content = extractContent(el);
-    if (!content.text && !content.images.length && !content.files.length) return;
-    const signature = messageSignature(el, content);
     const hkey = handledKey(signature);
     if (handled.has(hkey)) {
       report('info', 'Bỏ qua tin đã xử lý trước đó');
-      return;
+      return false;
     }
     markHandled(hkey);
     enqueue({ signature, ...content, el });
+    return true;
   }
 
   function scan() {
@@ -1308,20 +1314,38 @@
     if (!nodes.length) return;
 
     const key = convKey();
-    if (key !== lastConvKey) {
-      // Vừa vào hội thoại mới → coi mọi tin đang hiển thị là "cũ" (không gửi tồn đọng).
-      lastConvKey = key;
-      for (const el of nodes) {
-        el.dataset.zfBase = '1';
-        markNodeHandled(el);
-      }
-      report('info', `Vào hội thoại mới → bỏ qua ${nodes.length} tin cũ`);
-      return;
-    }
+    const switched = key !== lastConvKey;
+    let queued = 0;
 
     for (const el of nodes) {
-      if (el.dataset.zfBase === '1') continue;
-      processNode(el);
+      if (!el.isConnected) continue;
+      let content;
+      try {
+        content = extractContent(el);
+      } catch {
+        continue;
+      }
+      if (!content.text && !content.images.length && !content.files.length) {
+        continue;
+      }
+      const signature = messageSignature(el, content);
+      // Không đổi nội dung → đã xét rồi (kể cả node bị tái sử dụng).
+      if (el.dataset.zfSig === signature) continue;
+      el.dataset.zfSig = signature;
+
+      if (switched) {
+        // Vào hội thoại mới → coi các tin đang hiển thị là "cũ".
+        markHandled(handledKey(signature));
+        continue;
+      }
+      if (processNode(el)) queued += 1;
+    }
+
+    if (switched) {
+      lastConvKey = key;
+      report('info', `Vào hội thoại mới → bỏ qua ${nodes.length} tin cũ`);
+    } else if (queued > 0) {
+      report('info', `Phát hiện ${queued} tin mới cần chuyển`);
     }
   }
 
@@ -1457,8 +1481,6 @@
     const nodes = getMessageNodes();
     if (!nodes.length) return;
     lastConvKey = convKey();
-    // Đánh dấu toàn bộ là "cũ"; chỉ mở khoá các tin mục tiêu bên dưới.
-    for (const el of nodes) el.dataset.zfBase = '1';
 
     let targets = [];
     const divider = findUnreadDivider();
@@ -1484,7 +1506,7 @@
         divider ? ' (sau dấu chưa đọc)' : unreadCount ? ` (${unreadCount} tin cuối)` : ''
       }`,
     );
-    for (const el of targets) processNode(el, { allowBaseline: true });
+    for (const el of targets) processNode(el);
   }
 
   let scanningUnread = false;
@@ -1585,6 +1607,11 @@
       return true;
     });
 
-    log('Zalo Forwarder sẵn sàng', settings);
+    report(
+      'info',
+      `Zalo Forwarder v1.6.1 sẵn sàng (${settings.enabled ? 'BẬT' : 'TẮT'}${
+        settings.targetGroup ? ` → ${settings.targetGroup}` : ''
+      })`,
+    );
   })();
 })();
