@@ -29,10 +29,7 @@ import {
   hasPermission,
   resolveVisibleDriverIds,
 } from '../common/permissions/permissions';
-import {
-  attendanceBonusForMonth,
-  nextAttendanceBonusRange,
-} from '../salary/attendance-bonus';
+import { attendanceBonusForMonth } from '../salary/attendance-bonus';
 
 @Injectable()
 export class SubmissionsService {
@@ -652,9 +649,6 @@ export class SubmissionsService {
         year,
         tripSalaryByDriver.get(d.id) || 0,
       );
-      const nextCC = nextAttendanceBonusRange(
-        tripSalaryByDriver.get(d.id) || 0,
-      );
       const allowanceFarHome = rec
         ? rec.hasFarHome
           ? rec.allowanceFarHome != null
@@ -705,8 +699,9 @@ export class SubmissionsService {
       result.set(d.id, {
         fixedSalary,
         chuyenCan,
-        nextChuyenCanFrom: nextCC?.from ?? null,
-        nextChuyenCanTo: nextCC?.to ?? null,
+        // Chuyên cần cố định 500.000đ → không còn "mức thưởng tiếp theo".
+        nextChuyenCanFrom: null,
+        nextChuyenCanTo: null,
         allowanceFarHome,
         allowanceWaitLoading: waitLoadingAmount,
         allowanceOldCar: hasOldCar
