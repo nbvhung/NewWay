@@ -73,15 +73,44 @@
     delayMs: 1200,
     debug: false,
     autoScanUnread: false,
-    scanIntervalMs: 20000,
-    /** true = chuột phải tin nhắn → "Chuyển tiếp" (giữ ảnh gốc, không gửi link). */
+    scanIntervalMs: 5000,
+    /** true = chuột phải tin nhắn → "Chia sẻ" (giữ ảnh gốc, không gửi link). */
     useForward: true,
+    /** true = thả 👍 Like vào tin trước khi chia sẻ. */
+    reactFirst: true,
   };
 
   let settings = { ...DEFAULTS };
   let processing = false;
   const queue = [];
-  const seen = new Set(); // chữ ký tin đã xử lý (chống trùng)
+  const seen = new Set(); // chữ ký tin đã xử lý (chống trùng trong phiên)
+  /** Tin đã xử lý, lưu bền qua reload (khoá = hội thoại + chữ ký). */
+  const handled = new Set();
+  let handledSaveTimer = null;
+
+  function loadHandled() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get({ zfHandled: [] }, ({ zfHandled }) => {
+        if (Array.isArray(zfHandled)) for (const k of zfHandled) handled.add(k);
+        resolve(null);
+      });
+    });
+  }
+
+  function markHandled(key) {
+    if (!key) return;
+    handled.add(key);
+    if (handled.size > 3000) {
+      const keep = [...handled].slice(-2000);
+      handled.clear();
+      keep.forEach((k) => handled.add(k));
+    }
+    if (handledSaveTimer) return;
+    handledSaveTimer = setTimeout(() => {
+      handledSaveTimer = null;
+      chrome.storage.local.set({ zfHandled: [...handled].slice(-3000) });
+    }, 800);
+  }
 
   // ─────────────────────────── Tiện ích ───────────────────────────
   const log = (...a) => {
@@ -743,6 +772,162 @@
     return cands[0]?.e || null;
   }
 
+  // ───────── Cảm xúc (reaction) ─────────
+
+  const EMOJI_RE = /[\u{1F44D}\u{2764}\u{1F606}\u{1F62E}\u{1F622}\u{1F621}\u{1F60D}\u{1F602}]/u;
+
+  /** Tin đã có cảm xúc chưa? (badge reaction hoặc emoji nhỏ dưới bong bóng) */
+  function hasReaction(el) {
+    if (!el) return false;
+    const byClass = Array.from(
+      el.querySelectorAll(
+        '[class*="reaction" i], [class*="emotion" i], [class*="react" i]',
+      ),
+    ).filter(isVisible);
+    if (byClass.length) return true;
+
+    for (const child of el.querySelectorAll('span, div, img')) {
+      if (!isVisible(child)) continue;
+      const t = (child.innerText || '').trim();
+      if (!t || t.length > 4 || !EMOJI_RE.test(t)) continue;
+      const r = child.getBoundingClientRect();
+      if (r.width <= 90 && r.height <= 34) return true;
+    }
+    return false;
+  }
+
+  /** Tìm nút cảm xúc/nút Like (ưu tiên trong tin, rồi gần điểm click). */
+  function findReactionControl(near, scope) {
+    const root = scope || document;
+    const els = Array.from(
+      root.querySelectorAll('div, span, button, [role="button"], img, i'),
+    ).filter(isVisible);
+    const cands = [];
+    for (const e of els) {
+      const alt = e.getAttribute('alt') || '';
+      const txt = (e.innerText || '').trim();
+      const meta = `${e.getAttribute('aria-label') || ''} ${e.getAttribute('title') || ''} ${e.className || ''} ${alt}`;
+      const isLike =
+        /cảm xúc|cam xuc|like|thích|thich|reaction|emotion|react/i.test(meta) ||
+        txt === '👍' ||
+        alt === '👍';
+      if (!isLike) continue;
+      const r = e.getBoundingClientRect();
+      if (r.width > 140 || r.height > 70) continue;
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const dist = near ? Math.hypot(cx - near.x, cy - near.y) : 0;
+      if (near && dist > 340) continue;
+      cands.push({ e, dist, area: r.width * r.height });
+    }
+    cands.sort((a, b) => a.dist - b.dist || a.area - b.area);
+    return cands[0]?.e || null;
+  }
+
+  /** Tìm 1 emoji cảm xúc bất kỳ trong thanh reaction (fallback nếu không thấy 👍). */
+  function findAnyEmojiControl(near) {
+    const els = Array.from(
+      document.querySelectorAll('span, div, button, img, i'),
+    ).filter(isVisible);
+    const cands = [];
+    for (const e of els) {
+      const t = (e.innerText || '').trim();
+      const alt = e.getAttribute('alt') || '';
+      const isEmoji =
+        (t && t.length <= 2 && EMOJI_RE.test(t)) ||
+        (alt && EMOJI_RE.test(alt));
+      if (!isEmoji) continue;
+      const meta = `${e.className || ''} ${e.getAttribute('aria-label') || ''} ${e.getAttribute('title') || ''} ${e.parentElement?.className || ''} ${e.parentElement?.getAttribute?.('aria-label') || ''}`;
+      if (!/react|emotion|cảm xúc|cam xuc|like|thích|thich/i.test(meta)) continue;
+      const r = e.getBoundingClientRect();
+      if (r.width > 60 || r.height > 60) continue;
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const dist = near ? Math.hypot(cx - near.x, cy - near.y) : 0;
+      if (near && dist > 340) continue;
+      cands.push({ e, dist, area: r.width * r.height });
+    }
+    cands.sort((a, b) => a.dist - b.dist || a.area - b.area);
+    return cands[0]?.e || null;
+  }
+
+  /** Thả 👍 Like vào tin. Trả về true nếu thấy badge cảm xúc xuất hiện. */
+  async function reactMessage(el) {
+    if (!el || !el.isConnected) return false;
+    const target = contextTarget(el);
+    const r = target.getBoundingClientRect();
+    const at = {
+      x: Math.min(r.right - 8, r.left + r.width - 5),
+      y: r.top + r.height / 2,
+    };
+
+    // 1) Hover để hiện thanh cảm xúc trong bong bóng
+    for (const type of ['mouseenter', 'mouseover', 'mousemove']) {
+      target.dispatchEvent(
+        new MouseEvent(type, {
+          bubbles: true,
+          clientX: at.x,
+          clientY: at.y,
+          view: window,
+        }),
+      );
+    }
+    await sleep(350);
+    let like =
+      findReactionControl(at, target) ||
+      findReactionControl(at, null) ||
+      findAnyEmojiControl(at);
+    if (like) {
+      try {
+        like.click();
+        await sleep(500);
+      } catch {}
+      if (hasReaction(el)) return true;
+    }
+
+    // 2) Mở menu chuột phải → "Thả cảm xúc"/emoji 👍
+    const opts = {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX: at.x,
+      clientY: at.y,
+      button: 2,
+      buttons: 2,
+    };
+    target.dispatchEvent(new MouseEvent('mousedown', opts));
+    target.dispatchEvent(new MouseEvent('mouseup', opts));
+    target.dispatchEvent(new MouseEvent('contextmenu', opts));
+    await sleep(500);
+
+    const item = findMenuItemByText(
+      /thả cảm xúc|cảm xúc|cam xuc|yêu thích|yeu thich|like|react/i,
+      at,
+      target,
+    );
+    if (item) {
+      try {
+        item.click();
+        await sleep(500);
+      } catch {}
+    }
+    like = findReactionControl(at, null) || findAnyEmojiControl(at);
+    if (like) {
+      try {
+        like.click();
+        await sleep(500);
+      } catch {}
+    }
+    // Đóng menu nếu còn
+    try {
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true }),
+      );
+    } catch {}
+    await sleep(200);
+    return hasReaction(el);
+  }
+
   /** Tìm hộp thoại "Chuyển tiếp" (modal có ô tìm kiếm). */
   function findForwardDialog() {
     const sels = [
@@ -797,9 +982,40 @@
     return false;
   }
 
-  /** Chuột phải tin nhắn → "Chuyển tiếp" → chọn nhóm đích → xác nhận. */
-  async function forwardMessageElement(el, groupName) {
+  /** Tìm lại node tin nhắn tương đương (khi Zalo re-render sau khi react). */
+  function findEquivalentNode(signature) {
+    if (!signature) return null;
+    for (const n of getMessageNodes()) {
+      if (!n.isConnected || isOutgoing(n)) continue;
+      try {
+        const c = extractContent(n);
+        if (messageSignature(n, c) === signature) return n;
+      } catch {}
+    }
+    return null;
+  }
+
+  /** Thả Like (nếu bật) rồi chuột phải tin → "Chia sẻ" → chọn nhóm đích → xác nhận. */
+  async function forwardMessageElement(el, groupName, signature) {
     if (!el || !el.isConnected) throw new Error('Tin nhắn không còn trên màn hình');
+
+    // 1) Thả 👍 Like trước (để người gửi biết đã nhận)
+    if (settings.reactFirst !== false) {
+      let reacted = false;
+      try {
+        reacted = await reactMessage(el);
+      } catch (e) {
+        report('warn', `Thả Like lỗi: ${e.message}`);
+      }
+      report(reacted ? 'success' : 'warn', reacted ? 'Đã thả Like' : 'Không thả được Like — vẫn chia sẻ');
+      if (!el.isConnected) {
+        const again = findEquivalentNode(signature);
+        if (again) el = again;
+      }
+      await sleep(300);
+    }
+
+    if (!el || !el.isConnected) throw new Error('Tin nhắn không còn màn hình sau khi thả Like');
     const target = contextTarget(el);
     target.scrollIntoView({ block: 'center', inline: 'nearest' });
     await sleep(350);
@@ -958,7 +1174,7 @@
         return;
       }
       try {
-        await forwardMessageElement(job.el, groupName);
+        await forwardMessageElement(job.el, groupName, job.signature);
       } catch (e) {
         report('error', `Chia sẻ lỗi: ${e.message}`);
       } finally {
@@ -1039,23 +1255,73 @@
   }
 
   // ─────────────────────────── Quan sát DOM ───────────────────────────
+  let lastConvKey = '';
+
+  function convKey() {
+    return `${firstLine(headerText())}|${currentHash()}`;
+  }
+
+  function handledKey(signature) {
+    return `${norm(firstLine(headerText()))}|${signature}`;
+  }
+
+  /** Đánh dấu 1 tin (đang hiển thị) là đã xử lý — để re-render không gửi lại. */
+  function markNodeHandled(el) {
+    try {
+      const c = extractContent(el);
+      if (!c.text && !c.images.length && !c.files.length) return;
+      markHandled(handledKey(messageSignature(el, c)));
+    } catch {}
+  }
+
+  /**
+   * Xử lý 1 tin: bỏ qua tin của mình, tin đã có cảm xúc, tin đã xử lý trước đó.
+   * `allowBaseline` dùng cho quét chưa đọc (tin cũ nhưng chưa react).
+   */
+  function processNode(el, { allowBaseline = false } = {}) {
+    if (!el || !el.isConnected) return;
+    if (!allowBaseline && el.dataset.zfBase === '1') return;
+    if (el.dataset.zfDone === '1') return;
+    el.dataset.zfDone = '1';
+
+    if (isOutgoing(el)) return;
+    if (hasReaction(el)) {
+      report('info', 'Bỏ qua tin đã có cảm xúc');
+      return;
+    }
+
+    const content = extractContent(el);
+    if (!content.text && !content.images.length && !content.files.length) return;
+    const signature = messageSignature(el, content);
+    const hkey = handledKey(signature);
+    if (handled.has(hkey)) {
+      report('info', 'Bỏ qua tin đã xử lý trước đó');
+      return;
+    }
+    markHandled(hkey);
+    enqueue({ signature, ...content, el });
+  }
+
   function scan() {
     if (!settings.enabled) return;
     const nodes = getMessageNodes();
     if (!nodes.length) return;
 
-    // Chỉ xét các tin ở cuối danh sách (mới nhất) để tránh quét lại lịch sử
-    const recent = nodes.slice(-15);
-    for (const el of recent) {
-      if (el.dataset.zfDone === '1') continue;
-      el.dataset.zfDone = '1';
+    const key = convKey();
+    if (key !== lastConvKey) {
+      // Vừa vào hội thoại mới → coi mọi tin đang hiển thị là "cũ" (không gửi tồn đọng).
+      lastConvKey = key;
+      for (const el of nodes) {
+        el.dataset.zfBase = '1';
+        markNodeHandled(el);
+      }
+      report('info', `Vào hội thoại mới → bỏ qua ${nodes.length} tin cũ`);
+      return;
+    }
 
-      if (isOutgoing(el)) continue;
-      const content = extractContent(el);
-      if (!content.text && !content.images.length && !content.files.length) continue;
-
-      const signature = messageSignature(el, content);
-      enqueue({ signature, ...content, el });
+    for (const el of nodes) {
+      if (el.dataset.zfBase === '1') continue;
+      processNode(el);
     }
   }
 
@@ -1135,6 +1401,92 @@
     return getConversationItems().filter(hasUnreadBadge);
   }
 
+  /** Số tin chưa đọc hiển thị trên dòng hội thoại (nếu có). */
+  function getUnreadCount(el) {
+    const sels = [
+      '[class*="unread"]',
+      '[class*="badge"]',
+      '[class*="count"]',
+      '[class*="notify"]',
+    ];
+    for (const sel of sels) {
+      for (const b of el.querySelectorAll(sel)) {
+        if (!isVisible(b)) continue;
+        const m = (b.innerText || '').match(/(\d+)/);
+        if (m) return Number(m[1]);
+      }
+    }
+    const m = String(el.getAttribute('aria-label') || '').match(/(\d+)/);
+    return m ? Number(m[1]) : 0;
+  }
+
+  /** Tìm dấu "Tin nhắn chưa đọc" trong khung chat. */
+  function findUnreadDivider() {
+    for (const root of [pick(SELECTORS.messageList), document].filter(Boolean)) {
+      for (const e of root.querySelectorAll('div, span, p')) {
+        if (!isVisible(e)) continue;
+        const t = (e.innerText || '').trim();
+        if (!t || t.length > 60) continue;
+        if (/tin nhắn chưa đọc|unread messages?/i.test(t)) return e;
+      }
+    }
+    return null;
+  }
+
+  /** Chờ danh sách tin ổn định (nhanh, ~240ms) thay vì sleep cố định. */
+  async function waitForMessageList(timeoutMs = 2000) {
+    const start = Date.now();
+    let last = -1;
+    let stable = 0;
+    while (Date.now() - start < timeoutMs) {
+      const n = getMessageNodes().length;
+      if (n === last) stable += 1;
+      else {
+        stable = 0;
+        last = n;
+      }
+      if (n > 0 && stable >= 2) return;
+      await sleep(120);
+    }
+  }
+
+  /** Mở 1 hội thoại chưa đọc và chỉ xử lý các tin MỚI (sau dấu chưa đọc / N tin cuối). */
+  async function scanUnreadConversation(item, unreadCount) {
+    item.click();
+    await waitForMessageList();
+    const nodes = getMessageNodes();
+    if (!nodes.length) return;
+    lastConvKey = convKey();
+    // Đánh dấu toàn bộ là "cũ"; chỉ mở khoá các tin mục tiêu bên dưới.
+    for (const el of nodes) el.dataset.zfBase = '1';
+
+    let targets = [];
+    const divider = findUnreadDivider();
+    if (divider) {
+      targets = nodes.filter(
+        (n) =>
+          divider.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    } else if (unreadCount > 0) {
+      targets = nodes.filter((n) => !isOutgoing(n)).slice(-unreadCount);
+    } else {
+      targets = nodes.filter((n) => !isOutgoing(n)).slice(-1);
+    }
+
+    if (!targets.length) return;
+    // Các tin cũ (không nằm trong mục tiêu) coi như đã xử lý → re-render không gửi lại.
+    for (const el of nodes) {
+      if (!targets.includes(el)) markNodeHandled(el);
+    }
+    report(
+      'info',
+      `Hội thoại: xử lý ${targets.length} tin mới${
+        divider ? ' (sau dấu chưa đọc)' : unreadCount ? ` (${unreadCount} tin cuối)` : ''
+      }`,
+    );
+    for (const el of targets) processNode(el, { allowBaseline: true });
+  }
+
   let scanningUnread = false;
   async function scanUnreadLoop(force = false) {
     if (scanningUnread) return;
@@ -1157,16 +1509,18 @@
       const maxPerRun = 5;
       for (const item of items.slice(0, maxPerRun)) {
         if (!settings.enabled) break;
-        item.click();
-        await sleep(1800);
-        scan();
-        // đợi queue nội bộ xử lý xong (nếu chạy chế độ dự phòng)
-        for (let i = 0; i < 40 && (processing || queue.length); i++) {
-          await sleep(500);
+        try {
+          await scanUnreadConversation(item, getUnreadCount(item));
+        } catch (e) {
+          report('warn', `Quét hội thoại lỗi: ${e.message}`);
+        }
+        // Chờ hàng đợi xử lý xong — poll nhanh 150ms.
+        for (let i = 0; i < 80 && (processing || queue.length); i++) {
+          await sleep(150);
         }
       }
       if (items.length > maxPerRun) {
-        report('info', `Còn ${items.length - maxPerRun} hội thoại, sẽ quét tiếp vòng sau`);
+        report('info', `Còn ${items.length - maxPerRun} hội thoại, vòng sau quét tiếp`);
       }
     } catch (e) {
       report('error', `Quét chưa đọc lỗi: ${e.message}`);
@@ -1179,13 +1533,14 @@
   function startUnreadScanner() {
     setInterval(() => {
       if (settings.enabled && settings.autoScanUnread) void scanUnreadLoop();
-    }, Math.max(5000, Number(settings.scanIntervalMs) || 20000));
-    report('info', 'Bộ quét hội thoại chưa đọc đã chạy');
+    }, Math.min(8000, Math.max(3000, Number(settings.scanIntervalMs) || 5000)));
+    report('info', 'Bộ quét hội thoại chưa đọc đã chạy (mặc định 5s/lần)');
   }
 
   // ─────────────────────────── Khởi động ───────────────────────────
   (async () => {
     await loadSettings();
+    await loadHandled();
 
     // Đợi Zalo render xong
     await sleep(1500);

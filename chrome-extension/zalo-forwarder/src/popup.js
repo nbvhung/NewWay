@@ -8,8 +8,9 @@ const DEFAULTS = {
   delayMs: 1200,
   debug: false,
   autoScanUnread: false,
-  scanIntervalMs: 20000,
+  scanIntervalMs: 5000,
   useForward: true,
+  reactFirst: true,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -25,6 +26,7 @@ function fill(s) {
   $('debug').checked = !!s.debug;
   $('autoScanUnread').checked = !!s.autoScanUnread;
   $('useForward').checked = s.useForward !== false;
+  $('reactFirst').checked = s.reactFirst !== false;
 }
 
 function read() {
@@ -38,8 +40,9 @@ function read() {
     includeFiles: $('includeFiles').checked,
     debug: $('debug').checked,
     autoScanUnread: $('autoScanUnread').checked,
-    scanIntervalMs: 20000,
+    scanIntervalMs: 5000,
     useForward: $('useForward').checked,
+    reactFirst: $('reactFirst').checked,
   };
 }
 
