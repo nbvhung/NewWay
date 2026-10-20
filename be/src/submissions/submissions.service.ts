@@ -3158,9 +3158,11 @@ export class SubmissionsService {
       salaryRow.height = 28;
 
       const salaryMap = new Map<
-        string,
+        number,
         {
+          name: string;
           luong: number;
+          tip: number;
           luongCung: number;
           chuyenCan: number;
           phuCapNhaXa: number;
@@ -3168,11 +3170,14 @@ export class SubmissionsService {
           phuCapXeCu: number;
           bhxhNld: number;
           chiHo: number;
+          itemSumDeduct: number;
           advanceDeduct: number;
           tongThanhToan: number;
         }
       >();
       for (const sub of submissions) {
+        // "SL TỔNG TÀU" do OPS nhập là số liệu của cả tàu, KHÔNG phải lương lái xe.
+        if (sub.user?.role === 'ops') continue;
         const name = sub.user?.fullName || sub.driverName;
         const sl = sub.shippingLineId
           ? slMap.get(sub.shippingLineId)
@@ -3205,8 +3210,10 @@ export class SubmissionsService {
           allowanceWaitLoading: 0,
           allowanceOldCar: 0,
         };
-        const prev = salaryMap.get(name) || {
+        const prev = salaryMap.get(sub.userId) || {
+          name,
           luong: 0,
+          tip: 0,
           luongCung: 0,
           chuyenCan: 0,
           phuCapNhaXa: 0,
@@ -3214,6 +3221,7 @@ export class SubmissionsService {
           phuCapXeCu: 0,
           bhxhNld: 0,
           chiHo: 0,
+          itemSumDeduct: 0,
           advanceDeduct: 0,
           tongThanhToan: 0,
         };
@@ -3221,8 +3229,12 @@ export class SubmissionsService {
         const compChiHo = (comp as any).chiHo || 0;
         const compAdvanceDeduct = (comp as any).advanceDeduct || 0;
         const compItemSumDeduct = ((comp as any).deductions || []).reduce((s: number, d: { amount: number }) => s + d.amount, 0);
-        salaryMap.set(name, {
+        salaryMap.set(sub.userId, {
+          name,
+          // Chỉ cộng dồn theo từng chuyến: lương chuyến + TIP.
           luong: prev.luong + luong,
+          tip: prev.tip + tip,
+          // Các khoản CỐ ĐỊNH của lái xe: lấy 1 lần, KHÔNG nhân theo số chuyến.
           luongCung: comp.fixedSalary,
           chuyenCan: comp.chuyenCan,
           phuCapNhaXa: comp.allowanceFarHome,
@@ -3230,28 +3242,33 @@ export class SubmissionsService {
           phuCapXeCu: comp.allowanceOldCar,
           bhxhNld: compBhxhNld,
           chiHo: compChiHo,
+          itemSumDeduct: compItemSumDeduct,
           advanceDeduct: compAdvanceDeduct,
-          tongThanhToan:
-            prev.tongThanhToan +
-            luong +
-            tip * 1000 +
-            comp.fixedSalary +
-            comp.chuyenCan +
-            comp.allowanceFarHome +
-            comp.allowanceWaitLoading +
-            comp.allowanceOldCar
-            - compBhxhNld
-            - compChiHo
-            - compItemSumDeduct
-            - compAdvanceDeduct,
+          tongThanhToan: 0,
         });
+      }
+      // Tính "thực nhận" 1 LẦN/lái xe. Trước đây phụ cấp và các khoản trừ bị
+      // cộng/trừ theo TỪNG submission nên bị nhân lên nhiều lần → số sai.
+      for (const val of salaryMap.values()) {
+        val.tongThanhToan =
+          val.luong +
+          val.tip * 1000 +
+          val.luongCung +
+          val.chuyenCan +
+          val.phuCapNhaXa +
+          val.phuCapChoDong +
+          val.phuCapXeCu -
+          val.bhxhNld -
+          val.chiHo -
+          val.itemSumDeduct -
+          val.advanceDeduct;
       }
 
       let idx = 0;
-      for (const [name, val] of salaryMap) {
+      for (const val of salaryMap.values()) {
         idx++;
         const row = wsSalary.addRow({
-          name,
+          name: val.name,
           luong: val.luong,
           luongCung: val.luongCung,
           chuyenCan: val.chuyenCan,
