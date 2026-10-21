@@ -54,3 +54,6 @@ echo ""
 docker compose ps
 echo ""
 echo "Xong. Log backend: docker compose logs --tail=30 backend"
+
+# Don build cache cu hon 7 ngay (khong dung container/image/volume dang dung)
+docker builder prune -f --filter until=168h >/dev/null 2>&1 || true
