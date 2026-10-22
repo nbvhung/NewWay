@@ -81,6 +81,19 @@ export class SalaryRecord {
   @Column({ name: 'has_bhxh', type: 'boolean', default: true })
   hasBhxh: boolean;
 
+  /**
+   * Tỷ lệ BHXH phần NLĐ riêng của lái xe (%). NULL = dùng mức chung
+   * `salary_settings.bhxh_nld`. Cho phép mỗi lái xe đóng mức khác nhau.
+   */
+  @Column({
+    name: 'bhxh_percent',
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+  })
+  bhxhPercent: number | null;
+
   @Column({
     name: 'old_car_allowance',
     type: 'numeric',

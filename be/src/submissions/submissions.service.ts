@@ -663,9 +663,14 @@ export class SubmissionsService {
       const hasParkingHph2 = rec ? rec.hasParkingHph2 : false;
       const chiHo = Number(rec?.chiHo) || 0;
 
-      // Tính BHXH — chỉ trừ nếu lái xe đóng bảo hiểm
+      // Tính BHXH — chỉ trừ nếu lái xe đóng bảo hiểm.
+      // Ưu tiên tỷ lệ riêng của lái xe, chưa đặt thì dùng mức chung.
       const hasBhxh = rec ? rec.hasBhxh : (d.payBhxh ?? true);
-      const bhxh = hasBhxh ? Math.round((fixedSalary * bhxhPercent) / 100) : 0;
+      const bhxhPercentDriver =
+        rec?.bhxhPercent != null ? Number(rec.bhxhPercent) : bhxhPercent;
+      const bhxh = hasBhxh
+        ? Math.round((fixedSalary * bhxhPercentDriver) / 100)
+        : 0;
 
       // Tính các khoản khấu trừ từ SalaryItems (kind='deduct')
       const riMap = rec
@@ -3548,7 +3553,12 @@ export class SubmissionsService {
         : fixedSalaryDefault;
       const chiHo = rec ? Number(rec.chiHo) || 0 : 0;
       const hasBhxh = rec ? rec.hasBhxh : (driver.payBhxh ?? true);
-      const bhxh = hasBhxh ? Math.round((fixedSalary * bhxhPercent) / 100) : 0;
+      // Tỷ lệ BHXH riêng của lái xe (nếu có), ngược lại dùng mức chung.
+      const bhxhPercentDriver =
+        rec?.bhxhPercent != null ? Number(rec.bhxhPercent) : bhxhPercent;
+      const bhxh = hasBhxh
+        ? Math.round((fixedSalary * bhxhPercentDriver) / 100)
+        : 0;
       const daysOff = rec?.daysOff?.length || 0;
       const ngayCong = daysInMonth - daysOff;
       const hasOldCar = rec ? rec.hasOldCar : driver.oldCar;
@@ -4096,7 +4106,7 @@ export class SubmissionsService {
       rC.getCell(7).font = tnr(true, 11);
       rC.getCell(7).fill = fillXanh;
       rowIdx++;
-      const pctLabel = String(bhxhPercent).replace('.', ',');
+      const pctLabel = String(bhxhPercentDriver).replace('.', ',');
       if (bhxh > 0) {
         writeChiHoRow(`BHXH -NLĐ nộp ${pctLabel}%`, bhxh, false, false);
       } else {

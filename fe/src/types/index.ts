@@ -235,6 +235,10 @@ export interface SalaryRecordItem {
   chiHo: number;
   bhxh: number;
   hasBhxh: boolean;
+  /** Tỷ lệ BHXH riêng của lái xe (null = dùng mức chung). */
+  bhxhPercent?: number | null;
+  /** Tỷ lệ BHXH thực tế đang áp dụng (riêng hoặc mức chung). */
+  bhxhPercentEffective?: number;
   advanceDeduct: number;
   advanceDeductOverridden: boolean;
   totalRemainingAdvance: number;

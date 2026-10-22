@@ -98,6 +98,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     hasParkingHph2: false,
     allowanceParking: '',
     hasBhxh: true,
+    bhxhPercent: '',
     chiHo: '',
     advanceDeduct: '',
   });
@@ -152,7 +153,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const pickDriver = (id: number | null) => {
     setSelectedId(id);
     if (id == null) {
-      setForm({ fixedSalary: '', hasFarHome: false, allowanceFarHome: '', allowanceWaitLoadingRate: '', daysOff: '', daysOffNote: '', hasOldCar: false, allowanceOldCar: '', hasParkingHph2: false, allowanceParking: '', hasBhxh: true, chiHo: '', advanceDeduct: '' });
+      setForm({ fixedSalary: '', hasFarHome: false, allowanceFarHome: '', allowanceWaitLoadingRate: '', daysOff: '', daysOffNote: '', hasOldCar: false, allowanceOldCar: '', hasParkingHph2: false, allowanceParking: '', hasBhxh: true, bhxhPercent: '', chiHo: '', advanceDeduct: '' });
       setBaseFarHome('');
       setBaseOldCar(false);
       setBaseBhxh(true);
@@ -172,6 +173,8 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
       hasParkingHph2: rec?.hasParkingHph2 || false,
       allowanceParking: rec?.parkingHph2Override != null ? fmtMoney(rec.parkingHph2Override) : '',
       hasBhxh: rec?.hasBhxh ?? true,
+      // '' = đang dùng mức BHXH chung; có số = tỷ lệ riêng của lái xe.
+      bhxhPercent: rec?.bhxhPercent != null ? String(rec.bhxhPercent) : '',
       chiHo: fmtMoney(rec?.chiHo),
       advanceDeduct: fmtMoney(rec?.advanceDeduct),
     });
@@ -219,6 +222,11 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
         hasParkingHph2: form.hasParkingHph2,
         parkingHph2: form.allowanceParking.trim() === '' ? null : (Number(parkingOverrideValue) || 0),
         hasBhxh: form.hasBhxh,
+        // '' = dùng mức chung; null để backend fallback về salary_settings.
+        bhxhPercent:
+          form.bhxhPercent.trim() === ''
+            ? null
+            : Number(form.bhxhPercent.replace(',', '.')) || 0,
         chiHo: Number(chiHoValue) || 0,
         advanceDeduct: Number(advanceDeductValue) || 0,
       });
@@ -596,7 +604,12 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const allowanceOldCar = form.hasOldCar ? (form.allowanceOldCar.trim() === '' ? oldCarAllowanceValue : oldCarOverrideValue) : 0;
   const parkingHph2Value = Number(parkingHph2.replace(/[^\d]/g, '')) || 0;
   const allowanceParking = form.hasParkingHph2 ? (form.allowanceParking.trim() === '' ? parkingHph2Value : parkingOverrideValue) : 0;
-  const bhxhPercentValue = Number(bhxhNld.replace(',', '.')) || 0;
+  const bhxhPercentGlobal = Number(bhxhNld.replace(',', '.')) || 0;
+  // Ưu tiên tỷ lệ riêng của lái xe; để trống thì dùng mức chung.
+  const bhxhPercentValue =
+    form.bhxhPercent.trim() !== ''
+      ? Number(form.bhxhPercent.replace(',', '.')) || 0
+      : bhxhPercentGlobal;
   const bhxhValue = form.hasBhxh
     ? Math.round((fixedSalaryValue * bhxhPercentValue) / 100)
     : 0;
@@ -844,9 +857,19 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                   ) : null}
 
                   <div>
-                    <label className={labelCls}>BHXH - NLĐ ({String(bhxhPercentValue).replace('.', ',')}%)</label>
-                    <div className="px-3.5 py-2.5 bg-[#f5f5f4] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917]">{fmtMoney(bhxhValue)} ₫</div>
-                    <p className="text-[10px] text-[#78716c] mt-1">Trừ vào lương: {fmtMoney(bhxhValue)} ₫</p>
+                    <label className={labelCls}>BHXH - NLĐ (%)</label>
+                    <input
+                      value={form.bhxhPercent}
+                      onChange={e => setForm(f => ({ ...f, bhxhPercent: e.target.value }))}
+                      inputMode="decimal"
+                      placeholder={`Mức chung: ${String(bhxhPercentGlobal).replace('.', ',')}`}
+                      className={inputCls}
+                    />
+                    <p className="text-[10px] text-[#78716c] mt-1">
+                      Đang áp dụng: <strong>{String(bhxhPercentValue).replace('.', ',')}%</strong>
+                      {form.bhxhPercent.trim() === '' ? ' (mức chung)' : ' (riêng lái xe)'}
+                      {' · '}Trừ vào lương: <strong>{fmtMoney(bhxhValue)} ₫</strong>
+                    </p>
                   </div>
                   <div>
                     <label className={labelCls}>Chờ đóng hàng (VNĐ)</label>

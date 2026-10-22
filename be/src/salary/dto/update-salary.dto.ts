@@ -50,6 +50,14 @@ export class UpdateSalaryRecordDto {
   @IsBoolean({ message: 'Trạng thái đóng bảo hiểm không hợp lệ' })
   hasBhxh?: boolean;
 
+  /** Tỷ lệ BHXH NLĐ riêng của lái xe (%). null = dùng mức chung. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Tỷ lệ BHXH không hợp lệ' })
+  @Min(0)
+  @Max(100, { message: 'Tỷ lệ BHXH không hợp lệ' })
+  bhxhPercent?: number | null;
+
   @IsOptional()
   @Type(() => Number)
   @IsNumber({}, { message: 'Phụ cấp xe cũ không hợp lệ' })

@@ -359,6 +359,8 @@ export class SalaryService {
       hasParkingHph2: prev?.hasParkingHph2 ?? false,
       parkingHph2: prev?.parkingHph2 ?? null,
       hasBhxh: user.payBhxh ?? prev?.hasBhxh ?? true,
+      // Giữ tỷ lệ BHXH riêng của tháng trước (nếu có) cho tháng mới.
+      bhxhPercent: prev?.bhxhPercent ?? null,
       chiHo: 0,
       advanceDeduct: 0,
       advanceDeductOverridden: false,
@@ -482,10 +484,13 @@ export class SalaryService {
       const components = this.computeComponents(record, settings, luongKhoan);
       const tip = Number(summary.totalTip) || 0;
       const chiHo = Number(record.chiHo) || 0;
+      // Ưu tiên tỷ lệ BHXH riêng của lái xe; chưa đặt thì dùng mức chung.
+      const bhxhPercentEffective =
+        record.bhxhPercent != null
+          ? Number(record.bhxhPercent)
+          : Number(settings.bhxhNld) || 0;
       const bhxh = record.hasBhxh
-        ? Math.round(
-            (components.fixedSalary * (Number(settings.bhxhNld) || 0)) / 100,
-          )
+        ? Math.round((components.fixedSalary * bhxhPercentEffective) / 100)
         : 0;
 
       const riMap =
@@ -578,6 +583,10 @@ export class SalaryService {
         allowanceOldCar: components.allowanceOldCar,
         chiHo,
         bhxh,
+        // null = đang dùng mức chung; có số = tỷ lệ riêng của lái xe.
+        bhxhPercent:
+          record.bhxhPercent != null ? Number(record.bhxhPercent) : null,
+        bhxhPercentEffective,
         hasBhxh: record.hasBhxh,
         advanceDeduct,
         advanceDeductOverridden: record.advanceDeductOverridden || false,
@@ -621,6 +630,9 @@ export class SalaryService {
       record.hasParkingHph2 = dto.hasParkingHph2;
     if (dto.parkingHph2 !== undefined) record.parkingHph2 = dto.parkingHph2;
     if (dto.hasBhxh !== undefined) record.hasBhxh = dto.hasBhxh;
+    if (dto.bhxhPercent !== undefined)
+      record.bhxhPercent =
+        dto.bhxhPercent === null ? null : Number(dto.bhxhPercent);
     if (dto.chiHo !== undefined) record.chiHo = dto.chiHo;
     if (dto.daysOff !== undefined) record.daysOff = dto.daysOff;
     if (dto.daysOffNote !== undefined)
