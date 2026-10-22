@@ -7,6 +7,7 @@ import {
   IsBoolean,
   IsInt,
   IsOptional,
+  IsArray,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -59,4 +60,14 @@ export class UpdateCustomerSurchargeDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  /** 'all' = mọi kế hoạch, 'plans' = chỉ các kế hoạch trong planIds. */
+  @IsOptional()
+  @IsIn(['all', 'plans'], { message: 'Phạm vi áp dụng không hợp lệ' })
+  applyScope?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true, message: 'Kế hoạch áp dụng không hợp lệ' })
+  planIds?: number[];
 }

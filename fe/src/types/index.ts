@@ -105,6 +105,9 @@ export interface CustomerSurcharge {
   toDay: number;
   active: boolean;
   note: string;
+  /** 'all' = mọi kế hoạch, 'plans' = chỉ các kế hoạch trong planIds. */
+  applyScope?: 'all' | 'plans';
+  planIds?: number[] | null;
   createdAt?: string;
   updatedAt?: string;
 }

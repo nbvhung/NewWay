@@ -856,6 +856,7 @@ export class CustomersService {
     if (dto.fromDay > dto.toDay) {
       throw new BadRequestException('"Từ ngày" không được lớn hơn "Đến ngày"');
     }
+    const applyScope = dto.applyScope === 'plans' ? 'plans' : 'all';
     const sur = this.surchargesRepository.create({
       customerId,
       name: dto.name.trim(),
@@ -867,6 +868,11 @@ export class CustomersService {
       toDay: dto.toDay,
       active: dto.active ?? true,
       note: dto.note || '',
+      applyScope,
+      planIds:
+        applyScope === 'plans'
+          ? (dto.planIds || []).map(Number).filter(Number.isFinite)
+          : null,
     });
     const saved = await this.surchargesRepository.save(sur);
     await this.logAudit(
@@ -924,6 +930,23 @@ export class CustomersService {
       changes.note = { old: sur.note, new: dto.note };
       sur.note = dto.note;
     }
+    if (dto.applyScope !== undefined) {
+      const scope = dto.applyScope === 'plans' ? 'plans' : 'all';
+      if (scope !== sur.applyScope) {
+        changes.applyScope = { old: sur.applyScope, new: scope };
+        sur.applyScope = scope;
+      }
+    }
+    if (dto.planIds !== undefined) {
+      const ids = (dto.planIds || []).map(Number).filter(Number.isFinite);
+      const oldIds = sur.planIds || [];
+      if (JSON.stringify(ids) !== JSON.stringify(oldIds)) {
+        changes.planIds = { old: oldIds, new: ids };
+        sur.planIds = ids;
+      }
+    }
+    // Phạm vi 'all' → không cần lưu danh sách kế hoạch.
+    if (sur.applyScope !== 'plans') sur.planIds = null;
     if (sur.fromDay > sur.toDay) {
       throw new BadRequestException('"Từ ngày" không được lớn hơn "Đến ngày"');
     }

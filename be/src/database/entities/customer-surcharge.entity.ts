@@ -51,6 +51,24 @@ export class CustomerSurcharge {
   @Column({ name: 'active', type: 'boolean', default: true })
   active: boolean;
 
+  /**
+   * Phạm vi áp dụng:
+   * - 'all'   : mọi kế hoạch của khách trong tháng + khoảng ngày (mặc định cũ).
+   * - 'plans' : chỉ các kế hoạch nằm trong `planIds`.
+   */
+  @Column({ name: 'apply_scope', type: 'varchar', length: 10, default: 'all' })
+  applyScope: string;
+
+  /** Danh sách id kế hoạch áp dụng khi `applyScope = 'plans'`. NULL = không giới hạn. */
+  @Column({
+    name: 'plan_ids',
+    type: 'int',
+    array: true,
+    nullable: true,
+    default: null,
+  })
+  planIds: number[] | null;
+
   @Column({ name: 'note', type: 'text', default: '' })
   note: string;
 

@@ -8,7 +8,7 @@ import { useAuth } from '@/providers/auth-provider';
 import { Modal } from '@/components/ui/modal';
 import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/use-pagination';
-import { fmtDateTime } from '@/lib/utils';
+import { fmtDateTime, fmtNgay } from '@/lib/utils';
 import { hasPerm, hasAnyPerm } from '@/lib/permissions';
 import { confirmDelete } from '@/lib/delete-guard';
 
@@ -115,7 +115,20 @@ export function CustomersTab({ onRefresh, toast }: Props) {
   const [surcharges, setSurcharges] = useState<CustomerSurcharge[]>([]);
   const [surModal, setSurModal] = useState(false);
   const [surEditId, setSurEditId] = useState<number | null>(null);
-  const [surForm, setSurForm] = useState({ name: '', calcType: 'add', value: '', fromDay: '', toDay: '', note: '' });
+  const [surForm, setSurForm] = useState({
+    name: '',
+    calcType: 'add',
+    value: '',
+    fromDay: '',
+    toDay: '',
+    note: '',
+    applyScope: 'all' as 'all' | 'plans',
+    planIds: [] as number[],
+  });
+  /** Kế hoạch của khách trong tháng đang xem — để chọn phụ phí áp cho kế hoạch nào. */
+  const [surPlans, setSurPlans] = useState<
+    { id: number; name: string; soChuyen: string; routeName: string; ngay: string }[]
+  >([]);
 
   // Lịch sử
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -179,6 +192,28 @@ export function CustomersTab({ onRefresh, toast }: Props) {
       setSurcharges(Array.isArray(res.data) ? res.data : []);
     } catch {
       setSurcharges([]);
+    }
+  }, []);
+
+  /** Nạp danh sách kế hoạch của khách trong tháng/năm đang chọn (cho phụ phí theo kế hoạch). */
+  const loadSurPlans = useCallback(async (customerId: number, m: number, y: number) => {
+    try {
+      const res = await customersApi.getPlans(customerId);
+      const all = Array.isArray(res.data) ? res.data : [];
+      const ym = `${y}-${String(m).padStart(2, '0')}`;
+      setSurPlans(
+        all
+          .filter((p) => (p.ngay || '').slice(0, 7) === ym)
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            soChuyen: p.soChuyen,
+            routeName: p.routeName,
+            ngay: p.ngay,
+          })),
+      );
+    } catch {
+      setSurPlans([]);
     }
   }, []);
 
@@ -433,13 +468,24 @@ export function CustomersTab({ onRefresh, toast }: Props) {
   // ── Phụ phí ────────────────────────────────────────────────────
   const openAddSur = () => {
     setSurEditId(null);
-    setSurForm({ name: '', calcType: 'add', value: '', fromDay: '', toDay: '', note: '' });
+    setSurForm({ name: '', calcType: 'add', value: '', fromDay: '', toDay: '', note: '', applyScope: 'all', planIds: [] });
+    if (selected) loadSurPlans(selected.id, month, year);
     setSurModal(true);
   };
 
   const openEditSur = (s: CustomerSurcharge) => {
     setSurEditId(s.id);
-    setSurForm({ name: s.name, calcType: s.calcType, value: String(s.value), fromDay: String(s.fromDay), toDay: String(s.toDay), note: s.note || '' });
+    setSurForm({
+      name: s.name,
+      calcType: s.calcType,
+      value: String(s.value),
+      fromDay: String(s.fromDay),
+      toDay: String(s.toDay),
+      note: s.note || '',
+      applyScope: (s.applyScope || 'all') as 'all' | 'plans',
+      planIds: (s.planIds || []).map(Number),
+    });
+    if (selected) loadSurPlans(selected.id, month, year);
     setSurModal(true);
   };
 
@@ -447,6 +493,10 @@ export function CustomersTab({ onRefresh, toast }: Props) {
     if (!selected) return;
     if (!surForm.name.trim() || surForm.value === '' || !surForm.fromDay || !surForm.toDay) {
       toast('Vui lòng nhập tên, giá trị và khoảng thời gian phụ phí', 'error');
+      return;
+    }
+    if (surForm.applyScope === 'plans' && surForm.planIds.length === 0) {
+      toast('Vui lòng chọn ít nhất 1 kế hoạch áp dụng phụ phí', 'error');
       return;
     }
     const data = {
@@ -458,6 +508,8 @@ export function CustomersTab({ onRefresh, toast }: Props) {
       fromDay: Number(surForm.fromDay),
       toDay: Number(surForm.toDay),
       note: surForm.note,
+      applyScope: surForm.applyScope,
+      planIds: surForm.applyScope === 'plans' ? surForm.planIds : [],
     };
     setSaving(true);
     try {
@@ -986,6 +1038,15 @@ export function CustomersTab({ onRefresh, toast }: Props) {
                             : <span className="px-1.5 py-0.5 rounded bg-[rgba(245,158,11,0.12)] text-[#d97706] font-semibold">{Number(s.value)}% Đơn giá</span>}
                           {s.note && <span className="ml-2">{s.note}</span>}
                         </div>
+                        <div className="text-[10px] mt-0.5">
+                          {s.applyScope === 'plans' ? (
+                            <span className="text-blue-600">
+                              🎯 Chỉ áp dụng {s.planIds?.length || 0} kế hoạch được chọn
+                            </span>
+                          ) : (
+                            <span className="text-[#a8a29e]">Áp dụng tất cả kế hoạch</span>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1219,6 +1280,77 @@ export function CustomersTab({ onRefresh, toast }: Props) {
               <p className="text-[10px] text-[#a8a29e] mt-1">Tính trên đơn giá đúng loại container (vd V40 = 500.000 → 5% = 25.000).</p>
             )}
           </div>
+          <div>
+            <label className="block text-xs font-medium text-[#78716c] mb-1.5">Áp dụng cho</label>
+            <select
+              value={surForm.applyScope}
+              onChange={e => setSurForm(f => ({ ...f, applyScope: e.target.value as 'all' | 'plans' }))}
+              className={inputCls}
+            >
+              <option value="all">Tất cả kế hoạch trong tháng {month}/{year}</option>
+              <option value="plans">Chỉ các kế hoạch được chọn bên dưới</option>
+            </select>
+          </div>
+          {surForm.applyScope === 'plans' && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-[#78716c]">
+                  Chọn kế hoạch ({surForm.planIds.length}/{surPlans.length})
+                </label>
+                {surPlans.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSurForm(f => ({
+                        ...f,
+                        planIds:
+                          f.planIds.length === surPlans.length
+                            ? []
+                            : surPlans.map(p => p.id),
+                      }))
+                    }
+                    className="text-[10px] font-semibold text-[#d97706] hover:underline cursor-pointer"
+                  >
+                    {surForm.planIds.length === surPlans.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                  </button>
+                )}
+              </div>
+              <div className="max-h-[220px] overflow-y-auto border border-[#e7e5e4] rounded-lg divide-y divide-[#e7e5e4]">
+                {surPlans.length === 0 ? (
+                  <p className="px-3 py-4 text-center text-[11px] text-[#a8a29e]">
+                    Không có kế hoạch nào trong tháng {month}/{year}.
+                  </p>
+                ) : (
+                  surPlans.map(p => {
+                    const checked = surForm.planIds.includes(p.id);
+                    return (
+                      <label
+                        key={p.id}
+                        className={`flex items-start gap-2 px-3 py-2 text-[11px] cursor-pointer ${checked ? 'bg-[#fef3c7]' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 w-4 h-4 accent-[#f59e0b]"
+                          checked={checked}
+                          onChange={e =>
+                            setSurForm(f => ({
+                              ...f,
+                              planIds: e.target.checked
+                                ? [...f.planIds, p.id]
+                                : f.planIds.filter(id => id !== p.id),
+                            }))
+                          }
+                        />
+                        <span className="text-[#1c1917]">
+                          {[p.name, p.soChuyen, p.routeName, fmtNgay(p.ngay)].filter(Boolean).join(' / ') || `KH #${p.id}`}
+                        </span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-medium text-[#78716c] mb-1.5">Ghi chú</label>
             <input type="text" value={surForm.note} onChange={e => setSurForm(f => ({ ...f, note: e.target.value }))} className={inputCls} />

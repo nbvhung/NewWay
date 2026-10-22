@@ -634,10 +634,15 @@ export class DashboardService {
           )
         : [];
       const mySurcharges = customerId
-        ? allSurcharges.filter(
-            (s) =>
-              s.customerId === customerId && day >= s.fromDay && day <= s.toDay,
-          )
+        ? allSurcharges.filter((s) => {
+            if (s.customerId !== customerId) return false;
+            if (day < s.fromDay || day > s.toDay) return false;
+            // Phụ phí chỉ áp cho một số kế hoạch được chọn.
+            if (s.applyScope === 'plans') {
+              return !!plan && (s.planIds || []).map(Number).includes(plan.id);
+            }
+            return true;
+          })
         : [];
       const unitFor = (type: string): number => {
         if (usePlanPrice) return Number(plan.dealedPrices![type]) || 0;
