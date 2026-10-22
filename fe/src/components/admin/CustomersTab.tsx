@@ -1290,6 +1290,11 @@ export function CustomersTab({ onRefresh, toast }: Props) {
               <option value="all">Tất cả kế hoạch trong tháng {month}/{year}</option>
               <option value="plans">Chỉ các kế hoạch được chọn bên dưới</option>
             </select>
+            {surForm.applyScope === 'plans' && (
+              <p className="text-[10px] text-[#a8a29e] mt-1">
+                Khi chọn kế hoạch riêng, khoảng "Từ ngày / Đến ngày" ở trên không dùng để lọc.
+              </p>
+            )}
           </div>
           {surForm.applyScope === 'plans' && (
             <div>

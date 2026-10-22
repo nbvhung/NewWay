@@ -636,11 +636,12 @@ export class DashboardService {
       const mySurcharges = customerId
         ? allSurcharges.filter((s) => {
             if (s.customerId !== customerId) return false;
-            if (day < s.fromDay || day > s.toDay) return false;
-            // Phụ phí chỉ áp cho một số kế hoạch được chọn.
+            // Phụ phí chọn kế hoạch cụ thể → áp đúng các kế hoạch đó (bỏ qua
+            // khoảng ngày, vì kế hoạch đã xác định ngày).
             if (s.applyScope === 'plans') {
               return !!plan && (s.planIds || []).map(Number).includes(plan.id);
             }
+            if (day < s.fromDay || day > s.toDay) return false;
             return true;
           })
         : [];
