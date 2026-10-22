@@ -8,6 +8,7 @@ import { Customer } from '../database/entities/customer.entity';
 import { CustomerPrice } from '../database/entities/customer-price.entity';
 import { CustomerSurcharge } from '../database/entities/customer-surcharge.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
+import { ContainerClaim } from '../database/entities/container-claim.entity';
 import { SalaryRecord } from '../database/entities/salary-record.entity';
 import { User } from '../database/entities/user.entity';
 import { Route } from '../database/entities/route.entity';
@@ -26,6 +27,7 @@ import { SalaryModule } from '../salary/salary.module';
       CustomerPrice,
       CustomerSurcharge,
       ContainerImport,
+      ContainerClaim,
       SalaryRecord,
       User,
       Route,

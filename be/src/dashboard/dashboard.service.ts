@@ -4,6 +4,7 @@ import { In, Repository } from 'typeorm';
 import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { Submission } from '../database/entities/submission.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
+import { ContainerClaim } from '../database/entities/container-claim.entity';
 import { Customer } from '../database/entities/customer.entity';
 import { CustomerPrice } from '../database/entities/customer-price.entity';
 import { CustomerSurcharge } from '../database/entities/customer-surcharge.entity';
@@ -27,6 +28,15 @@ const INVEST_CATEGORIES = ['vonXe', 'vonMooc', 'vonKhac'] as const;
 
 // Tỷ lệ BHXH phần CÔNG TY đóng (trên lương cứng) — cộng THÊM vào chi phí.
 const COMPANY_BHXH_PERCENT = 21.5;
+
+// ─── Cặp KẸP (giống quy tắc ở customers.service / submissions.service) ───
+// V20 → KV20, V20FR → KV20FR; cả cặp tính 1 lần giá kẹp. Loại khác tính đơn lẻ.
+const KEP_PRICE_TYPE: Record<string, string> = {
+  V20: 'KV20',
+  V20FR: 'KV20FR',
+};
+// FR tính theo BÓ riêng → không ghép kẹp cho FR (giống payment dossier).
+const FR_BUNDLE_TYPES = new Set(['V20FR', 'V40FR']);
 
 // ─── Helpers ────────────────────────────────────────────────────
 function dayOfDate(d: string | Date | null | undefined): number | null {
@@ -265,6 +275,8 @@ export class DashboardService {
     @InjectRepository(Submission) private subRepo: Repository<Submission>,
     @InjectRepository(ContainerImport)
     private ciRepo: Repository<ContainerImport>,
+    @InjectRepository(ContainerClaim)
+    private claimRepo: Repository<ContainerClaim>,
     @InjectRepository(Customer) private customerRepo: Repository<Customer>,
     @InjectRepository(CustomerPrice)
     private priceRepo: Repository<CustomerPrice>,
@@ -453,6 +465,76 @@ export class DashboardService {
           .getMany()
       : [];
 
+    // 2b. Cặp KẸP: claim CLAMP đánh dấu container bị kẹp; container chính là
+    //     container được ghi nhận ngay TRƯỚC ĐÓ trong CÙNG submission.
+    //     Chỉ ghép khi 2 container CÙNG loại, không thuộc bó FR, và loại đó có
+    //     giá kẹp (V20→KV20, V20FR→KV20FR).
+    const containerById = new Map<number, ContainerImport>();
+    for (const c of containers) containerById.set(c.id, c);
+    const kepByContainer = new Map<
+      number,
+      {
+        mainId: number;
+        clampId: number;
+        role: 'main' | 'clamp';
+        kepType: string;
+      }
+    >();
+    if (containers.length > 0) {
+      const claims = await this.claimRepo
+        .createQueryBuilder('cl')
+        .where('cl.containerImportId IN (:...ids)', {
+          ids: containers.map((c) => c.id),
+        })
+        .orderBy('cl.createdAt', 'ASC')
+        .addOrderBy('cl.id', 'ASC')
+        .getMany();
+      const isBundleMember = (c: ContainerImport | undefined) =>
+        !!c && !!c.bundleId && FR_BUNDLE_TYPES.has(String(c.type));
+      const lastBySubmission = new Map<number, ContainerClaim>();
+      const usedInPair = new Set<number>();
+      for (const cl of claims) {
+        if (cl.claimType === 'CLAMP') {
+          const clampC = containerById.get(cl.containerImportId);
+          const mainClaim = lastBySubmission.get(cl.submissionId);
+          const mainC = mainClaim
+            ? containerById.get(mainClaim.containerImportId)
+            : undefined;
+          if (
+            clampC &&
+            mainC &&
+            mainC.id !== clampC.id &&
+            String(mainC.type) === String(clampC.type) &&
+            !isBundleMember(mainC) &&
+            !isBundleMember(clampC) &&
+            !FR_BUNDLE_TYPES.has(String(mainC.type)) &&
+            !FR_BUNDLE_TYPES.has(String(clampC.type)) &&
+            !usedInPair.has(mainC.id) &&
+            !usedInPair.has(clampC.id)
+          ) {
+            const kepType = KEP_PRICE_TYPE[String(mainC.type)];
+            if (kepType) {
+              usedInPair.add(mainC.id);
+              usedInPair.add(clampC.id);
+              kepByContainer.set(mainC.id, {
+                mainId: mainC.id,
+                clampId: clampC.id,
+                role: 'main',
+                kepType,
+              });
+              kepByContainer.set(clampC.id, {
+                mainId: mainC.id,
+                clampId: clampC.id,
+                role: 'clamp',
+                kepType,
+              });
+            }
+          }
+        }
+        lastBySubmission.set(cl.submissionId, cl);
+      }
+    }
+
     // 3. Submissions trong tháng (để tính luong khoan) — chỉ của tài khoản lái xe
     const allSubmissions = planIds.length
       ? await this.subRepo
@@ -557,19 +639,37 @@ export class DashboardService {
               s.customerId === customerId && day >= s.fromDay && day <= s.toDay,
           )
         : [];
+      const unitFor = (type: string): number => {
+        if (usePlanPrice) return Number(plan.dealedPrices![type]) || 0;
+        const price = myPrices.find((p) => p.containerType === type);
+        return price ? Number(price.unitPrice) : 0;
+      };
+      const contIds = new Set(conts.map((c) => c.id));
+      // Cặp kẹp: mỗi cặp (cùng submission) tính 1 lần giá KẸP (KV20/KV20FR)
+      // nếu loại đó có giá. Container còn lại tính đơn lẻ như bình thường.
+      const pairByKepType: Record<string, number> = {};
+      const paired = new Set<number>();
+      for (const ci of conts) {
+        const info = kepByContainer.get(ci.id);
+        if (!info || info.role !== 'main' || paired.has(ci.id)) continue;
+        // Chỉ ghép khi cả 2 container cùng có trong tập đang tính (cùng xe/lái xe).
+        if (!contIds.has(info.clampId)) continue;
+        if (unitFor(info.kepType) <= 0) continue;
+        pairByKepType[info.kepType] = (pairByKepType[info.kepType] ?? 0) + 1;
+        paired.add(info.mainId);
+        paired.add(info.clampId);
+      }
       const countByType: Record<string, number> = {};
-      for (const ci of conts)
+      for (const ci of conts) {
+        if (paired.has(ci.id)) continue;
         countByType[ci.type] = (countByType[ci.type] ?? 0) + 1;
+      }
       let total = 0;
       for (const [type, count] of Object.entries(countByType)) {
-        let unit = 0;
-        if (usePlanPrice) {
-          unit = Number(plan.dealedPrices![type]) || 0;
-        } else {
-          const price = myPrices.find((p) => p.containerType === type);
-          unit = price ? Number(price.unitPrice) : 0;
-        }
-        total += unit * count;
+        total += unitFor(type) * count;
+      }
+      for (const [kepType, count] of Object.entries(pairByKepType)) {
+        total += unitFor(kepType) * count;
       }
       for (const sur of mySurcharges) {
         if (sur.calcType === 'add') total += Number(sur.value);
