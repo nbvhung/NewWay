@@ -11,6 +11,7 @@ import { Submission } from '../database/entities/submission.entity';
 import { Route } from '../database/entities/route.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { ContainerClaim } from '../database/entities/container-claim.entity';
+import { CustomerPrice } from '../database/entities/customer-price.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
 import { User } from '../database/entities/user.entity';
 import { Vehicle } from '../database/entities/vehicle.entity';
@@ -48,6 +49,8 @@ export class ShippingLinesService {
     private containerImportsRepository: Repository<ContainerImport>,
     @InjectRepository(ContainerClaim)
     private containerClaimsRepository: Repository<ContainerClaim>,
+    @InjectRepository(CustomerPrice)
+    private customerPricesRepository: Repository<CustomerPrice>,
     @InjectRepository(EditHistory)
     private editHistoryRepository: Repository<EditHistory>,
     @InjectRepository(User)
@@ -322,6 +325,9 @@ export class ShippingLinesService {
           'Kế hoạch cần HR/Admin duyệt đơn giá trước khi hoàn thành',
         );
       }
+      // Chặn hoàn thành nếu đơn giá đã duyệt không phủ hết loại container
+      // thực chạy (tránh trường hợp doanh thu = 0 do lệch loại vỏ).
+      await this.assertPricesCoverContainers(plan);
     }
 
     const saved = await this.shippingLinesRepository.save(plan);
@@ -340,6 +346,149 @@ export class ShippingLinesService {
     }
 
     return saved;
+  }
+
+  /**
+   * Kiểm tra đơn giá đã duyệt có phủ HẾT các loại container thực chạy của kế
+   * hoạch không. Nếu thiếu loại nào → báo rõ loại + số lượng để bổ sung, và
+   * KHÔNG cho hoàn thành (tránh doanh thu 0 do duyệt sai loại vỏ).
+   *
+   * Quy tắc khớp với cách tính doanh thu (Dashboard):
+   * - Đơn giá ưu tiên `dealed_prices` (đã duyệt); nếu chưa có thì dùng
+   *   `customer_prices` theo khách + tháng + ngày + tuyến.
+   * - Cặp KẸP V20/V20FR (claim CLAMP, cùng submission, cùng loại) tính theo
+   *   giá KV20/KV20FR nếu có; không có giá kẹp thì tính từng container.
+   */
+  private async assertPricesCoverContainers(
+    plan: ShippingLine,
+  ): Promise<void> {
+    const all = await this.containerImportsRepository.find({
+      where: { shippingLineId: plan.id },
+    });
+    // Chỉ xét container ĐÃ GHI NHẬN (thực chạy) — đây là phần sinh doanh thu.
+    const containers = all.filter((c) => c.submissionId != null);
+    if (containers.length === 0) return;
+
+    // ── Tập loại đơn giá đang có ──────────────────────────────────
+    const available = new Set<string>();
+    const dealed = plan.dealedPrices as Record<string, number> | null;
+    if (dealed && Object.keys(dealed).length > 0) {
+      for (const [type, val] of Object.entries(dealed)) {
+        if (Number(val) > 0) available.add(type);
+      }
+    } else if (plan.customerId && plan.ngay) {
+      const m = String(plan.ngay).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) {
+        const year = parseInt(m[1], 10);
+        const month = parseInt(m[2], 10);
+        const day = parseInt(m[3], 10);
+        const routeName = (plan.routeName || '').trim();
+        const prices = await this.customerPricesRepository.find({
+          where: { customerId: plan.customerId, month, year },
+        });
+        for (const p of prices) {
+          if (day < p.fromDay || day > p.toDay) continue;
+          const pr = (p.routeName || '').trim();
+          if (pr && pr !== routeName) continue;
+          if (Number(p.unitPrice) > 0) available.add(p.containerType);
+        }
+      }
+    }
+
+    // ── Cặp KẸP (giống dashboard/customers) ──────────────────────
+    const byId = new Map<number, ContainerImport>();
+    for (const c of containers) byId.set(c.id, c);
+    const isBundleMember = (c?: ContainerImport) =>
+      !!c &&
+      !!c.bundleId &&
+      (c.type === 'V20FR' || c.type === 'V40FR');
+    const kepTypeFor: Record<string, string> = {
+      V20: 'KV20',
+      V20FR: 'KV20FR',
+    };
+    const kepPair = new Map<
+      number,
+      { mainId: number; clampId: number; kepType: string }
+    >();
+    if (containers.length > 0) {
+      const claims = await this.containerClaimsRepository
+        .createQueryBuilder('cl')
+        .where('cl.containerImportId IN (:...ids)', {
+          ids: containers.map((c) => c.id),
+        })
+        .orderBy('cl.createdAt', 'ASC')
+        .addOrderBy('cl.id', 'ASC')
+        .getMany();
+      const lastBySubmission = new Map<number, ContainerClaim>();
+      const used = new Set<number>();
+      for (const cl of claims) {
+        if (cl.claimType === 'CLAMP') {
+          const clampC = byId.get(cl.containerImportId);
+          const mainClaim = lastBySubmission.get(cl.submissionId);
+          const mainC = mainClaim
+            ? byId.get(mainClaim.containerImportId)
+            : undefined;
+          if (
+            clampC &&
+            mainC &&
+            mainC.id !== clampC.id &&
+            String(mainC.type) === String(clampC.type) &&
+            !isBundleMember(mainC) &&
+            !isBundleMember(clampC) &&
+            !used.has(mainC.id) &&
+            !used.has(clampC.id)
+          ) {
+            const kepType = kepTypeFor[String(mainC.type)];
+            // Chỉ ghép khi có giá kẹp (khớp cách tính doanh thu).
+            if (kepType && available.has(kepType)) {
+              used.add(mainC.id);
+              used.add(clampC.id);
+              kepPair.set(mainC.id, {
+                mainId: mainC.id,
+                clampId: clampC.id,
+                kepType,
+              });
+              kepPair.set(clampC.id, {
+                mainId: mainC.id,
+                clampId: clampC.id,
+                kepType,
+              });
+            }
+          }
+        }
+        lastBySubmission.set(cl.submissionId, cl);
+      }
+    }
+
+    // ── Loại đơn giá cần có ─────────────────────────────────────
+    const required = new Map<string, number>();
+    const paired = new Set<number>();
+    for (const c of containers) {
+      const info = kepPair.get(c.id);
+      if (info && info.mainId === c.id && !paired.has(c.id)) {
+        required.set(info.kepType, (required.get(info.kepType) || 0) + 1);
+        paired.add(info.mainId);
+        paired.add(info.clampId);
+      }
+    }
+    for (const c of containers) {
+      if (paired.has(c.id)) continue;
+      required.set(c.type, (required.get(c.type) || 0) + 1);
+    }
+
+    const missing: string[] = [];
+    for (const [type, count] of required) {
+      if (!available.has(type)) missing.push(`${type} (${count} cont)`);
+    }
+    if (missing.length > 0) {
+      const planLabel =
+        [plan.name, plan.routeName].filter(Boolean).join(' / ') ||
+        `#${plan.id}`;
+      throw new BadRequestException(
+        `Không thể hoàn thành kế hoạch "${planLabel}": đơn giá đã duyệt thiếu loại container thực chạy — ${missing.join(', ')}. ` +
+          `Vào "Đơn giá" bổ sung loại còn thiếu rồi duyệt lại trước khi hoàn thành.`,
+      );
+    }
   }
 
   /**

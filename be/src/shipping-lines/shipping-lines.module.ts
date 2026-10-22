@@ -7,6 +7,7 @@ import { Route } from '../database/entities/route.entity';
 import { Submission } from '../database/entities/submission.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { ContainerClaim } from '../database/entities/container-claim.entity';
+import { CustomerPrice } from '../database/entities/customer-price.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
 import { User } from '../database/entities/user.entity';
 import { Vehicle } from '../database/entities/vehicle.entity';
@@ -20,6 +21,7 @@ import { ZaloBotModule } from '../zalo-bot/zalo-bot.module';
       Submission,
       ContainerImport,
       ContainerClaim,
+      CustomerPrice,
       EditHistory,
       User,
       Vehicle,
