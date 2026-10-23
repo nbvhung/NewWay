@@ -26,6 +26,13 @@ export class UpdateSalaryRecordDto {
   @Min(0)
   attendanceBonus?: number;
 
+  /** Mức chuyên cần riêng (null = dùng mức mặc định). */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Chuyên cần không hợp lệ' })
+  @Min(0)
+  chuyenCanOverride?: number | null;
+
   @IsOptional()
   @Type(() => Number)
   @IsNumber({}, { message: 'Phụ cấp nhà xa không hợp lệ' })

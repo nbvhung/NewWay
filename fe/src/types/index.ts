@@ -218,6 +218,10 @@ export interface SalaryRecordItem {
   fixedSalary: number;
   attendanceBonus: number;
   chuyenCan: number;
+  /** Mức chuyên cần mặc định (chưa sửa tay). */
+  chuyenCanDefault?: number;
+  /** Mức chuyên cần sửa tay (null = dùng mặc định). */
+  chuyenCanOverride?: number | null;
   /** Khoảng lương chuyến để lên mức thưởng chuyên cần kế tiếp (null nếu đã tối đa). */
   nextChuyenCanFrom?: number | null;
   nextChuyenCanTo?: number | null;

@@ -644,11 +644,15 @@ export class SubmissionsService {
         }
       }
 
-      const chuyenCan = attendanceBonusForMonth(
-        month,
-        year,
-        tripSalaryByDriver.get(d.id) || 0,
-      );
+      // Chuyên cần: ưu tiên giá trị sửa tay của lái xe trong tháng.
+      const chuyenCan =
+        rec?.chuyenCanOverride != null
+          ? Number(rec.chuyenCanOverride)
+          : attendanceBonusForMonth(
+              month,
+              year,
+              tripSalaryByDriver.get(d.id) || 0,
+            );
       const allowanceFarHome = rec
         ? rec.hasFarHome
           ? rec.allowanceFarHome != null
@@ -3748,11 +3752,10 @@ export class SubmissionsService {
 
       // --- Các tổng mục ---
       const tong4ChiHo = hasOldCar ? oldCarAllowance : 0;
-      const chuyenCan = attendanceBonusForMonth(
-        month,
-        year,
-        planTotalMoney,
-      );
+      const chuyenCan =
+        rec?.chuyenCanOverride != null
+          ? Number(rec.chuyenCanOverride)
+          : attendanceBonusForMonth(month, year, planTotalMoney);
       const tong4GuiXe = hasParkingHph2 ? parkingHph2 : 0;
       const tongPhuCap =
         tong4ChiHo +

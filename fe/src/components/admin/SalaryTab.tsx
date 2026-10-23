@@ -31,11 +31,6 @@ function fmtMoney(v: number | undefined | null): string {
   return Math.floor(v).toLocaleString('vi-VN');
 }
 
-/** Rút gọn số tiền về "triệu": 16.500.000 → "16,5tr", 17.000.000 → "17tr". */
-function fmtTrieu(v: number): string {
-  return (v / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + 'tr';
-}
-
 function fmtDT(v: string): string {
   if (!v) return '—';
   const d = new Date(v);
@@ -88,6 +83,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   // Form tài xế
   const [form, setForm] = useState({
     fixedSalary: '',
+    chuyenCan: '',
     hasFarHome: false,
     allowanceFarHome: '',
     allowanceWaitLoadingRate: '',
@@ -153,7 +149,7 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const pickDriver = (id: number | null) => {
     setSelectedId(id);
     if (id == null) {
-      setForm({ fixedSalary: '', hasFarHome: false, allowanceFarHome: '', allowanceWaitLoadingRate: '', daysOff: '', daysOffNote: '', hasOldCar: false, allowanceOldCar: '', hasParkingHph2: false, allowanceParking: '', hasBhxh: true, bhxhPercent: '', chiHo: '', advanceDeduct: '' });
+      setForm({ fixedSalary: '', chuyenCan: '', hasFarHome: false, allowanceFarHome: '', allowanceWaitLoadingRate: '', daysOff: '', daysOffNote: '', hasOldCar: false, allowanceOldCar: '', hasParkingHph2: false, allowanceParking: '', hasBhxh: true, bhxhPercent: '', chiHo: '', advanceDeduct: '' });
       setBaseFarHome('');
       setBaseOldCar(false);
       setBaseBhxh(true);
@@ -163,6 +159,9 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     const drv = drivers.find(d => d.id === id);
     setForm({
       fixedSalary: fmtMoney(rec?.fixedSalary),
+      // '' = dùng mức chuyên cần mặc định; có số = mức sửa tay.
+      chuyenCan:
+        rec?.chuyenCanOverride != null ? fmtMoney(rec.chuyenCanOverride) : '',
       hasFarHome: rec?.hasFarHome || false,
       allowanceFarHome: rec?.allowanceFarHomeOverride != null ? fmtMoney(rec.allowanceFarHomeOverride) : '',
       allowanceWaitLoadingRate: fmtMoney(rec?.allowanceWaitLoadingRate),
@@ -212,6 +211,11 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
     try {
       await salaryApi.updateRecord(selectedRecord.id, {
         fixedSalary: Number(fixedSalaryValue) || 0,
+        // '' = dùng mức mặc định; null để backend fallback.
+        chuyenCanOverride:
+          form.chuyenCan.trim() === ''
+            ? null
+            : Number(form.chuyenCan.replace(/[^\d]/g, '')) || 0,
         allowanceFarHome: form.allowanceFarHome.trim() === '' ? null : (Number(allowanceFarHomeValue) || 0),
         hasFarHome: form.hasFarHome,
         allowanceWaitLoadingRate: Number(waitLoadingAmountValue) || 0,
@@ -596,7 +600,13 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
   const chiHoValue = Number(form.chiHo.replace(/[^\d]/g, '')) || 0;
   const daysOffList = form.daysOff.split(',').map(s => s.trim()).filter(s => s !== '').map(s => parseInt(s)).filter(n => !isNaN(n));
 
-  const chuyenCan = selectedRecord?.chuyenCan || 0;
+  // Mức mặc định của tháng (chính sách) — dùng khi ô chuyên cần để trống.
+  const chuyenCanDefault =
+    selectedRecord?.chuyenCanDefault ?? selectedRecord?.chuyenCan ?? 0;
+  const chuyenCan =
+    form.chuyenCan.trim() !== ''
+      ? Number(form.chuyenCan.replace(/[^\d]/g, '')) || 0
+      : chuyenCanDefault;
   const luongKhoan = selectedRecord?.luongKhoan || 0;
   const tip = selectedRecord?.tip || 0;
   const allowanceWaitLoading = waitLoadingAmountValue;
@@ -813,15 +823,17 @@ export function SalaryTab({ currentUser, allUsers, toast }: Props) {
                   </div>
                   <div>
                     <label className={labelCls}>Chuyên cần (VNĐ)</label>
-                    <div className="px-3.5 py-2.5 bg-[#f5f5f4] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917]">
-                      {fmtMoney(chuyenCan)} ₫
-                    </div>
-                    <p className="text-[10px] text-[#78716c] mt-1">Theo lương chuyến tháng này: {fmtMoney(luongKhoan)} ₫</p>
-                    {selectedRecord?.nextChuyenCanFrom != null && selectedRecord?.nextChuyenCanTo != null && (
-                      <p className="text-[10px] text-[#d97706] mt-0.5 font-medium">
-                        Mức thưởng tiếp theo: {fmtTrieu(selectedRecord.nextChuyenCanFrom)} - {fmtTrieu(selectedRecord.nextChuyenCanTo)}
-                      </p>
-                    )}
+                    <input
+                      value={form.chuyenCan}
+                      onChange={e => setForm(f => ({ ...f, chuyenCan: e.target.value }))}
+                      inputMode="numeric"
+                      placeholder={`Mặc định: ${fmtMoney(chuyenCanDefault)}`}
+                      className={inputCls}
+                    />
+                    <p className="text-[10px] text-[#78716c] mt-1">
+                      Đang áp dụng: <strong>{fmtMoney(chuyenCan)} ₫</strong>
+                      {form.chuyenCan.trim() === '' ? ' (mặc định)' : ' (sửa tay)'}
+                    </p>
                   </div>
                   <div>
                     <label className={labelCls}>Ngày nghỉ (cách nhau dấu phẩy)</label>

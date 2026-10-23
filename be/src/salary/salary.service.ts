@@ -359,8 +359,9 @@ export class SalaryService {
       hasParkingHph2: prev?.hasParkingHph2 ?? false,
       parkingHph2: prev?.parkingHph2 ?? null,
       hasBhxh: user.payBhxh ?? prev?.hasBhxh ?? true,
-      // Giữ tỷ lệ BHXH riêng của tháng trước (nếu có) cho tháng mới.
+      // Giữ tỷ lệ BHXH riêng + chuyên cần riêng của tháng trước (nếu có).
       bhxhPercent: prev?.bhxhPercent ?? null,
+      chuyenCanOverride: prev?.chuyenCanOverride ?? null,
       chiHo: 0,
       advanceDeduct: 0,
       advanceDeductOverridden: false,
@@ -397,11 +398,11 @@ export class SalaryService {
     const ngayCong =
       this.daysInMonth(record.month, record.year) -
       (record.daysOff?.length || 0);
-    const chuyenCan = attendanceBonusForMonth(
-      record.month,
-      record.year,
-      tripSalary,
-    );
+    // Mức chuyên cần: ưu tiên giá trị sửa tay của lái xe trong tháng.
+    const chuyenCan =
+      record.chuyenCanOverride != null
+        ? Number(record.chuyenCanOverride)
+        : attendanceBonusForMonth(record.month, record.year, tripSalary);
     // Lương cứng theo ngày công (thang mới +1tr so với chính sách cũ)
     let fixedSalary: number;
     if (ngayCong <= 10) {
@@ -570,6 +571,12 @@ export class SalaryService {
         fixedSalary: components.fixedSalary,
         attendanceBonus: Number(record.attendanceBonus) || 0,
         chuyenCan: components.chuyenCan,
+        // Mức mặc định (chưa sửa tay) + giá trị sửa tay nếu có.
+        chuyenCanDefault: attendanceBonusForMonth(month, year, luongKhoan),
+        chuyenCanOverride:
+          record.chuyenCanOverride != null
+            ? Number(record.chuyenCanOverride)
+            : null,
         allowanceFarHome: components.allowanceFarHome,
         allowanceFarHomeOverride: record.allowanceFarHome,
         hasFarHome: record.hasFarHome || false,
@@ -618,6 +625,9 @@ export class SalaryService {
     if (dto.fixedSalary !== undefined) record.fixedSalary = dto.fixedSalary;
     if (dto.attendanceBonus !== undefined)
       record.attendanceBonus = dto.attendanceBonus;
+    if (dto.chuyenCanOverride !== undefined)
+      record.chuyenCanOverride =
+        dto.chuyenCanOverride === null ? null : Number(dto.chuyenCanOverride);
     if (dto.allowanceFarHome !== undefined)
       record.allowanceFarHome = dto.allowanceFarHome;
     if (dto.hasFarHome !== undefined) record.hasFarHome = dto.hasFarHome;

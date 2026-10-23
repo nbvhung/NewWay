@@ -45,6 +45,19 @@ export class SalaryRecord {
   })
   attendanceBonus: number;
 
+  /**
+   * Mức chuyên cần RIÊNG của lái xe trong tháng (VNĐ). NULL = dùng mức mặc
+   * định (chính sách chuyên cần hiện hành). Cho phép HR/Admin sửa tay.
+   */
+  @Column({
+    name: 'chuyen_can_override',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+  })
+  chuyenCanOverride: number | null;
+
   @Column({
     name: 'allowance_far_home',
     type: 'numeric',
