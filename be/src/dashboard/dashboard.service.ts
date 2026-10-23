@@ -1687,42 +1687,15 @@ export class DashboardService {
       return matched ? Number(matched.unitPrice) || 0 : 0;
     };
 
-    // ── Lương chuyến theo submission (giống cách tính lương khoán) ──
-    const calcSubSalary = (
-      sub: Submission,
-      plan: ShippingLine | undefined,
-    ): number => {
-      const routeName = sub.route || plan?.routeName || '';
-      const rt = routeMap.get(routeName);
-      const donGia = Number(plan?.frozenMoney ?? rt?.money) || 0;
-      const h20 = parseFloat(sub.hang20) || 0;
-      const h40 = parseFloat(sub.hang40) || 0;
-      const v20 = parseFloat(sub.vo20) || 0;
-      const v40 = parseFloat(sub.vo40) || 0;
-      const v20fr = parseFloat(sub.vo20fr) || 0;
-      const v40fr = parseFloat(sub.vo40fr) || 0;
-      const vsl = parseFloat(sub.veSinhLai) || 0;
-      const kv = parseFloat(sub.keoVe) || 0;
-      const tong =
-        h20 +
-        h40 +
-        Math.ceil(v20 / 2) +
-        v40 +
-        Math.ceil(v20fr / 8) +
-        Math.ceil(v40fr / 4);
-      const heSo = plan?.leTet ? 3 : plan?.tangCuong ? 1.15 : 1;
-      return donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
-    };
-    const subSalaryCache = new Map<number, number>();
-    const subSalary = (
+    // ── Lương chuyến = MỨC GIÁ của tuyến đường lái xe nhận (đơn giá/chuyến).
+    // Ưu tiên giá đóng băng của kế hoạch (nếu đã hoàn thành), không thì giá tuyến.
+    const routeRate = (
       sub: Submission | undefined,
       plan: ShippingLine | undefined,
     ): number => {
-      if (!sub) return 0;
-      if (subSalaryCache.has(sub.id)) return subSalaryCache.get(sub.id)!;
-      const v = calcSubSalary(sub, plan);
-      subSalaryCache.set(sub.id, v);
-      return v;
+      const routeName = sub?.route || plan?.routeName || '';
+      const rt = routeMap.get(routeName);
+      return Number(plan?.frozenMoney ?? rt?.money) || 0;
     };
 
     // ── Cặp KẸP (V20/V20FR) — giống dashboard/hồ sơ thanh toán ──
@@ -1851,7 +1824,7 @@ export class DashboardService {
         customerId: plan?.customerId ?? null,
         planId: ci.shippingLineId ?? null,
         submissionId: ci.submissionId ?? null,
-        tripSalary: subSalary(sub, plan),
+        tripSalary: routeRate(sub, plan),
         revenue,
         mergeGroup,
         revenueRole,
