@@ -1608,6 +1608,18 @@ export class DashboardService {
       planName: string;
       planNgay: string;
       driverName: string;
+      routeName: string;
+      customerName: string;
+      customerId: number | null;
+      planId: number | null;
+      submissionId: number | null;
+      /** Lương chuyến của submission (chuyến) chứa container này. */
+      tripSalary: number;
+      /** Doanh thu của container (cặp kẹp: dòng chính mang giá, dòng kẹp = 0). */
+      revenue: number;
+      /** Khóa nhóm để merge ô doanh thu của cặp kẹp (null = không merge). */
+      mergeGroup: string | null;
+      revenueRole: 'main' | 'clamp' | null;
     }>
   > {
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -1640,16 +1652,235 @@ export class DashboardService {
       .orderBy('ci.shipping_line_id', 'ASC')
       .addOrderBy('ci.id', 'ASC')
       .getMany();
+    if (rows.length === 0) return [];
 
-    return rows.map((ci) => {
-      const p = planMap.get(ci.shippingLineId ?? -1);
+    // ── Dữ liệu phụ: khách, bảng giá tháng, tuyến đường ──
+    const [customers, monthPrices, routes] = await Promise.all([
+      this.customerRepo.find(),
+      this.priceRepo.find({ where: { month, year } }),
+      this.routeRepo.find(),
+    ]);
+    const customerMap = new Map(customers.map((c) => [c.id, c.name]));
+    const routeMap = new Map(routes.map((r) => [r.name, r]));
+
+    const priceFor = (plan: ShippingLine | undefined, type: string): number => {
+      if (!plan) return 0;
+      const dealed = plan.dealedPrices as Record<string, number> | null;
+      const usePlanPrice =
+        plan.priceStatus !== 'rejected' &&
+        !!dealed &&
+        Object.keys(dealed).length > 0;
+      if (usePlanPrice) return Number(dealed![type]) || 0;
+      const day = dayOfDate(plan.ngay);
+      if (day == null) return 0;
+      const rn = (plan.routeName || '').trim();
+      const match = (want: string) =>
+        monthPrices.find(
+          (p) =>
+            p.customerId === plan.customerId &&
+            p.containerType === type &&
+            day >= p.fromDay &&
+            day <= p.toDay &&
+            (p.routeName || '').trim() === want,
+        );
+      const matched = rn ? match(rn) || match('') : match('');
+      return matched ? Number(matched.unitPrice) || 0 : 0;
+    };
+
+    // ── Lương chuyến theo submission (giống cách tính lương khoán) ──
+    const calcSubSalary = (
+      sub: Submission,
+      plan: ShippingLine | undefined,
+    ): number => {
+      const routeName = sub.route || plan?.routeName || '';
+      const rt = routeMap.get(routeName);
+      const donGia = Number(plan?.frozenMoney ?? rt?.money) || 0;
+      const h20 = parseFloat(sub.hang20) || 0;
+      const h40 = parseFloat(sub.hang40) || 0;
+      const v20 = parseFloat(sub.vo20) || 0;
+      const v40 = parseFloat(sub.vo40) || 0;
+      const v20fr = parseFloat(sub.vo20fr) || 0;
+      const v40fr = parseFloat(sub.vo40fr) || 0;
+      const vsl = parseFloat(sub.veSinhLai) || 0;
+      const kv = parseFloat(sub.keoVe) || 0;
+      const tong =
+        h20 +
+        h40 +
+        Math.ceil(v20 / 2) +
+        v40 +
+        Math.ceil(v20fr / 8) +
+        Math.ceil(v40fr / 4);
+      const heSo = plan?.leTet ? 3 : plan?.tangCuong ? 1.15 : 1;
+      return donGia * tong * heSo + vsl * 40000 * heSo + kv * donGia * heSo;
+    };
+    const subSalaryCache = new Map<number, number>();
+    const subSalary = (
+      sub: Submission | undefined,
+      plan: ShippingLine | undefined,
+    ): number => {
+      if (!sub) return 0;
+      if (subSalaryCache.has(sub.id)) return subSalaryCache.get(sub.id)!;
+      const v = calcSubSalary(sub, plan);
+      subSalaryCache.set(sub.id, v);
+      return v;
+    };
+
+    // ── Cặp KẸP (V20/V20FR) — giống dashboard/hồ sơ thanh toán ──
+    const byId = new Map<number, ContainerImport>();
+    for (const c of rows) byId.set(c.id, c);
+    const claimRows = await this.claimRepo
+      .createQueryBuilder('cl')
+      .where('cl.containerImportId IN (:...ids)', {
+        ids: rows.map((c) => c.id),
+      })
+      .orderBy('cl.createdAt', 'ASC')
+      .addOrderBy('cl.id', 'ASC')
+      .getMany();
+    const kepTypeFor: Record<string, string> = {
+      V20: 'KV20',
+      V20FR: 'KV20FR',
+    };
+    const FR_TYPES = new Set(['V20FR', 'V40FR']);
+    const FR_LONE: Record<string, string> = { V20FR: 'V20', V40FR: 'V40' };
+    const isBundleMember = (c?: ContainerImport) =>
+      !!c && !!c.bundleId && FR_TYPES.has(String(c.type));
+    const pairInfo = new Map<
+      number,
+      { mainId: number; clampId: number; role: 'main' | 'clamp' }
+    >();
+    {
+      const lastBySubmission = new Map<number, ContainerClaim>();
+      const used = new Set<number>();
+      for (const cl of claimRows) {
+        if (cl.claimType === 'CLAMP') {
+          const clampC = byId.get(cl.containerImportId);
+          const mainClaim = lastBySubmission.get(cl.submissionId);
+          const mainC = mainClaim
+            ? byId.get(mainClaim.containerImportId)
+            : undefined;
+          if (
+            clampC &&
+            mainC &&
+            mainC.id !== clampC.id &&
+            String(mainC.type) === String(clampC.type) &&
+            !isBundleMember(mainC) &&
+            !isBundleMember(clampC) &&
+            !used.has(mainC.id) &&
+            !used.has(clampC.id)
+          ) {
+            const kepType = kepTypeFor[String(mainC.type)];
+            const plan = planMap.get(clampC.shippingLineId ?? -1);
+            // Chỉ ghép khi có giá kẹp (khớp cách tính doanh thu).
+            if (kepType && priceFor(plan, kepType) > 0) {
+              used.add(mainC.id);
+              used.add(clampC.id);
+              pairInfo.set(mainC.id, {
+                mainId: mainC.id,
+                clampId: clampC.id,
+                role: 'main',
+              });
+              pairInfo.set(clampC.id, {
+                mainId: mainC.id,
+                clampId: clampC.id,
+                role: 'clamp',
+              });
+            }
+          }
+        }
+        lastBySubmission.set(cl.submissionId, cl);
+      }
+    }
+
+    // ── BÓ FR: giá cho cả bó, gán cho container đầu (theo mã) ──
+    const frPriceTypeByFirst = new Map<number, string>();
+    {
+      const groups = new Map<string, ContainerImport[]>();
+      for (const c of rows) {
+        if (!FR_TYPES.has(String(c.type))) continue;
+        if (pairInfo.has(c.id)) continue;
+        const key = c.bundleId
+          ? `${c.shippingLineId}:b:${c.bundleId}`
+          : `s:${c.id}`;
+        const arr = groups.get(key) ?? [];
+        arr.push(c);
+        groups.set(key, arr);
+      }
+      for (const members of groups.values()) {
+        members.sort((a, b) =>
+          String(a.containerCode).localeCompare(String(b.containerCode)),
+        );
+        const first = members[0];
+        const isBo = !!first.bundleId && members.length >= 2;
+        const priceType = isBo
+          ? String(first.type)
+          : FR_LONE[String(first.type)];
+        if (priceType) frPriceTypeByFirst.set(first.id, priceType);
+      }
+    }
+
+    const result = rows.map((ci) => {
+      const plan = planMap.get(ci.shippingLineId ?? -1);
+      const sub = ci.submissionRef;
+      const pair = pairInfo.get(ci.id);
+      let revenue = 0;
+      let mergeGroup: string | null = null;
+      let revenueRole: 'main' | 'clamp' | null = null;
+      if (pair) {
+        mergeGroup = `kep:${pair.mainId}`;
+        revenueRole = pair.role;
+        if (pair.role === 'main') {
+          const kepType = kepTypeFor[String(ci.type)];
+          revenue = kepType ? priceFor(plan, kepType) : 0;
+        }
+      } else if (FR_TYPES.has(String(ci.type))) {
+        const priceType = frPriceTypeByFirst.get(ci.id);
+        revenue = priceType ? priceFor(plan, priceType) : 0;
+      } else {
+        revenue = priceFor(plan, ci.type);
+      }
       return {
         containerCode: ci.containerCode,
         type: ci.type,
-        planName: p?.name || `KH#${ci.shippingLineId ?? ''}`,
-        planNgay: isoStr(p?.ngay),
-        driverName: ci.submissionRef?.user?.fullName || '',
+        planName: plan?.name || `KH#${ci.shippingLineId ?? ''}`,
+        planNgay: isoStr(plan?.ngay),
+        driverName: sub?.user?.fullName || '',
+        routeName: plan?.routeName || sub?.route || '',
+        customerName: plan?.customerId
+          ? customerMap.get(plan.customerId) || ''
+          : '',
+        customerId: plan?.customerId ?? null,
+        planId: ci.shippingLineId ?? null,
+        submissionId: ci.submissionId ?? null,
+        tripSalary: subSalary(sub, plan),
+        revenue,
+        mergeGroup,
+        revenueRole,
       };
     });
+
+    // Đưa 2 container của cặp kẹp về liền nhau (để merge ô Doanh thu).
+    const groupRows = new Map<string, typeof result>();
+    for (const r of result) {
+      if (!r.mergeGroup) continue;
+      const arr = groupRows.get(r.mergeGroup) ?? [];
+      arr.push(r);
+      groupRows.set(r.mergeGroup, arr);
+    }
+    const out: typeof result = [];
+    const emitted = new Set<string>();
+    for (const r of result) {
+      if (!r.mergeGroup) {
+        out.push(r);
+        continue;
+      }
+      if (emitted.has(r.mergeGroup)) continue;
+      emitted.add(r.mergeGroup);
+      const arr = groupRows.get(r.mergeGroup)!;
+      arr.sort((a, b) =>
+        a.revenueRole === 'main' ? -1 : b.revenueRole === 'main' ? 1 : 0,
+      );
+      out.push(...arr);
+    }
+    return out;
   }
 }

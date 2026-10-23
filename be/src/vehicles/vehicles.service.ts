@@ -524,29 +524,38 @@ export class VehiclesService {
       year,
     );
     const ws2 = wb.addWorksheet('Container đã chạy');
+    const ws2Cols = 11;
     ws2.columns = [
-      { width: 6 },
-      { width: 18 },
-      { width: 20 },
-      { width: 10 },
-      { width: 34 },
-      { width: 14 },
-      { width: 24 },
+      { width: 6 }, // STT
+      { width: 18 }, // Biển số xe
+      { width: 20 }, // Mã container
+      { width: 10 }, // Loại
+      { width: 20 }, // Tuyến đường
+      { width: 30 }, // Kế hoạch
+      { width: 12 }, // Ngày
+      { width: 22 }, // Tài xế
+      { width: 32 }, // Khách hàng
+      { width: 16 }, // Lương chuyến
+      { width: 16 }, // Doanh thu
     ];
     const t2 = ws2.addRow([
       `CONTAINER XE ${v.soXe || '#' + vehicleId} ĐÃ CHẠY — Tháng ${month}/${year}`,
     ]);
     t2.font = { bold: true, size: 13 };
-    ws2.mergeCells(t2.number, 1, t2.number, 7);
+    ws2.mergeCells(t2.number, 1, t2.number, ws2Cols);
     ws2.addRow([]);
     const h2 = ws2.addRow([
       'STT',
       'Biển số xe',
       'Mã container',
       'Loại',
+      'Tuyến đường',
       'Kế hoạch',
       'Ngày',
       'Tài xế',
+      'Khách hàng',
+      'Lương chuyến',
+      'Doanh thu',
     ]);
     h2.font = { bold: true };
     h2.eachCell((c: any) => {
@@ -557,20 +566,54 @@ export class VehiclesService {
       };
       c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     });
+
+    // Gom các dòng theo nhóm kẹp để merge ô DOANH THU của cả cặp.
+    const kepGroups = new Map<
+      string,
+      { first: number; last: number; revenue: number }
+    >();
     containers.forEach((ci, i) => {
-      ws2.addRow([
+      const row = ws2.addRow([
         i + 1,
         v.soXe || '',
         ci.containerCode,
         ci.type,
+        ci.routeName || '',
         ci.planName,
         ci.planNgay,
         ci.driverName,
+        ci.customerName || '',
+        ci.tripSalary || 0,
+        ci.revenue || 0,
       ]);
+      row.getCell(10).numFmt = '#,##0';
+      row.getCell(11).numFmt = '#,##0';
+      if (ci.mergeGroup) {
+        const g = kepGroups.get(ci.mergeGroup);
+        if (!g) {
+          kepGroups.set(ci.mergeGroup, {
+            first: row.number,
+            last: row.number,
+            revenue: ci.revenue || 0,
+          });
+        } else {
+          g.last = row.number;
+          g.revenue += ci.revenue || 0;
+        }
+      }
     });
+    // Cặp kẹp: gộp ô Doanh thu 2 dòng và ghi 1 lần doanh thu của cặp.
+    for (const g of kepGroups.values()) {
+      if (g.last === g.first) continue;
+      ws2.mergeCells(g.first, 11, g.last, 11);
+      const cell = ws2.getCell(g.first, 11);
+      cell.value = g.revenue;
+      cell.numFmt = '#,##0';
+      cell.alignment = { vertical: 'middle', horizontal: 'right' };
+    }
     const totalRow = ws2.addRow([`Tổng: ${containers.length} container`]);
     totalRow.font = { bold: true };
-    ws2.mergeCells(totalRow.number, 1, totalRow.number, 7);
+    ws2.mergeCells(totalRow.number, 1, totalRow.number, ws2Cols);
 
     const safe = (v.soXe || `Xe${vehicleId}`).replace(/[^\w]+/g, '');
     const filename = `ThongKeXe_${safe}_T${String(month).padStart(2, '0')}-${year}.xlsx`;
