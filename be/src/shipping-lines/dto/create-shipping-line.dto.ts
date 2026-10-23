@@ -6,6 +6,7 @@ import {
   IsArray,
   IsInt,
   IsObject,
+  Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -33,10 +34,11 @@ export class CreateShippingLineDto {
   @IsOptional()
   routeId?: number;
 
-  @IsOptional()
+  /** Bắt buộc chọn khách hàng khi tạo kế hoạch. */
   @Type(() => Number)
-  @IsInt({ message: 'Khách hàng không hợp lệ' })
-  customerId?: number;
+  @IsInt({ message: 'Vui lòng chọn khách hàng' })
+  @Min(1, { message: 'Vui lòng chọn khách hàng' })
+  customerId: number;
 
   @IsOptional()
   @IsBoolean()

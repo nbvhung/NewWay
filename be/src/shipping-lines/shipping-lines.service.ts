@@ -200,6 +200,10 @@ export class ShippingLinesService {
       throw new BadRequestException('Tên kế hoạch không được để trống');
     }
 
+    if (!dto.customerId) {
+      throw new BadRequestException('Vui lòng chọn khách hàng');
+    }
+
     const dealedPrices = this.normalizePrices(dto.dealedPrices);
     if (!dealedPrices) {
       throw new BadRequestException(
@@ -212,7 +216,7 @@ export class ShippingLinesService {
       soChuyen: dto.soChuyen?.trim() || '',
       routeName: dto.routeName?.trim() || '',
       ngay: dto.ngay || undefined,
-      customerId: dto.customerId ?? null,
+      customerId: dto.customerId,
       vendor: dto.vendor?.trim() || '',
       tangCuong: dto.tangCuong || false,
       leTet: dto.leTet || false,

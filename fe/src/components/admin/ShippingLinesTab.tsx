@@ -171,6 +171,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
 
   const createPlan = async (): Promise<ShippingLine | null> => {
     if (!name.trim()) { toast('Vui lòng nhập tên kế hoạch', 'error'); return null; }
+    if (!customerId) { toast('Vui lòng chọn khách hàng', 'error'); return null; }
     const dealedPrices: Record<string, number> = {};
     PRICE_TYPES.forEach(t => { const v = Number(prices[t]); if (!isNaN(v) && v > 0) dealedPrices[t] = v; });
     if (Object.keys(dealedPrices).length === 0) { toast('Vui lòng nhập ít nhất 1 đơn giá deal với khách hàng', 'error'); return null; }
@@ -179,7 +180,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
       soChuyen: soChuyen.trim(),
       routeName: routeName.trim(),
       ngay: ngay || undefined,
-      customerId: customerId ? Number(customerId) : undefined,
+      customerId: Number(customerId),
       tangCuong,
       leTet,
       vendorKhac: addVendorKhac.trim(),
@@ -487,7 +488,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Khách hàng</label>
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Khách hàng <span className="text-red-400">*</span></label>
                 <select value={customerId} onChange={e => setCustomerId(e.target.value)}
                   className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer">
                   <option value="">-- Chọn khách hàng --</option>
