@@ -535,6 +535,40 @@ export class DashboardService {
       }
     }
 
+    // 2c. BÓ FR: đơn giá V20FR/V40FR là giá cho CẢ BÓ (giống Hồ sơ thanh toán).
+    //     - Bó ≥ 2 container (cùng bundle_id) → 1 lần giá, gán cho container ĐẦU
+    //       của bó (theo mã container); các container còn lại = 0.
+    //     - Bó lẻ 1 container / không có bundle_id → giá V20/V40.
+    const FR_TYPES = new Set(['V20FR', 'V40FR']);
+    const FR_LONE_PRICE_TYPE: Record<string, string> = {
+      V20FR: 'V20',
+      V40FR: 'V40',
+    };
+    const frPriceByFirstContainer = new Map<number, string>();
+    {
+      const groups = new Map<string, ContainerImport[]>();
+      for (const c of containers) {
+        if (!FR_TYPES.has(String(c.type))) continue;
+        const key = c.bundleId
+          ? `b:${c.shippingLineId}:${c.bundleId}`
+          : `s:${c.id}`;
+        const arr = groups.get(key) ?? [];
+        arr.push(c);
+        groups.set(key, arr);
+      }
+      for (const members of groups.values()) {
+        members.sort((a, b) =>
+          String(a.containerCode).localeCompare(String(b.containerCode)),
+        );
+        const first = members[0];
+        const isBo = !!first.bundleId && members.length >= 2;
+        const priceType = isBo
+          ? String(first.type)
+          : FR_LONE_PRICE_TYPE[String(first.type)];
+        if (priceType) frPriceByFirstContainer.set(first.id, priceType);
+      }
+    }
+
     // 3. Submissions trong tháng (để tính luong khoan) — chỉ của tài khoản lái xe
     const allSubmissions = planIds.length
       ? await this.subRepo
@@ -670,43 +704,19 @@ export class DashboardService {
         paired.add(info.mainId);
         paired.add(info.clampId);
       }
-      // BÓ FR: giá V20FR/V40FR là giá cho CẢ BÓ (giống Hồ sơ thanh toán):
-      //  - Bó ≥ 2 container (cùng bundle_id) → 1 lần giá V20FR/V40FR.
-      //  - Bó lẻ 1 container / không có bundle_id → V20FR→giá V20, V40FR→giá V40.
-      const FR_BUNDLE_TYPES = new Set(['V20FR', 'V40FR']);
-      const FR_LONE_PRICE_TYPE: Record<string, string> = {
-        V20FR: 'V20',
-        V40FR: 'V40',
-      };
-      const frGroups = new Map<string, ContainerImport[]>();
-      for (const ci of conts) {
-        if (!FR_BUNDLE_TYPES.has(String(ci.type))) continue;
-        if (paired.has(ci.id)) continue;
-        const key = ci.bundleId ? `b:${ci.bundleId}` : `s:${ci.id}`;
-        const arr = frGroups.get(key) ?? [];
-        arr.push(ci);
-        frGroups.set(key, arr);
-      }
-      const frHandled = new Set<number>();
-      let frTotal = 0;
-      for (const members of frGroups.values()) {
-        const first = members[0];
-        const isBo = !!first.bundleId && members.length >= 2;
-        if (isBo) {
-          frTotal += unitFor(String(first.type));
-        } else {
-          const loneType = FR_LONE_PRICE_TYPE[String(first.type)];
-          frTotal += loneType ? unitFor(loneType) : 0;
-        }
-        for (const m of members) frHandled.add(m.id);
-      }
-
       const countByType: Record<string, number> = {};
+      let total = 0;
       for (const ci of conts) {
-        if (paired.has(ci.id) || frHandled.has(ci.id)) continue;
+        if (paired.has(ci.id)) continue;
+        // BÓ FR: chỉ container ĐẦU của bó mang giá (1 lần/bó); bó lẻ dùng
+        // giá V20/V40. Các container FR còn lại không cộng thêm.
+        if (FR_TYPES.has(String(ci.type))) {
+          const priceType = frPriceByFirstContainer.get(ci.id);
+          if (priceType) total += unitFor(priceType);
+          continue;
+        }
         countByType[ci.type] = (countByType[ci.type] ?? 0) + 1;
       }
-      let total = frTotal;
       for (const [type, count] of Object.entries(countByType)) {
         total += unitFor(type) * count;
       }
