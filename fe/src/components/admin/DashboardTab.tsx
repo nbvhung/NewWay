@@ -755,7 +755,13 @@ export function DashboardTab() {
               </div>
               <p className="text-[26px] lg:text-[28px] font-extrabold leading-none tabular-nums"
                 style={{ color: card.color }}>{fmt(card.value)}</p>
-              <p className="text-[9px] mt-1 font-medium" style={{ color: C.muted }}>₫</p>
+              {card.key === 'profit' ? (
+                <p className="text-[10px] mt-1 font-bold" style={{ color: card.color }}>
+                  {totalVon > 0 ? `${(profit / totalVon * 100).toFixed(1)}% trên tổng vốn đầu tư` : '—'}
+                </p>
+              ) : (
+                <p className="text-[9px] mt-1 font-medium" style={{ color: C.muted }}>₫</p>
+              )}
               {card.sub && (
                 <p className="text-[10px] mt-2 leading-snug" style={{ color: isActive ? card.color : C.muted }}
                   title={card.sub}>{card.sub}</p>
