@@ -623,9 +623,14 @@ export class DashboardService {
       plan: ShippingLine | null,
     ): number => {
       if (!day) return 0;
-      // Nếu kế hoạch đã duyệt giá deal → dùng dealed_prices kể cả khi không có customer_id
+      // Dùng đơn giá deal nếu kế hoạch ĐÃ NHẬP giá — kể cả đang "chờ duyệt"
+      // (pending) — để Dashboard không hiện 0 oan. Chỉ bỏ qua khi giá bị
+      // TỪ CHỐI (rejected), khi đó mới fallback sang bảng giá khách hàng.
       const usePlanPrice =
-        !!plan && plan.priceStatus === 'approved' && !!plan.dealedPrices;
+        !!plan &&
+        plan.priceStatus !== 'rejected' &&
+        !!plan.dealedPrices &&
+        Object.keys(plan.dealedPrices).length > 0;
       if (!customerId && !usePlanPrice) return 0;
       const myPrices = customerId
         ? allPrices.filter(
