@@ -636,10 +636,13 @@ export class SubmissionsService {
       } else {
         fixedSalary = 7000000;
       }
-      // Override nếu admin nhập tay mức khác
+      // Override GIỐNG HỆT tab Lương Tháng (salary.service.computeComponents):
+      // admin nhập tay mức khác (kể cả 0 = không có lương cứng) thì dùng đúng
+      // số đó, để "Tổng thu nhập dự kiến" của lái xe khớp với bảng lương.
       if (rec?.fixedSalary != null) {
         const recFixed = Number(rec.fixedSalary);
-        if (recFixed !== 0 && ![5000000, 6000000, 7000000].includes(recFixed)) {
+        const setFixed = Number(settings?.fixedSalary) || 0;
+        if (![5000000, 6000000, 7000000, setFixed].includes(recFixed)) {
           fixedSalary = recFixed;
         }
       }
