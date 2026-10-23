@@ -475,8 +475,36 @@ export class ShippingLinesService {
         paired.add(info.clampId);
       }
     }
+    // BÓ FR: bó ≥2 container → cần 1 đơn giá V20FR/V40FR cho cả bó;
+    // bó lẻ 1 container → cần giá V20/V40 (khớp cách tính hồ sơ thanh toán).
+    const FR_BUNDLE_TYPES = new Set(['V20FR', 'V40FR']);
+    const FR_LONE_PRICE_TYPE: Record<string, string> = {
+      V20FR: 'V20',
+      V40FR: 'V40',
+    };
+    const frGroups = new Map<string, ContainerImport[]>();
     for (const c of containers) {
       if (paired.has(c.id)) continue;
+      if (!FR_BUNDLE_TYPES.has(String(c.type))) continue;
+      const key = c.bundleId ? `b:${c.bundleId}` : `s:${c.id}`;
+      const arr = frGroups.get(key) ?? [];
+      arr.push(c);
+      frGroups.set(key, arr);
+    }
+    const frHandled = new Set<number>();
+    for (const members of frGroups.values()) {
+      const first = members[0];
+      const isBo = !!first.bundleId && members.length >= 2;
+      const needType = isBo
+        ? String(first.type)
+        : FR_LONE_PRICE_TYPE[String(first.type)];
+      if (needType) {
+        required.set(needType, (required.get(needType) || 0) + 1);
+      }
+      for (const m of members) frHandled.add(m.id);
+    }
+    for (const c of containers) {
+      if (paired.has(c.id) || frHandled.has(c.id)) continue;
       required.set(c.type, (required.get(c.type) || 0) + 1);
     }
 
