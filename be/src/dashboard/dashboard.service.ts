@@ -723,10 +723,14 @@ export class DashboardService {
       for (const [kepType, count] of Object.entries(pairByKepType)) {
         total += unitFor(kepType) * count;
       }
+      // Phụ phí: NHÂN % TRƯỚC (trên doanh thu gốc), rồi mới CỘNG tiền cố định.
+      // Nhiều phụ phí % → cộng dồn % trên gốc (không phụ thuộc thứ tự bản ghi).
+      const percentTotal = mySurcharges
+        .filter((s) => s.calcType === 'percent')
+        .reduce((sum, s) => sum + (Number(s.value) || 0), 0);
+      if (percentTotal) total = total * (1 + percentTotal / 100);
       for (const sur of mySurcharges) {
-        if (sur.calcType === 'add') total += Number(sur.value);
-        else if (sur.calcType === 'percent')
-          total += total * (Number(sur.value) / 100);
+        if (sur.calcType === 'add') total += Number(sur.value) || 0;
       }
       return total;
     };
