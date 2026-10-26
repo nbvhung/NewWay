@@ -135,9 +135,10 @@ export const containerImportApi = {
       }>;
     }>(`/admin/container-import/${containerImportId}/remove-kv`),
 
-  /** Thêm tag "Kẹp" cho container đã ghi nhận (ghép với container cùng loại ngay trước). */
-  addClamp: (containerImportId: number) =>
+  /** Thêm tag "Kẹp" cho container đã ghi nhận, chọn container chính cùng loại. */
+  addClamp: (containerImportId: number, mainContainerImportId?: number) =>
     api.post<{ message: string; clampWith: string; mainCode: string }>(
       `/admin/container-import/${containerImportId}/clamp`,
+      mainContainerImportId != null ? { mainContainerImportId } : {},
     ),
 };

@@ -6,6 +6,7 @@ import { fmtNgay, fmtDateTime } from '@/lib/utils';
 import { containerImportApi, ContainerImport, ContainerSearchResult } from '@/lib/api-container-import';
 import { hasPerm, hasAnyPerm } from '@/lib/permissions';
 import { confirmDelete } from '@/lib/delete-guard';
+import { Modal } from '@/components/ui/modal';
 
 interface Props {
   allShippingLines: ShippingLine[];
@@ -53,6 +54,9 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
   const [claimDriverId, setClaimDriverId] = useState('');
   const [claimingId, setClaimingId] = useState<number | null>(null);
   const [taggingId, setTaggingId] = useState<number | null>(null);
+  const [clampTarget, setClampTarget] = useState<ContainerImport | null>(null);
+  const [clampMainId, setClampMainId] = useState<number | ''>('');
+  const [clampSaving, setClampSaving] = useState(false);
 
   const [planId, setPlanId] = useState<number | ''>('');
   const [items, setItems] = useState<ContainerImport[]>([]);
@@ -278,17 +282,64 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
     }
   };
 
-  const addClamp = async (item: ContainerImport) => {
-    if (!confirm(`Thêm tag "Kẹp" cho container ${item.containerCode}?\nHệ thống ghép với container cùng loại ghi nhận ngay trước đó (không cộng thêm sản lượng).`)) return;
-    setTaggingId(item.id);
+  /** Container cùng loại, cùng chuyến, chưa thuộc cặp kẹp — để chọn làm container chính. */
+  const clampCandidates = useMemo(() => {
+    if (!clampTarget) return [] as ContainerImport[];
+    return items.filter(
+      (i) =>
+        i.id !== clampTarget.id &&
+        i.submissionId != null &&
+        i.submissionId === clampTarget.submissionId &&
+        i.type === clampTarget.type &&
+        !i.clampWith &&
+        !i.phatSinh,
+    );
+  }, [items, clampTarget]);
+
+  const openClamp = (item: ContainerImport) => {
+    const cands = items.filter(
+      (i) =>
+        i.id !== item.id &&
+        i.submissionId != null &&
+        i.submissionId === item.submissionId &&
+        i.type === item.type &&
+        !i.clampWith &&
+        !i.phatSinh,
+    );
+    if (cands.length === 0) {
+      toast(
+        `Không có container ${item.type} khác trong cùng chuyến để chọn làm container chính.`,
+        'error',
+      );
+      return;
+    }
+    setClampTarget(item);
+    setClampMainId(cands.length === 1 ? cands[0].id : '');
+  };
+
+  const submitClamp = async () => {
+    if (!clampTarget) return;
+    if (clampMainId === '') {
+      toast('Vui lòng chọn container chính để kẹp', 'error');
+      return;
+    }
+    setClampSaving(true);
     try {
-      const res = await containerImportApi.addClamp(item.id);
+      const res = await containerImportApi.addClamp(
+        clampTarget.id,
+        Number(clampMainId),
+      );
       toast(res.data.message, 'success');
+      setClampTarget(null);
+      setClampMainId('');
       if (selectedPlan) await load(selectedPlan.id);
     } catch (err: any) {
-      toast(err?.response?.data?.message || err?.message || 'Thêm kẹp thất bại', 'error');
+      toast(
+        err?.response?.data?.message || err?.message || 'Thêm kẹp thất bại',
+        'error',
+      );
     } finally {
-      setTaggingId(null);
+      setClampSaving(false);
     }
   };
 
@@ -580,10 +631,10 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
                               </button>
                             )}
                             {item.submissionId && !item.clampWith && !isLocked && canTag && CLAMPABLE_TYPES.includes(item.type) && (
-                              <button onClick={() => addClamp(item)} disabled={taggingId === item.id}
-                                title="Thêm tag Kẹp (ghép với container cùng loại ghi ngay trước)"
-                                className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ec4899] to-[#db2777] text-white disabled:opacity-40 cursor-pointer">
-                                {taggingId === item.id ? '...' : '🔗 Kẹp'}
+                              <button onClick={() => openClamp(item)}
+                                title="Thêm tag Kẹp (chọn container chính cùng loại)"
+                                className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ec4899] to-[#db2777] text-white cursor-pointer">
+                                🔗 Kẹp
                               </button>
                             )}
                             <button onClick={() => removeOne(item)} disabled={isLocked}
@@ -600,6 +651,38 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
           </>
         )}
       </div>
+
+      {/* Modal chọn container chính để kẹp */}
+      <Modal
+        open={!!clampTarget}
+        onClose={() => setClampTarget(null)}
+        title={`🔗 Chọn container chính để kẹp với ${clampTarget?.containerCode || ''}`}
+        footer={
+          <>
+            <button onClick={() => setClampTarget(null)} className="px-4 py-2 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] cursor-pointer">Huỷ</button>
+            <button onClick={submitClamp} disabled={clampSaving || clampMainId === ''} className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#ec4899] to-[#db2777] text-white disabled:opacity-50 cursor-pointer">{clampSaving ? 'Đang lưu...' : '💾 Kẹp'}</button>
+          </>
+        }
+      >
+        <p className="text-[11px] text-[#78716c] mb-3">
+          Chọn 1 container <b>{clampTarget?.type}</b> cùng chuyến của lái xe <b>{clampTarget?.recordedBy || '—'}</b> làm container chính.
+          Container bị kẹp: <b className="font-mono">{clampTarget?.containerCode}</b>.
+        </p>
+        <div className="max-h-[320px] overflow-y-auto border border-[#e7e5e4] rounded-lg divide-y divide-[#e7e5e4]">
+          {clampCandidates.length === 0 ? (
+            <p className="px-3 py-6 text-center text-[12px] text-[#78716c]">Không có container phù hợp</p>
+          ) : (
+            clampCandidates.map(c => (
+              <label key={c.id} className={`flex items-center gap-2 px-3 py-2 text-[12px] cursor-pointer ${clampMainId === c.id ? 'bg-[#fdf2f8]' : 'hover:bg-[#fafaf9]'}`}>
+                <input type="radio" name="clamp-main" checked={clampMainId === c.id} onChange={() => setClampMainId(c.id)} />
+                <span className="font-mono font-semibold text-[#1c1917]">{c.containerCode}</span>
+                <span className="text-[#78716c]">{c.type}</span>
+                {c.claimedAt && <span className="ml-auto text-[10px] text-[#a8a29e]">{fmtDateTime(c.claimedAt)}</span>}
+              </label>
+            ))
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

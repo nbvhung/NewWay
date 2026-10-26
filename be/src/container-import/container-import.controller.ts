@@ -115,14 +115,24 @@ export class ContainerImportController {
     });
   }
 
-  /** Thêm tag "Kẹp" cho 1 container đã ghi nhận (ghép với container cùng loại ngay trước). */
+  /** Thêm tag "Kẹp" cho 1 container đã ghi nhận (chọn container chính cùng loại). */
   @Post(':id/clamp')
   @Permissions('container.claim', 'container.manage')
-  addClamp(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.containerImportService.addClampTag(+id, {
-      id: user?.id,
-      fullName: user?.fullName || user?.username,
-    });
+  addClamp(
+    @Param('id') id: string,
+    @Body() body: { mainContainerImportId?: number },
+    @CurrentUser() user: any,
+  ) {
+    return this.containerImportService.addClampTag(
+      +id,
+      body?.mainContainerImportId != null
+        ? Number(body.mainContainerImportId)
+        : undefined,
+      {
+        id: user?.id,
+        fullName: user?.fullName || user?.username,
+      },
+    );
   }
 
   @Patch(':id/classify')

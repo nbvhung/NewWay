@@ -1552,6 +1552,7 @@ export class ContainerImportService {
    */
   async addClampTag(
     containerImportId: number,
+    mainContainerImportId?: number,
     _actor?: { id?: number; fullName?: string },
   ): Promise<{ message: string; clampWith: string; mainCode: string }> {
     const container = await this.containerImportsRepository.findOne({
@@ -1590,24 +1591,58 @@ export class ContainerImportService {
       .addOrderBy('cl.id', 'ASC')
       .getMany();
 
-    const alreadyClamp = claims.some(
-      (c) => c.containerImportId === container.id && c.claimType === 'CLAMP',
-    );
-    if (alreadyClamp) {
+    if (
+      claims.some(
+        (c) => c.containerImportId === container.id && c.claimType === 'CLAMP',
+      )
+    ) {
       throw new BadRequestException(
         `Container ${container.containerCode} đã có tag Kẹp rồi.`,
       );
     }
 
-    const idx = claims.findIndex(
+    const clampIdx = claims.findIndex(
       (c) => c.containerImportId === container.id && c.claimType === 'CLAIM',
     );
-    if (idx < 0) {
+    if (clampIdx < 0) {
       throw new BadRequestException(
         `Không tìm thấy lượt ghi nhận (CLAIM) của container ${container.containerCode} để chuyển thành kẹp.`,
       );
     }
-    const main = claims[idx - 1];
+    // Container này đang là container chính của cặp khác (claim ngay sau là CLAMP)?
+    if (claims[clampIdx + 1]?.claimType === 'CLAMP') {
+      throw new BadRequestException(
+        `Container ${container.containerCode} đang là container chính của cặp kẹp khác.`,
+      );
+    }
+
+    // Container chính: do người dùng chọn (mainContainerImportId) hoặc claim ngay trước.
+    let mainIdx: number;
+    if (mainContainerImportId != null && Number.isFinite(Number(mainContainerImportId))) {
+      const mainId = Number(mainContainerImportId);
+      if (mainId === container.id) {
+        throw new BadRequestException(
+          'Không thể chọn chính container này làm container chính.',
+        );
+      }
+      mainIdx = claims.findIndex(
+        (c) => c.containerImportId === mainId && c.claimType === 'CLAIM',
+      );
+      if (mainIdx < 0) {
+        throw new BadRequestException(
+          'Container chính không thuộc cùng chuyến hoặc chưa được ghi nhận.',
+        );
+      }
+      if (claims[mainIdx + 1]?.claimType === 'CLAMP') {
+        throw new BadRequestException(
+          'Container chính đã kẹp với container khác rồi.',
+        );
+      }
+    } else {
+      mainIdx = clampIdx - 1;
+    }
+
+    const main = claims[mainIdx];
     const mainContainer: any = main?.containerImportRef;
     if (
       !main ||
@@ -1616,7 +1651,7 @@ export class ContainerImportService {
       String(mainContainer.type) !== String(container.type)
     ) {
       throw new BadRequestException(
-        `Không tìm được container chính cùng loại ghi nhận ngay trước ${container.containerCode} trong cùng chuyến.`,
+        `Container chính phải là container cùng loại (${container.type}) trong cùng chuyến.`,
       );
     }
     if (
@@ -1628,10 +1663,12 @@ export class ContainerImportService {
       );
     }
 
-    // Đổi claim CLAIM của container thành CLAMP (không đổi sản lượng).
-    await this.containerClaimsRepository.update(claims[idx].id, {
+    // Đặt claim CLAMP NGAY SAU container chính (theo createdAt) để logic ghép cặp
+    // ở Dashboard/Hồ sơ thanh toán nhận đúng cặp người dùng chọn.
+    await this.containerClaimsRepository.update(claims[clampIdx].id, {
       claimType: 'CLAMP',
-    });
+      createdAt: new Date(main.createdAt.getTime() + 1),
+    } as any);
 
     return {
       message: `Đã thêm tag Kẹp: ${container.containerCode} kẹp với ${mainContainer.containerCode}.`,
