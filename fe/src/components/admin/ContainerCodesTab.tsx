@@ -265,7 +265,7 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
   const CLAMPABLE_TYPES = ['V20', 'V20FR', 'H20'];
 
   const removeKv = async (item: ContainerImport) => {
-    if (!confirm(`Xoá tag "Kéo về" của container ${item.containerCode}?\nHệ thống sẽ trừ 1 "Kéo về" của lái xe ${item.recordedBy || 'đã ghi nhận'}.`)) return;
+    if (!confirm(`Xoá tag "Kéo về" của container ${item.containerCode}?\nHệ thống sẽ trừ phần "Kéo về" tương ứng của lái xe ${item.recordedBy || 'đã ghi nhận'}.`)) return;
     setTaggingId(item.id);
     try {
       const res = await containerImportApi.removeKv(item.id);
