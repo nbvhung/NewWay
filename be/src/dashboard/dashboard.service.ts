@@ -684,10 +684,22 @@ export class DashboardService {
             return true;
           })
         : [];
+      const planRoute = (plan?.routeName || '').trim();
       const unitFor = (type: string): number => {
-        if (usePlanPrice) return Number(plan.dealedPrices![type]) || 0;
-        const price = myPrices.find((p) => p.containerType === type);
-        return price ? Number(price.unitPrice) : 0;
+        if (usePlanPrice) return Number(plan!.dealedPrices![type]) || 0;
+        const cands = myPrices.filter((p) => p.containerType === type);
+        if (cands.length === 0) return 0;
+        const generic = cands.find((p) => !(p.routeName || '').trim());
+        if (!plan) {
+          // Không có kế hoạch (vd. tính giá subvendor) → giữ cách cũ.
+          return Number((generic ?? cands[0]).unitPrice) || 0;
+        }
+        // Ưu tiên đơn giá riêng của tuyến, fallback đơn giá chung (mọi tuyến).
+        const exact = planRoute
+          ? cands.find((p) => (p.routeName || '').trim() === planRoute)
+          : undefined;
+        const matched = exact ?? generic;
+        return matched ? Number(matched.unitPrice) || 0 : 0;
       };
       const contIds = new Set(conts.map((c) => c.id));
       // Cặp kẹp: mỗi cặp (cùng submission) tính 1 lần giá KẸP (KV20/KV20FR)
@@ -1659,11 +1671,26 @@ export class DashboardService {
     if (rows.length === 0) return [];
 
     // ── Dữ liệu phụ: khách, bảng giá tháng, tuyến đường ──
-    const [customers, monthPrices, routes] = await Promise.all([
+    const [customers, monthPrices, routes, monthSurcharges] = await Promise.all([
       this.customerRepo.find(),
       this.priceRepo.find({ where: { month, year } }),
       this.routeRepo.find(),
+      this.surchargeRepo.find({ where: { month, year, active: true } }),
     ]);
+    // Phụ phí áp cho 1 kế hoạch (giống điều kiện trong calcRevenue).
+    const surchargesOfPlan = (plan: ShippingLine | undefined) => {
+      if (!plan?.customerId) return [];
+      const day = dayOfDate(plan.ngay);
+      return monthSurcharges.filter((s) => {
+        if (s.customerId !== plan.customerId) return false;
+        if (s.applyScope === 'plans') {
+          return (s.planIds || []).map(Number).includes(plan.id);
+        }
+        if (day == null || day < s.fromDay || day > s.toDay) return false;
+        return true;
+      });
+    };
+    const planFixedAdded = new Set<number>();
     const customerMap = new Map(customers.map((c) => [c.id, c.name]));
     const routeMap = new Map(routes.map((r) => [r.name, r]));
 
@@ -1814,6 +1841,21 @@ export class DashboardService {
         revenue = priceType ? priceFor(plan, priceType) : 0;
       } else {
         revenue = priceFor(plan, ci.type);
+      }
+      // Phụ phí: % nhân trước (trên giá của container), tiền cố định cộng 1 lần
+      // cho mỗi kế hoạch vào dòng đầu tiên → tổng khớp với Tổng quan.
+      const surs = surchargesOfPlan(plan);
+      if (surs.length > 0) {
+        const pct = surs
+          .filter((s) => s.calcType === 'percent')
+          .reduce((sum, s) => sum + (Number(s.value) || 0), 0);
+        if (pct) revenue = revenue * (1 + pct / 100);
+        if (plan && !planFixedAdded.has(plan.id)) {
+          planFixedAdded.add(plan.id);
+          for (const s of surs) {
+            if (s.calcType === 'add') revenue += Number(s.value) || 0;
+          }
+        }
       }
       return {
         containerCode: ci.containerCode,

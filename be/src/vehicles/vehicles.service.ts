@@ -611,9 +611,15 @@ export class VehiclesService {
       cell.numFmt = '#,##0';
       cell.alignment = { vertical: 'middle', horizontal: 'right' };
     }
+    // Tổng doanh thu: cặp kẹp chỉ tính 1 lần (dòng kẹp = 0, đã gộp vào dòng chính).
+    const totalRevenue = containers.reduce((s, ci) => s + (ci.revenue || 0), 0);
     const totalRow = ws2.addRow([`Tổng: ${containers.length} container`]);
     totalRow.font = { bold: true };
-    ws2.mergeCells(totalRow.number, 1, totalRow.number, ws2Cols);
+    ws2.mergeCells(totalRow.number, 1, totalRow.number, ws2Cols - 1);
+    const totalCell = ws2.getCell(totalRow.number, ws2Cols);
+    totalCell.value = totalRevenue;
+    totalCell.numFmt = '#,##0';
+    totalCell.font = { bold: true };
 
     const safe = (v.soXe || `Xe${vehicleId}`).replace(/[^\w]+/g, '');
     const filename = `ThongKeXe_${safe}_T${String(month).padStart(2, '0')}-${year}.xlsx`;
