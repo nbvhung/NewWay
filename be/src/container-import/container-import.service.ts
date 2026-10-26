@@ -1460,6 +1460,186 @@ export class ContainerImportService {
     };
   }
 
+  /**
+   * Xoá tag "Kéo về" (KV) của 1 container trên web: xoá các dòng claim KV,
+   * trừ `keoVe` của submission tương ứng, bỏ cờ `container.keoVe`.
+   */
+  async removeKvTag(
+    containerImportId: number,
+    actor?: { id?: number; fullName?: string },
+  ): Promise<{
+    message: string;
+    claimCount: number;
+    drivers: ReversalSummary['drivers'];
+  }> {
+    const container = await this.containerImportsRepository.findOne({
+      where: { id: containerImportId },
+    });
+    if (!container) throw new NotFoundException('Không tìm thấy container');
+    await this.assertPlansNotCompleted([container]);
+
+    const kvClaims = await this.containerClaimsRepository.find({
+      where: { containerImportId, claimType: 'KV' },
+    });
+    if (kvClaims.length === 0) {
+      throw new BadRequestException(
+        `Container ${container.containerCode} không có tag Kéo về.`,
+      );
+    }
+
+    const drivers = await this.containerImportsRepository.manager.transaction(
+      async (em) => {
+        const subRepo = em.getRepository(Submission);
+        const historyRepo = em.getRepository(EditHistory);
+        const claimRepo = em.getRepository(ContainerClaim);
+        const ciRepo = em.getRepository(ContainerImport);
+
+        const perSubmission = new Map<number, number>();
+        for (const cl of kvClaims) {
+          perSubmission.set(
+            cl.submissionId,
+            (perSubmission.get(cl.submissionId) || 0) + 1,
+          );
+        }
+
+        const out: ReversalSummary['drivers'] = [];
+        for (const [submissionId, count] of perSubmission) {
+          const sub = await subRepo.findOne({ where: { id: submissionId } });
+          if (!sub) continue;
+          const oldVal = String((sub as any).keoVe || '');
+          const oldNum = parseInt(oldVal, 10) || 0;
+          const newNum = Math.max(0, oldNum - count);
+          if (newNum === oldNum) continue;
+          (sub as any).keoVe = String(newNum);
+          sub.editCount += 1;
+          sub.lastEditedAt = new Date();
+          await subRepo.save(sub);
+          await historyRepo.save(
+            historyRepo.create({
+              submissionId: sub.id,
+              editedById: actor?.id ?? sub.userId,
+              editedByName: actor?.fullName || sub.driverName || '',
+              changes: JSON.stringify({
+                keoVe: { old: oldVal, new: String(newNum) },
+              }),
+            }),
+          );
+          out.push({
+            submissionId: sub.id,
+            driverName: sub.driverName,
+            changes: { keoVe: { old: oldVal, new: String(newNum) } },
+          });
+        }
+
+        await claimRepo.delete({ containerImportId, claimType: 'KV' });
+        await ciRepo.update({ id: containerImportId }, { keoVe: false });
+        return out;
+      },
+    );
+
+    return {
+      message: `Đã xoá tag Kéo về của container ${container.containerCode}.`,
+      claimCount: kvClaims.length,
+      drivers,
+    };
+  }
+
+  /**
+   * Thêm tag "Kẹp" (CLAMP) cho 1 container ĐÃ ghi nhận trên web.
+   * Container chính = container được claim NGAY TRƯỚC ĐÓ trong cùng submission
+   * (giống cách bot ghép cặp). Chỉ đổi claim CLAIM → CLAMP, KHÔNG cộng thêm
+   * sản lượng (container đã được cộng từ lần ghi nhận trước).
+   */
+  async addClampTag(
+    containerImportId: number,
+    _actor?: { id?: number; fullName?: string },
+  ): Promise<{ message: string; clampWith: string; mainCode: string }> {
+    const container = await this.containerImportsRepository.findOne({
+      where: { id: containerImportId },
+    });
+    if (!container) throw new NotFoundException('Không tìm thấy container');
+    if (!container.shippingLineId) {
+      throw new BadRequestException('Container chưa gắn kế hoạch.');
+    }
+    if (!container.submissionId) {
+      throw new BadRequestException(
+        `Container ${container.containerCode} chưa được ghi nhận. Hãy ghi nhận cho lái xe trước rồi mới thêm kẹp.`,
+      );
+    }
+    const CLAMPABLE = new Set(['V20', 'V20FR', 'H20']);
+    if (!CLAMPABLE.has(String(container.type))) {
+      throw new BadRequestException(
+        `Loại ${container.type} không hỗ trợ tag Kẹp.`,
+      );
+    }
+    if (
+      (container.type === 'V20FR' || container.type === 'V40FR') &&
+      container.bundleId
+    ) {
+      throw new BadRequestException(
+        'Container FR thuộc bó tính giá theo bó, không thêm kẹp được.',
+      );
+    }
+    await this.assertPlansNotCompleted([container]);
+
+    const claims = await this.containerClaimsRepository
+      .createQueryBuilder('cl')
+      .leftJoinAndSelect('cl.containerImportRef', 'ci')
+      .where('cl.submissionId = :sid', { sid: container.submissionId })
+      .orderBy('cl.createdAt', 'ASC')
+      .addOrderBy('cl.id', 'ASC')
+      .getMany();
+
+    const alreadyClamp = claims.some(
+      (c) => c.containerImportId === container.id && c.claimType === 'CLAMP',
+    );
+    if (alreadyClamp) {
+      throw new BadRequestException(
+        `Container ${container.containerCode} đã có tag Kẹp rồi.`,
+      );
+    }
+
+    const idx = claims.findIndex(
+      (c) => c.containerImportId === container.id && c.claimType === 'CLAIM',
+    );
+    if (idx < 0) {
+      throw new BadRequestException(
+        `Không tìm thấy lượt ghi nhận (CLAIM) của container ${container.containerCode} để chuyển thành kẹp.`,
+      );
+    }
+    const main = claims[idx - 1];
+    const mainContainer: any = main?.containerImportRef;
+    if (
+      !main ||
+      main.containerImportId === container.id ||
+      !mainContainer ||
+      String(mainContainer.type) !== String(container.type)
+    ) {
+      throw new BadRequestException(
+        `Không tìm được container chính cùng loại ghi nhận ngay trước ${container.containerCode} trong cùng chuyến.`,
+      );
+    }
+    if (
+      (mainContainer.type === 'V20FR' || mainContainer.type === 'V40FR') &&
+      mainContainer.bundleId
+    ) {
+      throw new BadRequestException(
+        'Container chính thuộc bó FR nên không ghép kẹp được.',
+      );
+    }
+
+    // Đổi claim CLAIM của container thành CLAMP (không đổi sản lượng).
+    await this.containerClaimsRepository.update(claims[idx].id, {
+      claimType: 'CLAMP',
+    });
+
+    return {
+      message: `Đã thêm tag Kẹp: ${container.containerCode} kẹp với ${mainContainer.containerCode}.`,
+      clampWith: mainContainer.containerCode,
+      mainCode: mainContainer.containerCode,
+    };
+  }
+
   private async applyClaimForDriver(
     plan: ShippingLine,
     driver: User,

@@ -105,6 +105,26 @@ export class ContainerImportController {
     );
   }
 
+  /** Xoá tag "Kéo về" của 1 container (trừ đúng keoVe của lái xe). */
+  @Post(':id/remove-kv')
+  @Permissions('container.claim', 'container.manage')
+  removeKv(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.containerImportService.removeKvTag(+id, {
+      id: user?.id,
+      fullName: user?.fullName || user?.username,
+    });
+  }
+
+  /** Thêm tag "Kẹp" cho 1 container đã ghi nhận (ghép với container cùng loại ngay trước). */
+  @Post(':id/clamp')
+  @Permissions('container.claim', 'container.manage')
+  addClamp(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.containerImportService.addClampTag(+id, {
+      id: user?.id,
+      fullName: user?.fullName || user?.username,
+    });
+  }
+
   @Patch(':id/classify')
   @Permissions('container.classify')
   classify(

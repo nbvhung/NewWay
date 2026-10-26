@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ShippingLine, User } from '@/types';
 import { fmtNgay, fmtDateTime } from '@/lib/utils';
 import { containerImportApi, ContainerImport, ContainerSearchResult } from '@/lib/api-container-import';
-import { hasPerm } from '@/lib/permissions';
+import { hasPerm, hasAnyPerm } from '@/lib/permissions';
 import { confirmDelete } from '@/lib/delete-guard';
 
 interface Props {
@@ -52,6 +52,7 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
   const [classifyTypes, setClassifyTypes] = useState<Record<number, string>>({});
   const [claimDriverId, setClaimDriverId] = useState('');
   const [claimingId, setClaimingId] = useState<number | null>(null);
+  const [taggingId, setTaggingId] = useState<number | null>(null);
 
   const [planId, setPlanId] = useState<number | ''>('');
   const [items, setItems] = useState<ContainerImport[]>([]);
@@ -243,6 +244,7 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
   );
 
   const isAdmin = hasPerm(user, 'container.claim');
+  const canTag = hasAnyPerm(user, ['container.claim', 'container.manage']);
 
   const claimOne = async (item: ContainerImport) => {
     if (!claimDriverId) { toast('Vui lòng chọn lái xe để ghi nhận', 'error'); return; }
@@ -257,6 +259,36 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
       toast(err?.response?.data?.message || err?.message || 'Ghi nhận thất bại', 'error');
     } finally {
       setClaimingId(null);
+    }
+  };
+
+  const CLAMPABLE_TYPES = ['V20', 'V20FR', 'H20'];
+
+  const removeKv = async (item: ContainerImport) => {
+    if (!confirm(`Xoá tag "Kéo về" của container ${item.containerCode}?\nHệ thống sẽ trừ 1 "Kéo về" của lái xe ${item.recordedBy || 'đã ghi nhận'}.`)) return;
+    setTaggingId(item.id);
+    try {
+      const res = await containerImportApi.removeKv(item.id);
+      toast(res.data.message, 'success');
+      if (selectedPlan) await load(selectedPlan.id);
+    } catch (err: any) {
+      toast(err?.response?.data?.message || err?.message || 'Xoá tag Kéo về thất bại', 'error');
+    } finally {
+      setTaggingId(null);
+    }
+  };
+
+  const addClamp = async (item: ContainerImport) => {
+    if (!confirm(`Thêm tag "Kẹp" cho container ${item.containerCode}?\nHệ thống ghép với container cùng loại ghi nhận ngay trước đó (không cộng thêm sản lượng).`)) return;
+    setTaggingId(item.id);
+    try {
+      const res = await containerImportApi.addClamp(item.id);
+      toast(res.data.message, 'success');
+      if (selectedPlan) await load(selectedPlan.id);
+    } catch (err: any) {
+      toast(err?.response?.data?.message || err?.message || 'Thêm kẹp thất bại', 'error');
+    } finally {
+      setTaggingId(null);
     }
   };
 
@@ -538,6 +570,20 @@ export function ContainerCodesTab({ allShippingLines, user, allUsers, toast }: P
                               <button onClick={() => claimOne(item)} disabled={claimingId === item.id || !claimDriverId}
                                 className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#06b6d4] to-[#0891b2] text-white disabled:opacity-40 cursor-pointer">
                                 {claimingId === item.id ? 'Đang ghi...' : '📝 Ghi'}
+                              </button>
+                            )}
+                            {item.hasKv && !isLocked && canTag && (
+                              <button onClick={() => removeKv(item)} disabled={taggingId === item.id}
+                                title="Xoá tag Kéo về (trừ 1 Kéo về của lái xe đã ghi nhận)"
+                                className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white disabled:opacity-40 cursor-pointer">
+                                {taggingId === item.id ? '...' : 'Bỏ kéo về'}
+                              </button>
+                            )}
+                            {item.submissionId && !item.clampWith && !isLocked && canTag && CLAMPABLE_TYPES.includes(item.type) && (
+                              <button onClick={() => addClamp(item)} disabled={taggingId === item.id}
+                                title="Thêm tag Kẹp (ghép với container cùng loại ghi ngay trước)"
+                                className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-gradient-to-r from-[#ec4899] to-[#db2777] text-white disabled:opacity-40 cursor-pointer">
+                                {taggingId === item.id ? '...' : '🔗 Kẹp'}
                               </button>
                             )}
                             <button onClick={() => removeOne(item)} disabled={isLocked}

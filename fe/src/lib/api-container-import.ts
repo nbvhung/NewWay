@@ -122,4 +122,22 @@ export const containerImportApi = {
       totals: Record<string, string>;
       submissionId: number | null;
     }>('/admin/container-import/claim-one', { containerImportId, driverId }),
+
+  /** Xoá tag "Kéo về" của 1 container (trừ keoVe của lái xe đã ghi nhận). */
+  removeKv: (containerImportId: number) =>
+    api.post<{
+      message: string;
+      claimCount: number;
+      drivers: Array<{
+        submissionId: number;
+        driverName: string;
+        changes: Record<string, { old: string; new: string }>;
+      }>;
+    }>(`/admin/container-import/${containerImportId}/remove-kv`),
+
+  /** Thêm tag "Kẹp" cho container đã ghi nhận (ghép với container cùng loại ngay trước). */
+  addClamp: (containerImportId: number) =>
+    api.post<{ message: string; clampWith: string; mainCode: string }>(
+      `/admin/container-import/${containerImportId}/clamp`,
+    ),
 };
