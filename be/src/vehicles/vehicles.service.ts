@@ -524,7 +524,7 @@ export class VehiclesService {
       year,
     );
     const ws2 = wb.addWorksheet('Container đã chạy');
-    const ws2Cols = 11;
+    const ws2Cols = 13;
     ws2.columns = [
       { width: 6 }, // STT
       { width: 18 }, // Biển số xe
@@ -536,7 +536,9 @@ export class VehiclesService {
       { width: 22 }, // Tài xế
       { width: 32 }, // Khách hàng
       { width: 16 }, // Lương chuyến
-      { width: 16 }, // Doanh thu
+      { width: 16 }, // Doanh thu (gốc)
+      { width: 14 }, // Phụ phí
+      { width: 18 }, // Tổng doanh thu
     ];
     const t2 = ws2.addRow([
       `CONTAINER XE ${v.soXe || '#' + vehicleId} ĐÃ CHẠY — Tháng ${month}/${year}`,
@@ -556,6 +558,8 @@ export class VehiclesService {
       'Khách hàng',
       'Lương chuyến',
       'Doanh thu',
+      'Phụ phí',
+      'Tổng doanh thu',
     ]);
     h2.font = { bold: true };
     h2.eachCell((c: any) => {
@@ -567,10 +571,16 @@ export class VehiclesService {
       c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     });
 
-    // Gom các dòng theo nhóm kẹp để merge ô DOANH THU của cả cặp.
+    // Gom các dòng theo nhóm kẹp để merge 3 ô tiền (Doanh thu / Phụ phí / Tổng) của cả cặp.
     const kepGroups = new Map<
       string,
-      { first: number; last: number; revenue: number }
+      {
+        first: number;
+        last: number;
+        base: number;
+        surcharge: number;
+        total: number;
+      }
     >();
     containers.forEach((ci, i) => {
       const row = ws2.addRow([
@@ -584,42 +594,59 @@ export class VehiclesService {
         ci.driverName,
         ci.customerName || '',
         ci.tripSalary || 0,
+        ci.baseRevenue || 0,
+        ci.surchargeAmount || 0,
         ci.revenue || 0,
       ]);
-      row.getCell(10).numFmt = '#,##0';
-      row.getCell(11).numFmt = '#,##0';
+      for (let c = 10; c <= 13; c++) row.getCell(c).numFmt = '#,##0';
       if (ci.mergeGroup) {
         const g = kepGroups.get(ci.mergeGroup);
         if (!g) {
           kepGroups.set(ci.mergeGroup, {
             first: row.number,
             last: row.number,
-            revenue: ci.revenue || 0,
+            base: ci.baseRevenue || 0,
+            surcharge: ci.surchargeAmount || 0,
+            total: ci.revenue || 0,
           });
         } else {
           g.last = row.number;
-          g.revenue += ci.revenue || 0;
+          g.base += ci.baseRevenue || 0;
+          g.surcharge += ci.surchargeAmount || 0;
+          g.total += ci.revenue || 0;
         }
       }
     });
-    // Cặp kẹp: gộp ô Doanh thu 2 dòng và ghi 1 lần doanh thu của cặp.
+    // Cặp kẹp: gộp ô 2 dòng và ghi 1 lần giá trị của cặp cho cả 3 cột tiền.
     for (const g of kepGroups.values()) {
       if (g.last === g.first) continue;
-      ws2.mergeCells(g.first, 11, g.last, 11);
-      const cell = ws2.getCell(g.first, 11);
-      cell.value = g.revenue;
-      cell.numFmt = '#,##0';
-      cell.alignment = { vertical: 'middle', horizontal: 'right' };
+      const vals = [g.base, g.surcharge, g.total];
+      vals.forEach((val, idx) => {
+        const col = 11 + idx;
+        ws2.mergeCells(g.first, col, g.last, col);
+        const cell = ws2.getCell(g.first, col);
+        cell.value = val;
+        cell.numFmt = '#,##0';
+        cell.alignment = { vertical: 'middle', horizontal: 'right' };
+      });
     }
-    // Tổng doanh thu: cặp kẹp chỉ tính 1 lần (dòng kẹp = 0, đã gộp vào dòng chính).
-    const totalRevenue = containers.reduce((s, ci) => s + (ci.revenue || 0), 0);
+    // Dòng tổng: cặp kẹp chỉ tính 1 lần (dòng kẹp = 0, đã gộp vào dòng chính).
+    const sumBy = (f: (ci: (typeof containers)[number]) => number) =>
+      containers.reduce((s, ci) => s + (f(ci) || 0), 0);
     const totalRow = ws2.addRow([`Tổng: ${containers.length} container`]);
     totalRow.font = { bold: true };
-    ws2.mergeCells(totalRow.number, 1, totalRow.number, ws2Cols - 1);
-    const totalCell = ws2.getCell(totalRow.number, ws2Cols);
-    totalCell.value = totalRevenue;
-    totalCell.numFmt = '#,##0';
-    totalCell.font = { bold: true };
+    ws2.mergeCells(totalRow.number, 1, totalRow.number, 9);
+    const totals: [number, number][] = [
+      [11, sumBy((ci) => ci.baseRevenue)],
+      [12, sumBy((ci) => ci.surchargeAmount)],
+      [13, sumBy((ci) => ci.revenue)],
+    ];
+    for (const [col, val] of totals) {
+      const cell = ws2.getCell(totalRow.number, col);
+      cell.value = val;
+      cell.numFmt = '#,##0';
+      cell.font = { bold: true };
+    }
 
     const safe = (v.soXe || `Xe${vehicleId}`).replace(/[^\w]+/g, '');
     const filename = `ThongKeXe_${safe}_T${String(month).padStart(2, '0')}-${year}.xlsx`;

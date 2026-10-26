@@ -1631,8 +1631,12 @@ export class DashboardService {
       submissionId: number | null;
       /** Lương chuyến của submission (chuyến) chứa container này. */
       tripSalary: number;
-      /** Doanh thu của container (cặp kẹp: dòng chính mang giá, dòng kẹp = 0). */
+      /** Tổng doanh thu của container = doanh thu gốc + phụ phí (cặp kẹp: dòng chính mang giá, dòng kẹp = 0). */
       revenue: number;
+      /** Doanh thu gốc (chưa phụ phí). */
+      baseRevenue: number;
+      /** Phụ phí phân bổ vào container này. */
+      surchargeAmount: number;
       /** Khóa nhóm để merge ô doanh thu của cặp kẹp (null = không merge). */
       mergeGroup: string | null;
       revenueRole: 'main' | 'clamp' | null;
@@ -1844,6 +1848,7 @@ export class DashboardService {
       }
       // Phụ phí: % nhân trước (trên giá của container), tiền cố định cộng 1 lần
       // cho mỗi kế hoạch vào dòng đầu tiên → tổng khớp với Tổng quan.
+      const baseRevenue = revenue;
       const surs = surchargesOfPlan(plan);
       if (surs.length > 0) {
         const pct = surs
@@ -1857,6 +1862,7 @@ export class DashboardService {
           }
         }
       }
+      const surchargeAmount = revenue - baseRevenue;
       return {
         containerCode: ci.containerCode,
         type: ci.type,
@@ -1872,6 +1878,8 @@ export class DashboardService {
         submissionId: ci.submissionId ?? null,
         tripSalary: routeRate(sub, plan),
         revenue,
+        baseRevenue,
+        surchargeAmount,
         mergeGroup,
         revenueRole,
       };
