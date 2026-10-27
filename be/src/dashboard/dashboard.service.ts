@@ -404,10 +404,6 @@ export class DashboardService {
       }
       allowedVids = [...set];
     }
-    console.log(
-      '[DASH-DEBUG]',
-      JSON.stringify({ benSel, benOwnerIds, allowedVehicles, allowedVids }),
-    );
 
     // 1. Kế hoạch trong tháng
     let plans = await this.slRepo
