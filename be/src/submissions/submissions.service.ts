@@ -1671,14 +1671,29 @@ export class SubmissionsService {
             ? `Plan #${c.shippingLineId}`
             : '';
       };
+      const vehicleRows = (await this.submissionsRepository.manager.query(
+        'SELECT id, so_xe FROM vehicles',
+      )) as Array<{ id: number; so_xe: string }>;
+      const plateByVid = new Map<number, string>();
+      for (const v of vehicleRows) {
+        plateByVid.set(Number(v.id), v.so_xe || '');
+      }
+      /** Biển số theo XE THỰC CHẠY lúc ghi nhận (snapshot), không theo biển hiện tại. */
+      const plateOfSub = (sub: any): string => {
+        if (!sub) return '';
+        const vid =
+          sub.actualVehicleId ?? sub.user?.homeVehicleId ?? sub.user?.id ?? null;
+        return (
+          (vid != null ? plateByVid.get(Number(vid)) : undefined) ||
+          sub.user?.soXe ||
+          ''
+        );
+      };
       const driverOf = (cl: any) => {
         const sub = cl?.submissionRef;
         return sub ? sub.user?.fullName || sub.driverName || '' : '';
       };
-      const plateOf = (cl: any) => {
-        const sub = cl?.submissionRef;
-        return sub?.user?.soXe || '';
-      };
+      const plateOf = (cl: any) => plateOfSub(cl?.submissionRef);
       const styleRow = (
         row: ExcelJS.Row,
         fill: 'yellow' | 'red' | 'blue' | null,
@@ -1790,7 +1805,7 @@ export class SubmissionsService {
                 driver: mSub
                   ? mSub.user?.fullName || mSub.driverName || ''
                   : '',
-                plate: mSub?.user?.soXe || '',
+                plate: plateOfSub(mSub),
                 claimedAt: this.fmtVN(mainClaims[0].createdAt),
                 vsl: mainClaims[0].claimType === 'VSL' ? 'x' : '',
                 keoVe: mainClaims[0].claimType === 'KV' ? 'x' : '',
@@ -4379,11 +4394,29 @@ export class SubmissionsService {
             ? `Plan #${c.shippingLineId}`
             : '';
       };
+      const salVehicleRows = (await this.submissionsRepository.manager.query(
+        'SELECT id, so_xe FROM vehicles',
+      )) as Array<{ id: number; so_xe: string }>;
+      const salPlateByVid = new Map<number, string>();
+      for (const v of salVehicleRows) {
+        salPlateByVid.set(Number(v.id), v.so_xe || '');
+      }
+      /** Biển số theo XE THỰC CHẠY lúc ghi nhận (snapshot), không theo biển hiện tại. */
+      const salPlateOfSub = (sub: any): string => {
+        if (!sub) return '';
+        const vid =
+          sub.actualVehicleId ?? sub.user?.homeVehicleId ?? sub.user?.id ?? null;
+        return (
+          (vid != null ? salPlateByVid.get(Number(vid)) : undefined) ||
+          sub.user?.soXe ||
+          ''
+        );
+      };
       const salDriverOf = (cl: any) => {
         const sub = cl?.submissionRef;
         return sub ? sub.user?.fullName || sub.driverName || '' : '';
       };
-      const salPlateOf = (cl: any) => cl?.submissionRef?.user?.soXe || '';
+      const salPlateOf = (cl: any) => salPlateOfSub(cl?.submissionRef);
 
       const salStyleRow = (
         row: ExcelJS.Row,
@@ -4503,7 +4536,7 @@ export class SubmissionsService {
                 driver: mSub
                   ? mSub.user?.fullName || mSub.driverName || ''
                   : '',
-                plate: mSub?.user?.soXe || '',
+                plate: salPlateOfSub(mSub),
                 claimedAt: this.fmtVN(mainClaims[0].createdAt),
                 vsl: mainClaims[0].claimType === 'VSL' ? 'x' : '',
                 keoVe: mainClaims[0].claimType === 'KV' ? 'x' : '',
@@ -4519,7 +4552,7 @@ export class SubmissionsService {
                 driver: cSub
                   ? cSub.user?.fullName || cSub.driverName || ''
                   : '',
-                plate: cSub?.user?.soXe || '',
+                plate: salPlateOfSub(cSub),
                 claimedAt: this.fmtVN(clampClaims[0].createdAt),
                 vsl: clampClaims[0].claimType === 'VSL' ? 'x' : '',
                 keoVe: clampClaims[0].claimType === 'KV' ? 'x' : '',

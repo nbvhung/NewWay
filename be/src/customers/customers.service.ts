@@ -16,6 +16,7 @@ import { ShippingLine } from '../database/entities/shipping-line.entity';
 import { ContainerImport } from '../database/entities/container-import.entity';
 import { ContainerClaim } from '../database/entities/container-claim.entity';
 import { Submission } from '../database/entities/submission.entity';
+import { Vehicle } from '../database/entities/vehicle.entity';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { CreateCustomerPriceDto } from './dto/create-customer-price.dto';
@@ -98,6 +99,8 @@ export class CustomersService {
     private containerClaimsRepository: Repository<ContainerClaim>,
     @InjectRepository(Submission)
     private submissionsRepository: Repository<Submission>,
+    @InjectRepository(Vehicle)
+    private vehiclesRepository: Repository<Vehicle>,
     @InjectRepository(CustomerPrice)
     private pricesRepository: Repository<CustomerPrice>,
     @InjectRepository(CustomerSurcharge)
@@ -1565,9 +1568,18 @@ export class CustomersService {
     };
 
     // ── Chuẩn bị data rows ────────────────────────────────────────
+    // Biển số theo XE THỰC CHẠY lúc ghi nhận (snapshot `actual_vehicle_id`),
+    // không lấy biển hiện tại của tài xế — tránh đổi xe làm sai bảng kê cũ.
+    const vehicleList = await this.vehiclesRepository.find();
+    const plateByVid = new Map<number, string>();
+    for (const v of vehicleList) plateByVid.set(v.id, v.soXe || '');
+
     const toRow = (c: any) => {
       const sl: any = c.shippingLineRef;
-      const user: any = c.submissionRef?.user;
+      const sub: any = c.submissionRef;
+      const user: any = sub?.user;
+      const effectiveVid =
+        sub?.actualVehicleId ?? user?.homeVehicleId ?? user?.id ?? null;
       const day = getDayOfNgay(sl);
       const type = c.type as string;
       const is20 = type.includes('20');
@@ -1602,7 +1614,12 @@ export class CustomersService {
         routeName: sl?.routeName || '',
         planName: sl?.name || '',
         donGia: dg,
-        soXe: user?.soXe || '',
+        soXe:
+          (effectiveVid != null
+            ? plateByVid.get(Number(effectiveVid))
+            : undefined) ||
+          user?.soXe ||
+          '',
         type,
         day,
         kepRole: kepActive ? kep.role : null,

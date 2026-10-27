@@ -571,7 +571,7 @@ function DriverFilterBar({ title, drivers, value, onChange }: {
           <option value="">🚚 Tất cả xe</option>
           {drivers.map(d => (
             <option key={d.id} value={d.id}>
-              {[d.soXe, d.fullName].filter(Boolean).join(' – ') || `Xe #${d.id}`}
+              {d.soXe || `Xe #${d.id}`}
             </option>
           ))}
         </select>
@@ -580,7 +580,7 @@ function DriverFilterBar({ title, drivers, value, onChange }: {
         <div className="flex justify-center mb-4">
           <div className="px-4 py-2 rounded-xl text-[12px] font-semibold text-center"
             style={{ background: C.amberLt, color: C.amberDk, border: '1px solid #fcd34d' }}>
-            🚛 {[sel.fullName, sel.soXe, sel.soMooc, sel.stt ? `STT ${sel.stt}` : ''].filter(Boolean).join(' — ')}
+            🚛 {[sel.soXe, sel.soMooc, sel.stt ? `STT ${sel.stt}` : ''].filter(Boolean).join(' — ') || `Xe #${sel.id}`}
             {sel.ngayHoatDong && <span className="ml-2 text-[10px] font-normal" style={{ color: '#15803d' }}>📅 {sel.ngayHoatDong}</span>}
           </div>
         </div>
