@@ -375,18 +375,31 @@ export class DashboardService {
     } else {
       const set = new Set<number>();
       const driverSet = new Set(allowedVehicles);
-      for (const d of allLaixe) {
-        if (driverSet.has(d.id)) set.add(d.homeVehicleId ?? d.id);
-      }
-      if (benSel && benOwnerIds) {
+      if (benSel) {
+        // Bên của XE = bên của CHỦ VỐN sở hữu xe (vehicles.owner_user_id),
+        // không phụ thuộc tài xế đang lái. Xe chưa có chủ → mặc định A.
+        const ownerBen = new Map<number, string>();
+        for (const o of owners) ownerBen.set(o.id, normBen(o.ben));
         for (const v of allVehicles) {
-          if (v.ownerUserId != null && benOwnerIds.includes(v.ownerUserId)) {
-            set.add(v.id);
-          }
+          const vben =
+            v.ownerUserId != null
+              ? normBen(ownerBen.get(v.ownerUserId))
+              : 'A';
+          if (vben === benSel) set.add(v.id);
         }
-      } else if (Number.isFinite(selfId)) {
-        for (const v of allVehicles) {
-          if (v.ownerUserId === selfId) set.add(v.id);
+        // Tài xế thuộc bên nhưng CHƯA gán xe → dùng id tài xế làm xe.
+        for (const d of allLaixe) {
+          if (driverSet.has(d.id) && !d.homeVehicleId) set.add(d.id);
+        }
+      } else {
+        // Chủ xe / không lọc bên: xe nhà của lái xe được xem + xe họ sở hữu.
+        for (const d of allLaixe) {
+          if (driverSet.has(d.id)) set.add(d.homeVehicleId ?? d.id);
+        }
+        if (Number.isFinite(selfId)) {
+          for (const v of allVehicles) {
+            if (v.ownerUserId === selfId) set.add(v.id);
+          }
         }
       }
       allowedVids = [...set];
