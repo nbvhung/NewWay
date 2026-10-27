@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import * as bcrypt from 'bcryptjs';
 import { Vehicle } from '../database/entities/vehicle.entity';
@@ -757,19 +757,57 @@ export class VehiclesService {
       where: { id: vehicleId },
     });
     if (!v) throw new NotFoundException('Không tìm thấy xe');
+    const newIds = driverIds.map(Number).filter((n) => Number.isFinite(n));
+    const newSet = new Set(newIds);
+
+    // Chốt các chuyến CŨ về XE CŨ trước khi đổi xe nhà, để doanh thu lịch sử
+    // không nhảy sang xe mới (vd xe mới có ngày hoạt động ở tương lai).
+    const current = await this.usersRepository.find({
+      where: { role: 'laixe', homeVehicleId: vehicleId },
+    });
+    const removed = current.filter((d) => !newSet.has(d.id));
+    const added =
+      newIds.length > 0
+        ? (
+            await this.usersRepository.find({ where: { id: In(newIds) } })
+          ).filter((d) => d.homeVehicleId !== vehicleId)
+        : [];
+    for (const d of removed) {
+      await this.snapshotSubmissionsToVehicle(d.id, vehicleId);
+    }
+    for (const d of added) {
+      await this.snapshotSubmissionsToVehicle(d.id, d.homeVehicleId ?? d.id);
+    }
+
     // Bỏ gán những lái xe đang thuộc xe này nhưng không còn trong danh sách.
     await this.usersRepository.update(
       { role: 'laixe', homeVehicleId: vehicleId },
       { homeVehicleId: null },
     );
-    if (driverIds.length > 0) {
+    if (newIds.length > 0) {
       await this.usersRepository.update(
-        { id: In(driverIds.map(Number)) },
+        { id: In(newIds) },
         { homeVehicleId: vehicleId },
       );
     }
     await this.syncPlateToDrivers(vehicleId);
     return { message: 'Đã cập nhật phân công lái xe' };
+  }
+
+  /**
+   * Chốt các submission chưa có xe thực chạy (`actual_vehicle_id` trống) về 1 xe.
+   * Dùng khi lái xe đổi xe nhà: chuyến cũ vẫn thuộc xe cũ, chuyến mới mới thuộc
+   * xe mới. Nhờ vậy doanh thu lịch sử không bị dồn sang xe mới.
+   */
+  private async snapshotSubmissionsToVehicle(
+    driverId: number,
+    vehicleId: number,
+  ): Promise<void> {
+    if (!Number.isFinite(driverId) || !Number.isFinite(vehicleId)) return;
+    await this.submissionsRepository.update(
+      { userId: driverId, actualVehicleId: IsNull() },
+      { actualVehicleId: vehicleId },
+    );
   }
 
   // ── Đảo lái xe theo kế hoạch (plan_vehicle_overrides) ──────────────

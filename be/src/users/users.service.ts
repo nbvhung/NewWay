@@ -228,8 +228,21 @@ export class UsersService {
     if (dto.sdt !== undefined) target.sdt = dto.sdt.trim();
     if (dto.ngayHoatDong !== undefined)
       target.ngayHoatDong = dto.ngayHoatDong?.trim() || null;
-    if (dto.homeVehicleId !== undefined)
-      target.homeVehicleId = dto.homeVehicleId ?? null;
+    if (dto.homeVehicleId !== undefined) {
+      const newVid = dto.homeVehicleId ?? null;
+      if (newVid !== target.homeVehicleId) {
+        // Đổi xe nhà → chốt các chuyến cũ về XE CŨ, tránh dồn doanh thu lịch sử
+        // sang xe mới (nhất là xe mới có ngày hoạt động ở tương lai).
+        const oldVid = target.homeVehicleId ?? target.id;
+        if (oldVid) {
+          await this.usersRepository.manager.query(
+            'UPDATE submissions SET actual_vehicle_id = $1 WHERE user_id = $2 AND actual_vehicle_id IS NULL',
+            [oldVid, target.id],
+          );
+        }
+      }
+      target.homeVehicleId = newVid;
+    }
     if (dto.zaloId !== undefined) target.zaloId = dto.zaloId.trim() || null;
     if (dto.zaloBot !== undefined) target.zaloBot = dto.zaloBot;
     if (dto.allowanceFarHome !== undefined)

@@ -1117,15 +1117,18 @@ export class DashboardService {
     const byVehicle: VehicleRevenue[] = [];
     for (const [dId, entry] of driverRevenueMap.entries()) {
       const u = userMap.get(dId);
+      // Ưu tiên thông tin XE trong bảng `vehicles` (dId là vehicles.id khi đã
+      // gán xe); nếu không có mới fallback sang tài xế (dId là user.id).
+      const vv = vehicleMap.get(dId);
       byVehicle.push({
         vehicleId: dId,
         fullName: u?.fullName ?? `Xe#${dId}`,
         username: u?.username ?? '',
-        soXe: u?.soXe ?? '',
-        soMooc: u?.soMooc ?? '',
-        stt: u?.stt ?? '',
+        soXe: vv?.soXe || u?.soXe || '',
+        soMooc: vv?.soMooc || u?.soMooc || '',
+        stt: vv?.stt || u?.stt || '',
         sdt: u?.sdt ?? '',
-        ngayHoatDong: u?.ngayHoatDong ?? null,
+        ngayHoatDong: vv?.ngayHoatDong ?? u?.ngayHoatDong ?? null,
         revenue: Math.round(entry.revenue),
         luongKhoan: Math.round(entry.luongKhoan),
         planCount: entry.planCount,
