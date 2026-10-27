@@ -347,6 +347,10 @@ export class DashboardService {
     }
 
     const allLaixe = await this.userRepo.find({ where: { role: 'laixe' } });
+    const allVehicles = await this.vehicleRepo.find();
+    const vehicleMap = new Map<number, Vehicle>();
+    for (const v of allVehicles) vehicleMap.set(v.id, v);
+    const selfId = Number(user?.sub ?? user?.id);
     let allowedVehicles: number[] | null;
     let benOwnerIds: number[] | null = null;
     if (benSel) {
@@ -361,15 +365,32 @@ export class DashboardService {
       allowedVehicles = ownerVisible;
     }
 
-    // ID XE (vehicles.id) được phép xem = xe nhà của các tài xế được phép.
-    const allowedHomeVids: Set<number> | null =
-      allowedVehicles === null
-        ? null
-        : new Set(
-            allLaixe
-              .filter((d) => allowedVehicles!.includes(d.id))
-              .map((d) => d.homeVehicleId ?? d.id),
-          );
+    // ID XE hiệu dụng được phép xem (vehicles.id, hoặc id tài xế khi chưa gán
+    // xe). Dùng cho lọc container/submission theo xe thực chạy.
+    //  - Lọc theo BÊN: mọi xe thuộc bên (kể cả xe chưa gán lại cho tài xế nào).
+    //  - Chủ xe: xe do họ sở hữu + xe nhà của lái xe họ xem.
+    let allowedVids: number[] | null;
+    if (allowedVehicles === null) {
+      allowedVids = null;
+    } else {
+      const set = new Set<number>();
+      const driverSet = new Set(allowedVehicles);
+      for (const d of allLaixe) {
+        if (driverSet.has(d.id)) set.add(d.homeVehicleId ?? d.id);
+      }
+      if (benSel && benOwnerIds) {
+        for (const v of allVehicles) {
+          if (v.ownerUserId != null && benOwnerIds.includes(v.ownerUserId)) {
+            set.add(v.id);
+          }
+        }
+      } else if (Number.isFinite(selfId)) {
+        for (const v of allVehicles) {
+          if (v.ownerUserId === selfId) set.add(v.id);
+        }
+      }
+      allowedVids = [...set];
+    }
 
     // 1. Kế hoạch trong tháng
     let plans = await this.slRepo
@@ -452,14 +473,14 @@ export class DashboardService {
           .where('ci.shippingLineId IN (:...ids)', { ids: planIds })
           .andWhere('u.role = :laixeRole', { laixeRole: 'laixe' })
           .andWhere(
-            allowedVehicles === null
+            allowedVids === null
               ? '1=1'
-              : allowedVehicles.length === 0
+              : allowedVids.length === 0
                 ? '1=0'
                 : // Xe hiệu dụng: override > actual > home > tài xế.
                   'COALESCE(pvo.vehicle_id, sub.actual_vehicle_id, u.home_vehicle_id, u.id) IN (:...allowed)',
-            allowedVehicles && allowedVehicles.length > 0
-              ? { allowed: allowedVehicles }
+            allowedVids && allowedVids.length > 0
+              ? { allowed: allowedVids }
               : {},
           )
           .getMany()
@@ -582,14 +603,14 @@ export class DashboardService {
           .where('sub.shippingLineId IN (:...ids)', { ids: planIds })
           .andWhere('u.role = :laixeRole', { laixeRole: 'laixe' })
           .andWhere(
-            allowedVehicles === null
+            allowedVids === null
               ? '1=1'
-              : allowedVehicles.length === 0
+              : allowedVids.length === 0
                 ? '1=0'
                 : // Xe hiệu dụng: override > actual > home > tài xế.
                   'COALESCE(pvo.vehicle_id, sub.actual_vehicle_id, u.home_vehicle_id, sub.userId) IN (:...allowed)',
-            allowedVehicles && allowedVehicles.length > 0
-              ? { allowed: allowedVehicles }
+            allowedVids && allowedVids.length > 0
+              ? { allowed: allowedVids }
               : {},
           )
           .getMany()
@@ -615,9 +636,6 @@ export class DashboardService {
     const allUsers = allLaixe;
     const userMap = new Map<number, User>();
     for (const u of allUsers) userMap.set(u.id, u);
-    const allVehicles = await this.vehicleRepo.find();
-    const vehicleMap = new Map<number, Vehicle>();
-    for (const v of allVehicles) vehicleMap.set(v.id, v);
 
     // 7b. Chi phí LƯƠNG LÁI XE = TỔNG THỰC NHẬN theo bảng lương tháng (lương chuyến
     //     + cứng + chuyên cần + phụ cấp... KHÔNG trừ khấu trừ/tạm ứng — xem mục
@@ -1179,9 +1197,7 @@ export class DashboardService {
     //   - Lái phụ (mượn xe khác bên): chỉ lương chuyến sang xe đã chạy;
     //     lương cứng vẫn ở xe nhà (bên của họ).
     const isAllowed = (vid: number) =>
-      allowedVehicles === null ||
-      allowedVehicles.includes(vid) ||
-      (allowedHomeVids?.has(vid) ?? false);
+      allowedVids === null || allowedVids.includes(Number(vid));
 
     const planById = new Map<number, ShippingLine>();
     for (const p of plans) planById.set(p.id, p);
@@ -1546,26 +1562,45 @@ export class DashboardService {
     for (const c of INVEST_CATEGORIES)
       investItemsDetail[c] = mapDetail(investRows, c);
 
-    // Xe thuộc sở hữu của tài khoản đang xem — theo XE (vehicles.id) để khớp với
-    // `cost.byVehicle` và các khoản chi phí/vốn (cũng keyed theo vehicles.id).
-    const ownedDriversMap = new Map<number, any>();
+    // Bộ lọc "theo xe" — lấy từ bảng `vehicles` (gồm cả xe CHƯA gán lái xe),
+    // không chỉ từ xe nhà hiện tại của tài xế. Nhờ vậy xe cũ (vd 15H 10090)
+    // vẫn hiện trong bộ lọc của bên/chủ xe dù tài xế đã chuyển sang xe mới.
+    const driverByVid = new Map<number, any>();
     for (const u of allUsers) {
-      if (allowedVehicles !== null && !isAllowed(u.id)) continue;
       const vid = u.homeVehicleId ?? u.id;
-      if (ownedDriversMap.has(vid)) continue;
-      const vv = vehicleMap.get(vid);
-      ownedDriversMap.set(vid, {
-        id: vid,
-        fullName: u.fullName || '',
-        soXe: vv?.soXe || u.soXe || '',
-        soMooc: vv?.soMooc || u.soMooc || '',
-        stt: vv?.stt || u.stt || '',
-        ngayHoatDong: vv?.ngayHoatDong ?? u.ngayHoatDong ?? null,
-      });
+      if (!driverByVid.has(vid)) driverByVid.set(vid, u);
     }
-    const ownedDrivers = Array.from(ownedDriversMap.values()).sort(
-      (a, b) => (parseInt(a.stt) || 999999) - (parseInt(b.stt) || 999999),
-    );
+    const ownerById = new Map<number, any>();
+    for (const o of owners) ownerById.set(o.id, o);
+
+    const ownedVidSet = new Set<number>();
+    if (allowedVids === null) {
+      for (const v of allVehicles) ownedVidSet.add(v.id);
+    } else {
+      for (const id of allowedVids) ownedVidSet.add(id);
+    }
+    for (const r of costByVehicle) ownedVidSet.add(r.vehicleId);
+    for (const r of byVehicle) ownedVidSet.add(r.vehicleId);
+
+    const ownedDrivers = Array.from(ownedVidSet)
+      .map((vid) => {
+        const vv = vehicleMap.get(vid);
+        const drv = driverByVid.get(vid);
+        const owner = vv?.ownerUserId ? ownerById.get(vv.ownerUserId) : null;
+        return {
+          id: vid,
+          fullName: drv?.fullName || owner?.fullName || '',
+          soXe: vv?.soXe || drv?.soXe || '',
+          soMooc: vv?.soMooc || drv?.soMooc || '',
+          stt: vv?.stt || drv?.stt || '',
+          ngayHoatDong: vv?.ngayHoatDong ?? drv?.ngayHoatDong ?? null,
+        };
+      })
+      .sort(
+        (a, b) =>
+          (parseInt(a.stt) || 999999) - (parseInt(b.stt) || 999999) ||
+          a.soXe.localeCompare(b.soXe),
+      );
 
     return {
       month,
