@@ -7,6 +7,7 @@ import {
   VehicleOverride,
   VehicleFinance,
   CapitalLockState,
+  VehicleAssignment,
 } from '@/lib/api-vehicles';
 import { dashboardApi, DashboardOverview } from '@/lib/api-dashboard';
 import { shippingLinesApi } from '@/lib/api-shipping-lines';
@@ -674,6 +675,7 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
           setMonth={setMonth}
           setYear={setYear}
           reload={reloadDetail}
+          onReloadDetail={() => openDetail(detail)}
           onEdit={() => openEdit(detail)}
           onAssign={() => openAssign(detail)}
           onRemoveOverride={removeOverride}
@@ -880,7 +882,7 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
 
 /* ─────────────────────────────────────────────────────────── */
 function VehicleDetail({
-  detail, overview, overrides, month, year, loading, setMonth, setYear, reload, onEdit, onAssign, onRemoveOverride, onAddCost, onAddInvest, capitalLocked, canLock, onToggleLock, currentUser, toast,
+  detail, overview, overrides, month, year, loading, setMonth, setYear, reload, onReloadDetail, onEdit, onAssign, onRemoveOverride, onAddCost, onAddInvest, capitalLocked, canLock, onToggleLock, currentUser, toast,
 }: {
   detail: VehicleItem;
   overview: DashboardOverview | null;
@@ -891,6 +893,7 @@ function VehicleDetail({
   setMonth: (n: number) => void;
   setYear: (n: number) => void;
   reload: () => void;
+  onReloadDetail: () => void;
   onEdit: () => void;
   onAssign: () => void;
   onRemoveOverride: (o: VehicleOverride) => void;
@@ -910,6 +913,50 @@ function VehicleDetail({
   const [fin, setFin] = useState<VehicleFinance | null>(null);
   const [sheetCat, setSheetCat] = useState<string | null>(null);
   const [showDriverSalary, setShowDriverSalary] = useState(false);
+  const [editingAssign, setEditingAssign] = useState<VehicleAssignment | null>(
+    null,
+  );
+  const [assignDateEdit, setAssignDateEdit] = useState('');
+  const [assignNoteEdit, setAssignNoteEdit] = useState('');
+  const [savingAssign, setSavingAssign] = useState(false);
+
+  const openEditAssign = (a: VehicleAssignment) => {
+    setEditingAssign(a);
+    setAssignDateEdit(a.effectiveDate);
+    setAssignNoteEdit(a.note || '');
+  };
+
+  const saveEditAssign = async () => {
+    if (!editingAssign) return;
+    if (!assignDateEdit) {
+      toast('Chọn ngày hiệu lực', 'error');
+      return;
+    }
+    setSavingAssign(true);
+    try {
+      await vehiclesApi.updateAssignment(editingAssign.id, {
+        effectiveDate: assignDateEdit,
+        note: assignNoteEdit,
+      });
+      setEditingAssign(null);
+      toast('Đã cập nhật lịch sử bổ nhiệm', 'success');
+      onReloadDetail();
+    } catch (e: any) {
+      toast(e?.response?.data?.message || 'Cập nhật thất bại', 'error');
+    } finally {
+      setSavingAssign(false);
+    }
+  };
+
+  const removeAssign = async (a: VehicleAssignment) => {
+    const res = await confirmDelete({
+      message: `Bạn chắc chắn muốn XOÁ lịch sử bổ nhiệm của ${a.driverName} từ ${fmtDate(a.effectiveDate)}? Lương cứng của tháng sẽ tính lại theo dòng còn lại.`,
+      action: () => vehiclesApi.deleteAssignment(a.id),
+    });
+    if (res === undefined) return;
+    toast('Đã xoá lịch sử bổ nhiệm', 'success');
+    onReloadDetail();
+  };
   const loadFin = async () => {
     try {
       const res = await vehiclesApi.getFinance(id, month, year);
@@ -1071,6 +1118,24 @@ function VehicleDetail({
                         {a.note}
                       </span>
                     ) : null}
+                    {hasPerm(currentUser, 'vehicle.manage') && (
+                      <span className="ml-auto flex items-center gap-1">
+                        <button
+                          onClick={() => openEditAssign(a)}
+                          title="Sửa ngày hiệu lực / ghi chú"
+                          className="px-2 py-1 rounded-md text-[11px] border border-[#e7e5e4] hover:bg-[#faf9f7] cursor-pointer"
+                        >
+                          ✏️ Sửa
+                        </button>
+                        <button
+                          onClick={() => removeAssign(a)}
+                          title="Xoá dòng lịch sử này"
+                          className="px-2 py-1 rounded-md text-[11px] border border-[#fecaca] text-[#dc2626] hover:bg-[#fef2f2] cursor-pointer"
+                        >
+                          🗑️
+                        </button>
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1266,6 +1331,54 @@ function VehicleDetail({
           </div>
         </Modal>
       )}
+
+      {/* Modal sửa lịch sử bổ nhiệm */}
+      <Modal
+        open={!!editingAssign}
+        onClose={() => setEditingAssign(null)}
+        title={`✏️ Sửa bổ nhiệm — ${editingAssign?.driverName || ''}`}
+        footer={
+          <>
+            <button
+              onClick={() => setEditingAssign(null)}
+              className="px-4 py-2 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] cursor-pointer"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={saveEditAssign}
+              disabled={savingAssign}
+              className="px-4 py-2 rounded-lg text-xs font-medium bg-gradient-to-r from-[#f59e0b] to-[#d97706] text-white disabled:opacity-50 cursor-pointer"
+            >
+              {savingAssign ? 'Đang lưu...' : '💾 Lưu'}
+            </button>
+          </>
+        }
+      >
+        <label className="text-[10px] font-bold text-[#92400e] mb-1 block">
+          📅 Ngày bắt đầu bổ nhiệm
+        </label>
+        <input
+          type="date"
+          value={assignDateEdit}
+          onChange={(e) => setAssignDateEdit(e.target.value)}
+          className="w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b] bg-white"
+        />
+        <p className="text-[10px] text-[#78716c] mt-2 leading-relaxed">
+          Ngày 1 → lương cứng tính từ <b>đúng tháng đó</b>; giữa tháng → tính từ{' '}
+          <b>tháng sau</b>. Ngày hiệu lực chỉ là ngày lái xe nhận xe, còn tháng
+          chịu lương tự tính theo quy tắc trên.
+        </p>
+        <label className="text-[10px] font-bold text-[#92400e] mb-1 mt-3 block">
+          📝 Ghi chú (không bắt buộc)
+        </label>
+        <input
+          value={assignNoteEdit}
+          onChange={(e) => setAssignNoteEdit(e.target.value)}
+          placeholder="VD: bàn giao xe, đổi ca..."
+          className="w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]"
+        />
+      </Modal>
       </div>
   );
 }

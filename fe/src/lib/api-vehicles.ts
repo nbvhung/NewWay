@@ -129,6 +129,15 @@ export const vehiclesApi = {
   assignDrivers: (id: number, driverIds: number[], effectiveDate?: string) =>
     api.put(`/admin/vehicles/${id}/drivers`, { driverIds, effectiveDate }),
 
+  // ── Lịch sử bổ nhiệm lái xe ──
+  updateAssignment: (
+    id: number,
+    data: { effectiveDate?: string; note?: string | null; vehicleId?: number | null },
+  ) => api.put(`/admin/vehicles/assignments/${id}`, data),
+
+  deleteAssignment: (id: number) =>
+    api.delete(`/admin/vehicles/assignments/${id}`),
+
   // ── Đảo lái xe theo kế hoạch ──
   listOverrides: (params?: { vehicleId?: number; planId?: number }) =>
     api.get<{ data: VehicleOverride[] }>('/admin/vehicles/overrides', {

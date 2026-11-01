@@ -389,6 +389,83 @@ export class AssignmentsService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Sửa 1 dòng lịch sử bổ nhiệm (ngày hiệu lực / ghi chú / xe).
+   *
+   * `salary_from` được tính lại theo ngày hiệu lực mới (ngày 1 → đúng tháng;
+   * giữa tháng → tháng sau), rồi áp lại xe hiện tại cho lái xe.
+   */
+  async updateAssignment(
+    id: number,
+    dto: { effectiveDate?: string; note?: string | null; vehicleId?: number | null },
+  ): Promise<DriverVehicleAssignment> {
+    const rowId = Number(id);
+    if (!Number.isFinite(rowId)) {
+      throw new BadRequestException('Lịch sử bổ nhiệm không hợp lệ');
+    }
+    const row = await this.assignmentsRepo.findOne({ where: { id: rowId } });
+    if (!row) throw new NotFoundException('Không tìm thấy lịch sử bổ nhiệm');
+
+    if (dto.effectiveDate !== undefined) {
+      const eff = (dto.effectiveDate || '').trim();
+      if (!eff) {
+        throw new BadRequestException('Ngày hiệu lực không được để trống');
+      }
+      const salaryFrom = salaryFromForEffectiveDate(eff);
+      // Trùng ngày hiệu lực với 1 dòng khác của cùng lái xe → báo lỗi rõ ràng
+      // thay vì để DB ném lỗi unique khó hiểu.
+      const dup = await this.assignmentsRepo.findOne({
+        where: { driverId: row.driverId, effectiveDate: eff },
+      });
+      if (dup && Number(dup.id) !== rowId) {
+        throw new BadRequestException(
+          `Lái xe đã có lịch sử bổ nhiệm ngày ${eff}. Sửa/xoá dòng đó trước.`,
+        );
+      }
+      row.effectiveDate = eff;
+      row.salaryFrom = salaryFrom;
+      row.appliedAt = null;
+    }
+
+    if (dto.vehicleId !== undefined) {
+      const vid =
+        dto.vehicleId == null || (dto.vehicleId as any) === ''
+          ? null
+          : Number(dto.vehicleId);
+      if (vid != null) {
+        if (!Number.isFinite(vid)) {
+          throw new BadRequestException('Xe không hợp lệ');
+        }
+        const vehicle = await this.vehiclesRepo.findOne({
+          where: { id: vid },
+        });
+        if (!vehicle) throw new NotFoundException('Không tìm thấy xe');
+      }
+      row.vehicleId = vid;
+      row.appliedAt = null;
+    }
+
+    if (dto.note !== undefined) row.note = dto.note?.trim() || null;
+
+    const saved = await this.assignmentsRepo.save(row);
+    await this.syncDriverAssignment(Number(saved.driverId));
+    return saved;
+  }
+
+  /** Xoá 1 dòng lịch sử bổ nhiệm rồi áp lại xe hiện tại cho lái xe. */
+  async deleteAssignment(id: number): Promise<{ message: string }> {
+    const rowId = Number(id);
+    if (!Number.isFinite(rowId)) {
+      throw new BadRequestException('Lịch sử bổ nhiệm không hợp lệ');
+    }
+    const row = await this.assignmentsRepo.findOne({ where: { id: rowId } });
+    if (!row) throw new NotFoundException('Không tìm thấy lịch sử bổ nhiệm');
+    const driverId = Number(row.driverId);
+    await this.assignmentsRepo.remove(row);
+    await this.syncDriverAssignment(driverId);
+    return { message: 'Đã xoá lịch sử bổ nhiệm' };
+  }
+
+  /**
    * Áp `users.home_vehicle_id` theo bản ghi bổ nhiệm MỚI NHẤT đã tới ngày.
    * Chốt các submission chưa có xe thực chạy về xe cũ trước khi đổi — để doanh
    * thu lịch sử không nhảy sang xe mới.

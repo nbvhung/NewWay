@@ -757,6 +757,25 @@ export class VehiclesService {
     }));
   }
 
+  /** Lịch sử bổ nhiệm lái xe (chỉ phần đọc — ghi ở AssignmentsService). */
+  async getAssignmentHistory(vehicleId: number) {
+    return this.assignmentsService.getVehicleHistory(vehicleId);
+  }
+
+  /** Sửa 1 dòng lịch sử bổ nhiệm (ngày hiệu lực / ghi chú). */
+  async updateAssignment(
+    id: number,
+    dto: { effectiveDate?: string; note?: string | null; vehicleId?: number | null },
+  ) {
+    const row = await this.assignmentsService.updateAssignment(id, dto);
+    return { data: row, message: 'Đã cập nhật lịch sử bổ nhiệm' };
+  }
+
+  /** Xoá 1 dòng lịch sử bổ nhiệm. */
+  async deleteAssignment(id: number) {
+    return this.assignmentsService.deleteAssignment(id);
+  }
+
   /**
    * Gán xe nhà cho các lái xe (thay thế danh sách hiện tại của xe).
    *

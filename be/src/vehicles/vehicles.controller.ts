@@ -140,6 +140,23 @@ export class VehiclesController {
     return this.vehiclesService.update(+id, dto);
   }
 
+  // ── Lịch sử bổ nhiệm lái xe (khai báo TRƯỚC ':id/drivers') ──
+  @Put('assignments/:id')
+  @Permissions('vehicle.manage')
+  updateAssignment(
+    @Param('id') id: string,
+    @Body()
+    body: { effectiveDate?: string; note?: string | null; vehicleId?: number | null },
+  ) {
+    return this.vehiclesService.updateAssignment(+id, body);
+  }
+
+  @Delete('assignments/:id')
+  @Permissions('vehicle.manage')
+  deleteAssignment(@Param('id') id: string) {
+    return this.vehiclesService.deleteAssignment(+id);
+  }
+
   @Put(':id/drivers')
   @Permissions('vehicle.manage')
   assignDrivers(
