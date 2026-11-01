@@ -12,6 +12,10 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { RedisService } from '../redis/redis.service';
 import {
+  AssignmentsService,
+  todayVN,
+} from '../assignments/assignments.service';
+import {
   resolvePermissions,
   PERMISSION_KEYS,
 } from '../common/permissions/permissions';
@@ -22,6 +26,7 @@ export class UsersService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private redisService: RedisService,
+    private readonly assignmentsService: AssignmentsService,
   ) {}
 
   /**
@@ -167,6 +172,15 @@ export class UsersService {
       payBhxh: dto.payBhxh ?? true,
     });
     const saved = await this.usersRepository.save(user);
+    // Ghi lịch sử bổ nhiệm để lương cứng tháng hiện tại/tương lai bám đúng xe.
+    if (saved.role === 'laixe' && saved.homeVehicleId != null) {
+      await this.assignmentsService.recordAssignment({
+        driverId: saved.id,
+        vehicleId: saved.homeVehicleId,
+        effectiveDate: todayVN(),
+        actorUserId: Number(actor?.sub ?? actor?.id) || null,
+      });
+    }
     const { passwordHash, ...result } = saved;
     return result;
   }
@@ -228,6 +242,7 @@ export class UsersService {
     if (dto.sdt !== undefined) target.sdt = dto.sdt.trim();
     if (dto.ngayHoatDong !== undefined)
       target.ngayHoatDong = dto.ngayHoatDong?.trim() || null;
+    const previousHomeVehicleId = target.homeVehicleId ?? null;
     if (dto.homeVehicleId !== undefined) {
       const newVid = dto.homeVehicleId ?? null;
       if (newVid !== target.homeVehicleId) {
@@ -253,6 +268,20 @@ export class UsersService {
     if (dto.payBhxh !== undefined) target.payBhxh = dto.payBhxh;
 
     const saved = await this.usersRepository.save(target);
+
+    // Đổi xe nhà qua tab Users → ghi lịch sử bổ nhiệm (hiệu lực hôm nay).
+    if (
+      saved.role === 'laixe' &&
+      dto.homeVehicleId !== undefined &&
+      (saved.homeVehicleId ?? null) !== previousHomeVehicleId
+    ) {
+      await this.assignmentsService.recordAssignment({
+        driverId: saved.id,
+        vehicleId: saved.homeVehicleId ?? null,
+        effectiveDate: todayVN(),
+        actorUserId: Number(actor?.sub ?? actor?.id) || null,
+      });
+    }
 
     // Nếu đã thay đổi visibleDriverIds / role / permissions → huỷ refresh token
     // để JWT mới được tạo tự động với thông tin cập nhật

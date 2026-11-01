@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import * as bcrypt from 'bcryptjs';
 import { Vehicle } from '../database/entities/vehicle.entity';
@@ -22,6 +22,11 @@ import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 import { OverrideDto } from './dto/override.dto';
 import { DashboardService } from '../dashboard/dashboard.service';
 import { SettingsService } from '../settings/settings.service';
+import {
+  AssignmentsService,
+  salaryFromForEffectiveDate,
+  todayVN,
+} from '../assignments/assignments.service';
 
 const DEFAULT_BEN = 'A';
 const normBen = (v?: string | null): string =>
@@ -44,6 +49,7 @@ export class VehiclesService {
     private readonly shippingLinesRepository: Repository<ShippingLine>,
     private readonly dashboardService: DashboardService,
     private readonly settingsService: SettingsService,
+    private readonly assignmentsService: AssignmentsService,
   ) {}
 
   // ── Khoá nguồn vốn (Vốn đầu tư) ──────────────────────────────────
@@ -159,6 +165,7 @@ export class VehiclesService {
     const drivers = await this.usersRepository.find({
       where: { role: 'laixe', homeVehicleId: id },
     });
+    const assignments = await this.assignmentsService.getVehicleHistory(id);
     return {
       ...v,
       ownerName: owner?.fullName || '',
@@ -169,6 +176,8 @@ export class VehiclesService {
         username: d.username || '',
         sdt: d.sdt || '',
       })),
+      /** Lịch sử bổ nhiệm lái xe của xe (kèm ngày bắt đầu / kết thúc). */
+      assignments,
     };
   }
 
@@ -748,20 +757,37 @@ export class VehiclesService {
     }));
   }
 
-  /** Gán xe nhà cho các lái xe (thay thế danh sách hiện tại của xe). */
+  /**
+   * Gán xe nhà cho các lái xe (thay thế danh sách hiện tại của xe).
+   *
+   * `effectiveDate` là NGÀY HIỆU LỰC BỔ NHIỆM (YYYY-MM-DD):
+   * - Ngày 1 → lương cứng + khoản cố định tính cho xe này ngay tháng đó.
+   * - Giữa tháng → tháng sau mới chuyển xe chịu lương (tháng hiện tại vẫn xe cũ).
+   * - Tương lai → giữ nguyên xe hiện tại tới hết ngày trước hiệu lực; tới ngày
+   *   hệ thống tự áp dụng (xem AssignmentsService).
+   */
   async assignDrivers(
     vehicleId: number,
     driverIds: number[],
+    effectiveDate?: string | null,
+    actor?: any,
   ): Promise<{ message: string }> {
     const v = await this.vehiclesRepository.findOne({
       where: { id: vehicleId },
     });
     if (!v) throw new NotFoundException('Không tìm thấy xe');
-    const newIds = driverIds.map(Number).filter((n) => Number.isFinite(n));
+
+    const eff = (effectiveDate || '').trim() || todayVN();
+    // Validate + chốt tháng chịu lương (ném lỗi nếu ngày không hợp lệ).
+    salaryFromForEffectiveDate(eff);
+    const today = todayVN();
+    const actorId = Number(actor?.sub ?? actor?.id) || null;
+
+    const newIds = driverIds
+      .map(Number)
+      .filter((n) => Number.isFinite(n));
     const newSet = new Set(newIds);
 
-    // Chốt các chuyến CŨ về XE CŨ trước khi đổi xe nhà, để doanh thu lịch sử
-    // không nhảy sang xe mới (vd xe mới có ngày hoạt động ở tương lai).
     const current = await this.usersRepository.find({
       where: { role: 'laixe', homeVehicleId: vehicleId },
     });
@@ -770,44 +796,46 @@ export class VehiclesService {
       newIds.length > 0
         ? (
             await this.usersRepository.find({ where: { id: In(newIds) } })
-          ).filter((d) => d.homeVehicleId !== vehicleId)
+          ).filter(
+            (d) => d.role === 'laixe' && d.homeVehicleId !== vehicleId,
+          )
         : [];
+
+    // Lái xe rời xe → kết thúc bổ nhiệm (null).
     for (const d of removed) {
-      await this.snapshotSubmissionsToVehicle(d.id, vehicleId);
+      await this.assignmentsService.recordAssignment({
+        driverId: d.id,
+        vehicleId: null,
+        effectiveDate: eff,
+        actorUserId: actorId,
+        fromVehicleId: vehicleId,
+      });
     }
+    // Lái xe mới nhận xe.
     for (const d of added) {
-      await this.snapshotSubmissionsToVehicle(d.id, d.homeVehicleId ?? d.id);
+      await this.assignmentsService.recordAssignment({
+        driverId: d.id,
+        vehicleId,
+        effectiveDate: eff,
+        actorUserId: actorId,
+      });
+    }
+    // Sửa ngày hiệu lực cho lái xe ĐANG thuộc xe (backdate) — chỉ khi ngày đã
+    // qua; ngày hôm nay/tương lai không tạo thêm bản ghi trùng.
+    if (eff < today) {
+      for (const d of current) {
+        if (!newSet.has(d.id)) continue;
+        await this.assignmentsService.recordAssignment({
+          driverId: d.id,
+          vehicleId,
+          effectiveDate: eff,
+          actorUserId: actorId,
+        });
+      }
     }
 
-    // Bỏ gán những lái xe đang thuộc xe này nhưng không còn trong danh sách.
-    await this.usersRepository.update(
-      { role: 'laixe', homeVehicleId: vehicleId },
-      { homeVehicleId: null },
-    );
-    if (newIds.length > 0) {
-      await this.usersRepository.update(
-        { id: In(newIds) },
-        { homeVehicleId: vehicleId },
-      );
-    }
     await this.syncPlateToDrivers(vehicleId);
     return { message: 'Đã cập nhật phân công lái xe' };
-  }
-
-  /**
-   * Chốt các submission chưa có xe thực chạy (`actual_vehicle_id` trống) về 1 xe.
-   * Dùng khi lái xe đổi xe nhà: chuyến cũ vẫn thuộc xe cũ, chuyến mới mới thuộc
-   * xe mới. Nhờ vậy doanh thu lịch sử không bị dồn sang xe mới.
-   */
-  private async snapshotSubmissionsToVehicle(
-    driverId: number,
-    vehicleId: number,
-  ): Promise<void> {
-    if (!Number.isFinite(driverId) || !Number.isFinite(vehicleId)) return;
-    await this.submissionsRepository.update(
-      { userId: driverId, actualVehicleId: IsNull() },
-      { actualVehicleId: vehicleId },
-    );
   }
 
   // ── Đảo lái xe theo kế hoạch (plan_vehicle_overrides) ──────────────

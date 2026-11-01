@@ -17,6 +17,7 @@ import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
 import { PlanVehicleOverride } from '../database/entities/plan-vehicle-override.entity';
 import { Vehicle } from '../database/entities/vehicle.entity';
 import { SalaryModule } from '../salary/salary.module';
+import { AssignmentsModule } from '../assignments/assignments.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { SalaryModule } from '../salary/salary.module';
       Vehicle,
     ]),
     SalaryModule,
+    AssignmentsModule,
   ],
   controllers: [DashboardController],
   providers: [DashboardService],

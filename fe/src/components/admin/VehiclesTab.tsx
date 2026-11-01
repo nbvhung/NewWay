@@ -55,6 +55,11 @@ interface Props {
 }
 
 const fmt = (n: number) => Math.round(n || 0).toLocaleString('vi-VN');
+const fmtDate = (d?: string | null) => (d ? d.split('-').reverse().join('/') : '');
+const todayInput = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 const MONTHS_VN = ['', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
 
 const emptyForm = {
@@ -97,6 +102,7 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignVehicle, setAssignVehicle] = useState<VehicleItem | null>(null);
   const [assignIds, setAssignIds] = useState<number[]>([]);
+  const [assignEffectiveDate, setAssignEffectiveDate] = useState(todayInput());
   const [driverSearch, setDriverSearch] = useState('');
 
   // Nhập chi phí / vốn đầu tư kèm xe
@@ -322,14 +328,23 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
   const openAssign = (v: VehicleItem) => {
     setAssignVehicle(v);
     setAssignIds(v.drivers.map((d) => d.id));
+    setAssignEffectiveDate(todayInput());
     setDriverSearch('');
     setAssignOpen(true);
   };
   const saveAssign = async () => {
     if (!assignVehicle) return;
+    if (!assignEffectiveDate) {
+      toast('Chọn ngày hiệu lực bổ nhiệm', 'error');
+      return;
+    }
     setSaving(true);
     try {
-      await vehiclesApi.assignDrivers(assignVehicle.id, assignIds);
+      await vehiclesApi.assignDrivers(
+        assignVehicle.id,
+        assignIds,
+        assignEffectiveDate,
+      );
       setAssignOpen(false);
       toast('Đã cập nhật phân công lái xe', 'success');
       if (detail && detail.id === assignVehicle.id) openDetail(detail);
@@ -723,6 +738,23 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
           </>
         }
       >
+        <div className="mb-3 rounded-lg border border-[#fcd34d] bg-[#fffbeb] p-3">
+          <label className="text-[10px] font-bold text-[#92400e] mb-1 block">
+            📅 Ngày hiệu lực bổ nhiệm
+          </label>
+          <input
+            type="date"
+            value={assignEffectiveDate}
+            onChange={(e) => setAssignEffectiveDate(e.target.value)}
+            className="w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b] bg-white"
+          />
+          <p className="text-[10px] text-[#78716c] mt-2 leading-relaxed">
+            Ngày 1 → lương cứng + khoản cố định tính từ <b>đúng tháng đó</b>.
+            Giữa tháng → tính từ <b>tháng sau</b> (tháng hiện tại vẫn xe cũ).
+            Ngày tương lai: lái xe vẫn thuộc xe hiện tại đến hết ngày trước
+            ngày hiệu lực, tới ngày hệ thống tự chuyển.
+          </p>
+        </div>
         <input value={driverSearch} onChange={(e) => setDriverSearch(e.target.value)} placeholder="Tìm lái xe..." className="w-full px-3 py-2 mb-3 border border-[#e7e5e4] rounded-lg text-xs outline-none focus:border-[#f59e0b]" />
         <div className="max-h-[320px] overflow-y-auto flex flex-col gap-1">
           {filteredDrivers.map((d) => {
@@ -996,6 +1028,53 @@ function VehicleDetail({
                 ))
               )}
             </div>
+          </div>
+
+          {/* Lịch sử bổ nhiệm lái xe */}
+          <div className="rounded-xl border border-[#e7e5e4] p-4">
+            <p className="text-[12px] font-bold text-[#1c1917] mb-2">
+              🗓️ Lịch sử bổ nhiệm lái xe ({(detail.assignments || []).length})
+            </p>
+            {(detail.assignments || []).length === 0 ? (
+              <p className="text-[12px] text-[#a8a29e]">
+                Chưa có lịch sử bổ nhiệm
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {(detail.assignments || []).map((a) => (
+                  <div
+                    key={a.id}
+                    className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-lg border border-[#e7e5e4]"
+                  >
+                    <span className="text-[12px] font-semibold text-[#1c1917]">
+                      {a.driverName}
+                    </span>
+                    {a.pending ? (
+                      <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[#eff6ff] text-[#2563eb]">
+                        Chờ hiệu lực
+                      </span>
+                    ) : a.current ? (
+                      <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[#f0fdf4] text-[#16a34a]">
+                        Đang lái
+                      </span>
+                    ) : null}
+                    <span className="text-[11px] text-[#78716c]">
+                      {fmtDate(a.effectiveDate)} →{' '}
+                      {a.endDate ? fmtDate(a.endDate) : 'nay'}
+                    </span>
+                    <span className="text-[10px] text-[#92400e] bg-[#fef3c7] px-1.5 py-0.5 rounded-full">
+                      Lương cứng từ T{Number(a.salaryFrom.slice(5, 7))}/
+                      {a.salaryFrom.slice(0, 4)}
+                    </span>
+                    {a.note ? (
+                      <span className="text-[10px] text-[#a8a29e]">
+                        {a.note}
+                      </span>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Doanh thu */}

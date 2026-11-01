@@ -15,6 +15,7 @@ import { SalaryRecord } from '../database/entities/salary-record.entity';
 import { SalaryItem } from '../database/entities/salary-item.entity';
 import { SalaryRecordItem } from '../database/entities/salary-record-item.entity';
 import { DriverAdvance } from '../database/entities/driver-advance.entity';
+import { AssignmentsModule } from '../assignments/assignments.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { DriverAdvance } from '../database/entities/driver-advance.entity';
       DriverAdvance,
     ]),
     SettingsModule,
+    AssignmentsModule,
   ],
   controllers: [SubmissionsController],
   providers: [SubmissionsService],

@@ -9,6 +9,7 @@ import { DriverAdvance } from '../database/entities/driver-advance.entity';
 import { SalaryPaymentLog } from '../database/entities/salary-payment-log.entity';
 import { User } from '../database/entities/user.entity';
 import { SubmissionsService } from '../submissions/submissions.service';
+import { AssignmentsService } from '../assignments/assignments.service';
 import {
   UpdateSalaryRecordDto,
   UpdateSalarySettingsDto,
@@ -41,6 +42,7 @@ export class SalaryService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private submissionsService: SubmissionsService,
+    private readonly assignmentsService: AssignmentsService,
   ) {}
 
   /** Lưu "giá trị nền" của tài xế (phụ cấp nhà xa, xe cũ, đóng BHXH). */
@@ -448,6 +450,12 @@ export class SalaryService {
       where: { role: 'laixe' },
       order: { stt: 'ASC' },
     });
+    // Xe chịu lương cứng theo ĐÚNG tháng đang xem (lịch sử bổ nhiệm).
+    const monthVehicle = await this.assignmentsService.getMonthVehicleInfo(
+      drivers.map((d) => d.id),
+      month,
+      year,
+    );
     const items = await this.itemsRepository.find({
       where: { isActive: true },
       order: { sortOrder: 'ASC', id: 'ASC' },
@@ -556,13 +564,19 @@ export class SalaryService {
         bhxh -
         advanceDeduct;
 
+      const monthV = monthVehicle.get(driver.id);
       records.push({
         id: record.id,
         driverId: driver.id,
         fullName: driver.fullName,
         username: driver.username,
-        soXe: driver.soXe,
-        stt: driver.stt,
+        // Xe chịu lương cứng của tháng này (không phải biển hiện tại).
+        soXe: monthV ? monthV.soXe : driver.soXe,
+        soMooc: monthV ? monthV.soMooc : driver.soMooc,
+        stt: monthV ? monthV.stt : driver.stt,
+        vehicleId: monthV
+          ? monthV.vehicleId
+          : (driver.homeVehicleId ?? null),
         ngayCong: this.daysInMonth(month, year) - (record.daysOff?.length || 0),
         standardDays: settings.standardDays,
         // Chuyên cần cố định 500.000đ → không còn "mức thưởng tiếp theo".

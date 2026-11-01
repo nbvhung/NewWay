@@ -7,6 +7,24 @@ export interface VehicleDriver {
   sdt?: string;
 }
 
+export interface VehicleAssignment {
+  id: number;
+  driverId: number;
+  driverName: string;
+  username: string;
+  sdt: string;
+  vehicleId: number | null;
+  effectiveDate: string;
+  salaryFrom: string;
+  endDate: string | null;
+  nextEffectiveDate: string | null;
+  pending: boolean;
+  current: boolean;
+  note: string | null;
+  appliedAt: string | null;
+  createdAt: string;
+}
+
 export interface VehicleItem {
   id: number;
   soXe: string;
@@ -18,6 +36,8 @@ export interface VehicleItem {
   ben: string;
   driverCount: number;
   drivers: VehicleDriver[];
+  /** Lịch sử bổ nhiệm lái xe (chỉ có ở API chi tiết xe). */
+  assignments?: VehicleAssignment[];
 }
 
 export interface VehicleOption {
@@ -106,8 +126,8 @@ export const vehiclesApi = {
 
   remove: (id: number) => api.delete(`/admin/vehicles/${id}`),
 
-  assignDrivers: (id: number, driverIds: number[]) =>
-    api.put(`/admin/vehicles/${id}/drivers`, { driverIds }),
+  assignDrivers: (id: number, driverIds: number[], effectiveDate?: string) =>
+    api.put(`/admin/vehicles/${id}/drivers`, { driverIds, effectiveDate }),
 
   // ── Đảo lái xe theo kế hoạch ──
   listOverrides: (params?: { vehicleId?: number; planId?: number }) =>

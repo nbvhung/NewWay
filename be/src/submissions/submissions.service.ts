@@ -30,6 +30,7 @@ import {
   resolveVisibleDriverIds,
 } from '../common/permissions/permissions';
 import { attendanceBonusForMonth } from '../salary/attendance-bonus';
+import { AssignmentsService } from '../assignments/assignments.service';
 
 @Injectable()
 export class SubmissionsService {
@@ -59,6 +60,7 @@ export class SubmissionsService {
     @InjectRepository(DriverAdvance)
     private driverAdvancesRepository: Repository<DriverAdvance>,
     private settingsService: SettingsService,
+    private readonly assignmentsService: AssignmentsService,
   ) {}
 
   async create(
@@ -3501,6 +3503,12 @@ export class SubmissionsService {
         (parseInt(a.stt) || 0) - (parseInt(b.stt) || 0) ||
         a.fullName.localeCompare(b.fullName),
     );
+    // Xe chịu lương cứng theo ĐÚNG tháng xuất file (lịch sử bổ nhiệm).
+    const monthVehicle = await this.assignmentsService.getMonthVehicleInfo(
+      drivers.map((d) => d.id),
+      month,
+      year,
+    );
 
     const allSubmissions = await this.submissionsRepository.find({
       order: { createdAt: 'DESC' },
@@ -3563,9 +3571,12 @@ export class SubmissionsService {
 
     for (const driver of drivers) {
       const rec = recordMap.get(driver.id);
+      const monthV = monthVehicle.get(driver.id);
+      const driverSoXe = monthV ? monthV.soXe : driver.soXe;
+      const driverSoMooc = monthV ? monthV.soMooc : driver.soMooc;
       const ws = workbook.addWorksheet(
         this.sanitizeSheetName(
-          `${driver.fullName}${driver.soXe ? ` - ${driver.soXe}` : ''}`,
+          `${driver.fullName}${driverSoXe ? ` - ${driverSoXe}` : ''}`,
           usedSheetNames,
         ),
       );
@@ -3858,7 +3869,7 @@ export class SubmissionsService {
       r6.height = 15.75;
       r6.getCell(1).value = 'Số đầu kéo:';
       r6.getCell(1).font = tnr(true, 12);
-      r6.getCell(3).value = driver.soXe || '';
+      r6.getCell(3).value = driverSoXe || '';
       r6.getCell(3).font = tnr(true, 12);
       r6.getCell(4).value = 'Tên lái xe:';
       r6.getCell(4).font = tnr(true, 12);
@@ -3872,7 +3883,7 @@ export class SubmissionsService {
       r7.height = 15.75;
       r7.getCell(1).value = 'Số Mooc:';
       r7.getCell(1).font = tnr(true, 12);
-      r7.getCell(3).value = driver.soMooc || '';
+      r7.getCell(3).value = driverSoMooc || '';
       r7.getCell(3).font = tnr(true, 12);
       r7.getCell(4).value = 'Điện thoại:';
       r7.getCell(4).font = tnr(true, 12);

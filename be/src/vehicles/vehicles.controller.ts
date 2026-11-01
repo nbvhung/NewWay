@@ -144,11 +144,14 @@ export class VehiclesController {
   @Permissions('vehicle.manage')
   assignDrivers(
     @Param('id') id: string,
-    @Body() body: { driverIds?: number[] },
+    @Body() body: { driverIds?: number[]; effectiveDate?: string },
+    @Req() req: any,
   ) {
     return this.vehiclesService.assignDrivers(
       +id,
       Array.isArray(body?.driverIds) ? body.driverIds.map(Number) : [],
+      body?.effectiveDate,
+      req?.user,
     );
   }
 

@@ -10,6 +10,7 @@ import { DriverAdvance } from '../database/entities/driver-advance.entity';
 import { SalaryPaymentLog } from '../database/entities/salary-payment-log.entity';
 import { User } from '../database/entities/user.entity';
 import { SubmissionsModule } from '../submissions/submissions.module';
+import { AssignmentsModule } from '../assignments/assignments.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { SubmissionsModule } from '../submissions/submissions.module';
       User,
     ]),
     SubmissionsModule,
+    AssignmentsModule,
   ],
   controllers: [SalaryController],
   providers: [SalaryService],

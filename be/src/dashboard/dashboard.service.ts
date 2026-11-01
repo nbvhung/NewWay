@@ -20,6 +20,7 @@ import {
   hasPermission,
 } from '../common/permissions/permissions';
 import { SalaryService } from '../salary/salary.service';
+import { AssignmentsService } from '../assignments/assignments.service';
 
 // ─── Nhóm chi tiết trong `finance_cost_items` ────────────────────
 // Bảng này dùng CHUNG cho cả chi phí và vốn đầu tư, phân biệt bằng `category`.
@@ -295,6 +296,7 @@ export class DashboardService {
     @InjectRepository(Vehicle)
     private vehicleRepo: Repository<Vehicle>,
     private salaryService: SalaryService,
+    private assignmentsService: AssignmentsService,
   ) {}
 
   async getOverview(
@@ -649,6 +651,21 @@ export class DashboardService {
     const allUsers = allLaixe;
     const userMap = new Map<number, User>();
     for (const u of allUsers) userMap.set(u.id, u);
+
+    // Xe chịu LƯƠNG CỨNG của từng lái xe theo ĐÚNG tháng đang xem (lịch sử bổ
+    // nhiệm theo ngày hiệu lực). Không dùng `home_vehicle_id` hiện tại vì đổi xe
+    // giữa tháng sẽ làm lương tháng cũ bị chuyển ngược sang xe mới.
+    const monthVehicle = await this.assignmentsService.getMonthVehicleInfo(
+      allUsers.map((u) => u.id),
+      month,
+      year,
+    );
+    /** Xe hiệu dụng của lái xe trong tháng: lịch sử bổ nhiệm > xe hiện tại > id tài xế. */
+    const monthVehicleIdOf = (d: User): number => {
+      const info = monthVehicle.get(Number(d.id));
+      if (info) return info.vehicleId ?? Number(d.id);
+      return d.homeVehicleId ?? d.id;
+    };
 
     // 7b. Chi phí LƯƠNG LÁI XE = TỔNG THỰC NHẬN theo bảng lương tháng (lương chuyến
     //     + cứng + chuyên cần + phụ cấp... KHÔNG trừ khấu trừ/tạm ứng — xem mục
@@ -1279,7 +1296,7 @@ export class DashboardService {
     };
     // Đảm bảo mọi xe trong phạm vi xem đều có dòng (kể cả chưa có chuyến).
     for (const d of allUsers) {
-      const hv = d.homeVehicleId ?? d.id;
+      const hv = monthVehicleIdOf(d);
       if (isAllowed(hv)) ensureVehicleRow(hv);
     }
 
@@ -1329,7 +1346,7 @@ export class DashboardService {
         advanceDeduct: Number(rec?.advanceDeduct) || 0,
         itemAddDetail,
       };
-      const homeVid = d.homeVehicleId ?? d.id;
+      const homeVid = monthVehicleIdOf(d);
       // Chi phí lương cứng = thực nhận + BHXH NLĐ (Cty nộp hộ) − lương chuyến.
       // (BHXH NLĐ bị trừ khỏi thực nhận nhưng vẫn là chi phí Cty bỏ ra.)
       const fixedNet = comp.luongNguoiLai + comp.bhxhNld - comp.luongKhoan;
@@ -1580,7 +1597,7 @@ export class DashboardService {
     // vẫn hiện trong bộ lọc của bên/chủ xe dù tài xế đã chuyển sang xe mới.
     const driverByVid = new Map<number, any>();
     for (const u of allUsers) {
-      const vid = u.homeVehicleId ?? u.id;
+      const vid = monthVehicleIdOf(u);
       if (!driverByVid.has(vid)) driverByVid.set(vid, u);
     }
     const ownerById = new Map<number, any>();
