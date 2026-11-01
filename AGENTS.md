@@ -258,6 +258,36 @@ Mỗi bên có **sổ chi phí riêng**; xe quyết định khoản chi thuộc 
 - `GET /api/admin/finance` trả thêm `ben`, `benLabel` ("Bên A"), `ownerName` để FE hiện nhãn bên.
 - Migration: `deploy/migrate-add-finance-vehicle-ben.sql` (idempotent, chạy tay trên VPS).
 
+### Lịch sử bổ nhiệm lái xe theo NGÀY HIỆU LỰC (xe chịu lương cứng theo THÁNG)
+
+Bảng `driver_vehicle_assignments` ghi mỗi lần lái xe nhận/ rời xe, để **lương cứng + các khoản cố
+định bám đúng XE CỦA TỪNG THÁNG** (không phải xe hiện tại). Nhờ vậy đổi xe giữa tháng không kéo
+lương tháng cũ sang xe mới.
+
+- Cột: `driver_id`, `vehicle_id` (NULL = kết thúc bổ nhiệm), `effective_date` (ngày hiệu lực),
+  `salary_from` (ngày 1 của tháng bắt đầu tính lương), `note`, `created_by_user_id`, `applied_at`.
+  UNIQUE `(driver_id, effective_date)` — nhiều lần đổi trong 1 tháng vẫn giữ lịch sử.
+- Quy tắc `salary_from`: hiệu lực **ngày 1 → đúng tháng đó**; hiệu lực **giữa tháng → tháng sau**
+  (`salaryFromForEffectiveDate` trong `be/src/assignments/assignments.service.ts`).
+- Xe chịu lương của tháng = bản ghi có `salary_from` **lớn nhất nhưng ≤ ngày đầu tháng**
+  (`AssignmentsService.getMonthVehicleInfo`). Không có bản ghi ≤ tháng đó → fallback
+  `users.home_vehicle_id` như cũ.
+- Áp dụng ở: dashboard (chi phí cố định theo xe/tháng) `assignmentsService` trong
+  `DashboardService.getOverview`; bảng lương `SalaryService.getRecords`; export lương tháng
+  `SubmissionsService.exportSalaryMonthExcel`; chi tiết xe (`GET /api/admin/vehicles/:id` trả
+  `assignments` = lịch sử bổ nhiệm kèm `endDate`/`pending`/`current`).
+- `users.home_vehicle_id` vẫn là xe **hiện tại** (xe đang lái). Đặt lịch **tương lai** được: bản ghi
+  có `applied_at = NULL`, timer 5 phút (`syncDueAssignments`) + lúc khởi động sẽ tự áp khi tới ngày.
+- Khi đổi xe, các submission chưa có `actual_vehicle_id` được chốt về **xe cũ** trước khi đổi —
+  doanh thu lịch sử không nhảy sang xe mới.
+- FE: modal **👥 Phân công lái xe** (`VehiclesTab`) có ô **Ngày hiệu lực**; chi tiết xe hiện khối
+  **Lịch sử bổ nhiệm lái xe** (from → to, nhãn "Lương cứng từ T?/YYYY", "Chờ hiệu lực"/"Đang lái").
+- Ghi lịch sử tự động khi: phân công ở tab Xe (`PUT /api/admin/vehicles/:id/drivers` có
+  `effectiveDate`), tạo/sửa user có `homeVehicleId` (hiệu lực hôm nay).
+- Migration: `deploy/migrate-add-driver-vehicle-assignments.sql` (idempotent, chạy tay trên VPS
+  TRƯỚC khi build). Đã backfill lái xe hiện tại từ 01/01/2026; Dũng (`0963370168`) giữ
+  `15H 10090` đến 31/10/2026 và sang `15H 40566` từ 01/11/2026.
+
 ### Xoá container = trừ sản lượng của lái xe (link 2 chiều)
 
 Xoá container ở tab **Mã số container** (`ContainerCodesTab`) nay **trừ luôn sản lượng** của lái xe
