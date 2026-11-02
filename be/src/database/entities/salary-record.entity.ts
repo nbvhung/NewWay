@@ -111,7 +111,7 @@ export class SalaryRecord {
    * Cách tính BHXH NLĐ riêng của lái xe trong tháng.
    * NULL = dùng cách tính chung ở `salary_settings.bhxh_nld_mode`.
    */
-  @Column({ name: 'bhxh_mode', length: 10, nullable: true, default: null })
+  @Column({ name: 'bhxh_mode', type: 'varchar', length: 10, nullable: true, default: null })
   bhxhMode: string | null;
 
   /**

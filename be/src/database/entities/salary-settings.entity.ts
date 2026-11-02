@@ -55,7 +55,7 @@ export class SalarySettings {
    *  - 'percent' (mặc định) → `bhxhNld` là tỷ lệ % lương cứng.
    *  - 'amount'             → `bhxhNldAmount` là số tiền cố định (VNĐ).
    */
-  @Column({ name: 'bhxh_nld_mode', length: 10, default: 'percent' })
+  @Column({ name: 'bhxh_nld_mode', type: 'varchar', length: 10, default: 'percent' })
   bhxhNldMode: string;
 
   @Column({
