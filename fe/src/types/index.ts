@@ -183,6 +183,10 @@ export interface SalarySettings {
   standardDays: number;
   oldCarAllowance: number;
   bhxhNld: number;
+  /** Cách tính BHXH NLĐ dùng chung: theo % hoặc theo số tiền. */
+  bhxhNldMode: 'percent' | 'amount';
+  /** Số tiền BHXH NLĐ cố định dùng chung (khi bhxhNldMode = 'amount'). */
+  bhxhNldAmount: number;
   parkingHph2: number;
   allowanceWaitLoadingRate: number;
   allowanceFarHome: number;
@@ -243,6 +247,16 @@ export interface SalaryRecordItem {
   bhxhPercent?: number | null;
   /** Tỷ lệ BHXH thực tế đang áp dụng (riêng hoặc mức chung). */
   bhxhPercentEffective?: number;
+  /** Cách tính BHXH riêng của lái xe (null = dùng mức chung). */
+  bhxhMode?: 'percent' | 'amount' | null;
+  /** Số tiền BHXH riêng của lái xe (null = dùng mức chung). */
+  bhxhAmount?: number | null;
+  /** Cách tính BHXH thực tế đang áp dụng. */
+  bhxhModeEffective?: 'percent' | 'amount';
+  /** Số tiền BHXH cố định thực tế đang áp dụng. */
+  bhxhAmountEffective?: number;
+  /** Mức BHXH đang lấy từ đâu. */
+  bhxhSource?: 'record' | 'settings';
   advanceDeduct: number;
   advanceDeductOverridden: boolean;
   totalRemainingAdvance: number;

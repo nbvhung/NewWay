@@ -21,6 +21,7 @@ import {
 import { CreateDriverAdvanceDto } from './dto/driver-advance.dto';
 import { UpdateDriverBaseDto } from './dto/update-driver-base.dto';
 import { attendanceBonusForMonth } from './attendance-bonus';
+import { computeBhxh } from './bhxh';
 
 const VN_TZ = 'Asia/Ho_Chi_Minh';
 
@@ -113,6 +114,8 @@ export class SalaryService {
         standardDays: 21,
         oldCarAllowance: 0,
         bhxhNld: 10.5,
+        bhxhNldMode: 'percent',
+        bhxhNldAmount: 0,
         parkingHph2: 0,
         allowanceFarHome: 0,
       });
@@ -130,6 +133,10 @@ export class SalaryService {
     if (dto.oldCarAllowance !== undefined)
       settings.oldCarAllowance = dto.oldCarAllowance;
     if (dto.bhxhNld !== undefined) settings.bhxhNld = dto.bhxhNld;
+    if (dto.bhxhNldMode !== undefined)
+      settings.bhxhNldMode = dto.bhxhNldMode;
+    if (dto.bhxhNldAmount !== undefined)
+      settings.bhxhNldAmount = dto.bhxhNldAmount;
     if (dto.parkingHph2 !== undefined) settings.parkingHph2 = dto.parkingHph2;
     if (dto.allowanceFarHome !== undefined)
       settings.allowanceFarHome = dto.allowanceFarHome;
@@ -361,8 +368,10 @@ export class SalaryService {
       hasParkingHph2: prev?.hasParkingHph2 ?? false,
       parkingHph2: prev?.parkingHph2 ?? null,
       hasBhxh: user.payBhxh ?? prev?.hasBhxh ?? true,
-      // Giữ tỷ lệ BHXH riêng + chuyên cần riêng của tháng trước (nếu có).
+      // Giữ tỷ lệ/số tiền BHXH riêng + chuyên cần riêng của tháng trước (nếu có).
       bhxhPercent: prev?.bhxhPercent ?? null,
+      bhxhMode: prev?.bhxhMode ?? null,
+      bhxhAmount: prev?.bhxhAmount ?? null,
       chuyenCanOverride: prev?.chuyenCanOverride ?? null,
       chiHo: 0,
       advanceDeduct: 0,
@@ -493,14 +502,11 @@ export class SalaryService {
       const components = this.computeComponents(record, settings, luongKhoan);
       const tip = Number(summary.totalTip) || 0;
       const chiHo = Number(record.chiHo) || 0;
-      // Ưu tiên tỷ lệ BHXH riêng của lái xe; chưa đặt thì dùng mức chung.
-      const bhxhPercentEffective =
-        record.bhxhPercent != null
-          ? Number(record.bhxhPercent)
-          : Number(settings.bhxhNld) || 0;
-      const bhxh = record.hasBhxh
-        ? Math.round((components.fixedSalary * bhxhPercentEffective) / 100)
-        : 0;
+      // BHXH NLĐ: lái xe có thể đóng theo % hoặc theo số tiền cố định.
+      // Ưu tiên cài đặt riêng của lái xe trong tháng, chưa đặt thì dùng mức chung.
+      const bhxhInfo = computeBhxh(components.fixedSalary, record, settings);
+      const bhxh = bhxhInfo.value;
+      const bhxhPercentEffective = bhxhInfo.percent;
 
       const riMap =
         recordItemsMap.get(record.id) || new Map<number, SalaryRecordItem>();
@@ -608,6 +614,13 @@ export class SalaryService {
         bhxhPercent:
           record.bhxhPercent != null ? Number(record.bhxhPercent) : null,
         bhxhPercentEffective,
+        // Cách tính BHXH: riêng của lái xe (null = dùng chung) + giá trị hiệu lực.
+        bhxhMode: record.bhxhMode ?? null,
+        bhxhAmount:
+          record.bhxhAmount != null ? Number(record.bhxhAmount) : null,
+        bhxhModeEffective: bhxhInfo.mode,
+        bhxhAmountEffective: bhxhInfo.amount,
+        bhxhSource: bhxhInfo.source,
         hasBhxh: record.hasBhxh,
         advanceDeduct,
         advanceDeductOverridden: record.advanceDeductOverridden || false,
@@ -657,6 +670,11 @@ export class SalaryService {
     if (dto.bhxhPercent !== undefined)
       record.bhxhPercent =
         dto.bhxhPercent === null ? null : Number(dto.bhxhPercent);
+    if (dto.bhxhMode !== undefined)
+      record.bhxhMode = dto.bhxhMode ?? null;
+    if (dto.bhxhAmount !== undefined)
+      record.bhxhAmount =
+        dto.bhxhAmount === null ? null : Number(dto.bhxhAmount);
     if (dto.chiHo !== undefined) record.chiHo = dto.chiHo;
     if (dto.daysOff !== undefined) record.daysOff = dto.daysOff;
     if (dto.daysOffNote !== undefined)

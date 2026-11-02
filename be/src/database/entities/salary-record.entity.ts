@@ -107,6 +107,26 @@ export class SalaryRecord {
   })
   bhxhPercent: number | null;
 
+  /**
+   * Cách tính BHXH NLĐ riêng của lái xe trong tháng.
+   * NULL = dùng cách tính chung ở `salary_settings.bhxh_nld_mode`.
+   */
+  @Column({ name: 'bhxh_mode', length: 10, nullable: true, default: null })
+  bhxhMode: string | null;
+
+  /**
+   * Số tiền BHXH cố định riêng của lái xe (chỉ dùng khi `bhxh_mode = 'amount'`).
+   * NULL = dùng mức chung `salary_settings.bhxh_nld_amount`.
+   */
+  @Column({
+    name: 'bhxh_amount',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    nullable: true,
+  })
+  bhxhAmount: number | null;
+
   @Column({
     name: 'old_car_allowance',
     type: 'numeric',

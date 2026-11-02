@@ -288,6 +288,24 @@ lương tháng cũ sang xe mới.
   TRƯỚC khi build). Đã backfill lái xe hiện tại từ 01/01/2026; Dũng (`0963370168`) giữ
   `15H 10090` đến 31/10/2026 và sang `15H 40566` từ 01/11/2026.
 
+### BHXH phần NGƯỜI LAO ĐỘNG: theo % HOẶC theo SỐ TIỀN
+
+Mỗi tháng, mỗi lái xe có thể đóng BHXH NLĐ theo 1 trong 2 cách (chọn ở tab **Lương tháng**):
+
+- **Theo %** (`percent`) — tỷ lệ % × lương cứng, mặc định `10,5` (giữ nguyên hành vi cũ).
+- **Theo số tiền** (`amount`) — số tiền cố định (VNĐ), không phụ thuộc lương cứng.
+
+Thứ tự ưu tiên: cài đặt RIÊNG của lái xe trong tháng (`salary_records.bhxh_mode` /
+`bhxh_amount`) → cài đặt CHUNG (`salary_settings.bhxh_nld_mode` / `bhxh_nld_amount`) →
+mặc định `percent` + `salary_settings.bhxh_nld`. `NULL` = dùng mức chung.
+
+- Helper dùng chung: `be/src/salary/bhxh.ts` (`computeBhxh`, `bhxhLabel`).
+- Áp dụng ở: bảng lương `SalaryService.getRecords`, tổng thu nhập dự kiến
+  `SubmissionsService`, Excel lương tháng + Excel tổng hợp lương (nhãn cột BHXH NLĐ).
+- FE: tab Lương tháng có nút chọn **Theo % / Theo số tiền** ở mục cài đặt chung và ở từng
+  lái xe (thêm lựa chọn **Dùng mức chung**).
+- Migration: `deploy/migrate-add-bhxh-mode.sql` (idempotent, chạy tay trên VPS TRƯỚC khi build).
+
 ### Xoá container = trừ sản lượng của lái xe (link 2 chiều)
 
 Xoá container ở tab **Mã số container** (`ContainerCodesTab`) nay **trừ luôn sản lượng** của lái xe

@@ -9,6 +9,7 @@ import {
   IsBoolean,
   IsObject,
   IsString,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { UpdateSalaryRecordItemDto } from './update-salary-item.dto';
@@ -64,6 +65,21 @@ export class UpdateSalaryRecordDto {
   @Min(0)
   @Max(100, { message: 'Tỷ lệ BHXH không hợp lệ' })
   bhxhPercent?: number | null;
+
+  /**
+   * Cách tính BHXH NLĐ riêng của lái xe trong tháng:
+   * 'percent' = theo %, 'amount' = theo số tiền. null = dùng mức chung.
+   */
+  @IsOptional()
+  @IsIn(['percent', 'amount'], { message: 'Cách tính BHXH không hợp lệ' })
+  bhxhMode?: 'percent' | 'amount' | null;
+
+  /** Số tiền BHXH cố định riêng của lái xe (khi bhxhMode = 'amount'). */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Số tiền BHXH không hợp lệ' })
+  @Min(0)
+  bhxhAmount?: number | null;
 
   @IsOptional()
   @Type(() => Number)
@@ -162,6 +178,18 @@ export class UpdateSalarySettingsDto {
   @Min(0)
   @Max(100)
   bhxhNld?: number;
+
+  /** Cách tính BHXH NLĐ dùng chung: 'percent' = theo %, 'amount' = theo số tiền. */
+  @IsOptional()
+  @IsIn(['percent', 'amount'], { message: 'Cách tính BHXH không hợp lệ' })
+  bhxhNldMode?: 'percent' | 'amount';
+
+  /** Số tiền BHXH NLĐ cố định dùng chung (khi bhxhNldMode = 'amount'). */
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Số tiền BHXH không hợp lệ' })
+  @Min(0)
+  bhxhNldAmount?: number;
 
   @IsOptional()
   @Type(() => Number)

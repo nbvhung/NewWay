@@ -50,6 +50,23 @@ export class SalarySettings {
   })
   bhxhNld: number;
 
+  /**
+   * Cách tính BHXH phần NLĐ dùng chung:
+   *  - 'percent' (mặc định) → `bhxhNld` là tỷ lệ % lương cứng.
+   *  - 'amount'             → `bhxhNldAmount` là số tiền cố định (VNĐ).
+   */
+  @Column({ name: 'bhxh_nld_mode', length: 10, default: 'percent' })
+  bhxhNldMode: string;
+
+  @Column({
+    name: 'bhxh_nld_amount',
+    type: 'numeric',
+    precision: 15,
+    scale: 2,
+    default: 0,
+  })
+  bhxhNldAmount: number;
+
   @Column({
     name: 'parking_hph2',
     type: 'numeric',
