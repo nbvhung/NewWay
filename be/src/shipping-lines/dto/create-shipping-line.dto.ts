@@ -23,9 +23,10 @@ export class CreateShippingLineDto {
   @IsString()
   routeName?: string;
 
-  @IsOptional()
+  /** Bắt buộc chọn ngày kế hoạch (dùng để lọc tháng / doanh thu / đã hoàn thành). */
   @IsString()
-  ngay?: string;
+  @IsNotEmpty({ message: 'Vui lòng chọn ngày kế hoạch' })
+  ngay: string;
 
   @IsOptional()
   @IsString()

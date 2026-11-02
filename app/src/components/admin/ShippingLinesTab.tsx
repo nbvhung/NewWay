@@ -58,9 +58,10 @@ export default function ShippingLinesTab({ user, allShippingLines, allRoutes, al
 
   const addPlan = async () => {
     if (!name.trim()) { Alert.alert('Lỗi', 'Vui lòng nhập tên kế hoạch'); return; }
+    if (!ngay) { Alert.alert('Lỗi', 'Vui lòng chọn ngày kế hoạch'); return; }
     setSaving(true);
     try {
-      await shippingLinesApi.create({ name: name.trim(), soChuyen: soChuyen.trim(), routeName: routeName.trim(), ngay: ngay || undefined, tangCuong, leTet, driverIds: allDrivers ? [] : driverIds, allDrivers });
+      await shippingLinesApi.create({ name: name.trim(), soChuyen: soChuyen.trim(), routeName: routeName.trim(), ngay, tangCuong, leTet, driverIds: allDrivers ? [] : driverIds, allDrivers });
       Alert.alert('Thành công', `Đã thêm: ${name.trim()}`);
       resetForm(); onRefresh();
     } catch (err: any) { Alert.alert('Lỗi', err.message || 'Thêm thất bại'); }
@@ -78,9 +79,10 @@ export default function ShippingLinesTab({ user, allShippingLines, allRoutes, al
 
   const saveEdit = async () => {
     if (!editTarget || !editName.trim()) { Alert.alert('Lỗi', 'Tên không được để trống'); return; }
+    if (!editNgay) { Alert.alert('Lỗi', 'Vui lòng chọn ngày kế hoạch'); return; }
     setSaving(true);
     try {
-      await shippingLinesApi.update(editTarget.id, { name: editName.trim(), soChuyen: editSoChuyen.trim(), routeName: editRouteName.trim(), ngay: editNgay || undefined, tangCuong: editTangCuong, leTet: editLeTet, driverIds: editAllDrivers ? [] : editDriverIds, allDrivers: editAllDrivers });
+      await shippingLinesApi.update(editTarget.id, { name: editName.trim(), soChuyen: editSoChuyen.trim(), routeName: editRouteName.trim(), ngay: editNgay, tangCuong: editTangCuong, leTet: editLeTet, driverIds: editAllDrivers ? [] : editDriverIds, allDrivers: editAllDrivers });
       Alert.alert('Thành công', 'Đã cập nhật');
       setEditOpen(false); onRefresh();
     } catch (err: any) { Alert.alert('Lỗi', err.message); }

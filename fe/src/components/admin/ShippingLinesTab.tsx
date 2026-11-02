@@ -171,6 +171,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
 
   const createPlan = async (): Promise<ShippingLine | null> => {
     if (!name.trim()) { toast('Vui lòng nhập tên kế hoạch', 'error'); return null; }
+    if (!ngay) { toast('Vui lòng chọn ngày kế hoạch', 'error'); return null; }
     if (!customerId) { toast('Vui lòng chọn khách hàng', 'error'); return null; }
     const dealedPrices: Record<string, number> = {};
     PRICE_TYPES.forEach(t => { const v = Number(prices[t]); if (!isNaN(v) && v > 0) dealedPrices[t] = v; });
@@ -179,7 +180,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
       name: name.trim(),
       soChuyen: soChuyen.trim(),
       routeName: routeName.trim(),
-      ngay: ngay || undefined,
+      ngay,
       customerId: Number(customerId),
       tangCuong,
       leTet,
@@ -265,6 +266,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
   const saveEdit = async () => {
     if (!editTarget) return;
     if (!editName.trim()) { toast('Tên kế hoạch/Tên Tàu không được để trống', 'error'); return; }
+    if (!editNgay) { toast('Vui lòng chọn ngày kế hoạch', 'error'); return; }
     const dealedPrices: Record<string, number> = {};
     PRICE_TYPES.forEach(t => { const v = Number(editPrices[t]); if (!isNaN(v) && v > 0) dealedPrices[t] = v; });
     if (Object.keys(dealedPrices).length === 0) { toast('Vui lòng nhập ít nhất 1 đơn giá deal với khách hàng', 'error'); return; }
@@ -274,7 +276,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
         name: editName.trim(),
         soChuyen: editSoChuyen.trim(),
         routeName: editRouteName.trim(),
-        ngay: editNgay || undefined,
+        ngay: editNgay,
         customerId: editCustomerId ? Number(editCustomerId) : null,
         tangCuong: editTangCuong,
         leTet: editLeTet,
@@ -482,7 +484,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
                     className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Ngày</label>
+                  <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Ngày <span className="text-red-400">*</span></label>
                   <input type="date" value={ngay} onChange={e => setNgay(e.target.value)}
                     className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
                 </div>
@@ -792,7 +794,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
           {!editAllDrivers && renderDriverChips(editDriverIds, setEditDriverIds)}
         </div>
         <div className="mb-3">
-          <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Ngày</label>
+          <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Ngày <span className="text-red-400">*</span></label>
           <input type="date" value={editNgay} onChange={e => setEditNgay(e.target.value)}
             className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
         </div>
