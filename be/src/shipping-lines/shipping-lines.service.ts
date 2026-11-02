@@ -19,6 +19,7 @@ import { CreateShippingLineDto } from './dto/create-shipping-line.dto';
 import { UpdateShippingLineDto } from './dto/update-shipping-line.dto';
 import { ZaloPlanCompletedNotifierService } from '../zalo-bot/zalo-plan-completed-notifier.service';
 import { resolveVisibleDriverIds } from '../common/permissions/permissions';
+import { todayVN } from '../assignments/assignments.service';
 
 // KV20/KV20FR = đơn giá cho cả cặp kẹp (xem PRICE_CONTAINER_TYPES ở customers).
 const PRICE_TYPES = [
@@ -215,7 +216,7 @@ export class ShippingLinesService {
       name,
       soChuyen: dto.soChuyen?.trim() || '',
       routeName: dto.routeName?.trim() || '',
-      ngay: dto.ngay || undefined,
+      ngay: dto.ngay || todayVN(),
       customerId: dto.customerId,
       vendor: dto.vendor?.trim() || '',
       tangCuong: dto.tangCuong || false,

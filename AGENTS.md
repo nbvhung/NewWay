@@ -280,6 +280,9 @@ lương tháng cũ sang xe mới.
   có `applied_at = NULL`, timer 5 phút (`syncDueAssignments`) + lúc khởi động sẽ tự áp khi tới ngày.
 - Khi đổi xe, các submission chưa có `actual_vehicle_id` được chốt về **xe cũ** trước khi đổi —
   doanh thu lịch sử không nhảy sang xe mới.
+- ⚠️ `submissions.actual_vehicle_id` trỏ tới **`vehicles.id`** (không phải `users.id`). Mọi chỗ
+  join để lấy biển số phải `LEFT JOIN vehicles av ON av.id = actual_vehicle_id`; nếu join nhầm
+  `users` sẽ hiện sai biển số khi `user.id` trùng `vehicle.id` (VD Dũng = 31).
 - FE: modal **👥 Phân công lái xe** (`VehiclesTab`) có ô **Ngày hiệu lực**; chi tiết xe hiện khối
   **Lịch sử bổ nhiệm lái xe** (from → to, nhãn "Lương cứng từ T?/YYYY", "Chờ hiệu lực"/"Đang lái").
 - Ghi lịch sử tự động khi: phân công ở tab Xe (`PUT /api/admin/vehicles/:id/drivers` có

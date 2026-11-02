@@ -30,7 +30,7 @@ import {
   resolveVisibleDriverIds,
 } from '../common/permissions/permissions';
 import { attendanceBonusForMonth } from '../salary/attendance-bonus';
-import { AssignmentsService } from '../assignments/assignments.service';
+import { AssignmentsService, normDate } from '../assignments/assignments.service';
 import { computeBhxh, bhxhLabel } from '../salary/bhxh';
 
 @Injectable()
@@ -131,12 +131,14 @@ export class SubmissionsService {
     // TypeORM không tự load relation khi @Column và @ManyToOne cùng tên cột.
     const submissions = await this.submissionsRepository
       .createQueryBuilder('sub')
-      .leftJoin('users', 'av', 'av.id = sub.actual_vehicle_id')
-      .addSelect([
-        'av.so_xe AS av_so_xe',
-        'av.full_name AS av_full_name',
-        'av.ben AS av_ben',
-      ])
+      // `actual_vehicle_id` trỏ tới BẢNG XE (vehicles.id), không phải users.id.
+      // Trước đây join nhầm `users` nên khi user.id trùng vehicle.id (VD Dũng
+      // = 31) lại hiện biển số của user thay vì xe thực chạy.
+      .leftJoin('vehicles', 'av', 'av.id = sub.actual_vehicle_id')
+      .leftJoin('users', 'avo', 'avo.id = av.owner_user_id')
+      .addSelect('av.so_xe', 'av_so_xe')
+      .addSelect('avo.full_name', 'av_full_name')
+      .addSelect('avo.ben', 'av_ben')
       .where('sub.userId = :userId', { userId })
       .orderBy('sub.createdAt', 'DESC')
       .getRawAndEntities();
@@ -868,6 +870,61 @@ export class SubmissionsService {
     return totals;
   }
 
+  /**
+   * Ngày (YYYY-MM-DD) theo giờ Việt Nam của một timestamp.
+   */
+  private vnDateOf(value: Date | string | null | undefined): string {
+    if (!value) return '';
+    const d = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(d);
+  }
+
+  /**
+   * Với mỗi (lái xe, tháng) trả về xe được bổ nhiệm chịu lương tháng đó.
+   * Dùng để phân biệt chuyến do lái xe chạy CHÍNH xe của mình (không gắn nhãn
+   * "Lái thay") với chuyến mượn xe khác.
+   */
+  private async monthVehicleLookup(
+    items: Array<{ driverId: number; date: string }>,
+  ): Promise<Map<string, number | null>> {
+    const groups = new Map<
+      string,
+      { year: number; month: number; ids: Set<number> }
+    >();
+    for (const it of items) {
+      const m = /^(\d{4})-(\d{2})-\d{2}/.exec(it.date || '');
+      if (!m) continue;
+      const year = Number(m[1]);
+      const month = Number(m[2]);
+      const key = `${year}-${month}`;
+      let g = groups.get(key);
+      if (!g) {
+        g = { year, month, ids: new Set() };
+        groups.set(key, g);
+      }
+      g.ids.add(it.driverId);
+    }
+
+    const out = new Map<string, number | null>();
+    for (const [key, g] of groups) {
+      const info = await this.assignmentsService.getMonthVehicleInfo(
+        [...g.ids],
+        g.month,
+        g.year,
+      );
+      for (const did of g.ids) {
+        out.set(`${did}|${key}`, info.get(did)?.vehicleId ?? null);
+      }
+    }
+    return out;
+  }
+
   async findAll(
     filter: {
       userId?: number;
@@ -884,18 +941,18 @@ export class SubmissionsService {
       .createQueryBuilder('s')
       .leftJoinAndSelect('s.user', 'user')
       .leftJoinAndSelect('s.shippingLineRef', 'sl')
-      // Join xe thực chạy để lấy biển số (actualVehicleSoXe)
-      .leftJoin('users', 'av', 'av.id = s.actual_vehicle_id')
+      // Join xe thực chạy để lấy biển số (actualVehicleSoXe).
+      // `actual_vehicle_id` là vehicles.id; owner (chủ vốn/bên) nằm ở users.
+      .leftJoin('vehicles', 'av', 'av.id = s.actual_vehicle_id')
+      .leftJoin('users', 'avo', 'avo.id = av.owner_user_id')
       .leftJoin(
         'plan_vehicle_overrides',
         'pvo',
         'pvo.plan_id = s.shipping_line_id AND pvo.driver_id = s.user_id',
       )
-      .addSelect([
-        'av.so_xe AS av_so_xe',
-        'av.full_name AS av_full_name',
-        'av.ben AS av_ben',
-      ])
+      .addSelect('av.so_xe', 'av_so_xe')
+      .addSelect('avo.full_name', 'av_full_name')
+      .addSelect('avo.ben', 'av_ben')
       .orderBy('s.createdAt', 'DESC');
 
     if (role !== 'admin' && role !== 'supper_admin') {
@@ -963,18 +1020,51 @@ export class SubmissionsService {
       });
     }
 
+    // Xe được bổ nhiệm của từng (lái xe, tháng) → chỉ gắn nhãn "Lái thay" khi
+    // chuyến đó thực sự chạy xe KHÁC xe của mình trong tháng.
+    const monthVehicleMap = await this.monthVehicleLookup(
+      filteredPairs
+        .filter(({ s }) => s.actualVehicleId != null)
+        .map(({ s }) => ({
+          driverId: Number(s.userId),
+          date: s.shippingLineRef?.ngay
+            ? normDate(s.shippingLineRef.ngay)
+            : this.vnDateOf(s.createdAt),
+        })),
+    );
+
     const result: any[] = [];
     for (const { s: sub, raw } of filteredPairs) {
       const history = await this.editHistoryRepository.find({
         where: { submissionId: sub.id },
         order: { editedAt: 'DESC' },
       });
+      // Biển số xe thực chạy: nếu trùng đúng xe được bổ nhiệm trong tháng thì
+      // đây là chuyến bình thường của lái xe → không hiện nhãn "Lái thay".
+      let actualVehicleSoXe = raw?.av_so_xe ?? null;
+      if (sub.actualVehicleId != null) {
+        const date = sub.shippingLineRef?.ngay
+          ? normDate(sub.shippingLineRef.ngay)
+          : this.vnDateOf(sub.createdAt);
+        const m = /^(\d{4})-(\d{2})/.exec(date || '');
+        if (m) {
+          const assigned = monthVehicleMap.get(
+            `${Number(sub.userId)}|${Number(m[1])}-${Number(m[2])}`,
+          );
+          if (
+            assigned != null &&
+            Number(assigned) === Number(sub.actualVehicleId)
+          ) {
+            actualVehicleSoXe = null;
+          }
+        }
+      }
       result.push({
         ...sub,
         history,
         // Xe thực chạy (lái thay) — từ raw JOIN để tránh conflict TypeORM
         actualVehicleId: sub.actualVehicleId ?? null,
-        actualVehicleSoXe: raw?.av_so_xe ?? null,
+        actualVehicleSoXe,
         actualVehicleOwner: raw?.av_full_name ?? null,
         actualVehicleBen: raw?.av_ben ?? null,
       });
