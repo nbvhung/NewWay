@@ -88,10 +88,16 @@
   const handled = new Set();
   let handledSaveTimer = null;
 
+  const BUILD = '1.8.1';
   function loadHandled() {
     return new Promise((resolve) => {
-      chrome.storage.local.get({ zfHandled: [] }, ({ zfHandled }) => {
-        if (Array.isArray(zfHandled)) for (const k of zfHandled) handled.add(k);
+      chrome.storage.local.get({ zfHandled: [], zfBuild: '' }, ({ zfHandled, zfBuild }) => {
+        if (zfBuild !== BUILD) {
+          // Bản mới: xoá danh sách "đã xử lý" do các bản lỗi cũ để lại (làm bỏ qua tin mới).
+          chrome.storage.local.set({ zfHandled: [], zfBuild: BUILD });
+        } else if (Array.isArray(zfHandled)) {
+          for (const k of zfHandled) handled.add(k);
+        }
         resolve(null);
       });
     });
@@ -193,11 +199,43 @@
   });
 
   // ─────────────────────────── Nhận diện tin nhắn ───────────────────────────
+  /**
+   * Bổ sung các tin ẢNH/ALBUM mà selector messageItem bỏ sót
+   * (ảnh lớn nằm ngoài mọi node tin đã biết).
+   */
+  function withAlbumNodes(items, list) {
+    const out = items.slice();
+    const listW = list.getBoundingClientRect().width || 1;
+    for (const img of list.querySelectorAll('img')) {
+      if (isNoiseImage(img)) continue;
+      const r = img.getBoundingClientRect();
+      if (r.width < 80 || r.height < 80) continue;
+      if (out.some((n) => n.contains(img))) continue;
+      // Leo lên tới "hàng tin nhắn": dừng khi cha chứa tin khác hoặc đã rộng cỡ cả khung chat.
+      let h = img;
+      while (h.parentElement && h.parentElement !== list) {
+        const p = h.parentElement;
+        if (out.some((n) => p.contains(n))) break;
+        if (h.getBoundingClientRect().width >= listW * 0.9) break;
+        h = p;
+      }
+      if (!h || h === img || h === list || h.contains(list)) {
+        if (h === img) out.push(img.parentElement || img);
+        continue;
+      }
+      out.push(h);
+    }
+    out.sort((a, b) =>
+      a === b ? 0 : a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
+    );
+    return out;
+  }
+
   function getMessageNodes() {
     const list = pick(SELECTORS.messageList);
     if (!list) return [];
     const items = pickAll(SELECTORS.messageItem);
-    if (items.length) return items;
+    if (items.length) return withAlbumNodes(items, list);
 
     // Fallback: mọi phần tử con trực tiếp có id/data
     return Array.from(list.children).filter(
@@ -211,6 +249,10 @@
 
   /** Tin nhắn này là của CHÍNH MÌNH (đã gửi đi) hay của người khác? */
   function isOutgoing(el) {
+    // 0) Có avatar người gửi bên trái => chắc chắn tin đến (ảnh/album hay bị nhầm bằng class)
+    if (el.querySelector('img[class*="avatar"], [class*="avatar"] img, [class*="avatar"]')) {
+      return false;
+    }
     // 1) class của chính nó hoặc tổ tiên gần (tối đa 3 cấp) có dấu hiệu "me/self/out"
     let cur = el;
     for (let i = 0; i < 4 && cur; i++, cur = cur.parentElement) {
@@ -734,7 +776,18 @@
   }
 
   /** Phần tử nội dung tin nhắn để bấm chuột phải (bong bóng/tin nhắn). */
-  function contextTarget(el) {
+  /** Các ảnh lớn (không phải icon/avatar) trong 1 tin — album có nhiều ảnh. */
+  function bigImages(el) {
+    return Array.from(el.querySelectorAll('img')).filter((img) => {
+      if (isNoiseImage(img)) return false;
+      const r = img.getBoundingClientRect();
+      return r.width >= 80 && r.height >= 80;
+    });
+  }
+
+  function contextTarget(el, idx = 0) {
+    const imgs = bigImages(el);
+    if (imgs.length) return imgs[idx] || imgs[0];
     const cands = [
       '[class*="content"]',
       '[class*="bubble"]',
@@ -919,6 +972,8 @@
   /** Thả 👍 Like vào tin. Trả về true nếu thấy badge cảm xúc (hoặc đã click emoji mới). */
   async function reactMessage(el) {
     if (!el || !el.isConnected) return false;
+    // Chỉ thả 1 lần cho mỗi tin (bấm lần 2 sẽ đổi/gỡ cảm xúc).
+    if (el.dataset.zfReacted === '1' || hasReaction(el)) return true;
     const target = contextTarget(el);
     target.scrollIntoView({ block: 'center', inline: 'nearest' });
     await sleep(200);
@@ -972,9 +1027,11 @@
       try {
         emoji.click();
         clickedEmoji = true;
+        el.dataset.zfReacted = '1';
         await sleep(600);
       } catch {}
-      if (hasReaction(el)) return true;
+      // Đã bấm 1 lần → dừng, KHÔNG thử đường khác (tránh thả nhiều cảm xúc).
+      return true;
     }
 
     // 2) Menu chuột phải → "Thả cảm xúc" hoặc hàng emoji
@@ -1009,6 +1066,7 @@
       try {
         emoji.click();
         clickedEmoji = true;
+        el.dataset.zfReacted = '1';
         await sleep(700);
       } catch {}
     }
@@ -1088,25 +1146,53 @@
     return false;
   }
 
+  /** Khoá không phụ thuộc URL ảnh (URL đổi khi ảnh tải xong/HD). */
+  const sigInfo = new Map();
+  function nodeBaseKey(n, c) {
+    const m = (n.innerText || '').match(/(\d{1,2}):(\d{2})/);
+    return `${c.images.length}|${c.files.length}|${m ? m[0] : ''}|${hashSig(c.text || '')}`;
+  }
+
   /** Tìm lại node tin nhắn tương đương (khi Zalo re-render sau khi react). */
   function findEquivalentNode(signature) {
     if (!signature) return null;
-    for (const n of getMessageNodes()) {
+    const nodes = getMessageNodes();
+    for (const n of nodes) {
       if (!n.isConnected || isOutgoing(n)) continue;
       try {
         const c = extractContent(n);
         if (messageSignature(n, c) === signature) return n;
       } catch {}
     }
+    // Dự phòng: khớp theo số ảnh + giờ + chữ, gần vị trí cũ nhất
+    const info = sigInfo.get(signature);
+    if (info) {
+      let best = null;
+      let bestD = Infinity;
+      nodes.forEach((n, i) => {
+        if (!n.isConnected || isOutgoing(n)) return;
+        try {
+          if (nodeBaseKey(n, extractContent(n)) !== info.baseKey) return;
+        } catch {
+          return;
+        }
+        const d = Math.abs(i - info.idx);
+        if (d < bestD) {
+          best = n;
+          bestD = d;
+        }
+      });
+      if (best) return best;
+    }
     return null;
   }
 
   /** Thả Like (nếu bật) rồi chuột phải tin → "Chia sẻ" → chọn nhóm đích → xác nhận. */
-  async function forwardMessageElement(el, groupName, signature) {
+  async function forwardMessageElement(el, groupName, signature, imgIdx = 0) {
     if (!el || !el.isConnected) throw new Error('Tin nhắn không còn trên màn hình');
 
-    // 1) Thả 👍 Like trước (để người gửi biết đã nhận)
-    if (settings.reactFirst !== false) {
+    // 1) Thả 👍 Like trước (chỉ 1 lần cho cả album)
+    if (settings.reactFirst !== false && imgIdx === 0) {
       let reacted = false;
       try {
         reacted = await reactMessage(el);
@@ -1122,7 +1208,7 @@
     }
 
     if (!el || !el.isConnected) throw new Error('Tin nhắn không còn màn hình sau khi thả Like');
-    const target = contextTarget(el);
+    const target = contextTarget(el, imgIdx);
     target.scrollIntoView({ block: 'center', inline: 'nearest' });
     await sleep(350);
 
@@ -1217,19 +1303,30 @@
 
     const targetNorm = norm(groupName);
     const rowSel = '[role="option"], [role="listitem"], [class*="item"], li, label';
-    let hit = Array.from(dialog.querySelectorAll(rowSel))
-      .filter(isVisible)
-      .find((x) => norm(x.innerText || '').includes(targetNorm));
-    if (!hit && search) {
-      await sleep(1000);
-      hit = Array.from(dialog.querySelectorAll(rowSel))
+    // Chọn dòng KHỚP NHỎ NHẤT (tránh click nhầm khung chứa cả danh sách).
+    const findRow = () =>
+      Array.from(dialog.querySelectorAll(rowSel))
         .filter(isVisible)
-        .find((x) => norm(x.innerText || '').includes(targetNorm));
+        .filter((x) => norm(x.innerText || '').includes(targetNorm))
+        .filter((x) => {
+          const rr = x.getBoundingClientRect();
+          return rr.height <= 120 && (x.innerText || '').length <= 200;
+        })
+        .sort((a, b) => {
+          const ra = a.getBoundingClientRect();
+          const rb = b.getBoundingClientRect();
+          return ra.width * ra.height - rb.width * rb.height;
+        })[0] || null;
+    let hit = findRow();
+    for (let i = 0; i < 4 && !hit; i++) {
+      await sleep(700);
+      hit = findRow();
     }
     if (!hit) {
       throw new Error(`Không thấy nhóm "${groupName}" trong hộp thoại chia sẻ`);
     }
     hit.click();
+    await sleep(300);
 
     let ok = false;
     for (let i = 0; i < 6 && !ok; i++) {
@@ -1252,6 +1349,33 @@
   }
 
   // ─────────────────────────── Forward ───────────────────────────
+  const failCount = new Map();
+
+  /** Đóng menu/hộp thoại còn sót sau khi chia sẻ lỗi. */
+  async function dismissOverlays() {
+    for (let i = 0; i < 2; i++) {
+      for (const t of ['keydown', 'keyup']) {
+        document.body.dispatchEvent(
+          new KeyboardEvent(t, { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true }),
+        );
+      }
+      await sleep(250);
+    }
+  }
+
+  /** Gỡ dấu "đã xử lý" để bộ rà sót gửi lại tin (tối đa 3 lần/tin). */
+  function releaseJob(job) {
+    const n = (failCount.get(job.signature) || 0) + 1;
+    failCount.set(job.signature, n);
+    if (n >= 3) {
+      report('error', `Bỏ tin sau ${n} lần thất bại (${job.signature})`);
+      return;
+    }
+    seen.delete(job.signature);
+    if (job.hkey) handled.delete(job.hkey);
+    if (job.el) delete job.el.dataset.zfSig;
+  }
+
   async function forwardOne(job) {
     const originHash = currentHash();
     const originName = firstLine(headerText());
@@ -1275,17 +1399,69 @@
 
     // ── Cách 1 (mặc định): chuột phải nội dung tin → "Chia sẻ" ──
     if (settings.useForward !== false) {
-      if (!job.el || !job.el.isConnected) {
-        report('warn', 'Tin nhắn không còn hiển thị — bỏ qua (không gửi link)');
+      // Zalo re-render sau mỗi lần chia sẻ → node của tin thứ 2 có thể bị thay.
+      // Tìm lại node tương đương thay vì bỏ qua (tránh mất ảnh khi gửi liền 2 ảnh).
+      let el = job.el;
+      for (let i = 0; i < 8 && (!el || !el.isConnected); i++) {
+        el = findEquivalentNode(job.signature);
+        if ((!el || !el.isConnected) && String(job.signature).startsWith('test:')) {
+          el = findLastIncomingNode();
+        }
+        if (!el || !el.isConnected) await sleep(400);
+      }
+      if (!el || !el.isConnected) {
+        const all = getMessageNodes();
+        report(
+          'warn',
+          `Tin nhắn không còn hiển thị — sẽ thử lại sau. Debug: ${all.length} node, ${
+            all.filter((n) => !isOutgoing(n)).length
+          } tin đến, job.el=${job.el ? (job.el.isConnected ? 'connected' : 'detached') : 'null'}`,
+        );
+        releaseJob(job);
         return;
       }
+      let allOk = true;
       try {
-        await forwardMessageElement(job.el, groupName, job.signature);
+        const total = Math.max(1, bigImages(el).length);
+        for (let i = 0; i < total; i++) {
+          if (!el || !el.isConnected) el = findEquivalentNode(job.signature);
+          if (!el || !el.isConnected) {
+            report('warn', `Mất tin khi chia sẻ ảnh ${i + 1}/${total}`);
+            allOk = false;
+            break;
+          }
+          if (total > 1) report('info', `Chia sẻ ảnh ${i + 1}/${total}`);
+          // Thử lại tối đa 3 lần cho mỗi lần chia sẻ (lỗi thoáng qua của giao diện Zalo).
+          let done = false;
+          for (let attempt = 1; attempt <= 3 && !done; attempt++) {
+            try {
+              await forwardMessageElement(el, groupName, job.signature, i);
+              done = true;
+            } catch (e) {
+              report('warn', `Chia sẻ lỗi (lần ${attempt}/3): ${e.message}`);
+              await dismissOverlays();
+              await sleep(800);
+              if (!el || !el.isConnected) el = findEquivalentNode(job.signature);
+              if (!el || !el.isConnected) break;
+            }
+          }
+          if (!done) {
+            allOk = false;
+            break;
+          }
+          forwardedThisRun = true;
+          if (i < total - 1) await sleep(800);
+        }
       } catch (e) {
+        allOk = false;
         report('error', `Chia sẻ lỗi: ${e.message}`);
       } finally {
         // Chia sẻ có thể khiến Zalo mở nhóm đích → quay lại hội thoại ban đầu.
         await restoreConversation(originHash, originName);
+      }
+      if (!allOk) {
+        report('error', 'Chưa chia sẻ được tin này');
+        releaseJob(job);
       }
       return;
     }
@@ -1307,15 +1483,17 @@
         ok = (await sendText(prefixed)) && ok;
       }
       if (settings.includeImages && imageUrls.length) {
-        const files = [];
+        // Zalo thường chỉ nhận 1 ảnh mỗi lần paste → dán lần lượt từng ảnh
+        // để 2 ảnh gửi liền nhau không bị mất ảnh nào.
         for (const url of imageUrls) {
           try {
-            files.push(await fileFromUrl(url));
+            const file = await fileFromUrl(url);
+            await pasteFiles([file], [url]);
+            await sleep(600);
           } catch (e) {
             report('warn', `Bỏ qua ảnh lỗi: ${e.message}`);
           }
         }
-        if (files.length) await pasteFiles(files, imageUrls);
       }
       if (settings.includeFiles && job.files.length) {
         for (const f of job.files) {
@@ -1336,17 +1514,91 @@
     }
   }
 
+  /** Tin thuộc HÔM NAY? Dựa vào vạch ngày của Zalo ("Hôm nay" / "Hôm qua" / dd/mm). */
+  function isToday(el) {
+    const list = pick(SELECTORS.messageList);
+    if (!list) return true;
+    let todayDiv = null;
+    let otherDay = false;
+    for (const e of list.querySelectorAll('div, span')) {
+      if (e.children.length > 3) continue;
+      const t = (e.innerText || '').trim();
+      if (!t || t.length > 30) continue;
+      if (/hôm nay|today/i.test(t)) todayDiv = e;
+      else if (/hôm qua|yesterday|^\d{1,2}\/\d{1,2}(\/\d{2,4})?$|^(\d{1,2}:\d{2}\s+)?\d{1,2}\/\d{1,2}(\/\d{2,4})?$/i.test(t))
+        otherDay = true;
+    }
+    if (todayDiv) {
+      return !!(todayDiv.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }
+    if (!otherDay) return true; // không thấy vạch nào → coi là hôm nay
+    // Chỉ thấy vạch ngày cũ (hoặc tin có chữ giống ngày): chỉ nhận nếu giờ tin gần đây.
+    const m = (el.innerText || '').match(/(\d{1,2}):(\d{2})/);
+    if (!m) return false;
+    const now = new Date();
+    const diff = now.getHours() * 60 + now.getMinutes() - (Number(m[1]) * 60 + Number(m[2]));
+    return diff >= 0 && diff <= 30;
+  }
+
+  /** Tin có giờ hiển thị trong vòng `minutes` phút gần đây? (không đọc được giờ → coi là có) */
+  function isRecentNode(el, minutes) {
+    if (!isToday(el)) return false;
+    const m = (el.innerText || '').match(/(\d{1,2}):(\d{2})/);
+    if (!m) return true;
+    const now = new Date();
+    let diff = now.getHours() * 60 + now.getMinutes() - (Number(m[1]) * 60 + Number(m[2]));
+    if (diff < 0) diff += 24 * 60;
+    return diff <= minutes;
+  }
+
+  /** Rà lại hội thoại hiện tại: tin đến, chưa xử lý, trong 5 phút → đưa vào hàng đợi. */
+  function sweepMissed() {
+    let n = 0;
+    for (const el of getMessageNodes()) {
+      if (!el.isConnected || isOutgoing(el) || !isRecentNode(el, 5)) continue;
+      if (processNode(el)) n += 1;
+    }
+    return n;
+  }
+
+  /** Kết thúc: mở nhóm đích (nếu có tin đã chuyển trong lượt này). */
+  let forwardedThisRun = false;
+  async function goToTargetGroup() {
+    const g = settings.targetGroup.trim();
+    if (!g || !forwardedThisRun) return;
+    forwardedThisRun = false;
+    try {
+      await openConversationByName(g);
+      report('success', `Đã quay về nhóm đích "${g}"`);
+    } catch (e) {
+      report('warn', `Không mở được nhóm đích: ${e.message}`);
+    }
+  }
+
   async function drainQueue() {
     if (processing) return;
     processing = true;
+    const originHash = currentHash();
+    const originName = firstLine(headerText());
     try {
-      while (queue.length) {
-        const job = queue.shift();
-        await forwardOne(job);
-        await sleep(Math.max(300, settings.delayMs));
+      for (let round = 0; round < 6; round++) {
+        while (queue.length) {
+          const job = queue.shift();
+          await forwardOne(job);
+          await sleep(Math.max(300, settings.delayMs));
+        }
+        // Đã về hội thoại gốc → kiểm tra còn tin nào sót trong 5 phút không
+        await sleep(600);
+        const missed = sweepMissed();
+        if (!missed) break;
+        report('info', `Phát hiện ${missed} tin còn sót (trong 5 phút) → gửi tiếp`);
       }
+      report('success', 'Không còn tin sót — quay về hội thoại gốc');
     } finally {
       processing = false;
+      try {
+        if (!scanningUnread) await goToTargetGroup();
+      } catch {}
     }
   }
 
@@ -1381,7 +1633,8 @@
   }
 
   /**
-   * Xử lý 1 tin: bỏ qua tin của mình, tin đã có cảm xúc, tin đã xử lý trước đó.
+   * Xử lý 1 tin: bỏ qua tin của mình, tin đã xử lý trước đó.
+   * GỬI cả tin chưa có cảm xúc (để không bỏ sót tin thứ 2 khi 2 tin đến cùng lúc).
    * Trả về true nếu đã đưa vào hàng đợi.
    */
   function processNode(el) {
@@ -1394,25 +1647,43 @@
     // Lưu chữ ký lên node để phát hiện cả trường hợp Zalo tái sử dụng node.
     el.dataset.zfSig = signature;
 
-    if (isOutgoing(el)) return false;
-    if (hasReaction(el)) {
-      report('info', 'Bỏ qua tin đã có cảm xúc');
+    if (isOutgoing(el)) {
+      if (content.images.length) report('info', `Bỏ qua tin ảnh (coi là tin mình gửi) — ${content.images.length} ảnh`);
       return false;
     }
+    // Chỉ chuyển tin HÔM NAY — tin ngày cũ không bao giờ gửi.
+    if (!isToday(el)) {
+      markHandled(handledKey(signature));
+      return false;
+    }
+    // KHÔNG check hasReaction — gửi tin chưa có cảm xúc (kể cả đã xem).
     const hkey = handledKey(signature);
     if (handled.has(hkey)) {
-      report('info', 'Bỏ qua tin đã xử lý trước đó');
+      report(
+        'info',
+        `Bỏ qua tin đã xử lý trước đó${content.images.length ? ` (ảnh x${content.images.length})` : ''}`,
+      );
       return false;
     }
     markHandled(hkey);
-    enqueue({ signature, ...content, el });
+    sigInfo.set(signature, {
+      baseKey: nodeBaseKey(el, content),
+      idx: getMessageNodes().indexOf(el),
+    });
+    if (sigInfo.size > 500) sigInfo.clear();
+    enqueue({ signature, hkey, ...content, el });
     return true;
   }
 
   function scan() {
     if (!settings.enabled) return;
+    // Bộ quét chưa đọc đang tự chuyển hội thoại → không được coi tin mới là "tin cũ".
+    if (scanningUnread) return;
     const nodes = getMessageNodes();
     if (!nodes.length) return;
+    // Header đang trống/nháy khi Zalo render lại → KHÔNG coi là đổi hội thoại
+    // (nếu không, tin mới sẽ bị đánh dấu "tin cũ" và bị bỏ qua).
+    if (!firstLine(headerText())) return;
 
     const key = convKey();
     const switched = key !== lastConvKey;
@@ -1577,37 +1848,76 @@
 
   /** Mở 1 hội thoại chưa đọc và chỉ xử lý các tin MỚI (sau dấu chưa đọc / N tin cuối). */
   async function scanUnreadConversation(item, unreadCount) {
+    const itemName = norm(firstLine(item.innerText || ''));
+    const before = norm(firstLine(headerText()));
     item.click();
-    await waitForMessageList();
-    const nodes = getMessageNodes();
-    if (!nodes.length) return;
-    lastConvKey = convKey();
 
-    let targets = [];
-    const divider = findUnreadDivider();
-    if (divider) {
-      targets = nodes.filter(
-        (n) =>
-          divider.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING,
+    // Chờ Zalo THẬT SỰ chuyển sang hội thoại vừa bấm (header khớp tên dòng).
+    // Trước đây code đọc luôn danh sách tin còn của hội thoại CŨ (thường là nhóm đích)
+    // rồi quay về → "vào xem xong quay lại nhóm đích mà không gửi".
+    let opened = false;
+    for (let i = 0; i < 30; i++) {
+      await sleep(150);
+      const h = norm(firstLine(headerText()));
+      if (h && itemName && (h.includes(itemName) || itemName.includes(h))) {
+        opened = true;
+        break;
+      }
+      if (h && h !== before && !itemName) {
+        opened = true;
+        break;
+      }
+    }
+    if (!opened) {
+      report('warn', `Chưa mở được hội thoại "${firstLine(item.innerText || '')}" — thử lại ở vòng sau`);
+      return;
+    }
+    await sleep(500);
+    await waitForMessageList(3000);
+    await sleep(400); // cho tin mới nhất kịp render
+
+    let queued = 0;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const nodes = getMessageNodes();
+      if (!nodes.length) {
+        await sleep(700);
+        continue;
+      }
+      lastConvKey = convKey();
+
+      let targets = [];
+      const divider = findUnreadDivider();
+      if (divider) {
+        targets = nodes.filter(
+          (n) =>
+            divider.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING,
+        );
+      } else if (unreadCount > 0) {
+        targets = nodes.filter((n) => !isOutgoing(n)).slice(-unreadCount);
+      } else {
+        targets = nodes.filter((n) => !isOutgoing(n)).slice(-1);
+      }
+
+      if (!targets.length) {
+        await sleep(700);
+        continue;
+      }
+      // Các tin cũ (không nằm trong mục tiêu) coi như đã xử lý → re-render không gửi lại.
+      for (const el of nodes) {
+        if (!targets.includes(el)) markNodeHandled(el);
+      }
+      report(
+        'info',
+        `Hội thoại "${firstLine(headerText())}": xử lý ${targets.length} tin mới${
+          divider ? ' (sau dấu chưa đọc)' : unreadCount ? ` (${unreadCount} tin cuối)` : ''
+        }`,
       );
-    } else if (unreadCount > 0) {
-      targets = nodes.filter((n) => !isOutgoing(n)).slice(-unreadCount);
-    } else {
-      targets = nodes.filter((n) => !isOutgoing(n)).slice(-1);
+      for (const el of targets) if (processNode(el)) queued += 1;
+      if (queued > 0) return;
+      // Không tin nào được xếp hàng → có thể tin mới chưa tải xong, thử lại.
+      await sleep(900);
     }
-
-    if (!targets.length) return;
-    // Các tin cũ (không nằm trong mục tiêu) coi như đã xử lý → re-render không gửi lại.
-    for (const el of nodes) {
-      if (!targets.includes(el)) markNodeHandled(el);
-    }
-    report(
-      'info',
-      `Hội thoại: xử lý ${targets.length} tin mới${
-        divider ? ' (sau dấu chưa đọc)' : unreadCount ? ` (${unreadCount} tin cuối)` : ''
-      }`,
-    );
-    for (const el of targets) processNode(el);
+    if (!queued) report('warn', 'Không có tin nào cần gửi trong hội thoại này (đã xử lý/hôm qua/của mình)');
   }
 
   let scanningUnread = false;
@@ -1637,8 +1947,10 @@
         } catch (e) {
           report('warn', `Quét hội thoại lỗi: ${e.message}`);
         }
-        // Chờ hàng đợi xử lý xong — poll nhanh 150ms.
-        for (let i = 0; i < 80 && (processing || queue.length); i++) {
+        // Chờ hàng đợi xử lý xong THẬT SỰ (mỗi tin có thể mất 10-20s) — không
+        // được chuyển hội thoại giữa chừng làm hỏng thao tác chia sẻ.
+        await sleep(300);
+        for (let i = 0; i < 800 && (processing || queue.length); i++) {
           await sleep(150);
         }
       }
@@ -1648,7 +1960,8 @@
     } catch (e) {
       report('error', `Quét chưa đọc lỗi: ${e.message}`);
     } finally {
-      await restoreConversation(originHash, originName);
+      if (forwardedThisRun) await goToTargetGroup();
+      else await restoreConversation(originHash, originName);
       scanningUnread = false;
     }
   }
@@ -1710,7 +2023,7 @@
 
     report(
       'info',
-      `Zalo Forwarder v1.6.1 sẵn sàng (${settings.enabled ? 'BẬT' : 'TẮT'}${
+      `Zalo Forwarder v1.8.1 sẵn sàng (${settings.enabled ? 'BẬT' : 'TẮT'}${
         settings.targetGroup ? ` → ${settings.targetGroup}` : ''
       })`,
     );
