@@ -248,14 +248,18 @@ function VehicleSheet({ d, totalP, onClose }: { d: VehicleRevenue; totalP: numbe
 /* ───────────────────────────────────────────────────────────────
    CUSTOMER MODAL
    ─────────────────────────────────────────────────────────────── */
-function CustomerSheet({ c, onClose }: { c: CustomerRevenue; onClose: () => void }) {
+function CustomerSheet({ c, plans, onClose }: { c: CustomerRevenue; plans: PlanSummary[]; onClose: () => void }) {
   const types = Object.entries(c.contByType).sort((a, b) => b[1] - a[1]);
   const total = types.reduce((s, [, n]) => s + n, 0);
   const routes = c.routes ?? [];
+  const [selectedRoute, setSelectedRoute] = useState<string | null>(routes[0]?.routeName ?? null);
+  const routePlans = selectedRoute != null
+    ? plans.filter(p => p.customerId === c.customerId && (p.routeName || '') === selectedRoute)
+    : [];
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/25" onClick={onClose}>
-      <div className="dsh bg-white w-full sm:max-w-[560px] sm:rounded-xl rounded-t-xl overflow-hidden shadow-xl"
-        onClick={e => e.stopPropagation()} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+      <div className="dsh bg-white w-full sm:max-w-[1000px] sm:rounded-xl rounded-t-xl overflow-hidden shadow-xl"
+        onClick={e => e.stopPropagation()} style={{ maxHeight: '92vh', overflowY: 'auto' }}>
         <div className="px-5 pt-5 pb-3 flex justify-between gap-3" style={{ background: C.surface }}>
           <div className="min-w-0">
             <p className="text-[11px]" style={{ color: C.muted }}>Khách hàng</p>
@@ -293,44 +297,107 @@ function CustomerSheet({ c, onClose }: { c: CustomerRevenue; onClose: () => void
             </div>
           </div>
         )}
-        {/* Chi tiết theo tuyến đường — giống popup lái xe, chỉ khác là lọc theo khách hàng */}
+        {/* Chi tiết theo tuyến đường — bấm tuyến để xem các kế hoạch + loại cont */}
         {routes.length > 0 && (
           <div className="px-5 py-4">
-            <p className="text-[12px] font-bold mb-3">Tuyến đường</p>
-            <div className="space-y-3">
-              {routes.slice(0, 12).map((r, i) => {
-                const rTypes = Object.entries(r.contByType ?? {}).sort((a, b) => b[1] - a[1]);
-                return (
-                  <div key={i} className="rounded-lg p-3" style={{ background: i === 0 ? C.amberLt : C.surface, border: `1px solid ${i === 0 ? '#fcd34d' : C.faint}` }}>
-                    {/* Tên tuyến + doanh thu + số cont */}
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="min-w-0">
-                        <span className="text-[13px] font-semibold leading-snug" style={{ color: i === 0 ? C.amberDk : C.ink }}>{r.routeName || '—'}</span>
-                        <p className="text-[10px] mt-0.5" style={{ color: C.muted }}>{r.planCount} kế hoạch</p>
+            <div className="flex items-end justify-between gap-3 mb-3">
+              <div>
+                <p className="text-[12px] font-bold">Tuyến đường</p>
+                <p className="text-[10px] mt-0.5" style={{ color: C.muted }}>
+                  Bấm một tuyến để xem kế hoạch và số lượng từng loại container.
+                </p>
+              </div>
+              <span className="text-[10px] flex-shrink-0" style={{ color: C.muted }}>{routes.length} tuyến</span>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-3">
+              {/* Danh sách tuyến */}
+              <div className="space-y-2 lg:max-h-[56vh] lg:overflow-y-auto lg:pr-1">
+                {routes.slice(0, 12).map((r, i) => {
+                  const active = (r.routeName || '') === selectedRoute;
+                  const rTypes = Object.entries(r.contByType ?? {}).sort((a, b) => b[1] - a[1]);
+                  return (
+                    <button
+                      key={r.routeName || i}
+                      type="button"
+                      onClick={() => setSelectedRoute(r.routeName || '')}
+                      className="w-full text-left rounded-lg p-3 cursor-pointer transition-colors"
+                      style={{
+                        background: active ? C.amberLt : C.surface,
+                        border: `1px solid ${active ? '#fcd34d' : C.faint}`,
+                      }}
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[12px] font-semibold leading-snug truncate" style={{ color: active ? C.amberDk : C.ink }}>
+                            {r.routeName || '—'}
+                          </p>
+                          <p className="text-[10px] mt-0.5" style={{ color: C.muted }}>{r.planCount} kế hoạch · {r.contCount} cont</p>
+                        </div>
+                        <p className="text-[12px] font-bold flex-shrink-0" style={{ color: C.amber }}>{fmt(r.revenue)} ₫</p>
                       </div>
-                      <div className="text-right flex-shrink-0 ml-2">
-                        <p className="text-[13px] font-bold" style={{ color: C.amber }}>{fmt(r.revenue)} ₫</p>
-                        <p className="text-[10px]" style={{ color: C.muted }}>{r.contCount} cont</p>
-                      </div>
+                      {rTypes.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {rTypes.map(([t, n]) => (
+                            <span key={t} className="px-1.5 py-0.5 rounded text-[9px] font-semibold"
+                              style={{ background: '#fff7ed', color: C.amberDk, border: `1px solid #fcd34d` }}>
+                              {t} ×{n}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Kế hoạch của tuyến đang chọn */}
+              <div className="rounded-xl p-3 min-h-[200px]" style={{ background: C.surface, border: `1px solid ${C.faint}` }}>
+                {selectedRoute != null ? (
+                  <>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <p className="text-[12px] font-bold truncate">Kế hoạch · {selectedRoute || '—'}</p>
+                      <span className="text-[10px] flex-shrink-0" style={{ color: C.muted }}>{routePlans.length} kế hoạch</span>
                     </div>
-                    {/* Loại container */}
-                    {rTypes.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {rTypes.map(([t, n]) => (
-                          <span key={t} className="px-2 py-0.5 rounded text-[11px] font-semibold"
-                            style={{ background: '#fff7ed', color: C.amberDk, border: `1px solid #fcd34d` }}>
-                            {t} ×{n}
-                          </span>
-                        ))}
+                    {routePlans.length === 0 ? (
+                      <p className="text-[11px] py-6 text-center" style={{ color: C.muted }}>Chưa có kế hoạch cho tuyến này.</p>
+                    ) : (
+                      <div className="space-y-2 lg:max-h-[50vh] lg:overflow-y-auto lg:pr-1">
+                        {routePlans.map((p) => {
+                          const pTypes = Object.entries(p.contByType ?? {}).sort((a, b) => b[1] - a[1]);
+                          return (
+                            <div key={p.id} className="rounded-lg p-3 bg-white" style={{ border: `1px solid ${C.faint}` }}>
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="min-w-0">
+                                  <p className="text-[12px] font-semibold leading-snug truncate">{p.name}</p>
+                                  <p className="text-[10px] mt-0.5" style={{ color: C.muted }}>
+                                    {p.ngay ? p.ngay.split('-').reverse().join('-') : '—'} · {p.totalCont} cont
+                                    {p.completed ? ' · ✅ hoàn thành' : ''}
+                                  </p>
+                                </div>
+                                <p className="text-[12px] font-bold flex-shrink-0" style={{ color: C.amber }}>{fmt(p.revenue)} ₫</p>
+                              </div>
+                              {pTypes.length > 0 ? (
+                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                  {pTypes.map(([t, n]) => (
+                                    <span key={t} className="px-2 py-0.5 rounded text-[10px] font-semibold"
+                                      style={{ background: '#fff7ed', color: C.amberDk, border: `1px solid #fcd34d` }}>
+                                      {t} ×{n}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-[10px] mt-1.5" style={{ color: C.muted }}>Chưa có container.</p>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
-                    {/* Tỉ lệ sản lượng của tuyến này trên tổng của khách */}
-                    <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: '#e7e5e4' }}>
-                      <div className="h-full rounded-full" style={{ width: `${pc(r.contCount, c.totalCont || 1)}%`, background: i === 0 ? C.amber : '#fcd34d' }} />
-                    </div>
-                  </div>
-                );
-              })}
+                  </>
+                ) : (
+                  <p className="text-[11px] py-6 text-center" style={{ color: C.muted }}>Chọn một tuyến đường bên trái để xem kế hoạch.</p>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -1205,7 +1272,7 @@ export function DashboardTab() {
       {/* Popups */}
       {selP && <PlanSheet plan={selP} onClose={() => setSelP(null)} />}
       {selVehicle && <VehicleSheet d={selVehicle} totalP={data.plans.total} onClose={() => setSelVehicle(null)} />}
-      {selC && <CustomerSheet c={selC} onClose={() => setSelC(null)} />}
+      {selC && <CustomerSheet c={selC} plans={data.plans.list} onClose={() => setSelC(null)} />}
       {selCost && (
         <CostItemsSheet
           category={selCost}
