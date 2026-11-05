@@ -435,6 +435,7 @@ export class CustomersService {
   async assignPlans(
     customerId: number,
     planIds: number[],
+    actor?: { id?: number; fullName?: string },
   ): Promise<{ message: string; assigned: number }> {
     const customer = await this.customersRepository.findOne({
       where: { id: customerId },
@@ -449,21 +450,27 @@ export class CustomersService {
         .set({ customerId })
         .where('id IN (:...ids)', { ids })
         .execute();
+      // CHỈ gỡ khách của kế hoạch ĐÃ HOÀN THÀNH. Màn hình "Gán kế hoạch đã
+      // hoàn thành" chỉ hiển thị các kế hoạch completed, nên nếu gỡ cả kế
+      // hoạch chưa hoàn thành thì khách đã chọn lúc tạo kế hoạch sẽ bị xoá
+      // oan (không có trong danh sách để tick lại).
       await this.shippingLinesRepository
         .createQueryBuilder()
         .update(ShippingLine)
         .set({ customerId: null })
-        .where('customer_id = :customerId AND id NOT IN (:...ids)', {
-          customerId,
-          ids,
-        })
+        .where(
+          'customer_id = :customerId AND completed = true AND id NOT IN (:...ids)',
+          { customerId, ids },
+        )
         .execute();
     } else {
       await this.shippingLinesRepository
         .createQueryBuilder()
         .update(ShippingLine)
         .set({ customerId: null })
-        .where('customer_id = :customerId', { customerId })
+        .where('customer_id = :customerId AND completed = true', {
+          customerId,
+        })
         .execute();
     }
 
@@ -472,7 +479,7 @@ export class CustomersService {
       'plan',
       null,
       'UPDATE',
-      { id: undefined, fullName: '' },
+      actor ?? { id: undefined, fullName: '' },
       JSON.stringify({ assignedPlanIds: ids }),
     );
     return {

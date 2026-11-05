@@ -96,8 +96,12 @@ export class CustomersController {
 
   @Put(':id/plans')
   @Permissions('customer.manage')
-  assignPlans(@Param('id') id: string, @Body() body: AssignPlansDto) {
-    return this.customersService.assignPlans(+id, body.planIds);
+  assignPlans(
+    @Param('id') id: string,
+    @Body() body: AssignPlansDto,
+    @CurrentUser() actor: { id: number; fullName?: string },
+  ) {
+    return this.customersService.assignPlans(+id, body.planIds, actor);
   }
 
   // ─── Đơn giá ───────────────────────────────────────────────────
