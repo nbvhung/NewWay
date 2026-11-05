@@ -288,7 +288,22 @@ export class ShippingLinesService {
       }
       plan.ngay = dto.ngay;
     }
-    if (dto.customerId !== undefined) plan.customerId = dto.customerId ?? null;
+    // Khách hàng là bắt buộc (đồng bộ với lúc tạo kế hoạch). KHÔNG cho sửa
+    // kế hoạch để xoá khách — đây là đường thứ 2 có thể làm mất khách khỏi
+    // bảng "Doanh thu theo khách hàng".
+    if (dto.customerId !== undefined) {
+      const cid = Number(dto.customerId);
+      if (!Number.isInteger(cid) || cid <= 0) {
+        throw new BadRequestException('Vui lòng chọn khách hàng');
+      }
+      const customer = await this.customersRepository.findOne({
+        where: { id: cid },
+      });
+      if (!customer) {
+        throw new NotFoundException('Không tìm thấy khách hàng');
+      }
+      plan.customerId = cid;
+    }
     if (dto.vendor !== undefined) plan.vendor = dto.vendor.trim();
     if (dto.tangCuong !== undefined) plan.tangCuong = dto.tangCuong;
     if (dto.leTet !== undefined) plan.leTet = dto.leTet;

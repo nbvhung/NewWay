@@ -268,6 +268,8 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
     if (!editTarget) return;
     if (!editName.trim()) { toast('Tên kế hoạch/Tên Tàu không được để trống', 'error'); return; }
     if (!editNgay) { toast('Vui lòng chọn ngày kế hoạch', 'error'); return; }
+    // Bắt buộc giữ khách hàng khi sửa — tránh vô tình xoá khách của kế hoạch.
+    if (!editCustomerId) { toast('Vui lòng chọn khách hàng', 'error'); return; }
     const dealedPrices: Record<string, number> = {};
     PRICE_TYPES.forEach(t => { const v = Number(editPrices[t]); if (!isNaN(v) && v > 0) dealedPrices[t] = v; });
     if (Object.keys(dealedPrices).length === 0) { toast('Vui lòng nhập ít nhất 1 đơn giá deal với khách hàng', 'error'); return; }
@@ -278,7 +280,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
         soChuyen: editSoChuyen.trim(),
         routeName: editRouteName.trim(),
         ngay: editNgay,
-        customerId: editCustomerId ? Number(editCustomerId) : null,
+        customerId: Number(editCustomerId),
         tangCuong: editTangCuong,
         leTet: editLeTet,
         driverIds: editAllDrivers ? [] : editDriverIds,
