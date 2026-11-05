@@ -11,6 +11,7 @@ import { CustomerPrice } from '../database/entities/customer-price.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
 import { User } from '../database/entities/user.entity';
 import { Vehicle } from '../database/entities/vehicle.entity';
+import { Customer } from '../database/entities/customer.entity';
 import { ZaloBotModule } from '../zalo-bot/zalo-bot.module';
 
 @Module({
@@ -25,6 +26,7 @@ import { ZaloBotModule } from '../zalo-bot/zalo-bot.module';
       EditHistory,
       User,
       Vehicle,
+      Customer,
     ]),
     ZaloBotModule,
   ],

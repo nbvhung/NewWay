@@ -77,6 +77,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
   const [approveOpen, setApproveOpen] = useState(false);
   const [approvePlan, setApprovePlan] = useState<ShippingLine | null>(null);
   const [approvePrices, setApprovePrices] = useState<Record<string, string>>(emptyPrices());
+  const [approveCustomerId, setApproveCustomerId] = useState('');
 
   // ── Tra giá khách hàng theo tuyến (khi chọn khách + tuyến) ──
   const [custPrices, setCustPrices] = useState<CustomerPrice[]>([]);
@@ -310,6 +311,10 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
 
   const submitApprove = async (action: 'approve' | 'reject') => {
     if (!approvePlan) return;
+    if (action === 'approve' && !approveCustomerId) {
+      toast('Vui lòng chọn khách hàng trước khi duyệt đơn giá', 'error');
+      return;
+    }
     setSaving(true);
     try {
       // Thu thập giá đã sửa (bỏ qua trường trống / 0)
@@ -319,10 +324,12 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
         approvePlan.id,
         action,
         Object.keys(dealedPrices).length > 0 ? dealedPrices : undefined,
+        approveCustomerId ? Number(approveCustomerId) : undefined,
       );
       toast(action === 'approve' ? 'Đã duyệt đơn giá' : 'Đã từ chối đơn giá', 'success');
       setApproveOpen(false);
       setApprovePlan(null);
+      setApproveCustomerId('');
       onRefresh();
     } catch (err: any) { toast(err.message, 'error'); }
     finally { setSaving(false); }
@@ -433,6 +440,7 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
                       const preloaded = emptyPrices();
                       PRICE_TYPES.forEach(t => { preloaded[t] = String(p.dealedPrices?.[t] ?? ''); });
                       setApprovePrices(preloaded);
+                      setApproveCustomerId(p.customerId ? String(p.customerId) : '');
                       setApproveOpen(true);
                     }} title="Duyệt / từ chối đơn giá"
                       className="px-2 py-1 rounded-lg text-[10px] font-medium bg-gradient-to-r from-[#3b82f6] to-[#2563eb] text-white cursor-pointer">🛡️</button>
@@ -835,11 +843,11 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
 
       <Modal
         open={approveOpen}
-        onClose={() => { setApproveOpen(false); setApprovePlan(null); }}
+        onClose={() => { setApproveOpen(false); setApprovePlan(null); setApproveCustomerId(''); }}
         title="🛡️ Duyệt đơn giá kế hoạch"
         footer={
           <div className="flex gap-2 w-full">
-            <button onClick={() => { setApproveOpen(false); setApprovePlan(null); }}
+            <button onClick={() => { setApproveOpen(false); setApprovePlan(null); setApproveCustomerId(''); }}
               className="flex-1 px-4 py-2.5 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] cursor-pointer">
               Đóng
             </button>
@@ -861,6 +869,26 @@ export function ShippingLinesTab({ user, allShippingLines, allRoutes, allUsers, 
               ? [approvePlan.name, approvePlan.soChuyen, approvePlan.routeName, fmtNgay(approvePlan.ngay)].filter(Boolean).join(' / ')
               : '—'}
           </div>
+        </div>
+        <div className="mb-3">
+          <label className="text-xs font-medium text-[#78716c] mb-1.5 block">
+            Khách hàng <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={approveCustomerId}
+            onChange={e => setApproveCustomerId(e.target.value)}
+            className="w-full px-3.5 py-2.5 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-sm text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer"
+          >
+            <option value="">— Chọn khách hàng —</option>
+            {(allCustomers || []).map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name}{c.status !== 'active' ? ' (ngừng)' : ''}
+              </option>
+            ))}
+          </select>
+          <p className="text-[10px] text-[#a8a29e] mt-1">
+            Bắt buộc khi duyệt. Chọn đúng khách hàng để doanh thu vào đúng bảng theo khách hàng.
+          </p>
         </div>
         <p className="text-[11px] font-semibold text-[#1c1917] mb-2">✏️ Xem / Sửa đơn giá</p>
         <div className="grid grid-cols-2 gap-2">

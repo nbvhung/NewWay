@@ -70,6 +70,8 @@ export class ShippingLinesController {
     body: {
       action: 'approve' | 'reject';
       dealedPrices?: Record<string, number>;
+      /** Khách hàng HR/Admin chọn khi duyệt giá (bắt buộc khi duyệt). */
+      customerId?: number | null;
     },
     @CurrentUser() actor: { id: number; fullName?: string },
   ) {
@@ -78,6 +80,7 @@ export class ShippingLinesController {
       body?.action,
       actor,
       body?.dealedPrices,
+      body?.customerId,
     );
   }
 

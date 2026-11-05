@@ -15,6 +15,7 @@ import { CustomerPrice } from '../database/entities/customer-price.entity';
 import { EditHistory } from '../database/entities/edit-history.entity';
 import { User } from '../database/entities/user.entity';
 import { Vehicle } from '../database/entities/vehicle.entity';
+import { Customer } from '../database/entities/customer.entity';
 import { CreateShippingLineDto } from './dto/create-shipping-line.dto';
 import { UpdateShippingLineDto } from './dto/update-shipping-line.dto';
 import { ZaloPlanCompletedNotifierService } from '../zalo-bot/zalo-plan-completed-notifier.service';
@@ -57,6 +58,8 @@ export class ShippingLinesService {
     private usersRepository: Repository<User>,
     @InjectRepository(Vehicle)
     private vehiclesRepository: Repository<Vehicle>,
+    @InjectRepository(Customer)
+    private customersRepository: Repository<Customer>,
     private zaloPlanCompletedNotifier: ZaloPlanCompletedNotifierService,
   ) {}
 
@@ -579,16 +582,40 @@ export class ShippingLinesService {
   /**
    * Duyệt/từ chối đơn giá deal của kế hoạch. Chỉ HR/Admin/Supper_admin.
    * Nếu truyền kèm `dealedPrices`, cập nhật giá trước khi duyệt/từ chối.
+   * Nếu truyền kèm `customerId`, cập nhật khách hàng của kế hoạch trước khi duyệt.
+   * Khi DUYỆT bắt buộc kế hoạch phải có khách hàng.
    */
   async approvePrice(
     id: number,
     action: 'approve' | 'reject',
     actor: { id: number; fullName?: string },
     dealedPrices?: Record<string, number>,
+    customerId?: number | null,
   ): Promise<any> {
     const plan = await this.shippingLinesRepository.findOne({ where: { id } });
     if (!plan) {
       throw new NotFoundException('Không tìm thấy kế hoạch');
+    }
+
+    // Cập nhật khách hàng nếu người duyệt chọn
+    if (customerId !== undefined && customerId !== null) {
+      const cid = Number(customerId);
+      if (!Number.isInteger(cid) || cid <= 0) {
+        throw new BadRequestException('Khách hàng không hợp lệ');
+      }
+      const customer = await this.customersRepository.findOne({
+        where: { id: cid },
+      });
+      if (!customer) {
+        throw new NotFoundException('Không tìm thấy khách hàng');
+      }
+      plan.customerId = cid;
+    }
+
+    if (action === 'approve' && !plan.customerId) {
+      throw new BadRequestException(
+        'Vui lòng chọn khách hàng trước khi duyệt đơn giá',
+      );
     }
 
     // Cập nhật đơn giá nếu người duyệt sửa
