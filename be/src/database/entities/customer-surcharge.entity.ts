@@ -52,6 +52,23 @@ export class CustomerSurcharge {
   active: boolean;
 
   /**
+   * Đơn vị của phụ phí cộng thêm (`calcType = 'add'`):
+   * - 'container': cộng số tiền cho TỪNG đơn vị tính tiền (bó = 1, kẹp = 1,
+   *   bỏ qua VSL/TIP).
+   * - 'plan'     : cộng 1 lần cho cả kế hoạch, phân bổ xuống xe theo tỷ lệ
+   *   doanh thu gốc; tổng các xe luôn bằng doanh thu kế hoạch.
+   * Với `calcType = 'percent'` cột này không có tác dụng (% luôn tính trên
+   * doanh thu gốc của từng đơn vị).
+   */
+  @Column({
+    name: 'amount_scope',
+    type: 'varchar',
+    length: 10,
+    default: 'plan',
+  })
+  amountScope: string;
+
+  /**
    * Phạm vi áp dụng:
    * - 'all'   : mọi kế hoạch của khách trong tháng + khoảng ngày (mặc định cũ).
    * - 'plans' : chỉ các kế hoạch nằm trong `planIds`.

@@ -1195,10 +1195,14 @@ export class ContainerImportService {
     bundleId: string,
     planId: number,
     submissionId: number,
+    vehicleId?: number | null,
   ): Promise<void> {
     await this.containerImportsRepository.update(
       { bundleId, shippingLineId: planId, submissionId: IsNull() },
-      { submissionId },
+      {
+        submissionId,
+        ...(vehicleId != null ? { vehicleId } : {}),
+      },
     );
   }
 
@@ -1239,10 +1243,17 @@ export class ContainerImportService {
    * Claim 1 container chỉ khi chưa được claim (WHERE submission_id IS NULL).
    * Tránh ghi đè lái xe đã xác nhận trước đó.
    */
-  async claim(id: number, submissionId: number): Promise<void> {
+  async claim(
+    id: number,
+    submissionId: number,
+    vehicleId?: number | null,
+  ): Promise<void> {
     await this.containerImportsRepository.update(
       { id, submissionId: IsNull() },
-      { submissionId },
+      {
+        submissionId,
+        ...(vehicleId != null ? { vehicleId } : {}),
+      },
     );
   }
 
@@ -1254,6 +1265,7 @@ export class ContainerImportService {
     containerIds: number[],
     submissionId: number,
     claimType: string,
+    vehicleId?: number | null,
   ): Promise<void> {
     if (!containerIds.length) return;
     const unique = [...new Set(containerIds)];
@@ -1264,6 +1276,12 @@ export class ContainerImportService {
         claimType,
       });
       await this.containerClaimsRepository.save(claim);
+    }
+    if (vehicleId != null) {
+      await this.containerImportsRepository.update(
+        { id: In(unique), vehicleId: IsNull() },
+        { vehicleId },
+      );
     }
   }
 
@@ -1687,6 +1705,8 @@ export class ContainerImportService {
     totals: Record<string, string>;
     submissionId: number;
   }> {
+    const claimVehicleId =
+      driver.currentVehicleId ?? driver.homeVehicleId ?? driver.id;
     const totalsMap = new Map<string, number>();
     const claimedIds: number[] = [];
     for (const u of units) {
@@ -1707,12 +1727,16 @@ export class ContainerImportService {
         shippingLineId: plan.id,
         route: plan.routeName || '',
         driverName: driver.fullName,
+        actualVehicleId: driver.currentVehicleId ?? null,
       });
       for (const [field, total] of totalsMap) {
         (submission as any)[field] = String(total);
       }
       await this.submissionsRepository.save(submission);
     } else {
+      if (driver.currentVehicleId) {
+        submission.actualVehicleId = driver.currentVehicleId;
+      }
       for (const [field, total] of totalsMap) {
         const oldVal = String((submission as any)[field] || '');
         const newVal = String((parseInt(oldVal, 10) || 0) + total);
@@ -1736,14 +1760,19 @@ export class ContainerImportService {
     // Claim container + ghi container_claims (CLAIM) — không ghi đè container đã có người chạy
     for (const u of units) {
       if (u.bundleId) {
-        await this.claimBundle(u.bundleId, plan.id, submission.id);
+        await this.claimBundle(u.bundleId, plan.id, submission.id, claimVehicleId);
       } else {
         for (const id of u.ids) {
-          await this.claim(id, submission.id);
+          await this.claim(id, submission.id, claimVehicleId);
         }
       }
     }
-    await this.recordClaims(claimedIds, submission.id, 'CLAIM');
+    await this.recordClaims(
+      claimedIds,
+      submission.id,
+      'CLAIM',
+      claimVehicleId,
+    );
 
     const totals: Record<string, string> = {};
     for (const [field, total] of totalsMap) {
@@ -1905,10 +1934,19 @@ export class ContainerImportService {
 
     const claimedBefore = await this.countClaimed(plan.id);
 
+    const driver = await this.usersRepository.findOne({
+      where: { id: container.importedById },
+    });
+    const claimVehicleId =
+      driver?.currentVehicleId ?? driver?.homeVehicleId ?? container.importedById;
+
     const submission = await this.findOrCreateSubmission(
       container.importedById,
       plan,
     );
+    if (driver?.currentVehicleId) {
+      submission.actualVehicleId = driver.currentVehicleId;
+    }
     const oldVal = String((submission as any)[field] || '');
     const newTotal = String((parseInt(oldVal, 10) || 0) + 1);
     (submission as any)[field] = newTotal;
@@ -1927,9 +1965,15 @@ export class ContainerImportService {
     container.type = normalized;
     container.phatSinh = false;
     container.submissionId = submission.id;
+    container.vehicleId = claimVehicleId;
     await this.containerImportsRepository.save(container);
 
-    await this.recordClaims([container.id], submission.id, 'CLASSIFY');
+    await this.recordClaims(
+      [container.id],
+      submission.id,
+      'CLASSIFY',
+      claimVehicleId,
+    );
 
     await this.groupAuto
       .syncForPlan(plan.id, claimedBefore)
@@ -1963,6 +2007,7 @@ export class ContainerImportService {
         shippingLineId: planId,
         route: plan.routeName || '',
         driverName: user?.fullName || '',
+        actualVehicleId: user?.currentVehicleId ?? null,
       });
       await this.submissionsRepository.save(submission);
     }

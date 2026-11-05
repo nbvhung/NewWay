@@ -37,7 +37,8 @@ export class FinanceCostItem {
   category: string;
 
   /**
-   * Xe mà khoản chi này thuộc về (id tài khoản lái xe đại diện xe đó).
+   * Xe mà khoản chi này thuộc về — lưu `vehicles.id` (bảng Xe).
+   * Tên cột `vehicle_user_id` là tên cũ; KHÔNG phải users.id.
    * NULL = chi phí chung, không gắn xe cụ thể.
    * Chọn nhiều xe cho 1 khoản → mỗi xe 1 dòng riêng.
    */

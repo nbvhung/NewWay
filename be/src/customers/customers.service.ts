@@ -875,6 +875,7 @@ export class CustomersService {
     if (dto.fromDay > dto.toDay) {
       throw new BadRequestException('"Từ ngày" không được lớn hơn "Đến ngày"');
     }
+    const amountScope = this.resolveAmountScope(dto.calcType, dto.amountScope);
     const applyScope = dto.applyScope === 'plans' ? 'plans' : 'all';
     const sur = this.surchargesRepository.create({
       customerId,
@@ -887,6 +888,7 @@ export class CustomersService {
       toDay: dto.toDay,
       active: dto.active ?? true,
       note: dto.note || '',
+      amountScope,
       applyScope,
       planIds:
         applyScope === 'plans'
@@ -903,6 +905,23 @@ export class CustomersService {
       JSON.stringify(saved),
     );
     return saved;
+  }
+
+  /**
+   * Đơn vị phụ phí cộng thêm: bắt buộc chọn 'container' hoặc 'plan'.
+   * Phụ phí % không cần đơn vị vì luôn tính trên doanh thu gốc từng container.
+   */
+  private resolveAmountScope(
+    calcType: string,
+    amountScope: string | undefined,
+  ): string {
+    if (calcType !== 'add') return 'plan';
+    if (amountScope === 'container' || amountScope === 'plan') {
+      return amountScope;
+    }
+    throw new BadRequestException(
+      'Phụ phí cộng thêm phải chọn đơn vị: mỗi container hoặc cả kế hoạch',
+    );
   }
 
   async updateSurcharge(
@@ -948,6 +967,19 @@ export class CustomersService {
     if (dto.note !== undefined && dto.note !== sur.note) {
       changes.note = { old: sur.note, new: dto.note };
       sur.note = dto.note;
+    }
+    if (dto.amountScope !== undefined) {
+      const scope = this.resolveAmountScope(
+        dto.calcType ?? sur.calcType,
+        dto.amountScope,
+      );
+      if (scope !== sur.amountScope) {
+        changes.amountScope = { old: sur.amountScope, new: scope };
+        sur.amountScope = scope;
+      }
+    } else if (dto.calcType !== undefined && dto.calcType !== 'add') {
+      // Phụ phí % không dùng đơn vị — giữ dữ liệu sạch.
+      sur.amountScope = 'plan';
     }
     if (dto.applyScope !== undefined) {
       const scope = dto.applyScope === 'plans' ? 'plans' : 'all';

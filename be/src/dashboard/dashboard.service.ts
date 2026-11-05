@@ -21,6 +21,7 @@ import {
 } from '../common/permissions/permissions';
 import { SalaryService } from '../salary/salary.service';
 import { AssignmentsService } from '../assignments/assignments.service';
+import { buildContainerTrips } from '../common/container-trips';
 
 // ─── Nhóm chi tiết trong `finance_cost_items` ────────────────────
 // Bảng này dùng CHUNG cho cả chi phí và vốn đầu tư, phân biệt bằng `category`.
@@ -452,16 +453,6 @@ export class DashboardService {
         overrideMap.set(`${o.planId}:${o.driverId}`, o.vehicleId);
       }
     }
-    const effectiveVehicleId = (
-      planId: number | null | undefined,
-      driverId: number,
-      actualVehicleId: number | null | undefined,
-      homeVehicleId: number | null | undefined,
-    ): number =>
-      (planId != null ? overrideMap.get(`${planId}:${driverId}`) : undefined) ??
-      actualVehicleId ??
-      homeVehicleId ??
-      driverId;
     // 2. Containers của các kế hoạch (lọc theo xe được phép xem nếu có).
     //    Khi bị giới hạn xe: CHỈ lấy container đã gán cho xe của họ — container
     //    chưa gán (sub = NULL) không được tính để tránh lộ sản lượng của kế hoạch
@@ -492,8 +483,8 @@ export class DashboardService {
               ? '1=1'
               : allowedVids.length === 0
                 ? '1=0'
-                : // Xe hiệu dụng: override > actual > home > tài xế.
-                  'COALESCE(pvo.vehicle_id, sub.actual_vehicle_id, u.home_vehicle_id, u.id) IN (:...allowed)',
+                : // Xe hiệu dụng: override > snapshot cont > actual > home > tài xế.
+                  'COALESCE(pvo.vehicle_id, ci.vehicle_id, sub.actual_vehicle_id, u.home_vehicle_id, u.id) IN (:...allowed)',
             allowedVids && allowedVids.length > 0
               ? { allowed: allowedVids }
               : {},
@@ -516,15 +507,19 @@ export class DashboardService {
         kepType: string;
       }
     >();
+    let allClaims: ContainerClaim[] = [];
     if (containers.length > 0) {
       const claims = await this.claimRepo
         .createQueryBuilder('cl')
+        .leftJoinAndSelect('cl.submissionRef', 'clSub')
+        .leftJoinAndSelect('clSub.user', 'clUser')
         .where('cl.containerImportId IN (:...ids)', {
           ids: containers.map((c) => c.id),
         })
         .orderBy('cl.createdAt', 'ASC')
         .addOrderBy('cl.id', 'ASC')
         .getMany();
+      allClaims = claims;
       const isBundleMember = (c: ContainerImport | undefined) =>
         !!c && !!c.bundleId && FR_BUNDLE_TYPES.has(String(c.type));
       const lastBySubmission = new Map<number, ContainerClaim>();
@@ -652,6 +647,41 @@ export class DashboardService {
     const userMap = new Map<number, User>();
     for (const u of allUsers) userMap.set(u.id, u);
 
+    // Xe snapshot theo TỪNG container (ưu tiên sau đảo xe theo kế hoạch).
+    // Dùng khi một submission có container ghi ở nhiều xe khác nhau.
+    const submissionVehicleVotes = new Map<number, Map<number, number>>();
+    for (const ci of containers) {
+      if (!ci.submissionId || ci.vehicleId == null) continue;
+      const votes =
+        submissionVehicleVotes.get(ci.submissionId) ??
+        new Map<number, number>();
+      votes.set(ci.vehicleId, (votes.get(ci.vehicleId) ?? 0) + 1);
+      submissionVehicleVotes.set(ci.submissionId, votes);
+    }
+    const submissionVehicleMap = new Map<number, number>();
+    for (const [sid, votes] of submissionVehicleVotes) {
+      let bestVid = 0;
+      let bestCount = -1;
+      for (const [vid, count] of votes) {
+        if (count > bestCount) {
+          bestVid = vid;
+          bestCount = count;
+        }
+      }
+      if (bestVid) submissionVehicleMap.set(sid, bestVid);
+    }
+
+    /** Xe thực chạy của 1 submission (dùng cho lương chuyến). */
+    const effectiveVehicleForSubmission = (
+      planId: number | null | undefined,
+      sub: Submission,
+    ): number =>
+      (planId != null ? overrideMap.get(`${planId}:${sub.userId}`) : undefined) ??
+      submissionVehicleMap.get(sub.id) ??
+      sub.actualVehicleId ??
+      userMap.get(sub.userId)?.homeVehicleId ??
+      sub.userId;
+
     // Xe chịu LƯƠNG CỨNG của từng lái xe theo ĐÚNG tháng đang xem (lịch sử bổ
     // nhiệm theo ngày hiệu lực). Không dùng `home_vehicle_id` hiện tại vì đổi xe
     // giữa tháng sẽ làm lương tháng cũ bị chuyển ngược sang xe mới.
@@ -703,6 +733,7 @@ export class DashboardService {
       day: number | null,
       conts: ContainerImport[],
       plan: ShippingLine | null,
+      includePlanFixedSurcharges = true,
     ): number => {
       if (!day) return 0;
       // Dùng đơn giá deal nếu kế hoạch ĐÃ NHẬP giá — kể cả đang "chờ duyệt"
@@ -783,16 +814,137 @@ export class DashboardService {
       for (const [kepType, count] of Object.entries(pairByKepType)) {
         total += unitFor(kepType) * count;
       }
-      // Phụ phí: NHÂN % TRƯỚC (trên doanh thu gốc), rồi mới CỘNG tiền cố định.
-      // Nhiều phụ phí % → cộng dồn % trên gốc (không phụ thuộc thứ tự bản ghi).
+      // Phụ phí %: cộng dồn % rồi nhân 1 lần trên doanh thu gốc của tập cont.
+      // Vì % tỷ lệ thuận nên cộng theo từng xe vẫn cho tổng khớp kế hoạch.
       const percentTotal = mySurcharges
         .filter((s) => s.calcType === 'percent')
         .reduce((sum, s) => sum + (Number(s.value) || 0), 0);
       if (percentTotal) total = total * (1 + percentTotal / 100);
+
+      // Phụ phí cộng thêm theo TỪNG ĐƠN VỊ TÍNH TIỀN:
+      //  - 1 container thường = 1 đơn vị
+      //  - 1 bó (FR) = 1 đơn vị (chỉ container đầu bó đại diện)
+      //  - 1 cặp kẹp = 1 đơn vị (chỉ container chính đại diện)
+      //  - VSL/TIP không tính
+      const billableUnits = (): number => {
+        let units = 0;
+        const seenBundle = new Set<string>();
+        const seenPair = new Set<number>();
+        for (const ci of conts) {
+          const type = String(ci.type);
+          if (type === 'VSL' || type === 'TIP') continue;
+          const kep = kepByContainer.get(ci.id);
+          if (kep) {
+            if (kep.role !== 'main' || seenPair.has(kep.mainId)) continue;
+            if (!contIds.has(kep.clampId)) continue;
+            seenPair.add(kep.mainId);
+            units += 1;
+            continue;
+          }
+          if (FR_TYPES.has(type)) {
+            // Chỉ container đầu bó (có giá đại diện) mới tính 1 đơn vị.
+            if (!frPriceByFirstContainer.has(ci.id)) continue;
+            if (ci.bundleId) {
+              const key = `${ci.shippingLineId}:${ci.bundleId}`;
+              if (seenBundle.has(key)) continue;
+              seenBundle.add(key);
+            }
+            units += 1;
+            continue;
+          }
+          units += 1;
+        }
+        return units;
+      };
+      const units = billableUnits();
       for (const sur of mySurcharges) {
-        if (sur.calcType === 'add') total += Number(sur.value) || 0;
+        if (sur.calcType !== 'add') continue;
+        const value = Number(sur.value) || 0;
+        // 'container' = cộng cho từng đơn vị; còn lại (kể cả dữ liệu cũ)
+        // = cộng 1 lần cho cả kế hoạch, do caller phân bổ xuống xe.
+        if (sur.amountScope === 'container') {
+          total += value * units;
+        } else if (includePlanFixedSurcharges) {
+          total += value;
+        }
       }
       return total;
+    };
+
+    /**
+     * Phân bổ một khoản (phụ phí cả kế hoạch) xuống các nhóm theo tỷ lệ
+     * `weights` (doanh thu gốc). Không làm tròn: nhóm cuối nhận đúng phần
+     * còn lại để tổng các nhóm luôn bằng `total`.
+     */
+    const allocateProportional = (
+      total: number,
+      weights: Map<number, number>,
+      counts: Map<number, number>,
+    ): Map<number, number> => {
+      const result = new Map<number, number>();
+      const keys = [...weights.keys()];
+      if (keys.length === 0) return result;
+      const weightSum = keys.reduce(
+        (s, k) => s + Math.max(0, weights.get(k) ?? 0),
+        0,
+      );
+      const countSum = keys.reduce(
+        (s, k) => s + Math.max(0, counts.get(k) ?? 0),
+        0,
+      );
+      let assigned = 0;
+      let adjustKey = keys[0];
+      let adjustWeight = -Infinity;
+      for (const k of keys) {
+        const w =
+          weightSum > 0
+            ? Math.max(0, weights.get(k) ?? 0) / weightSum
+            : countSum > 0
+              ? Math.max(0, counts.get(k) ?? 0) / countSum
+              : 1 / keys.length;
+        const share = total * w;
+        result.set(k, share);
+        assigned += share;
+        const cw =
+          weightSum > 0
+            ? Math.max(0, weights.get(k) ?? 0)
+            : Math.max(0, counts.get(k) ?? 0);
+        if (cw > adjustWeight) {
+          adjustWeight = cw;
+          adjustKey = k;
+        }
+      }
+      result.set(adjustKey, (result.get(adjustKey) ?? 0) + (total - assigned));
+      return result;
+    };
+
+    /** Đơn giá khách cho 1 loại container của kế hoạch (dùng cho từng lượt). */
+    const tripUnitPrice = (
+      plan: ShippingLine,
+      priceType: string,
+      day: number | null,
+    ): number => {
+      if (!plan || day == null) return 0;
+      const usePlanPrice =
+        plan.priceStatus !== 'rejected' &&
+        !!plan.dealedPrices &&
+        Object.keys(plan.dealedPrices).length > 0;
+      if (usePlanPrice) return Number(plan.dealedPrices![priceType]) || 0;
+      if (!plan.customerId) return 0;
+      const cands = allPrices.filter(
+        (p) =>
+          p.customerId === plan.customerId &&
+          day >= p.fromDay &&
+          day <= p.toDay &&
+          p.containerType === priceType,
+      );
+      const generic = cands.find((p) => !(p.routeName || '').trim());
+      const planRoute = (plan.routeName || '').trim();
+      const exact = planRoute
+        ? cands.find((p) => (p.routeName || '').trim() === planRoute)
+        : undefined;
+      const matched = exact ?? generic;
+      return matched ? Number(matched.unitPrice) || 0 : 0;
     };
 
     // ─── Helper: Tính lương chuyến cho 1 submission ──────────────
@@ -945,8 +1097,61 @@ export class DashboardService {
       for (const ci of conts)
         contByType[ci.type] = (contByType[ci.type] ?? 0) + 1;
 
-      // Revenue từ khách hàng chính
-      const revenue = calcRevenue(plan.customerId, day, conts, plan);
+      // ── Doanh thu theo TỪNG LƯỢT (container/claim) ──────────────
+      // Dùng chung logic với sheet "Container - Người chạy": bó/kẹp gộp
+      // 1 lượt; KV/VSL/REGO/KD2/CLASSIFY là lượt riêng. Nhờ vậy A kéo đi,
+      // B kéo về, C kéo đi lại → 3 lượt doanh thu độc lập.
+      const planContainerIdSet = new Set(conts.map((c) => c.id));
+      const planClaims = allClaims.filter((cl) =>
+        planContainerIdSet.has(cl.containerImportId),
+      );
+      const trips = buildContainerTrips(conts as any, planClaims as any, {
+        resolveVehicleId: (cl, c) => {
+          const sub = cl.submissionRef;
+          if (!sub) return c.vehicleId ?? null;
+          const subUserId = Number(sub.userId);
+          return (
+            overrideMap.get(`${plan.id}:${subUserId}`) ??
+            c.vehicleId ??
+            sub.actualVehicleId ??
+            userMap.get(subUserId)?.homeVehicleId ??
+            subUserId
+          );
+        },
+      });
+
+      const mySurcharges = allSurcharges.filter((s) => {
+        if (s.customerId !== plan.customerId) return false;
+        if (s.applyScope === 'plans') {
+          return (s.planIds || []).map(Number).includes(plan.id);
+        }
+        if (day == null) return false;
+        return day >= s.fromDay && day <= s.toDay;
+      });
+      // % cộng dồn rồi nhân 1 lần; cộng thêm theo lượt sau đó.
+      const percentTotal = mySurcharges
+        .filter((s) => s.calcType === 'percent')
+        .reduce((sum, s) => sum + (Number(s.value) || 0), 0);
+      const perContainerAdd = mySurcharges
+        .filter((s) => s.calcType === 'add' && s.amountScope === 'container')
+        .reduce((sum, s) => sum + (Number(s.value) || 0), 0);
+      const planAdd = mySurcharges
+        .filter((s) => s.calcType === 'add' && s.amountScope !== 'container')
+        .reduce((sum, s) => sum + (Number(s.value) || 0), 0);
+
+      const tripBase = new Map<string, number>();
+      for (const trip of trips) {
+        const unit = tripUnitPrice(plan, trip.priceType, day);
+        tripBase.set(
+          trip.key,
+          unit * (1 + percentTotal / 100) + perContainerAdd,
+        );
+      }
+      const tripBaseSum = trips.reduce(
+        (s, t) => s + (tripBase.get(t.key) ?? 0),
+        0,
+      );
+      const revenue = tripBaseSum + planAdd;
 
       // Chi phí subvendor
       let subvendorCost = 0;
@@ -968,27 +1173,6 @@ export class DashboardService {
       totalRevenue += revenue;
       totalSubvendor += subvendorCost;
       totalLuongChuyen += luongChuyen;
-
-      // Xe hiệu dụng (effective vehicle): nếu tài xế đang lái thay xe khác,
-      // dùng actual_vehicle_id của submission thay vì userId để tính doanh thu.
-      // Nhờ vậy doanh thu đi về đúng bên sở hữu xe (NWA/NWB), không phải bên tài xế gốc.
-      //
-      // Gom container theo xe hiệu dụng (mỗi xe một danh sách riêng)
-      const contsByEffectiveDriver = new Map<number, ContainerImport[]>();
-      for (const ci of conts) {
-        const sub = ci.submissionRef;
-        if (!sub) continue;
-        const effectiveId = effectiveVehicleId(
-          plan.id,
-          sub.userId,
-          sub.actualVehicleId,
-          userMap.get(sub.userId)?.homeVehicleId,
-        );
-        if (!effectiveId) continue;
-        const arr = contsByEffectiveDriver.get(effectiveId) ?? [];
-        arr.push(ci);
-        contsByEffectiveDriver.set(effectiveId, arr);
-      }
 
       // Customer accumulation (toàn bộ plan, không chia)
       if (plan.customerId) {
@@ -1032,18 +1216,39 @@ export class DashboardService {
         dailyRevenueMap.set(day, de);
       }
 
-      // Driver accumulation: mỗi xe tính DOANH THU RIÊNG dựa trên container
-      // CỦA CHÍNH XE ĐÓ (không chia đều). Xe chạy nhiều/loại đắt → nhiều hơn.
-      for (const [dId, driverConts] of contsByEffectiveDriver.entries()) {
-        // Doanh thu từ đúng container của xe này trong plan này
-        const driverRevenue = calcRevenue(
-          plan.customerId,
-          day,
-          driverConts,
-          plan,
+      // ── Doanh thu theo xe / lái xe, từng lượt ──
+      const tripVehicleOf = (t: (typeof trips)[number]): number =>
+        Number(t.vehicleId ?? t.driverId ?? 0);
+      const vehicleBase = new Map<number, number>();
+      const vehicleCounts = new Map<number, number>();
+      for (const t of trips) {
+        const vid = tripVehicleOf(t);
+        vehicleBase.set(
+          vid,
+          (vehicleBase.get(vid) ?? 0) + (tripBase.get(t.key) ?? 0),
         );
-
-        const entry = driverRevenueMap.get(dId) ?? {
+        vehicleCounts.set(vid, (vehicleCounts.get(vid) ?? 0) + 1);
+      }
+      const vehicleBaseSum = Array.from(vehicleBase.values()).reduce(
+        (s, v) => s + v,
+        0,
+      );
+      const vehicleExtras = allocateProportional(
+        revenue - vehicleBaseSum,
+        vehicleBase,
+        vehicleCounts,
+      );
+      const tripsByVehicle = new Map<number, (typeof trips)[number][]>();
+      for (const t of trips) {
+        const vid = tripVehicleOf(t);
+        const arr = tripsByVehicle.get(vid) ?? [];
+        arr.push(t);
+        tripsByVehicle.set(vid, arr);
+      }
+      for (const [vid, vTrips] of tripsByVehicle) {
+        const driverRevenue =
+          (vehicleBase.get(vid) ?? 0) + (vehicleExtras.get(vid) ?? 0);
+        const entry = driverRevenueMap.get(vid) ?? {
           revenue: 0,
           luongKhoan: 0,
           planCount: 0,
@@ -1052,21 +1257,18 @@ export class DashboardService {
         };
         entry.revenue += driverRevenue;
         entry.planCount += 1;
-
-        // Lương chuyến: tìm submission theo xe hiệu dụng (gốc hoặc lái thay)
-        const driverSub = subs.find(
-          (s) =>
-            effectiveVehicleId(
-              plan.id,
-              s.userId,
-              s.actualVehicleId,
-              userMap.get(s.userId)?.homeVehicleId,
-            ) === dId,
+        const driverSubs = subs.filter(
+          (s) => effectiveVehicleForSubmission(plan.id, s) === vid,
         );
-        if (driverSub) entry.luongKhoan += calcSubSalary(driverSub, plan);
-
-        entry.totalCont += driverConts.length;
-
+        for (const s of driverSubs) {
+          entry.luongKhoan += calcSubSalary(s, plan);
+        }
+        // Web đếm container DUY NHẤT; Excel mới lặp theo từng lượt.
+        const uniqueContIds = new Set<number>();
+        for (const t of vTrips) {
+          for (const cid of t.containerIds) uniqueContIds.add(cid);
+        }
+        entry.totalCont += uniqueContIds.size;
         const routeEntry = entry.routes.get(plan.routeName) ?? {
           revenue: 0,
           planCount: 0,
@@ -1075,30 +1277,44 @@ export class DashboardService {
         };
         routeEntry.revenue += driverRevenue;
         routeEntry.planCount += 1;
-        routeEntry.contCount += driverConts.length;
-        for (const ci of driverConts) {
-          routeEntry.contByType[ci.type] =
-            (routeEntry.contByType[ci.type] ?? 0) + 1;
+        routeEntry.contCount += uniqueContIds.size;
+        for (const cid of uniqueContIds) {
+          const c = conts.find((x) => x.id === cid);
+          if (c) {
+            routeEntry.contByType[c.type] =
+              (routeEntry.contByType[c.type] ?? 0) + 1;
+          }
         }
         entry.routes.set(plan.routeName, routeEntry);
-        driverRevenueMap.set(dId, entry);
+        driverRevenueMap.set(vid, entry);
 
-        // ── Tách theo LÁI XE trong cùng xe (lái chính + lái phụ) ──
-        const contsByDriverInVehicle = new Map<number, ContainerImport[]>();
-        for (const ci of driverConts) {
-          const sub = ci.submissionRef;
-          if (!sub) continue;
-          const arr = contsByDriverInVehicle.get(sub.userId) ?? [];
-          arr.push(ci);
-          contsByDriverInVehicle.set(sub.userId, arr);
+        // ── Tách theo LÁI XE trong cùng xe, từng lượt ──
+        const driverTripBase = new Map<number, number>();
+        const driverTripCount = new Map<number, number>();
+        for (const t of vTrips) {
+          const did = Number(t.driverId ?? 0);
+          driverTripBase.set(
+            did,
+            (driverTripBase.get(did) ?? 0) + (tripBase.get(t.key) ?? 0),
+          );
+          driverTripCount.set(did, (driverTripCount.get(did) ?? 0) + 1);
         }
-        let vdMap = vehicleDriverRevenueMap.get(dId);
+        const driverBaseSum = Array.from(driverTripBase.values()).reduce(
+          (s, v) => s + v,
+          0,
+        );
+        const driverExtras = allocateProportional(
+          driverRevenue - driverBaseSum,
+          driverTripBase,
+          driverTripCount,
+        );
+        let vdMap = vehicleDriverRevenueMap.get(vid);
         if (!vdMap) {
           vdMap = new Map();
-          vehicleDriverRevenueMap.set(dId, vdMap);
+          vehicleDriverRevenueMap.set(vid, vdMap);
         }
-        for (const [driverId, dConts] of contsByDriverInVehicle.entries()) {
-          const dRev = calcRevenue(plan.customerId, day, dConts, plan);
+        for (const [driverId, base] of driverTripBase) {
+          const dRev = base + (driverExtras.get(driverId) ?? 0);
           const de = vdMap.get(driverId) ?? {
             revenue: 0,
             luongKhoan: 0,
@@ -1109,9 +1325,15 @@ export class DashboardService {
           };
           de.revenue += dRev;
           de.planCount += 1;
-          de.totalCont += dConts.length;
-          for (const ci of dConts) {
-            de.contByType[ci.type] = (de.contByType[ci.type] ?? 0) + 1;
+          const dContIds = new Set<number>();
+          for (const t of vTrips) {
+            if (Number(t.driverId) !== driverId) continue;
+            for (const cid of t.containerIds) dContIds.add(cid);
+          }
+          de.totalCont += dContIds.size;
+          for (const cid of dContIds) {
+            const c = conts.find((x) => x.id === cid);
+            if (c) de.contByType[c.type] = (de.contByType[c.type] ?? 0) + 1;
           }
           const dRoute = de.routes.get(plan.routeName) ?? {
             revenue: 0,
@@ -1121,23 +1343,21 @@ export class DashboardService {
           };
           dRoute.revenue += dRev;
           dRoute.planCount += 1;
-          dRoute.contCount += dConts.length;
-          for (const ci of dConts) {
-            dRoute.contByType[ci.type] = (dRoute.contByType[ci.type] ?? 0) + 1;
+          dRoute.contCount += dContIds.size;
+          for (const cid of dContIds) {
+            const c = conts.find((x) => x.id === cid);
+            if (c) {
+              dRoute.contByType[c.type] =
+                (dRoute.contByType[c.type] ?? 0) + 1;
+            }
           }
           de.routes.set(plan.routeName, dRoute);
-          // Lương chuyến của lái xe này trên xe này.
-          const dSub = subs.find(
+          const dSubs = subs.filter(
             (s) =>
               s.userId === driverId &&
-              effectiveVehicleId(
-                plan.id,
-                s.userId,
-                s.actualVehicleId,
-                userMap.get(s.userId)?.homeVehicleId,
-              ) === dId,
+              effectiveVehicleForSubmission(plan.id, s) === vid,
           );
-          if (dSub) de.luongKhoan += calcSubSalary(dSub, plan);
+          for (const s of dSubs) de.luongKhoan += calcSubSalary(s, plan);
           vdMap.set(driverId, de);
         }
       }
@@ -1153,10 +1373,12 @@ export class DashboardService {
         vendorKhac: plan.vendorKhac,
         completed: plan.completed,
         totalCont: conts.length,
-        revenue: Math.round(revenue),
+        revenue: revenue,
         subvendorCost: Math.round(subvendorCost),
         luongChuyen: Math.round(luongChuyen),
-        driverCount: contsByEffectiveDriver.size,
+        driverCount: new Set(
+          trips.map((t) => Number(t.vehicleId ?? t.driverId ?? 0)),
+        ).size,
         contByType,
       });
     }
@@ -1177,7 +1399,7 @@ export class DashboardService {
         stt: vv?.stt || u?.stt || '',
         sdt: u?.sdt ?? '',
         ngayHoatDong: vv?.ngayHoatDong ?? u?.ngayHoatDong ?? null,
-        revenue: Math.round(entry.revenue),
+        revenue: entry.revenue,
         luongKhoan: Math.round(entry.luongKhoan),
         planCount: entry.planCount,
         totalPlanCount: planSummaries.length,
@@ -1185,7 +1407,7 @@ export class DashboardService {
         routes: Array.from(entry.routes.entries())
           .map(([routeName, r]) => ({
             routeName,
-            revenue: Math.round(r.revenue),
+            revenue: r.revenue,
             planCount: r.planCount,
             contCount: r.contCount,
             contByType: r.contByType,
@@ -1198,7 +1420,7 @@ export class DashboardService {
               driverId,
               fullName: du?.fullName ?? `Lái xe #${driverId}`,
               isMain: driverId === dId,
-              revenue: Math.round(e.revenue),
+              revenue: e.revenue,
               luongKhoan: Math.round(e.luongKhoan),
               planCount: e.planCount,
               totalCont: e.totalCont,
@@ -1206,7 +1428,7 @@ export class DashboardService {
               routes: Array.from(e.routes.entries())
                 .map(([routeName, r]) => ({
                   routeName,
-                  revenue: Math.round(r.revenue),
+                  revenue: r.revenue,
                   planCount: r.planCount,
                   contCount: r.contCount,
                   contByType: r.contByType,
@@ -1238,12 +1460,7 @@ export class DashboardService {
     >();
     for (const sub of allSubmissions) {
       const dId = sub.userId;
-      const vId = effectiveVehicleId(
-        sub.shippingLineId,
-        sub.userId,
-        sub.actualVehicleId,
-        userMap.get(sub.userId)?.homeVehicleId,
-      );
+      const vId = effectiveVehicleForSubmission(sub.shippingLineId, sub);
       const plan = sub.shippingLineId
         ? planById.get(sub.shippingLineId)
         : undefined;
@@ -1386,53 +1603,42 @@ export class DashboardService {
         });
       }
 
-      // (2) Lương chuyến → chia theo từng xe đã chạy (tỷ lệ theo lương chuyến).
-      if (entries.length > 0 && comp.luongKhoan !== 0) {
-        const totalTripSalary = entries.reduce((s, e) => s + e.salary, 0);
-        const totalCount = entries.reduce((s, e) => s + e.count, 0);
-        const parts = entries.map((e) => ({
-          vid: e.vid,
-          part:
-            totalTripSalary > 0
-              ? Math.round((comp.luongKhoan * e.salary) / totalTripSalary)
-              : Math.round((comp.luongKhoan * e.count) / (totalCount || 1)),
-        }));
-        // Dồn phần lẻ vào phần tử đầu để tổng không đổi.
-        const assigned = parts.reduce((s, p) => s + p.part, 0);
-        parts[0].part += comp.luongKhoan - assigned;
-
-        for (const p of parts) {
-          if (p.part === 0) continue;
-          const row = ensureVehicleRow(p.vid);
-          row.luongNguoiLai += p.part;
-          row.luongKhoan += p.part;
-          if (p.vid === homeVid) {
-            // Chính xe nhà → gộp vào dòng lái chính đã tạo ở (1).
-            const main = row.drivers.find((x) => x.driverId === d.id);
-            if (main) {
-              main.luongKhoan += p.part;
-              main.luongNguoiLai += p.part;
-            } else {
-              row.drivers.push({
-                driverId: d.id,
-                fullName: d.fullName || '',
-                isMain: true,
-                ...emptyComp(),
-                luongKhoan: p.part,
-                luongNguoiLai: p.part,
-              });
-            }
+      // (2) Lương chuyến → cộng TRỰC TIẾP lương từng chuyến theo xe đã chạy.
+      // Mỗi xe nhận đúng tổng đơn giá tuyến đường × sản lượng của các chuyến
+      // trên xe đó (không chia tỷ lệ từ tổng lương tháng của lái xe, vì cách
+      // chia cũ tạo ra số lẻ và làm sai chi phí khi tài khoản bị giới hạn xe).
+      for (const e of entries) {
+        const part = Math.round(e.salary);
+        if (part === 0) continue;
+        const row = ensureVehicleRow(e.vid);
+        row.luongNguoiLai += part;
+        row.luongKhoan += part;
+        if (e.vid === homeVid) {
+          // Chính xe nhà → gộp vào dòng lái chính đã tạo ở (1).
+          const main = row.drivers.find((x) => x.driverId === d.id);
+          if (main) {
+            main.luongKhoan += part;
+            main.luongNguoiLai += part;
           } else {
-            // Lái phụ (mượn xe) → chỉ lương chuyến.
             row.drivers.push({
               driverId: d.id,
               fullName: d.fullName || '',
-              isMain: false,
+              isMain: true,
               ...emptyComp(),
-              luongKhoan: p.part,
-              luongNguoiLai: p.part,
+              luongKhoan: part,
+              luongNguoiLai: part,
             });
           }
+        } else {
+          // Lái phụ (mượn xe) → chỉ lương chuyến.
+          row.drivers.push({
+            driverId: d.id,
+            fullName: d.fullName || '',
+            isMain: false,
+            ...emptyComp(),
+            luongKhoan: part,
+            luongNguoiLai: part,
+          });
         }
       }
     }

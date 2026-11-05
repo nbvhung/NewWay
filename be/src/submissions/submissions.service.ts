@@ -131,10 +131,21 @@ export class SubmissionsService {
     // TypeORM không tự load relation khi @Column và @ManyToOne cùng tên cột.
     const submissions = await this.submissionsRepository
       .createQueryBuilder('sub')
+      // Xe thực chạy = đảo lái xe theo kế hoạch > snapshot lúc ghi > xe nhà.
       // `actual_vehicle_id` trỏ tới BẢNG XE (vehicles.id), không phải users.id.
       // Trước đây join nhầm `users` nên khi user.id trùng vehicle.id (VD Dũng
       // = 31) lại hiện biển số của user thay vì xe thực chạy.
-      .leftJoin('vehicles', 'av', 'av.id = sub.actual_vehicle_id')
+      .leftJoin('users', 'u', 'u.id = sub.user_id')
+      .leftJoin(
+        'plan_vehicle_overrides',
+        'pvo',
+        'pvo.plan_id = sub.shipping_line_id AND pvo.driver_id = sub.user_id',
+      )
+      .leftJoin(
+        'vehicles',
+        'av',
+        'av.id = COALESCE(pvo.vehicle_id, sub.actual_vehicle_id, u.home_vehicle_id, sub.user_id)',
+      )
       .leftJoin('users', 'avo', 'avo.id = av.owner_user_id')
       .addSelect('av.so_xe', 'av_so_xe')
       .addSelect('avo.full_name', 'av_full_name')
@@ -941,15 +952,19 @@ export class SubmissionsService {
       .createQueryBuilder('s')
       .leftJoinAndSelect('s.user', 'user')
       .leftJoinAndSelect('s.shippingLineRef', 'sl')
-      // Join xe thực chạy để lấy biển số (actualVehicleSoXe).
+      // Xe thực chạy = đảo lái xe theo kế hoạch > snapshot lúc ghi > xe nhà.
       // `actual_vehicle_id` là vehicles.id; owner (chủ vốn/bên) nằm ở users.
-      .leftJoin('vehicles', 'av', 'av.id = s.actual_vehicle_id')
-      .leftJoin('users', 'avo', 'avo.id = av.owner_user_id')
       .leftJoin(
         'plan_vehicle_overrides',
         'pvo',
         'pvo.plan_id = s.shipping_line_id AND pvo.driver_id = s.user_id',
       )
+      .leftJoin(
+        'vehicles',
+        'av',
+        'av.id = COALESCE(pvo.vehicle_id, s.actual_vehicle_id, user.home_vehicle_id, s.user_id)',
+      )
+      .leftJoin('users', 'avo', 'avo.id = av.owner_user_id')
       .addSelect('av.so_xe', 'av_so_xe')
       .addSelect('avo.full_name', 'av_full_name')
       .addSelect('avo.ben', 'av_ben')

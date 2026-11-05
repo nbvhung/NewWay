@@ -122,6 +122,7 @@ export function CustomersTab({ onRefresh, toast }: Props) {
     fromDay: '',
     toDay: '',
     note: '',
+    amountScope: '' as '' | 'container' | 'plan',
     applyScope: 'all' as 'all' | 'plans',
     planIds: [] as number[],
   });
@@ -468,7 +469,7 @@ export function CustomersTab({ onRefresh, toast }: Props) {
   // ── Phụ phí ────────────────────────────────────────────────────
   const openAddSur = () => {
     setSurEditId(null);
-    setSurForm({ name: '', calcType: 'add', value: '', fromDay: '', toDay: '', note: '', applyScope: 'all', planIds: [] });
+    setSurForm({ name: '', calcType: 'add', value: '', fromDay: '', toDay: '', note: '', amountScope: '', applyScope: 'all', planIds: [] });
     if (selected) loadSurPlans(selected.id, month, year);
     setSurModal(true);
   };
@@ -482,6 +483,7 @@ export function CustomersTab({ onRefresh, toast }: Props) {
       fromDay: String(s.fromDay),
       toDay: String(s.toDay),
       note: s.note || '',
+      amountScope: (s.amountScope || 'plan') as 'container' | 'plan',
       applyScope: (s.applyScope || 'all') as 'all' | 'plans',
       planIds: (s.planIds || []).map(Number),
     });
@@ -499,6 +501,10 @@ export function CustomersTab({ onRefresh, toast }: Props) {
       toast('Vui lòng chọn ít nhất 1 kế hoạch áp dụng phụ phí', 'error');
       return;
     }
+    if (surForm.calcType === 'add' && !surForm.amountScope) {
+      toast('Vui lòng chọn đơn vị phụ phí: mỗi container hoặc cả kế hoạch', 'error');
+      return;
+    }
     const data = {
       name: surForm.name.trim(),
       calcType: surForm.calcType as 'add' | 'percent',
@@ -508,6 +514,7 @@ export function CustomersTab({ onRefresh, toast }: Props) {
       fromDay: Number(surForm.fromDay),
       toDay: Number(surForm.toDay),
       note: surForm.note,
+      amountScope: surForm.calcType === 'add' ? (surForm.amountScope as 'container' | 'plan') : undefined,
       applyScope: surForm.applyScope,
       planIds: surForm.applyScope === 'plans' ? surForm.planIds : [],
     };
@@ -1034,7 +1041,7 @@ export function CustomersTab({ onRefresh, toast }: Props) {
                         </div>
                         <div className="text-[10px] text-[#78716c] mt-1">
                           {s.calcType === 'add'
-                            ? <span className="px-1.5 py-0.5 rounded bg-[rgba(16,185,129,0.12)] text-emerald-700 font-semibold">Cộng {Number(s.value).toLocaleString('vi-VN')} ₫</span>
+                            ? <span className="px-1.5 py-0.5 rounded bg-[rgba(16,185,129,0.12)] text-emerald-700 font-semibold">Cộng {Number(s.value).toLocaleString('vi-VN')} ₫ {s.amountScope === 'container' ? '/ container' : '/ kế hoạch'}</span>
                             : <span className="px-1.5 py-0.5 rounded bg-[rgba(245,158,11,0.12)] text-[#d97706] font-semibold">{Number(s.value)}% Đơn giá</span>}
                           {s.note && <span className="ml-2">{s.note}</span>}
                         </div>
@@ -1262,6 +1269,20 @@ export function CustomersTab({ onRefresh, toast }: Props) {
               <option value="percent">% Đơn giá gốc (theo loại container)</option>
             </select>
           </div>
+          {surForm.calcType === 'add' && (
+            <div>
+              <label className="block text-xs font-medium text-[#78716c] mb-1.5">Đơn vị phụ phí <span className="text-[#ef4444]">*</span></label>
+              <select
+                value={surForm.amountScope}
+                onChange={e => setSurForm(f => ({ ...f, amountScope: e.target.value as 'container' | 'plan' }))}
+                className={inputCls}
+              >
+                <option value="">— Chọn đơn vị —</option>
+                <option value="container">Mỗi container (bó/kẹp tính 1, bỏ VSL/TIP)</option>
+                <option value="plan">Cả kế hoạch (phân bổ theo doanh thu gốc)</option>
+              </select>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-[#78716c] mb-1.5">Từ ngày <span className="text-[#ef4444]">*</span></label>

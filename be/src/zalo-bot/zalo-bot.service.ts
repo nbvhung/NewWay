@@ -2199,6 +2199,8 @@ export class ZaloBotService {
         );
         return;
       }
+      const claimVehicleId =
+        user.currentVehicleId ?? user.homeVehicleId ?? user.id;
       if (!container.shippingLineId) {
         await this.reply(
           chatId,
@@ -2326,18 +2328,25 @@ export class ZaloBotService {
           container.bundleId,
           container.shippingLineId,
           submission.id,
+          claimVehicleId,
         );
         await this.containerImportService.recordClaims(
           members.map((m) => m.id),
           submission.id,
           claimType,
+          claimVehicleId,
         );
       } else {
-        await this.containerImportService.claim(container.id, submission.id);
+        await this.containerImportService.claim(
+          container.id,
+          submission.id,
+          claimVehicleId,
+        );
         await this.containerImportService.recordClaims(
           [container.id],
           submission.id,
           claimType,
+          claimVehicleId,
         );
       }
 

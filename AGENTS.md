@@ -60,6 +60,27 @@ VPS AZDIGI (103.221.223.230) — https://newwaytraco.com
 > ⚠️ **Production KHÔNG có migration runner** (`synchronize: !isProd`). Thay đổi schema phải chạy
 > file `.sql` bằng tay trên VPS trước khi `docker compose up -d --build`.
 
+### Quy trình thay đổi & triển khai (BẮT BUỘC)
+
+Mọi thay đổi đi qua GitHub rồi mới deploy lên VPS — **không sửa trực tiếp trên VPS**.
+
+1. Sửa code tại local, chạy build/lint/test liên quan (backend: `cd be && npm run build`).
+2. Nếu đổi schema: tạo migration idempotent `deploy/migrate-*.sql` và chạy tay trên VPS
+   **TRƯỚC** khi build.
+3. Commit và push lên GitHub (`origin main`).
+4. Trên VPS:
+   ```bash
+   cd /opt/newway
+   bash deploy/deploy.sh
+   ```
+   Script sẽ `git fetch + reset --hard origin/main`, cảnh báo file migration mới, và chỉ
+   build service đã đổi trong `be/` hoặc `fe/`.
+5. Kiểm tra sau deploy:
+   ```bash
+   docker compose ps
+   docker compose logs --tail=30 backend
+   ```
+
 ## Backend Module Map
 
 | Module | Controller Route Prefix | Guards |
@@ -248,8 +269,8 @@ Mỗi bên có **sổ chi phí riêng**; xe quyết định khoản chi thuộc 
 - `users.ben` (`'A' | 'B' | NULL`) = bên của **tài khoản chủ vốn**. Xe thừa hưởng bên từ
   chủ vốn sở hữu nó qua `users.visible_driver_ids`; xe không thuộc chủ vốn nào → mặc định `'A'`.
   Hiện tại: `user 6 (Mr Bach) = A`, `user 30 (NwB/Boss) = B` (sở hữu xe `15H 10090` / lái xe `Dũng`).
-- `finance_cost_items.vehicle_user_id` = xe mà khoản chi thuộc về (id lái xe đại diện xe).
-  `NULL` = chi phí chung, không gắn xe.
+- `finance_cost_items.vehicle_user_id` = xe mà khoản chi thuộc về, lưu **`vehicles.id`**
+  (tên cột cũ, KHÔNG phải `users.id`). `NULL` = chi phí chung, không gắn xe.
 - **Chọn nhiều xe cho 1 khoản chi** → mỗi xe 1 dòng, mỗi dòng 1 số tiền riêng
   (`POST /api/admin/finance/cost-items/bulk`, body `{ category, itemDate, name, note, vehicles:[{vehicleUserId, amount}] }`).
 - **Tách biệt hoàn toàn**: `GET /api/admin/finance/vehicles` chỉ trả xe **thuộc bên đang xem**, và
@@ -257,6 +278,41 @@ Mỗi bên có **sổ chi phí riêng**; xe quyết định khoản chi thuộc 
 - Chỉ `supper_admin` xem/nhập được cả 2 bên (qua `targetUserId`); admin và tài khoản chủ vốn chỉ thấy bên mình.
 - `GET /api/admin/finance` trả thêm `ben`, `benLabel` ("Bên A"), `ownerName` để FE hiện nhãn bên.
 - Migration: `deploy/migrate-add-finance-vehicle-ben.sql` (idempotent, chạy tay trên VPS).
+
+### Doanh thu & chi phí theo XE (quy tắc tính)
+
+- Mỗi container khi được ghi nhận lưu snapshot `container_imports.vehicle_id` = xe thực chạy
+  tại thời điểm ghi (bot, admin ghi hộ, phân loại phát sinh).
+- Xe thực chạy ưu tiên: `plan_vehicle_overrides` (đảo theo kế hoạch) > `container_imports.vehicle_id`
+  > `submissions.actual_vehicle_id` > `users.home_vehicle_id` > user id.
+- **Mỗi lượt (claim) là 1 dòng doanh thu/lương riêng**, dựng bằng
+  `be/src/common/container-trips.ts` (`buildContainerTrips`) — dùng chung logic với sheet
+  Excel **"Container - Người chạy"**:
+  - 1 container lẻ = 1 lượt.
+  - 1 bó FR = 1 lượt (`quantity` = số container trong bó).
+  - 1 cặp kẹp = 1 lượt (`priceType` = KV20/KV20FR, `quantity` = 2); kéo về lẻ 1 cont vẫn là 1 lượt KV.
+  - CLAIM / REGO / KD2 / CLASSIFY: doanh thu = giá container gốc.
+  - KV (kéo về): doanh thu = giá container gốc; lương = đơn giá tuyến × 1.
+  - VSL: doanh thu = giá VSL; lương = 40.000 × hệ số.
+- **Doanh thu kế hoạch = tổng doanh thu các lượt** (cùng 1 mã container có thể xuất hiện nhiều
+  lần: A kéo đi, B kéo về, C kéo đi lại → 3 lượt). Web hiện **số container duy nhất + tag tác
+  nghiệp**; Excel lặp mã container cho từng lượt.
+- **Phụ phí**:
+  - `calcType='percent'`: cộng dồn % rồi nhân 1 lần trên doanh thu gốc của từng lượt.
+    Phụ phí KHÔNG làm thay đổi lương chuyến của lái xe.
+  - `calcType='add'` + `amount_scope='container'`: cộng số tiền cho từng lượt (bó/kẹp = 1 lượt;
+    VSL/TIP không tính).
+  - `calcType='add'` + `amount_scope='plan'`: cộng 1 lần cho cả kế hoạch rồi phân bổ xuống
+    xe/lái xe theo tỷ lệ doanh thu gốc; tổng các xe luôn khớp doanh thu kế hoạch.
+  - Không làm tròn trong tính toán; chỉ format khi hiển thị.
+- **Lương chuyến**: `calcSubSalary` (đơn giá tuyến × sản lượng) đi theo xe thực chạy của
+  submission. Lương cứng + chuyên cần + phụ cấp + BHXH + tip + khấu trừ đi theo **xe nhà của
+  tháng** (`driver_vehicle_assignments`).
+- **Chi phí sửa chữa / nhiên liệu / CP khác**: `finance_cost_items.vehicle_user_id` lưu
+  `vehicles.id` (xem mục "Tách bên New Way A / New Way B").
+- Migration: `deploy/migrate-add-container-vehicle.sql`,
+  `deploy/migrate-add-surcharge-amount-scope.sql` (idempotent, chạy tay trên VPS trước khi build).
+- Test logic lượt: `be/src/common/container-trips.spec.ts`.
 
 ### Lịch sử bổ nhiệm lái xe theo NGÀY HIỆU LỰC (xe chịu lương cứng theo THÁNG)
 
@@ -587,8 +643,8 @@ EXPO_PUBLIC_API_URL=http://192.168.1.x:4000/api  # IP máy local, mobile cùng W
 6. **Responsive** — giao diện phải hoạt động tốt trên mobile (lái xe dùng điện thoại)
 7. **Proxy rewrite** — Next.js rewrite proxy `/api/*` → backend, đảm bảo cookie same-origin (fix Safari/iOS)
 8. **Security** — Helmet, rate limiting (100/min), CORS exact match, `synchronize: false` ở production (tự động theo `NODE_ENV`)
-9. **DB isolation** — PostgreSQL chạy trên server công ty, kết nối qua WireGuard tunnel, không expose internet
-10. **Deployment** — xem `deploy/` cho Docker + setup script 1 lệnh
+9. **DB isolation** — PostgreSQL chạy trên VPS trong container `newway-postgres-1`, chỉ trong mạng docker nội bộ, không expose internet
+10. **Deployment** — push lên GitHub rồi deploy lên VPS bằng `cd /opt/newway && bash deploy/deploy.sh` (xem "Quy trình thay đổi & triển khai" ở mục Production architecture)
 11. **Axios pattern** — cả web (`fe`) và mobile (`app`) dùng axios với cùng pattern: mỗi module API là 1 object export các hàm gọi instance axios. Web dùng cookie auth, mobile dùng Bearer token.
 12. **Mobile auth** — mobile app không dùng httpOnly cookies. Dùng `POST /api/auth/mobile-login` nhận token JSON, lưu expo-secure-store, gửi Bearer token qua interceptor.
 13. **Zalo Bot** — PRODUCTION dùng **WEBHOOK** là chính (`ZALO_POLLING=false`); long-polling (`ZALO_POLLING=true`) chỉ là **dự phòng** khi webhook sự cố (bật polling sẽ tự xóa webhook — nhớ set lại webhook khi tắt). Khi đổi nội dung file audio "buồn ngủ" phải đổi tên file + route + `ZALO_BUON_NGU_AUDIO_URL` để tránh cache. Không thêm lệnh `/xong`; ghi nhận real-time. Kế hoạch `completed` chặn import + ghi. Container trùng 7 số cuối → luôn cho chọn 1/2, không ghi nhận mặc định. STT phải qua bước lọc số (text-parser) vì voice-to-text hay sai/nhiễu.

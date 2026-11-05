@@ -56,6 +56,11 @@ export class CreateCustomerSurchargeDto {
   @IsString()
   note?: string;
 
+  /** Với calcType='add': 'container' = mỗi container, 'plan' = cả kế hoạch. */
+  @IsOptional()
+  @IsIn(['container', 'plan'], { message: 'Đơn vị phụ phí không hợp lệ' })
+  amountScope?: string;
+
   /** 'all' = mọi kế hoạch, 'plans' = chỉ các kế hoạch trong planIds. */
   @IsOptional()
   @IsIn(['all', 'plans'], { message: 'Phạm vi áp dụng không hợp lệ' })

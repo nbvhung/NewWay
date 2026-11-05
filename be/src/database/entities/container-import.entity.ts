@@ -52,6 +52,14 @@ export class ContainerImport {
   @Column({ name: 'submission_id', type: 'int', nullable: true })
   submissionId: number | null;
 
+  /**
+   * Snapshot XE THỰC CHẠY tại thời điểm container được ghi nhận.
+   * Ưu tiên: đảo xe theo kế hoạch > cột này > submission.actual_vehicle_id >
+   * users.home_vehicle_id > user_id. Không đặt FK vì fallback cuối là user_id.
+   */
+  @Column({ name: 'vehicle_id', type: 'int', nullable: true })
+  vehicleId: number | null;
+
   @Column({ name: 'keo_ve', type: 'boolean', default: false })
   keoVe: boolean;
 

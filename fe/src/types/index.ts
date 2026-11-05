@@ -105,6 +105,8 @@ export interface CustomerSurcharge {
   toDay: number;
   active: boolean;
   note: string;
+  /** Với calcType='add': 'container' = mỗi container, 'plan' = cả kế hoạch. */
+  amountScope?: 'container' | 'plan';
   /** 'all' = mọi kế hoạch, 'plans' = chỉ các kế hoạch trong planIds. */
   applyScope?: 'all' | 'plans';
   planIds?: number[] | null;
