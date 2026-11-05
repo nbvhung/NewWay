@@ -5,7 +5,9 @@ import { CustomersService } from './customers.service';
  * Regression test cho lỗi: lưu "Gán kế hoạch đã hoàn thành" làm mất khách hàng
  * của các kế hoạch CHƯA hoàn thành (không nằm trong danh sách tick).
  *
- * Quy tắc đúng: chỉ gỡ khách của kế hoạch ĐÃ HOÀN THÀNH không được tick.
+ * Quy tắc đúng:
+ *  - Chỉ gỡ khách của kế hoạch ĐÃ HOÀN THÀNH không được tick.
+ *  - Chỉ đụng tới kế hoạch mà người thao tác NHÌN THẤY (tài khoản giới hạn xe).
  */
 function makeRepo() {
   return {
@@ -67,12 +69,22 @@ function build() {
     makeRepo() as any,
     auditLogsRepository as any,
   );
-  return { svc, updateCalls, auditLogsRepository };
+  return {
+    svc,
+    updateCalls,
+    auditLogsRepository,
+    shippingLinesRepository,
+  };
 }
 
 describe('CustomersService.assignPlans - khong xoa khach cua ke hoach chua hoan thanh', () => {
   it('chi go khach cua ke hoach DA HOAN THANH khong nam trong danh sach tick', async () => {
-    const { svc, updateCalls } = build();
+    const { svc, updateCalls, shippingLinesRepository } = build();
+    // Repository chỉ trả về kế hoạch ĐÃ HOÀN THÀNH của khách 2.
+    shippingLinesRepository.find.mockResolvedValue([
+      { id: 415, completed: true, allDrivers: true },
+      { id: 418, completed: true, allDrivers: true },
+    ]);
 
     await svc.assignPlans(2, [417, 418], { id: 8, fullName: 'Mr Huy' });
 
@@ -80,22 +92,50 @@ describe('CustomersService.assignPlans - khong xoa khach cua ke hoach chua hoan 
     // Lần 1: gán khách cho các kế hoạch được tick
     expect(updateCalls[0].set).toEqual({ customerId: 2 });
     expect(updateCalls[0].where).toContain('id IN (:...ids)');
-    // Lần 2: chỉ gỡ khách của kế hoạch ĐÃ HOÀN THÀNH
+    expect(updateCalls[0].params).toEqual({ ids: [417, 418] });
+    // Lần 2: chỉ gỡ khách của kế hoạch đã hoàn thành KHÔNG được tick
     expect(updateCalls[1].set).toEqual({ customerId: null });
-    expect(updateCalls[1].where).toContain('completed = true');
-    expect(updateCalls[1].where).toContain('id NOT IN (:...ids)');
-    expect(updateCalls[1].params).toEqual({ customerId: 2, ids: [417, 418] });
+    expect(updateCalls[1].where).toContain('id IN (:...ids)');
+    expect(updateCalls[1].params).toEqual({ ids: [415] });
+    // Truy vấn ứng viên có điều kiện completed = true
+    expect(shippingLinesRepository.find).toHaveBeenCalledWith({
+      where: { customerId: 2, completed: true },
+    });
   });
 
-  it('danh sach tick rong: chi go khach cua ke hoach DA HOAN THANH', async () => {
-    const { svc, updateCalls } = build();
+  it('danh sach tick rong: go khach cua tat ca ke hoach DA HOAN THANH duoc thay', async () => {
+    const { svc, updateCalls, shippingLinesRepository } = build();
+    shippingLinesRepository.find.mockResolvedValue([
+      { id: 415, completed: true, allDrivers: true },
+      { id: 417, completed: true, allDrivers: true },
+    ]);
 
     await svc.assignPlans(2, []);
 
     expect(updateCalls).toHaveLength(1);
     expect(updateCalls[0].set).toEqual({ customerId: null });
-    expect(updateCalls[0].where).toContain('completed = true');
-    expect(updateCalls[0].where).not.toContain('id NOT IN');
+    expect(updateCalls[0].where).toContain('id IN (:...ids)');
+    expect(updateCalls[0].params).toEqual({ ids: [415, 417] });
+  });
+
+  it('tai khoan gioi han xe: KHONG go khach cua ke hoach ngoai pham vi duoc xem', async () => {
+    const { svc, updateCalls, shippingLinesRepository } = build();
+    shippingLinesRepository.find.mockResolvedValue([
+      { id: 415, completed: true, allDrivers: true, driverIds: '[]' },
+      { id: 416, completed: true, allDrivers: false, driverIds: '[11]' },
+      { id: 417, completed: true, allDrivers: false, driverIds: '[10]' },
+    ]);
+
+    await svc.assignPlans(2, [], {
+      id: 6,
+      fullName: 'NW A',
+      role: 'admin',
+      visibleDriverIds: [10],
+    });
+
+    expect(updateCalls).toHaveLength(1);
+    // 416 không nhìn thấy → KHÔNG bị gỡ khách
+    expect(updateCalls[0].params).toEqual({ ids: [415, 417] });
   });
 
   it('ghi lai NGUOI thao tac vao lich su khach hang', async () => {

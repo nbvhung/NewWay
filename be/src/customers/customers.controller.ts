@@ -99,7 +99,13 @@ export class CustomersController {
   assignPlans(
     @Param('id') id: string,
     @Body() body: AssignPlansDto,
-    @CurrentUser() actor: { id: number; fullName?: string },
+    @CurrentUser()
+    actor: {
+      id: number;
+      fullName?: string;
+      role?: string;
+      visibleDriverIds?: number[] | null;
+    },
   ) {
     return this.customersService.assignPlans(+id, body.planIds, actor);
   }

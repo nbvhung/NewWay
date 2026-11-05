@@ -435,7 +435,12 @@ export class CustomersService {
   async assignPlans(
     customerId: number,
     planIds: number[],
-    actor?: { id?: number; fullName?: string },
+    actor?: {
+      id?: number;
+      fullName?: string;
+      role?: string;
+      visibleDriverIds?: number[] | null;
+    },
   ): Promise<{ message: string; assigned: number }> {
     const customer = await this.customersRepository.findOne({
       where: { id: customerId },
@@ -443,6 +448,7 @@ export class CustomersService {
     if (!customer) throw new NotFoundException('Không tìm thấy khách hàng');
     const ids = (planIds || []).map(Number).filter((n) => Number.isFinite(n));
 
+    // 1) Gán khách cho đúng các kế hoạch được tick.
     if (ids.length > 0) {
       await this.shippingLinesRepository
         .createQueryBuilder()
@@ -450,27 +456,30 @@ export class CustomersService {
         .set({ customerId })
         .where('id IN (:...ids)', { ids })
         .execute();
-      // CHỈ gỡ khách của kế hoạch ĐÃ HOÀN THÀNH. Màn hình "Gán kế hoạch đã
-      // hoàn thành" chỉ hiển thị các kế hoạch completed, nên nếu gỡ cả kế
-      // hoạch chưa hoàn thành thì khách đã chọn lúc tạo kế hoạch sẽ bị xoá
-      // oan (không có trong danh sách để tick lại).
+    }
+
+    // 2) Gỡ khách của các kế hoạch ĐÃ HOÀN THÀNH không được tick.
+    //    - KHÔNG đụng kế hoạch chưa hoàn thành (không có trong danh sách tick
+    //      nên sẽ bị xoá oan) — đây là bug đã sửa.
+    //    - CHỈ đụng kế hoạch người thao tác NHÌN THẤY: tài khoản bị giới hạn
+    //      theo xe không thấy kế hoạch ngoài phạm vi, nếu vẫn gỡ thì cũng mất
+    //      khách mà không có cách tick lại.
+    const completedPlans = await this.shippingLinesRepository.find({
+      where: { customerId, completed: true },
+    });
+    const visibleCompleted = await this.filterPlansByVisibleDrivers(
+      completedPlans,
+      actor,
+    );
+    const toUnassign = visibleCompleted
+      .filter((p) => !ids.includes(p.id))
+      .map((p) => p.id);
+    if (toUnassign.length > 0) {
       await this.shippingLinesRepository
         .createQueryBuilder()
         .update(ShippingLine)
         .set({ customerId: null })
-        .where(
-          'customer_id = :customerId AND completed = true AND id NOT IN (:...ids)',
-          { customerId, ids },
-        )
-        .execute();
-    } else {
-      await this.shippingLinesRepository
-        .createQueryBuilder()
-        .update(ShippingLine)
-        .set({ customerId: null })
-        .where('customer_id = :customerId AND completed = true', {
-          customerId,
-        })
+        .where('id IN (:...ids)', { ids: toUnassign })
         .execute();
     }
 
