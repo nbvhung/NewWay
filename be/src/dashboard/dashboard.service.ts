@@ -466,9 +466,9 @@ export class DashboardService {
     //    Khi bị giới hạn xe: CHỈ lấy container đã gán cho xe của họ — container
     //    chưa gán (sub = NULL) không được tính để tránh lộ sản lượng của kế hoạch
     //    mà xe họ không tham gia.
-    //    CHỈ tính submission/container của tài khoản LÁI XE (role='laixe').
-    //    Tài khoản ops nhập thay không phải sản lượng của lái xe → loại khỏi
-    //    thống kê lương/doanh thu để tránh phồng số liệu.
+    //    MỌI container ĐÃ GHI NHẬN (có submission) đều được tính — kể cả khi
+    //    OPS/admin ghi hộ lái xe (họ bận). Container còn tag "chưa ghi"
+    //    (submission_id = NULL) KHÔNG được tính.
     //
     //    Lọc theo "xe hiệu dụng" (effective vehicle):
     //    - Nếu sub.actual_vehicle_id != NULL → xe thực chạy là actualVehicle (dùng để lọc bên)
@@ -486,7 +486,7 @@ export class DashboardService {
             'pvo.plan_id = ci.shipping_line_id AND pvo.driver_id = sub.user_id',
           )
           .where('ci.shippingLineId IN (:...ids)', { ids: planIds })
-          .andWhere('u.role = :laixeRole', { laixeRole: 'laixe' })
+          .andWhere('ci.submissionId IS NOT NULL')
           .andWhere(
             allowedVids === null
               ? '1=1'
@@ -1732,7 +1732,7 @@ export class DashboardService {
         'pvo.plan_id = ci.shipping_line_id AND pvo.driver_id = sub.user_id',
       )
       .where('ci.shippingLineId IN (:...ids)', { ids: planIds })
-      .andWhere('u.role = :r', { r: 'laixe' })
+      .andWhere('ci.submissionId IS NOT NULL')
       .andWhere(
         'COALESCE(pvo.vehicle_id, sub.actual_vehicle_id, u.home_vehicle_id, u.id) = :vid',
         { vid: vehicleId },
