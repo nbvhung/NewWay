@@ -610,12 +610,9 @@ export function DashboardTab() {
   const [selCost, setSelCost] = useState<string | null>(null);
   const [selInvest, setSelInvest] = useState<string | null>(null);
   const [salarySheet, setSalarySheet] = useState<null | 'chuyen' | 'cung'>(null);
-  // Lọc theo xe ở 3 card Chi phí / Lợi nhuận / Vốn đầu tư ('' = tất cả xe)
-
-  const [costDriver, setCostDriver] = useState<number | ''>('');
-  const [profitDriver, setProfitDriver] = useState<number | ''>('');
-  const [investDriver, setInvestDriver] = useState<number | ''>('');
-  const [revenueDriver, setRevenueDriver] = useState<number | ''>('');
+  // Lọc theo xe — áp dụng cho cả 4 card Doanh thu / Chi phí / Lợi nhuận / Vốn
+  // và mọi bảng chi tiết bên dưới. '' = tất cả xe.
+  const [vehicle, setVehicle] = useState<number | ''>('');
   // Máy tính lợi nhuận chủ đầu tư
   const [investorCapital, setInvestorCapital] = useState('');
   // Lọc theo bên (chỉ hiện khi BE trả canPickBen = true)
@@ -648,14 +645,12 @@ export function DashboardTab() {
     </div>
   );
 
-  /* ── Derived values ────────────────────────────────────────── */
-  const revenue    = data.revenue.total;
-  const totalCost  = data.cost.total;
-  const profit     = data.cost.profit;
-  const totalVon   = data.investment.total;
-
-  /* ── Lọc theo xe (Chi phí / Lợi nhuận / Vốn đầu tư) ────────── */
+  /* ── Lọc theo xe — dùng chung cho cả 4 card và các bảng chi tiết ── */
   const ownedDrivers = data.ownedDrivers || [];
+  const isAllVehicles = vehicle === '';
+  const selVehicleInfo = isAllVehicles
+    ? null
+    : ownedDrivers.find(d => d.id === vehicle) || null;
   const vehicleRev = (id: number) =>
     data.revenue.byVehicle.find(d => d.vehicleId === id) || null;
   const sumCostItems = (cat: string, id: number) =>
@@ -667,6 +662,64 @@ export function DashboardTab() {
       .filter(it => it.vehicleUserId === id)
       .reduce((s, i) => s + Number(i.amount || 0), 0);
 
+  const changeVehicle = (v: number | '') => {
+    setVehicle(v);
+    setInvestorCapital('');
+  };
+
+  // Chi phí của 1 xe: lương + BHXH Cty + các khoản gắn xe. Subvendor là phí
+  // thuê ngoài theo kế hoạch, không gắn xe nên chỉ tính khi xem tất cả xe.
+  const costOfVehicle = (id: number) => {
+    const row = (data.cost.byVehicle ?? []).find(x => x.vehicleId === id) ?? null;
+    const luong = row?.luongNguoiLai ?? 0;
+    const bhxhCty = row?.bhxhCty ?? 0;
+    const suaChua = sumCostItems('suaChua', id);
+    const nhienLieu = sumCostItems('nhienLieu', id);
+    const cpKhac = sumCostItems('cpKhac', id);
+    return {
+      luong,
+      bhxhCty,
+      luongChuyen: row?.luongKhoan ?? 0,
+      subvendor: 0,
+      suaChua,
+      nhienLieu,
+      cpKhac,
+      sum: luong + bhxhCty + suaChua + nhienLieu + cpKhac,
+    };
+  };
+
+  const costView = isAllVehicles
+    ? {
+        luong: data.cost.luongNguoiLai,
+        bhxhCty: data.cost.bhxhCty,
+        luongChuyen: data.cost.luongChuyen,
+        subvendor: data.cost.subvendor,
+        suaChua: data.cost.suaChua,
+        nhienLieu: data.cost.nhienLieu,
+        cpKhac: data.cost.cpKhac,
+        sum: data.cost.total,
+      }
+    : costOfVehicle(vehicle as number);
+
+  const revenueView = isAllVehicles
+    ? data.revenue.total
+    : (vehicleRev(vehicle as number)?.revenue ?? 0);
+  const profitView = revenueView - costView.sum;
+
+  const investView = isAllVehicles
+    ? {
+        vonXe: data.investment.vonXe,
+        vonMooc: data.investment.vonMooc,
+        vonKhac: data.investment.vonKhac,
+        total: data.investment.total,
+      }
+    : (() => {
+        const vonXe = sumInvestItems('vonXe', vehicle as number);
+        const vonMooc = sumInvestItems('vonMooc', vehicle as number);
+        const vonKhac = sumInvestItems('vonKhac', vehicle as number);
+        return { vonXe, vonMooc, vonKhac, total: vonXe + vonMooc + vonKhac };
+      })();
+
   /* ── Card config ───────────────────────────────────────────── */
   const cards: {
     key: CardKey; emoji: string; label: string; value: number;
@@ -674,24 +727,26 @@ export function DashboardTab() {
   }[] = [
     {
       key: 'revenue', emoji: '💰', label: 'Doanh Thu',
-      value: revenue, color: C.amber, colorLt: C.amberLt,
-      sub: `${data.plans.completed}/${data.plans.total} KH hoàn thành`,
+      value: revenueView, color: C.amber, colorLt: C.amberLt,
+      sub: isAllVehicles
+        ? `${data.plans.completed}/${data.plans.total} KH hoàn thành`
+        : `${vehicleRev(vehicle as number)?.totalCont ?? 0} cont · ${vehicleRev(vehicle as number)?.planCount ?? 0} kế hoạch`,
     },
     {
       key: 'cost', emoji: '💸', label: 'Chi Phí',
-      value: totalCost, color: C.red, colorLt: C.redLt,
-      sub: `LX: ${fmt(data.cost.luongChuyen)} · SC: ${fmt(data.cost.suaChua)} · NL: ${fmt(data.cost.nhienLieu)}`,
+      value: costView.sum, color: C.red, colorLt: C.redLt,
+      sub: `LX: ${fmt(costView.luongChuyen)} · SC: ${fmt(costView.suaChua)} · NL: ${fmt(costView.nhienLieu)}`,
     },
     {
       key: 'profit', emoji: '📈', label: 'Lợi Nhuận',
-      value: profit, color: profit >= 0 ? C.green : C.red,
-      colorLt: profit >= 0 ? C.greenLt : C.redLt,
-      sub: 'Lợi nhuận trước thuế',
+      value: profitView, color: profitView >= 0 ? C.green : C.red,
+      colorLt: profitView >= 0 ? C.greenLt : C.redLt,
+      sub: isAllVehicles ? 'Lợi nhuận trước thuế' : 'Lợi nhuận trước thuế của xe',
     },
     {
       key: 'investment', emoji: '🏗️', label: 'Vốn Đầu Tư',
-      value: totalVon, color: C.blue, colorLt: C.blueLt,
-      sub: `Xe: ${fmt(data.investment.vonXe)} · Mooc: ${fmt(data.investment.vonMooc)}`,
+      value: investView.total, color: C.blue, colorLt: C.blueLt,
+      sub: `Xe: ${fmt(investView.vonXe)} · Mooc: ${fmt(investView.vonMooc)}`,
     },
   ];
 
@@ -710,19 +765,19 @@ export function DashboardTab() {
           </div>
         </div>
         <div className="flex gap-1.5 items-center">
-          <select value={month} onChange={e => setMonth(+e.target.value)}
+          <select value={month} onChange={e => { setMonth(+e.target.value); changeVehicle(''); }}
             className="rounded-lg px-3 py-2 text-[12px] outline-none cursor-pointer bg-white font-medium"
             style={{ border: `1px solid ${C.faint}` }}>
             {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>Tháng {m}</option>)}
           </select>
-          <select value={year} onChange={e => setYear(+e.target.value)}
+          <select value={year} onChange={e => { setYear(+e.target.value); changeVehicle(''); }}
             className="rounded-lg px-3 py-2 text-[12px] outline-none cursor-pointer bg-white font-medium"
             style={{ border: `1px solid ${C.faint}` }}>
             {[year + 1, year, year - 1, year - 2].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
           {/* Lọc theo Bên — chỉ hiện với supper_admin / finance.all */}
           {data?.canPickBen && (
-            <select value={ben} onChange={e => { setBen(e.target.value); }}
+            <select value={ben} onChange={e => { setBen(e.target.value); changeVehicle(''); }}
               className="rounded-lg px-3 py-2 text-[12px] outline-none cursor-pointer bg-white font-semibold"
               style={{ border: `1px solid ${ben ? C.amber : C.faint}`, color: ben ? C.amber : undefined }}>
               <option value="">🏢 Tất cả bên</option>
@@ -734,6 +789,16 @@ export function DashboardTab() {
           <button onClick={load} className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer bg-white hover:bg-stone-50 text-[14px]"
             style={{ border: `1px solid ${C.faint}`, color: C.muted }}>↻</button>
         </div>
+      </div>
+
+      {/* ── LỌC THEO XE — áp dụng cho cả 4 card + mọi chi tiết bên dưới ── */}
+      <div className="rounded-xl px-4 pt-4" style={{ border: `1px solid ${C.faint}`, background: C.surface }}>
+        <DriverFilterBar
+          title="🚚 Lọc theo xe — áp dụng cho cả 4 thẻ"
+          drivers={ownedDrivers}
+          value={vehicle}
+          onChange={changeVehicle}
+        />
       </div>
 
       {/* ── 4 CARDS (giữ nguyên vị trí + kích thước) ────────── */}
@@ -757,7 +822,7 @@ export function DashboardTab() {
                 style={{ color: card.color }}>{fmt(card.value)}</p>
               {card.key === 'profit' ? (
                 <p className="text-[10px] mt-1 font-bold" style={{ color: card.color }}>
-                  {totalVon > 0 ? `${(profit / totalVon * 100).toFixed(1)}% trên tổng vốn đầu tư` : '—'}
+                  {investView.total > 0 ? `${(profitView / investView.total * 100).toFixed(1)}% trên tổng vốn đầu tư` : '—'}
                 </p>
               ) : (
                 <p className="text-[9px] mt-1 font-medium" style={{ color: C.muted }}>₫</p>
@@ -777,18 +842,17 @@ export function DashboardTab() {
 
         {/* ─ Doanh thu ───────────────────────────────────────── */}
         {activeCard === 'revenue' && (() => {
-          const sel = revenueDriver;
-          const isAll = sel === '';
-          const drv = isAll ? null : vehicleRev(sel as number);
+          const isAll = isAllVehicles;
+          const drv = isAll ? null : vehicleRev(vehicle as number);
           return (
           <div className="p-5">
-            <DriverFilterBar title="💰 Chi tiết Doanh Thu" drivers={ownedDrivers} value={revenueDriver} onChange={setRevenueDriver} />
+            <p className="text-[14px] font-bold mb-4">💰 Chi tiết Doanh Thu</p>
             {!isAll && (
               <div className="mb-4">
                 <div className="rounded-xl p-4 mb-4 flex items-center justify-between"
                   style={{ background: C.amberLt, border: `1px solid ${C.amber}30` }}>
                   <span className="text-[13px] font-semibold" style={{ color: C.amberDk }}>
-                    Doanh thu của xe {drv?.soXe || drv?.fullName || 'này'}
+                    Doanh thu của xe {drv?.soXe || selVehicleInfo?.soXe || 'này'}
                   </span>
                   <span className="text-[20px] font-extrabold" style={{ color: C.amber }}>{fmt(drv?.revenue || 0)} ₫</span>
                 </div>
@@ -922,20 +986,16 @@ export function DashboardTab() {
 
         {/* ─ Chi phí ─────────────────────────────────────────── */}
         {activeCard === 'cost' && (() => {
-          const sel = costDriver;
-          const isAll = sel === '';
-          const costDrv = isAll
-            ? null
-            : ((data.cost.byVehicle ?? []).find(x => x.vehicleId === sel) ?? null);
-          const luong     = isAll ? data.cost.luongNguoiLai : (costDrv?.luongNguoiLai ?? 0);
-          const bhxhCty   = isAll ? data.cost.bhxhCty       : (costDrv?.bhxhCty ?? 0);
-          const subvendor = isAll ? data.cost.subvendor   : 0;
-          const suaChua   = isAll ? data.cost.suaChua     : sumCostItems('suaChua', sel as number);
-          const nhienLieu = isAll ? data.cost.nhienLieu   : sumCostItems('nhienLieu', sel as number);
-          const cpKhac    = isAll ? data.cost.cpKhac      : sumCostItems('cpKhac', sel as number);
-          const luongChuyen   = isAll ? data.cost.luongChuyen : (costDrv?.luongKhoan ?? 0);
+          const isAll = isAllVehicles;
+          const luong     = costView.luong;
+          const bhxhCty   = costView.bhxhCty;
+          const subvendor = costView.subvendor;
+          const suaChua   = costView.suaChua;
+          const nhienLieu = costView.nhienLieu;
+          const cpKhac    = costView.cpKhac;
+          const luongChuyen   = costView.luongChuyen;
           const luongCungBhxh = (luong + bhxhCty) - luongChuyen;
-          const sum = luong + bhxhCty + subvendor + suaChua + nhienLieu + cpKhac;
+          const sum = costView.sum;
           const tiles: [string, number, string, string, string][] = [
             ['Lương chuyến', luongChuyen, C.amber, isAll ? '(bấm để xem chi tiết từng xe)' : '(lương chuyến)', 'salaryChuyen'],
             ['Lương cứng & BHXH', luongCungBhxh, '#2563eb', isAll ? '(bấm để xem chi tiết từng xe)' : '(lương cứng, phụ cấp, khấu trừ, BHXH)', 'salaryCung'],
@@ -947,7 +1007,7 @@ export function DashboardTab() {
 
           return (
             <div className="p-5">
-              <DriverFilterBar title="💸 Chi tiết Chi Phí" drivers={ownedDrivers} value={costDriver} onChange={setCostDriver} />
+              <p className="text-[14px] font-bold mb-4">💸 Chi tiết Chi Phí</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {tiles.map(([lbl, val, c, hint, cat]) => {
                   const pct = pc(val, sum || 1);
@@ -981,26 +1041,17 @@ export function DashboardTab() {
 
         {/* ─ Lợi nhuận ───────────────────────────────────────── */}
         {activeCard === 'profit' && (() => {
-          const sel = profitDriver;
-          const isAll = sel === '';
-          const drv = isAll ? null : vehicleRev(sel as number);
-          const costDrv = isAll
-            ? null
-            : ((data.cost.byVehicle ?? []).find(x => x.vehicleId === sel) ?? null);
-          const rev       = isAll ? revenue              : (drv?.revenue ?? 0);
-          const luong     = isAll ? data.cost.luongNguoiLai : (costDrv?.luongNguoiLai ?? 0);
-          const bhxhCty   = isAll ? data.cost.bhxhCty       : (costDrv?.bhxhCty ?? 0);
-          const subvendor = isAll ? data.cost.subvendor   : 0;
-          const suaChua   = isAll ? data.cost.suaChua     : sumCostItems('suaChua', sel as number);
-          const nhienLieu = isAll ? data.cost.nhienLieu   : sumCostItems('nhienLieu', sel as number);
-          const cpKhac    = isAll ? data.cost.cpKhac      : sumCostItems('cpKhac', sel as number);
+          const isAll = isAllVehicles;
+          const rev       = revenueView;
+          const luong     = costView.luong;
+          const bhxhCty   = costView.bhxhCty;
+          const subvendor = costView.subvendor;
+          const suaChua   = costView.suaChua;
+          const nhienLieu = costView.nhienLieu;
+          const cpKhac    = costView.cpKhac;
           const net = rev - luong - bhxhCty - subvendor - suaChua - nhienLieu - cpKhac;
           const netSauThue = net > 0 ? net * 0.75 : net;
-          const invSel = isAll
-            ? totalVon
-            : sumInvestItems('vonXe', sel as number) +
-              sumInvestItems('vonMooc', sel as number) +
-              sumInvestItems('vonKhac', sel as number);
+          const invSel = investView.total;
           const capRaw = Number(investorCapital.replace(/[^0-9]/g, '')) || 0;
           const pctOwn = invSel > 0 ? Math.min(100, (capRaw / invSel) * 100) : 0;
           const hasCapital = capRaw > 0 && invSel > 0;
@@ -1017,7 +1068,7 @@ export function DashboardTab() {
           ];
           return (
             <div className="p-5">
-              <DriverFilterBar title="📈 Chi tiết Lợi Nhuận" drivers={ownedDrivers} value={profitDriver} onChange={v => { setProfitDriver(v); setInvestorCapital(''); }} />
+              <p className="text-[14px] font-bold mb-4">📈 Chi tiết Lợi Nhuận</p>
 
               <div className="max-w-3xl">
                 {rows.map(([lbl, val, c], i) => (
@@ -1108,15 +1159,13 @@ export function DashboardTab() {
         })()}
         {/* ─ Vốn đầu tư ──────────────────────────────────────── */}
         {activeCard === 'investment' && (() => {
-          const sel = investDriver;
-          const isAll = sel === '';
-          const vonXe   = isAll ? data.investment.vonXe   : sumInvestItems('vonXe', sel as number);
-          const vonMooc = isAll ? data.investment.vonMooc : sumInvestItems('vonMooc', sel as number);
-          const vonKhac = isAll ? data.investment.vonKhac : sumInvestItems('vonKhac', sel as number);
-          const total = vonXe + vonMooc + vonKhac;
+          const vonXe   = investView.vonXe;
+          const vonMooc = investView.vonMooc;
+          const vonKhac = investView.vonKhac;
+          const total   = investView.total;
           return (
             <div className="p-5">
-              <DriverFilterBar title="🏗️ Chi tiết Vốn Đầu Tư" drivers={ownedDrivers} value={investDriver} onChange={setInvestDriver} />
+              <p className="text-[14px] font-bold mb-4">🏗️ Chi tiết Vốn Đầu Tư</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl">
                 {([
                   ['Xe',   vonXe,   '🚛', C.blue, 'vonXe'],
@@ -1161,7 +1210,7 @@ export function DashboardTab() {
         <CostItemsSheet
           category={selCost}
           items={(data.cost.items?.[selCost] ?? []).filter(
-            it => costDriver === '' || it.vehicleUserId === costDriver,
+            it => vehicle === '' || it.vehicleUserId === vehicle,
           )}
           month={data.month}
           year={data.year}
@@ -1173,7 +1222,7 @@ export function DashboardTab() {
           variant="invest"
           category={selInvest}
           items={(data.investment.items?.[selInvest] ?? []).filter(
-            it => investDriver === '' || it.vehicleUserId === investDriver,
+            it => vehicle === '' || it.vehicleUserId === vehicle,
           )}
           month={data.month}
           year={data.year}
@@ -1184,7 +1233,7 @@ export function DashboardTab() {
         <VehicleSalarySheet
           mode={salarySheet}
           rows={(data.cost.byVehicle ?? []).filter(
-            r => costDriver === '' || r.vehicleId === costDriver,
+            r => vehicle === '' || r.vehicleId === vehicle,
           )}
           month={data.month}
           year={data.year}
