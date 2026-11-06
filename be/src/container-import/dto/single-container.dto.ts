@@ -8,6 +8,8 @@ const VALID_TYPES = [
   'V40',
   'V20FR',
   'V40FR',
+  '20FR',
+  '40FR',
   'VSL',
   'TIP',
 ];

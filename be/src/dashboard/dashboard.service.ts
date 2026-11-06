@@ -62,6 +62,9 @@ export interface PlanSummary {
   vendorKhac: string;
   completed: boolean;
   totalCont: number;
+  /** Số container theo TỪNG LƯỢT (gồm KV/VSL/REGO... trừ VSL) — dùng cho chi tiết KH. */
+  tripCont: number;
+  tripContByType: Record<string, number>;
   revenue: number;
   subvendorCost: number;
   luongChuyen: number; // lương chuyến cho các lái xe trong KH này
@@ -1174,6 +1177,17 @@ export class DashboardService {
       totalSubvendor += subvendorCost;
       totalLuongChuyen += luongChuyen;
 
+      // Sản lượng theo TỪNG LƯỢT cho chi tiết khách hàng: CLAIM + KV + REGO...
+      // VSL là dịch vụ nên không cộng vào số container.
+      const tripContByType: Record<string, number> = {};
+      let tripCont = 0;
+      for (const t of trips) {
+        if (t.claimType === 'VSL') continue;
+        const q = Math.max(1, Number(t.quantity) || 1);
+        tripContByType[t.containerType] = (tripContByType[t.containerType] ?? 0) + q;
+        tripCont += q;
+      }
+
       // Customer accumulation (toàn bộ plan, không chia)
       if (plan.customerId) {
         const cust = customerMap.get(plan.customerId);
@@ -1187,8 +1201,8 @@ export class DashboardService {
         };
         entry.revenue += revenue;
         entry.planCount += 1;
-        entry.totalCont += conts.length;
-        for (const [t, n] of Object.entries(contByType)) {
+        entry.totalCont += tripCont;
+        for (const [t, n] of Object.entries(tripContByType)) {
           entry.contByType[t] = (entry.contByType[t] ?? 0) + n;
         }
 
@@ -1200,8 +1214,8 @@ export class DashboardService {
         };
         cRoute.revenue += revenue;
         cRoute.planCount += 1;
-        cRoute.contCount += conts.length;
-        for (const [t, n] of Object.entries(contByType)) {
+        cRoute.contCount += tripCont;
+        for (const [t, n] of Object.entries(tripContByType)) {
           cRoute.contByType[t] = (cRoute.contByType[t] ?? 0) + n;
         }
         entry.routes.set(plan.routeName, cRoute);
@@ -1373,6 +1387,8 @@ export class DashboardService {
         vendorKhac: plan.vendorKhac,
         completed: plan.completed,
         totalCont: conts.length,
+        tripCont,
+        tripContByType,
         revenue: revenue,
         subvendorCost: Math.round(subvendorCost),
         luongChuyen: Math.round(luongChuyen),

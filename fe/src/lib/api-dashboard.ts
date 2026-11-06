@@ -11,6 +11,9 @@ export interface PlanSummary {
   vendorKhac: string;
   completed: boolean;
   totalCont: number;
+  /** Số container theo từng lượt (gồm KV/REGO... trừ VSL) — dùng cho chi tiết KH. */
+  tripCont?: number;
+  tripContByType?: Record<string, number>;
   revenue: number;
   subvendorCost: number;
   luongChuyen: number;   // lương chuyến thực tế (tính từ submissions)

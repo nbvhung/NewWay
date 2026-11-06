@@ -363,14 +363,15 @@ function CustomerSheet({ c, plans, onClose }: { c: CustomerRevenue; plans: PlanS
                     ) : (
                       <div className="space-y-2 lg:max-h-[50vh] lg:overflow-y-auto lg:pr-1">
                         {routePlans.map((p) => {
-                          const pTypes = Object.entries(p.contByType ?? {}).sort((a, b) => b[1] - a[1]);
+                          const pTypes = Object.entries(p.tripContByType ?? p.contByType ?? {}).sort((a, b) => b[1] - a[1]);
+                          const pCont = p.tripCont ?? p.totalCont;
                           return (
                             <div key={p.id} className="rounded-lg p-3 bg-white" style={{ border: `1px solid ${C.faint}` }}>
                               <div className="flex justify-between items-start gap-2">
                                 <div className="min-w-0">
                                   <p className="text-[12px] font-semibold leading-snug truncate">{p.name}</p>
                                   <p className="text-[10px] mt-0.5" style={{ color: C.muted }}>
-                                    {p.ngay ? p.ngay.split('-').reverse().join('-') : '—'} · {p.totalCont} cont
+                                    {p.ngay ? p.ngay.split('-').reverse().join('-') : '—'} · {pCont} cont
                                     {p.completed ? ' · ✅ hoàn thành' : ''}
                                   </p>
                                 </div>
