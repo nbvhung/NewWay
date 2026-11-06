@@ -209,7 +209,7 @@ function VehicleSheet({ d, totalP, onClose }: { d: VehicleRevenue; totalP: numbe
           <div className="px-5 py-4">
             <p className="text-[12px] font-bold mb-3">Tuyến đường</p>
             <div className="space-y-3">
-              {viewRoutes.slice(0, 12).map((r, i) => {
+              {viewRoutes.map((r, i) => {
                 const types = Object.entries(r.contByType ?? {}).sort((a, b) => b[1] - a[1]);
                 return (
                   <div key={i} className="rounded-lg p-3" style={{ background: i === 0 ? C.amberLt : C.surface, border: `1px solid ${i === 0 ? '#fcd34d' : C.faint}` }}>
@@ -314,7 +314,7 @@ function CustomerSheet({ c, plans, onClose }: { c: CustomerRevenue; plans: PlanS
             <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-3">
               {/* Danh sách tuyến */}
               <div className="space-y-2 lg:max-h-[56vh] lg:overflow-y-auto lg:pr-1">
-                {routes.slice(0, 12).map((r, i) => {
+                {routes.map((r, i) => {
                   const active = (r.routeName || '') === selectedRoute;
                   const rTypes = Object.entries(r.contByType ?? {}).sort((a, b) => b[1] - a[1]);
                   return (
