@@ -29,6 +29,7 @@ export interface VehicleDriverRevenue {
   revenue: number;
   luongKhoan: number;
   planCount: number;
+  /** Sản lượng theo TỪNG LƯỢT (gồm KV/KD2/REGO…, trừ VSL). */
   totalCont: number;
   contByType: Record<string, number>;
   routes: { routeName: string; revenue: number; planCount: number; contCount: number; contByType: Record<string, number> }[];
@@ -48,7 +49,8 @@ export interface VehicleRevenue {
   luongKhoan: number;    // lương chuyến thực tế
   planCount: number;
   totalPlanCount: number;
-  totalCont: number;     // tổng sản lượng (container) của xe trong tháng
+  /** Tổng sản lượng theo TỪNG LƯỢT của xe trong tháng (gồm KV/KD2/REGO…, trừ VSL). */
+  totalCont: number;
   routes: { routeName: string; revenue: number; planCount: number; contCount: number; contByType: Record<string, number> }[];
   /** Doanh thu/sản lượng tách theo từng lái xe đã chạy xe này. */
   drivers?: VehicleDriverRevenue[];

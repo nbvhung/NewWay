@@ -80,12 +80,14 @@ export interface VehicleDriverRevenue {
   revenue: number;
   luongKhoan: number;
   planCount: number;
+  /** Sản lượng theo TỪNG LƯỢT (gồm KV/KD2/REGO…, trừ VSL). */
   totalCont: number;
   contByType: Record<string, number>;
   routes: {
     routeName: string;
     revenue: number;
     planCount: number;
+    /** Sản lượng theo TỪNG LƯỢT (gồm KV/KD2/REGO…, trừ VSL). */
     contCount: number;
     contByType: Record<string, number>;
   }[];
@@ -109,11 +111,13 @@ export interface VehicleRevenue {
   luongKhoan: number; // lương chuyến (tính đúng từ submissions)
   planCount: number;
   totalPlanCount: number;
-  totalCont: number; // tổng sản lượng (container đã ghi nhận) của xe trong tháng
+  /** Tổng sản lượng theo TỪNG LƯỢT của xe trong tháng (gồm KV/KD2/REGO…, trừ VSL). */
+  totalCont: number;
   routes: {
     routeName: string;
     revenue: number;
     planCount: number;
+    /** Sản lượng theo TỪNG LƯỢT (gồm KV/KD2/REGO…, trừ VSL). */
     contCount: number;
     contByType: Record<string, number>;
   }[];
@@ -1277,12 +1281,19 @@ export class DashboardService {
         for (const s of driverSubs) {
           entry.luongKhoan += calcSubSalary(s, plan);
         }
-        // Web đếm container DUY NHẤT; Excel mới lặp theo từng lượt.
-        const uniqueContIds = new Set<number>();
+        // Đếm theo TỪNG LƯỢT (giống tripCont của kế hoạch/khách hàng):
+        // gồm KV/KD2/REGO/CLASSIFY, bó FR theo số container trong bó, kẹp = 2.
+        // VSL là dịch vụ nên không cộng vào sản lượng container.
+        let vehicleTripCont = 0;
+        const vehicleTripByType: Record<string, number> = {};
         for (const t of vTrips) {
-          for (const cid of t.containerIds) uniqueContIds.add(cid);
+          if (t.claimType === 'VSL') continue;
+          const q = Math.max(1, Number(t.quantity) || 1);
+          vehicleTripCont += q;
+          vehicleTripByType[t.containerType] =
+            (vehicleTripByType[t.containerType] ?? 0) + q;
         }
-        entry.totalCont += uniqueContIds.size;
+        entry.totalCont += vehicleTripCont;
         const routeEntry = entry.routes.get(plan.routeName) ?? {
           revenue: 0,
           planCount: 0,
@@ -1291,13 +1302,10 @@ export class DashboardService {
         };
         routeEntry.revenue += driverRevenue;
         routeEntry.planCount += 1;
-        routeEntry.contCount += uniqueContIds.size;
-        for (const cid of uniqueContIds) {
-          const c = conts.find((x) => x.id === cid);
-          if (c) {
-            routeEntry.contByType[c.type] =
-              (routeEntry.contByType[c.type] ?? 0) + 1;
-          }
+        routeEntry.contCount += vehicleTripCont;
+        for (const [containerType, n] of Object.entries(vehicleTripByType)) {
+          routeEntry.contByType[containerType] =
+            (routeEntry.contByType[containerType] ?? 0) + n;
         }
         entry.routes.set(plan.routeName, routeEntry);
         driverRevenueMap.set(vid, entry);
@@ -1339,15 +1347,20 @@ export class DashboardService {
           };
           de.revenue += dRev;
           de.planCount += 1;
-          const dContIds = new Set<number>();
+          let driverTripCont = 0;
+          const driverTripByType: Record<string, number> = {};
           for (const t of vTrips) {
             if (Number(t.driverId) !== driverId) continue;
-            for (const cid of t.containerIds) dContIds.add(cid);
+            if (t.claimType === 'VSL') continue;
+            const q = Math.max(1, Number(t.quantity) || 1);
+            driverTripCont += q;
+            driverTripByType[t.containerType] =
+              (driverTripByType[t.containerType] ?? 0) + q;
           }
-          de.totalCont += dContIds.size;
-          for (const cid of dContIds) {
-            const c = conts.find((x) => x.id === cid);
-            if (c) de.contByType[c.type] = (de.contByType[c.type] ?? 0) + 1;
+          de.totalCont += driverTripCont;
+          for (const [containerType, n] of Object.entries(driverTripByType)) {
+            de.contByType[containerType] =
+              (de.contByType[containerType] ?? 0) + n;
           }
           const dRoute = de.routes.get(plan.routeName) ?? {
             revenue: 0,
@@ -1357,13 +1370,10 @@ export class DashboardService {
           };
           dRoute.revenue += dRev;
           dRoute.planCount += 1;
-          dRoute.contCount += dContIds.size;
-          for (const cid of dContIds) {
-            const c = conts.find((x) => x.id === cid);
-            if (c) {
-              dRoute.contByType[c.type] =
-                (dRoute.contByType[c.type] ?? 0) + 1;
-            }
+          dRoute.contCount += driverTripCont;
+          for (const [containerType, n] of Object.entries(driverTripByType)) {
+            dRoute.contByType[containerType] =
+              (dRoute.contByType[containerType] ?? 0) + n;
           }
           de.routes.set(plan.routeName, dRoute);
           const dSubs = subs.filter(
