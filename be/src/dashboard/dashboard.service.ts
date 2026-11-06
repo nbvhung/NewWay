@@ -40,13 +40,19 @@ const KEP_PRICE_TYPE: Record<string, string> = {
 // FR tính theo BÓ riêng → không ghép kẹp cho FR (giống payment dossier).
 const FR_BUNDLE_TYPES = new Set(['V20FR', 'V40FR']);
 
-// Các lượt phát sinh thêm: khi thống kê loại container, tách riêng khỏi loại gốc
-// (KV/KD2/REGO) để không làm sai số cont gốc (VD V40 142 + KV 2).
-const EXTRA_TRIP_TYPES = new Set(['KV', 'KD2', 'REGO']);
-const tripTypeKey = (t: { claimType: string; containerType: string }): string =>
-  EXTRA_TRIP_TYPES.has(String(t.claimType))
-    ? String(t.claimType)
-    : String(t.containerType);
+// Loại dùng để thống kê trên dashboard, khớp cách xếp loại của bảng kê khách hàng:
+//   - KV/KD2/REGO cộng vào loại container gốc (không tách riêng).
+//   - FR lẻ (không nằm trong bó) tính như vỏ thường: V20FR→V20, V40FR→V40.
+//   - FR trong bó vẫn giữ V20FR/V40FR.
+const tripTypeKey = (t: {
+  containerType: string;
+  isBundle: boolean;
+}): string => {
+  const type = String(t.containerType);
+  if (!t.isBundle && type === 'V40FR') return 'V40';
+  if (!t.isBundle && type === 'V20FR') return 'V20';
+  return type;
+};
 
 // ─── Helpers ────────────────────────────────────────────────────
 function dayOfDate(d: string | Date | null | undefined): number | null {
