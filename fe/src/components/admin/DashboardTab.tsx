@@ -52,6 +52,8 @@ type CardKey = 'revenue' | 'cost' | 'profit' | 'investment';
    ─────────────────────────────────────────────────────────────── */
 function PlanSheet({ plan, onClose }: { plan: PlanSummary; onClose: () => void }) {
   const net = plan.revenue - plan.subvendorCost - plan.luongChuyen;
+  const planCont = plan.tripCont ?? plan.totalCont;
+  const planTypes = plan.tripContByType ?? plan.contByType;
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/25" onClick={onClose}>
       <div className="dsh bg-white w-full sm:max-w-[420px] sm:rounded-xl rounded-t-xl overflow-hidden shadow-xl"
@@ -87,12 +89,12 @@ function PlanSheet({ plan, onClose }: { plan: PlanSummary; onClose: () => void }
           </table>
         </div>
         <div className="flex gap-6 mx-5 mb-4">
-          <div><p className="text-[10px]" style={{ color: C.muted }}>Container</p><p className="text-[18px] font-bold">{plan.totalCont}</p></div>
+          <div><p className="text-[10px]" style={{ color: C.muted }}>Container</p><p className="text-[18px] font-bold">{planCont}</p></div>
           <div><p className="text-[10px]" style={{ color: C.muted }}>Lái xe</p><p className="text-[18px] font-bold">{plan.driverCount}</p></div>
         </div>
-        {Object.keys(plan.contByType).length > 0 && (
+        {Object.keys(planTypes).length > 0 && (
           <div className="flex flex-wrap gap-1.5 mx-5 mb-4">
-            {Object.entries(plan.contByType).map(([t, c]) => (
+            {Object.entries(planTypes).map(([t, c]) => (
               <span key={t} className="px-2 py-0.5 text-[10px] font-medium rounded" style={{ background: C.amberLt, color: C.amberDk }}>{t} ×{c}</span>
             ))}
           </div>
@@ -1039,7 +1041,7 @@ export function DashboardTab() {
                         <div className="w-1.5 h-6 rounded-full flex-shrink-0" style={{ background: p.completed ? `${C.green}90` : `${C.amber}90` }} />
                         <div className="flex-1 min-w-0">
                           <p className="text-[12px] font-semibold truncate">{p.name}</p>
-                          <p className="text-[10px] mt-0.5" style={{ color: C.muted }}>{p.ngay}{p.customerName ? ` — ${p.customerName}` : ''} — {p.totalCont} cont</p>
+                          <p className="text-[10px] mt-0.5" style={{ color: C.muted }}>{p.ngay}{p.customerName ? ` — ${p.customerName}` : ''} — {p.tripCont ?? p.totalCont} cont</p>
                         </div>
                         <p className="text-[12px] font-bold flex-shrink-0" style={{ color: C.amber }}>{fmt(p.revenue)}</p>
                       </div>
