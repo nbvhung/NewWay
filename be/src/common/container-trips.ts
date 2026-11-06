@@ -4,6 +4,8 @@
  * Quy ước nghiệp vụ:
  *  - Mỗi lượt = 1 đơn vị tính tiền/doanh thu (1 container lẻ, 1 bó FR, 1 cặp kẹp).
  *  - Bó FR: 1 bó = 1 lượt; quantity = số container trong bó (dùng cho lương).
+ *  - FR lẻ (không bundle): 1 lượt; priceType = V20/V40 (giá vỏ thường),
+ *    containerType vẫn giữ V20FR/V40FR để kê đúng loại.
  *  - Kẹp: 1 cặp = 1 lượt; priceType = KV20/KV20FR; quantity = 2.
  *  - KV (kéo về lẻ) = 1 lượt; priceType = loại container gốc.
  *  - VSL = 1 lượt; priceType = VSL.
@@ -250,7 +252,16 @@ export function buildContainerTrips(
     if (!c) continue;
     const isVsl = cl.claimType === 'VSL';
     const isKv = cl.claimType === 'KV';
-    const priceType = isVsl ? 'VSL' : String(c.type);
+    // FR lẻ (không nằm trong bó) tính giá như vỏ thường: V20FR→V20, V40FR→V40.
+    // Loại hiển thị (containerType) vẫn giữ V20FR/V40FR để kê đúng loại.
+    const isLoneFr = !c.bundleId && FR_TYPES.has(String(c.type));
+    const priceType = isVsl
+      ? 'VSL'
+      : isLoneFr
+        ? String(c.type) === 'V40FR'
+          ? 'V40'
+          : 'V20'
+        : String(c.type);
     const salaryType = isVsl ? 'VSL' : isKv ? 'KV' : String(c.type);
     pushTrip({
       key: `single:${cl.id}`,

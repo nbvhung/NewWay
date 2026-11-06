@@ -102,6 +102,25 @@ describe('buildContainerTrips', () => {
     expect(trips[0].claimIds).toEqual([1, 2]);
   });
 
+  it('FR lẻ: giữ loại V40FR nhưng tính giá V40', () => {
+    const trips = buildContainerTrips(
+      [container({ id: 1, type: 'V40FR', bundleId: null })],
+      [claim({ id: 1, containerImportId: 1, claimType: 'CLAIM' })],
+    );
+    expect(trips).toHaveLength(1);
+    expect(trips[0].containerType).toBe('V40FR');
+    expect(trips[0].priceType).toBe('V40');
+    expect(trips[0].salaryType).toBe('V40FR');
+    expect(trips[0].isBundle).toBe(false);
+
+    const v20 = buildContainerTrips(
+      [container({ id: 2, type: 'V20FR', bundleId: null })],
+      [claim({ id: 2, containerImportId: 2, claimType: 'CLAIM' })],
+    );
+    expect(v20[0].containerType).toBe('V20FR');
+    expect(v20[0].priceType).toBe('V20');
+  });
+
   it('VSL = 1 lượt giá VSL, REGO = 1 lượt giá container gốc', () => {
     const vls = buildContainerTrips(
       [container()],
