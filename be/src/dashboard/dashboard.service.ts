@@ -40,6 +40,14 @@ const KEP_PRICE_TYPE: Record<string, string> = {
 // FR tính theo BÓ riêng → không ghép kẹp cho FR (giống payment dossier).
 const FR_BUNDLE_TYPES = new Set(['V20FR', 'V40FR']);
 
+// Các lượt phát sinh thêm: khi thống kê loại container, tách riêng khỏi loại gốc
+// (KV/KD2/REGO) để không làm sai số cont gốc (VD V40 142 + KV 2).
+const EXTRA_TRIP_TYPES = new Set(['KV', 'KD2', 'REGO']);
+const tripTypeKey = (t: { claimType: string; containerType: string }): string =>
+  EXTRA_TRIP_TYPES.has(String(t.claimType))
+    ? String(t.claimType)
+    : String(t.containerType);
+
 // ─── Helpers ────────────────────────────────────────────────────
 function dayOfDate(d: string | Date | null | undefined): number | null {
   if (!d) return null;
@@ -1188,7 +1196,8 @@ export class DashboardService {
       for (const t of trips) {
         if (t.claimType === 'VSL') continue;
         const q = Math.max(1, Number(t.quantity) || 1);
-        tripContByType[t.containerType] = (tripContByType[t.containerType] ?? 0) + q;
+        const key = tripTypeKey(t);
+        tripContByType[key] = (tripContByType[key] ?? 0) + q;
         tripCont += q;
       }
 
@@ -1290,8 +1299,8 @@ export class DashboardService {
           if (t.claimType === 'VSL') continue;
           const q = Math.max(1, Number(t.quantity) || 1);
           vehicleTripCont += q;
-          vehicleTripByType[t.containerType] =
-            (vehicleTripByType[t.containerType] ?? 0) + q;
+          const key = tripTypeKey(t);
+          vehicleTripByType[key] = (vehicleTripByType[key] ?? 0) + q;
         }
         entry.totalCont += vehicleTripCont;
         const routeEntry = entry.routes.get(plan.routeName) ?? {
@@ -1354,8 +1363,8 @@ export class DashboardService {
             if (t.claimType === 'VSL') continue;
             const q = Math.max(1, Number(t.quantity) || 1);
             driverTripCont += q;
-            driverTripByType[t.containerType] =
-              (driverTripByType[t.containerType] ?? 0) + q;
+            const key = tripTypeKey(t);
+            driverTripByType[key] = (driverTripByType[key] ?? 0) + q;
           }
           de.totalCont += driverTripCont;
           for (const [containerType, n] of Object.entries(driverTripByType)) {
