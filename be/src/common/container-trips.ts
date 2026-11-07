@@ -73,6 +73,12 @@ export interface TripBuildOptions {
     claim: TripClaimLike,
     container: TripContainerLike,
   ) => number | null;
+  /**
+   * Cho phép ghép cặp kẹp hay không. Dashboard truyền hàm kiểm tra giá kẹp:
+   * nếu khách không có đơn giá KV20/KV20FR thì KHÔNG ghép cặp, để 2 container
+   * được tính giá như 2 vỏ lẻ (đúng quy tắc "tính giá theo vỏ").
+   */
+  shouldPairClamp?: (mainType: string, clampType: string) => boolean;
 }
 
 /** Đơn vị lương theo loại container + số lượng (giống calcSubSalary). */
@@ -131,6 +137,11 @@ export function buildContainerTrips(
         const main = lastBySubmission.get(cl.submissionId);
         const clampC = containerById.get(cl.containerImportId);
         const mainC = main ? containerById.get(main.containerImportId) : undefined;
+        const kepType = mainC ? KEP_PRICE_TYPE[String(mainC.type)] : undefined;
+        const allowPair =
+          !!kepType &&
+          (!options.shouldPairClamp ||
+            options.shouldPairClamp(String(mainC!.type), String(clampC!.type)));
         if (
           main &&
           clampC &&
@@ -138,6 +149,7 @@ export function buildContainerTrips(
           mainC.id !== clampC.id &&
           String(mainC.type) === String(clampC.type) &&
           !FR_TYPES.has(String(mainC.type)) &&
+          allowPair &&
           !pairByContainer.has(mainC.id) &&
           !pairByContainer.has(clampC.id)
         ) {

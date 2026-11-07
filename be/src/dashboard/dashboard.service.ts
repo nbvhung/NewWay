@@ -1131,6 +1131,16 @@ export class DashboardService {
             subUserId
           );
         },
+        // Chỉ ghép kẹp khi khách thực sự có đơn giá KV20/KV20FR.
+        // Không có giá kẹp → để 2 container thành 2 lượt vỏ lẻ (tính giá V20/V40).
+        shouldPairClamp: (mainType, clampType) => {
+          const kepType = KEP_PRICE_TYPE[mainType];
+          return (
+            !!kepType &&
+            String(mainType) === String(clampType) &&
+            tripUnitPrice(plan, kepType, day) > 0
+          );
+        },
       });
 
       const mySurcharges = allSurcharges.filter((s) => {

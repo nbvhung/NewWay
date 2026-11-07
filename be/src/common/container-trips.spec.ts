@@ -102,6 +102,51 @@ describe('buildContainerTrips', () => {
     expect(trips[0].claimIds).toEqual([1, 2]);
   });
 
+  it('kẹp V20 nhưng khách không có giá KV20 = 2 lượt vỏ V20 riêng', () => {
+    const containers = [
+      container({ id: 1, type: 'V20', shippingLineId: 1 }),
+      container({ id: 2, type: 'V20', shippingLineId: 1 }),
+    ];
+    const claims = [
+      claim({ id: 1, containerImportId: 1, claimType: 'CLAIM' }),
+      claim({
+        id: 2,
+        containerImportId: 2,
+        claimType: 'CLAMP',
+        createdAt: new Date('2026-10-01T00:00:01Z'),
+      }),
+    ];
+
+    const trips = buildContainerTrips(containers, claims, {
+      shouldPairClamp: () => false,
+    });
+    expect(trips).toHaveLength(2);
+    expect(trips.map((t) => t.priceType)).toEqual(['V20', 'V20']);
+    expect(trips.map((t) => t.quantity)).toEqual([1, 1]);
+    expect(trips.every((t) => !t.isPair)).toBe(true);
+  });
+
+  it('kẹp H20 không có loại giá kẹp = 2 lượt H20 riêng', () => {
+    const containers = [
+      container({ id: 1, type: 'H20', shippingLineId: 1 }),
+      container({ id: 2, type: 'H20', shippingLineId: 1 }),
+    ];
+    const claims = [
+      claim({ id: 1, containerImportId: 1, claimType: 'CLAIM' }),
+      claim({
+        id: 2,
+        containerImportId: 2,
+        claimType: 'CLAMP',
+        createdAt: new Date('2026-10-01T00:00:01Z'),
+      }),
+    ];
+
+    const trips = buildContainerTrips(containers, claims);
+    expect(trips).toHaveLength(2);
+    expect(trips.map((t) => t.priceType)).toEqual(['H20', 'H20']);
+    expect(trips.every((t) => !t.isPair)).toBe(true);
+  });
+
   it('FR lẻ: giữ loại V40FR nhưng tính giá V40', () => {
     const trips = buildContainerTrips(
       [container({ id: 1, type: 'V40FR', bundleId: null })],
