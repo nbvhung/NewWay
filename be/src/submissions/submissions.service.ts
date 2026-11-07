@@ -1517,8 +1517,32 @@ export class SubmissionsService {
           d.kv += parseFloat(sub.keoVe) || 0;
         }
 
+        // Sheet kế hoạch (sheet đầu tiên của OPS): xe xếp tăng dần theo số xe.
+        // Ẩn dòng giả có cả SỐ XE và TÊN đều là "-".
+        const plateKey = (drv: any) => {
+          const p = String(drv.soXe || '').trim();
+          return !p || p === '-' ? '\uffff' : p;
+        };
+        const shipDrivers = allDrivers
+          .filter((drv) => {
+            const plate = String(drv.soXe || '').trim();
+            const name = String(drv.fullName || '').trim();
+            return !(plate === '-' && (name === '-' || name === ''));
+          })
+          .sort(
+            (a, b) =>
+              plateKey(a).localeCompare(plateKey(b), 'vi', {
+                numeric: true,
+              }) ||
+              (parseInt(a.stt) || 0) - (parseInt(b.stt) || 0) ||
+              String(a.fullName || '').localeCompare(
+                String(b.fullName || ''),
+                'vi',
+              ),
+          );
+
         let rowIdx = 0;
-        for (const driver of allDrivers) {
+        for (const driver of shipDrivers) {
           const d = shipDriverMap.get(driver.id);
           const h20 = d?.h20 || 0;
           const h40 = d?.h40 || 0;
@@ -1541,7 +1565,7 @@ export class SubmissionsService {
           totalKv += kv;
 
           const row = ws2.getRow(dataStartRow + rowIdx);
-          row.getCell(1).value = driver.stt || '';
+          row.getCell(1).value = rowIdx + 1;
           row.getCell(2).value = driver.soXe || '';
           row.getCell(3).value = driver.fullName || driver.username || '';
           row.getCell(4).value = driver.sdt || '';
@@ -1637,7 +1661,7 @@ export class SubmissionsService {
           planId: filter.shippingLineId,
         });
       }
-      qb.orderBy('c.containerCode', 'ASC');
+      qb.orderBy('c.containerCode', 'DESC');
       const containers = await qb.getMany();
 
       const claims =
@@ -1835,6 +1859,14 @@ export class SubmissionsService {
         if (isBundle) {
           const members = bundleMembers.get(key)!;
           members.forEach((m) => rendered.add(m.id));
+          // Ẩn bó chưa có ai ghi nhận (Người chạy / Biển số xe đều trống).
+          if (
+            members.every(
+              (m) => (claimsByContainer.get(m.id) || []).length === 0,
+            )
+          ) {
+            continue;
+          }
           const planName = planNameFor(c);
           const yellow = kepUnits.has(key);
           const canMerge = members.every(
@@ -1974,23 +2006,8 @@ export class SubmissionsService {
         const multi = cClaims.length > 1;
         const yellow = multi || clampContainerIds.has(c.id);
 
-        if (cClaims.length === 0) {
-          stt++;
-          const row = wsCont.addRow({
-            stt,
-            containerCode: c.containerCode,
-            type: c.type,
-            plan: planNameFor(c),
-            driver: '',
-            plate: '',
-            claimedAt: '',
-            vsl: c.veSinhLai ? 'x' : '',
-            keoVe: c.keoVe ? 'x' : '',
-            note: '',
-          });
-          styleRow(row, null);
-          continue;
-        }
+        // Ẩn container chưa có ai ghi nhận (Người chạy / Biển số xe đều trống).
+        if (cClaims.length === 0) continue;
 
         for (const cl of cClaims) {
           stt++;
@@ -2935,7 +2952,15 @@ export class SubmissionsService {
       sumPhuCapChoDong = 0,
       sumPhuCapXeCu = 0,
       sumTongThanhToan = 0;
-    for (const driver of allDrivers) {
+    const mainDrivers =
+      role === 'ops'
+        ? allDrivers.filter((drv) => {
+            const plate = String(drv.soXe || '').trim();
+            const name = String(drv.fullName || '').trim();
+            return !(plate === '-' && (name === '-' || name === ''));
+          })
+        : allDrivers;
+    for (const driver of mainDrivers) {
       const d = driverDataMap.get(driver.id);
       const h20 = d?.h20 || 0;
       const h40 = d?.h40 || 0;
