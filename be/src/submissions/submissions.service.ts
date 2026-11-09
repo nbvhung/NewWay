@@ -1517,12 +1517,9 @@ export class SubmissionsService {
           d.kv += parseFloat(sub.keoVe) || 0;
         }
 
-        // Sheet kế hoạch (sheet đầu tiên của OPS): xe xếp tăng dần theo số xe.
+        // Sheet kế hoạch (sheet đầu tiên của OPS): STT là số thứ tự của XE
+        // (users.stt), xếp tăng dần theo đúng số thứ tự đó.
         // Ẩn dòng giả có cả SỐ XE và TÊN đều là "-".
-        const plateKey = (drv: any) => {
-          const p = String(drv.soXe || '').trim();
-          return !p || p === '-' ? '\uffff' : p;
-        };
         const shipDrivers = allDrivers
           .filter((drv) => {
             const plate = String(drv.soXe || '').trim();
@@ -1531,9 +1528,6 @@ export class SubmissionsService {
           })
           .sort(
             (a, b) =>
-              plateKey(a).localeCompare(plateKey(b), 'vi', {
-                numeric: true,
-              }) ||
               (parseInt(a.stt) || 0) - (parseInt(b.stt) || 0) ||
               String(a.fullName || '').localeCompare(
                 String(b.fullName || ''),
@@ -1565,7 +1559,7 @@ export class SubmissionsService {
           totalKv += kv;
 
           const row = ws2.getRow(dataStartRow + rowIdx);
-          row.getCell(1).value = rowIdx + 1;
+          row.getCell(1).value = driver.stt || '';
           row.getCell(2).value = driver.soXe || '';
           row.getCell(3).value = driver.fullName || driver.username || '';
           row.getCell(4).value = driver.sdt || '';
