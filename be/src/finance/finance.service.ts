@@ -13,7 +13,10 @@ import { FinanceCostItem } from '../database/entities/finance-cost-item.entity';
 import { User } from '../database/entities/user.entity';
 import { Vehicle } from '../database/entities/vehicle.entity';
 import { ACTION_PASSWORD } from '../common/security/action-password';
-import { hasPermission } from '../common/permissions/permissions';
+import {
+  hasPermission,
+  resolveVisibleDriverIds,
+} from '../common/permissions/permissions';
 import { SettingsService } from '../settings/settings.service';
 
 export interface UpsertFinanceDto {
@@ -264,7 +267,7 @@ export class FinanceService {
     actor: any,
     targetUserId?: number,
   ): Promise<VehicleOption[]> {
-    const { ben } = await this.resolveOwner(actor, targetUserId);
+    const { userId, ben } = await this.resolveOwner(actor, targetUserId);
     const vehicles = await this.vehiclesRepo.find({
       order: { stt: 'ASC', id: 'ASC' },
     });
@@ -275,6 +278,30 @@ export class FinanceService {
       owners.map((o) => [o.id, o.fullName || o.username]),
     );
     const benMap = await this.loadVehicleBenMap();
+
+    // Admin thường chỉ thấy xe ĐƯỢC PHÂN BỔ (visible_driver_ids → xe nhà của
+    // lái xe đó) + xe họ sở hữu. Tài khoản finance.all / supper_admin bỏ qua
+    // giới hạn này để xem được mọi sổ.
+    let allowedIds: Set<number> | null = null;
+    if (!this.isSuperAdmin(actor)) {
+      const scope = resolveVisibleDriverIds(actor);
+      if (scope !== null) {
+        const ids = new Set<number>();
+        if (scope.length > 0) {
+          const drivers = await this.usersRepo.find({
+            where: { id: In(scope), role: 'laixe' },
+          });
+          for (const d of drivers) {
+            if (d.homeVehicleId != null) ids.add(Number(d.homeVehicleId));
+          }
+        }
+        for (const v of vehicles) {
+          if (v.ownerUserId === userId) ids.add(v.id);
+        }
+        allowedIds = ids;
+      }
+    }
+
     return vehicles
       .map((v) => ({
         id: v.id,
@@ -287,7 +314,7 @@ export class FinanceService {
         stt: v.stt || '',
         ben: this.normBen(benMap.get(v.id)),
       }))
-      .filter((v) => v.ben === ben);
+      .filter((v) => v.ben === ben && (!allowedIds || allowedIds.has(v.id)));
   }
 
   /** Kiểm tra 1 xe có thuộc đúng bên không (chặn nhập xe bên B vào sổ bên A). */
