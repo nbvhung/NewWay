@@ -1736,11 +1736,16 @@ export class DashboardService {
     // ─── Finance entries (chi phí + vốn đầu tư) — mỗi admin xem của mình ─
     const userId = user?.sub ?? user?.id ?? null;
     // Đang lọc theo bên → gộp sổ tài chính của mọi chủ vốn thuộc bên đó.
+    // Tài khoản finance.all / supper_admin chọn "Tất cả bên" → gộp TẤT CẢ sổ
+    // tài chính (để vốn đầu tư của xe thuộc sổ khác vẫn hiện khi lọc theo xe).
+    const allOwnerIds = owners.map((o) => o.id);
     const scopeWhere: any = benOwnerIds
       ? { userId: In(benOwnerIds.length ? benOwnerIds : [-1]) }
-      : userId
-        ? { userId }
-        : {};
+      : canPickBen
+        ? { userId: In(allOwnerIds.length ? allOwnerIds : [-1]) }
+        : userId
+          ? { userId }
+          : {};
 
     // Bản ghi của ĐÚNG tháng đang chọn (dùng cho 3 cột chi phí legacy).
     const monthFinance = await this.financeRepo.find({
