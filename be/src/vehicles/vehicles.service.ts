@@ -335,34 +335,18 @@ export class VehiclesService {
     let luong = 0;
     ws.addRow(['A. Chi phí lái xe (góc nhìn chủ xe)']).font = { bold: true };
     if ((costV?.drivers ?? []).length) {
-      tableHeader([
-        'Lái xe',
-        'Vai trò',
-        'Lương chuyến',
-        'Lương cứng',
-        'Chuyên cần',
-        'Phụ cấp',
-        'Cộng thêm',
-        'TIP',
-        'BHXH CTY 21.5%',
-        'Chi hộ',
-        'Tạm ứng',
-        'TỔNG',
-        'Chi tiết cộng thêm',
-      ]);
-      for (const d of costV.drivers) {
+      const driverRows = (costV.drivers ?? []).map((d) => {
         // Lái phụ mượn xe: không thuộc biên chế lương xe này → chỉ trả lương chuyến
         // Lái chính: chủ xe chi toàn bộ các khoản
-        const luongChuyen   = num(d.luongKhoan);
-        const luongCung     = d.isMain ? num(d.luongCung)     : 0;
-        const chuyenCan     = d.isMain ? num(d.chuyenCan)     : 0;
-        const phuCap        = d.isMain ? num(d.phuCap)        : 0;
-        const pcKhac        = d.isMain ? num(d.itemSumAdd)    : 0;
-        const tipHoan       = d.isMain ? num(d.tip)           : 0; // TIP hoàn trả cho lái chính (đã là VND)
-        const bhxhCty       = d.isMain ? num(d.bhxhCty)       : 0;
-        const chiHo         = d.isMain ? num(d.chiHo)         : 0;
-        const tamUng        = d.isMain ? num(d.advanceDeduct) : 0;
-        // Nội dung các khoản "cộng thêm" (thay cho nhãn "PC khác" mơ hồ)
+        const luongChuyen = num(d.luongKhoan);
+        const luongCung = d.isMain ? num(d.luongCung) : 0;
+        const chuyenCan = d.isMain ? num(d.chuyenCan) : 0;
+        const phuCap = d.isMain ? num(d.phuCap) : 0;
+        const pcKhac = d.isMain ? num(d.itemSumAdd) : 0;
+        const tipHoan = d.isMain ? num(d.tip) : 0; // TIP hoàn trả cho lái chính (đã là VND)
+        const bhxhCty = d.isMain ? num(d.bhxhCty) : 0;
+        const chiHo = d.isMain ? num(d.chiHo) : 0;
+        const tamUng = d.isMain ? num(d.advanceDeduct) : 0;
         const addDetail = d.isMain
           ? (
               (d.itemAddDetail ?? []) as Array<{ name: string; amount: number }>
@@ -370,13 +354,19 @@ export class VehiclesService {
               .map((x) => `${x.name}: ${x.amount.toLocaleString('vi-VN')}`)
               .join('; ')
           : '';
-        // TỔNG = tất cả khoản chủ xe phải bỏ ra (không phụ thuộc trừ/cộng phía lái xe)
-        const tongChuXeChi = luongChuyen + luongCung + chuyenCan + phuCap + pcKhac
-          + tipHoan + bhxhCty + chiHo + tamUng;
+        const tongChuXeChi =
+          luongChuyen +
+          luongCung +
+          chuyenCan +
+          phuCap +
+          pcKhac +
+          tipHoan +
+          bhxhCty +
+          chiHo +
+          tamUng;
         luong += tongChuXeChi;
-        const r = ws.addRow([
-          d.fullName || '',
-          d.isMain ? 'Lái chính' : 'Lái phụ (mượn)',
+        return {
+          d,
           luongChuyen,
           luongCung,
           chuyenCan,
@@ -388,18 +378,67 @@ export class VehiclesService {
           tamUng,
           tongChuXeChi,
           addDetail,
+        };
+      });
+
+      // Bố trí dọc: đề mục là dòng, mỗi lái xe là 1 cột.
+      const header = [
+        'Đề mục',
+        ...driverRows.map((x) => x.d.fullName || ''),
+        'TỔNG',
+      ];
+      tableHeader(header);
+      const rowFor = (
+        label: string,
+        pick: (x: (typeof driverRows)[number]) => number,
+        bold = false,
+        greyAux = true,
+      ) => {
+        const vals = driverRows.map(pick);
+        const row = ws.addRow([
+          label,
+          ...vals,
+          vals.reduce((s, v) => s + (Number(v) || 0), 0),
         ]);
-        money(r, 3, 12);
-        // Tô màu khác cho lái phụ để dễ phân biệt
-        if (!d.isMain) {
-          r.eachCell((cell, col) => {
-            if (col >= 4 && col <= 11) {
-              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F5F5' } };
-              cell.font = { color: { argb: 'FFB0B0B0' } };
-            }
-          });
-        }
-      }
+        money(row, 2, header.length);
+        if (bold) row.font = { bold: true };
+        driverRows.forEach((x, idx) => {
+          if (greyAux && !x.d.isMain) {
+            const cell = row.getCell(2 + idx);
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFF5F5F5' },
+            };
+            cell.font = { color: { argb: 'FFB0B0B0' } };
+          }
+        });
+        return row;
+      };
+
+      const roleRow = ws.addRow([
+        'Vai trò',
+        ...driverRows.map((x) =>
+          x.d.isMain ? 'Lái chính' : 'Lái phụ (mượn)',
+        ),
+        '',
+      ]);
+      roleRow.font = { italic: true };
+      rowFor('Lương chuyến', (x) => x.luongChuyen, false, false);
+      rowFor('Lương cứng', (x) => x.luongCung);
+      rowFor('Chuyên cần', (x) => x.chuyenCan);
+      rowFor('Phụ cấp', (x) => x.phuCap);
+      rowFor('Cộng thêm', (x) => x.pcKhac);
+      rowFor('TIP', (x) => x.tipHoan);
+      rowFor('BHXH CTY 21.5%', (x) => x.bhxhCty);
+      rowFor('Chi hộ', (x) => x.chiHo);
+      rowFor('Tạm ứng', (x) => x.tamUng);
+      rowFor('TỔNG', (x) => x.tongChuXeChi, true, false);
+      ws.addRow([
+        'Chi tiết cộng thêm',
+        ...driverRows.map((x) => x.addDetail),
+        '',
+      ]);
     } else {
       ws.addRow(['(Chưa có lái xe)']);
       luong = num(costV?.luongNguoiLai) + num(costV?.bhxhCty);
@@ -527,7 +566,7 @@ export class VehiclesService {
     );
 
     // ── Sheet 2: Danh sách container xe đã chạy ──
-    const containers = await this.dashboardService.listVehicleContainers(
+    const containers = await this.dashboardService.listVehicleTrips(
       vehicleId,
       month,
       year,
@@ -580,9 +619,11 @@ export class VehiclesService {
       c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     });
 
-    // Gom các dòng theo nhóm kẹp để merge 4 ô tiền (Lương chuyến / Doanh thu /
-    // Phụ phí / Tổng) của cả cặp. Cặp kẹp = 1 chuyến → lương chuyến chỉ tính 1 lần.
-    const kepGroups = new Map<
+    // Gom các dòng theo nhóm chuyến để merge ô tiền:
+    //  - mergeGroup  : cặp kẹp / bó có giá kẹp → merge cả Lương chuyến + 3 ô doanh thu.
+    //  - salaryGroup : cặp kẹp không có giá kẹp → chỉ merge Lương chuyến (1 chuyến),
+    //                  doanh thu vẫn tính từng vỏ như bình thường.
+    const tripGroups = new Map<
       string,
       {
         first: number;
@@ -591,6 +632,7 @@ export class VehiclesService {
         base: number;
         surcharge: number;
         total: number;
+        mergeRevenue: boolean;
       }
     >();
     containers.forEach((ci, i) => {
@@ -610,33 +652,43 @@ export class VehiclesService {
         ci.revenue || 0,
       ]);
       for (let c = 10; c <= 13; c++) row.getCell(c).numFmt = '#,##0';
-      if (ci.mergeGroup) {
-        const g = kepGroups.get(ci.mergeGroup);
+      const groupKey = ci.mergeGroup || ci.salaryGroup;
+      if (groupKey) {
+        const mergeRevenue = !!ci.mergeGroup;
+        const g = tripGroups.get(groupKey);
         if (!g) {
-          kepGroups.set(ci.mergeGroup, {
+          tripGroups.set(groupKey, {
             first: row.number,
             last: row.number,
             salary: ci.tripSalary || 0,
             base: ci.baseRevenue || 0,
             surcharge: ci.surchargeAmount || 0,
             total: ci.revenue || 0,
+            mergeRevenue,
           });
         } else {
           g.last = row.number;
           if (!g.salary) g.salary = ci.tripSalary || 0;
+          g.mergeRevenue = g.mergeRevenue || mergeRevenue;
           g.base += ci.baseRevenue || 0;
           g.surcharge += ci.surchargeAmount || 0;
           g.total += ci.revenue || 0;
         }
       }
     });
-    // Cặp kẹp: gộp ô 2 dòng và ghi 1 lần giá trị của cặp cho cả 4 cột tiền.
-    // Lương chuyến của cặp = 1 chuyến (không cộng 2 lần).
-    for (const g of kepGroups.values()) {
+    // Gộp ô theo nhóm chuyến. Lương chuyến luôn 1 lần/chuyến; doanh thu chỉ gộp
+    // khi có giá kẹp, còn lại giữ từng vỏ.
+    for (const g of tripGroups.values()) {
       if (g.last === g.first) continue;
-      const vals = [g.salary, g.base, g.surcharge, g.total];
+      const salaryCell = ws2.getCell(g.first, 10);
+      ws2.mergeCells(g.first, 10, g.last, 10);
+      salaryCell.value = g.salary;
+      salaryCell.numFmt = '#,##0';
+      salaryCell.alignment = { vertical: 'middle', horizontal: 'right' };
+      if (!g.mergeRevenue) continue;
+      const vals = [g.base, g.surcharge, g.total];
       vals.forEach((val, idx) => {
-        const col = 10 + idx;
+        const col = 11 + idx;
         ws2.mergeCells(g.first, col, g.last, col);
         const cell = ws2.getCell(g.first, col);
         cell.value = val;
@@ -644,18 +696,19 @@ export class VehiclesService {
         cell.alignment = { vertical: 'middle', horizontal: 'right' };
       });
     }
-    // Dòng tổng: cặp kẹp chỉ tính 1 lần (dòng kẹp = 0, đã gộp vào dòng chính).
+    // Dòng tổng: mỗi nhóm chuyến (kẹp/bó) chỉ tính lương 1 lần.
     const sumBy = (f: (ci: (typeof containers)[number]) => number) =>
       containers.reduce((s, ci) => s + (f(ci) || 0), 0);
     const countedSalaryGroups = new Set<string>();
     const salaryTotal = containers.reduce((s, ci) => {
-      if (ci.mergeGroup) {
-        if (countedSalaryGroups.has(ci.mergeGroup)) return s;
-        countedSalaryGroups.add(ci.mergeGroup);
+      const groupKey = ci.mergeGroup || ci.salaryGroup;
+      if (groupKey) {
+        if (countedSalaryGroups.has(groupKey)) return s;
+        countedSalaryGroups.add(groupKey);
       }
       return s + (ci.tripSalary || 0);
     }, 0);
-    const totalRow = ws2.addRow([`Tổng: ${containers.length} container`]);
+    const totalRow = ws2.addRow([`Tổng: ${containers.length} lượt`]);
     totalRow.font = { bold: true };
     ws2.mergeCells(totalRow.number, 1, totalRow.number, 9);
     const totals: [number, number][] = [

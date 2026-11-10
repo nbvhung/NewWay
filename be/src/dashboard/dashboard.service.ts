@@ -2232,4 +2232,305 @@ export class DashboardService {
     }
     return out;
   }
+
+  /**
+   * Dữ liệu sheet "Container đã chạy" của tab Quản lý xe — dựng theo TỪNG LƯỢT
+   * CLAIM (CLAIM/KV/KD2/REGO/VSL...), không theo container_imports.submission_id.
+   * Nhờ vậy container có nhiều lượt (Dũng kéo đi + kéo về, Tuấn kéo đi...) được
+   * tính đúng người + đúng xe của từng lượt.
+   */
+  async listVehicleTrips(
+    vehicleId: number,
+    month: number,
+    year: number,
+  ): Promise<any[]> {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const fromDate = `${year}-${pad(month)}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const toDate = `${year}-${pad(month)}-${pad(lastDay)}`;
+
+    const plans = await this.slRepo
+      .createQueryBuilder('sl')
+      .where('sl.ngay BETWEEN :from AND :to', { from: fromDate, to: toDate })
+      .getMany();
+    const planIds = plans.map((p) => p.id);
+    if (planIds.length === 0) return [];
+    const planMap = new Map(plans.map((p) => [p.id, p]));
+
+    const containers = await this.ciRepo
+      .createQueryBuilder('ci')
+      .leftJoinAndSelect('ci.shippingLineRef', 'sl')
+      .where('ci.shippingLineId IN (:...ids)', { ids: planIds })
+      .orderBy('ci.containerCode', 'DESC')
+      .addOrderBy('ci.id', 'ASC')
+      .getMany();
+    if (containers.length === 0) return [];
+
+    const claims = await this.claimRepo
+      .createQueryBuilder('cl')
+      .leftJoinAndSelect('cl.submissionRef', 'sub')
+      .leftJoinAndSelect('sub.user', 'u')
+      .where('cl.containerImportId IN (:...ids)', {
+        ids: containers.map((c) => c.id),
+      })
+      .orderBy('cl.createdAt', 'ASC')
+      .addOrderBy('cl.id', 'ASC')
+      .getMany();
+    if (claims.length === 0) return [];
+
+    const [customers, monthPrices, routes, monthSurcharges, submissions, overrides] =
+      await Promise.all([
+        this.customerRepo.find(),
+        this.priceRepo.find({ where: { month, year } }),
+        this.routeRepo.find(),
+        this.surchargeRepo.find({ where: { month, year, active: true } }),
+        this.subRepo.find({ where: { shippingLineId: In(planIds) } }),
+        this.overrideRepo.find({ where: { planId: In(planIds) } }),
+      ]);
+
+    const customerMap = new Map(customers.map((c) => [c.id, c.name]));
+    const routeMap = new Map(routes.map((r) => [r.name, r]));
+    const subMap = new Map(submissions.map((s) => [s.id, s]));
+    const overrideMap = new Map<string, number>();
+    for (const o of overrides) {
+      overrideMap.set(`${o.planId}:${o.driverId}`, o.vehicleId);
+    }
+
+    const surchargesOfPlan = (plan: ShippingLine | undefined) => {
+      if (!plan?.customerId) return [];
+      const day = dayOfDate(plan.ngay);
+      return monthSurcharges.filter((s) => {
+        if (s.customerId !== plan.customerId) return false;
+        if (s.applyScope === 'plans') {
+          return (s.planIds || []).map(Number).includes(plan.id);
+        }
+        if (day == null || day < s.fromDay || day > s.toDay) return false;
+        return true;
+      });
+    };
+
+    const priceFor = (plan: ShippingLine | undefined, type: string): number => {
+      if (!plan) return 0;
+      const dealed = plan.dealedPrices as Record<string, number> | null;
+      const usePlanPrice =
+        plan.priceStatus !== 'rejected' &&
+        !!dealed &&
+        Object.keys(dealed).length > 0;
+      if (usePlanPrice) return Number(dealed![type]) || 0;
+      const day = dayOfDate(plan.ngay);
+      if (day == null) return 0;
+      const rn = (plan.routeName || '').trim();
+      const match = (want: string) =>
+        monthPrices.find(
+          (p) =>
+            p.customerId === plan.customerId &&
+            p.containerType === type &&
+            day >= p.fromDay &&
+            day <= p.toDay &&
+            (p.routeName || '').trim() === want,
+        );
+      const matched = rn ? match(rn) || match('') : match('');
+      return matched ? Number(matched.unitPrice) || 0 : 0;
+    };
+
+    const trips = buildContainerTrips(containers as any, claims as any, {
+      resolveVehicleId: (cl, c) => {
+        const sub = cl.submissionRef;
+        if (!sub) return c.vehicleId ?? null;
+        const subUserId = Number(sub.userId);
+        return (
+          overrideMap.get(`${c.shippingLineId}:${subUserId}`) ??
+          (sub as any).actualVehicleId ??
+          c.vehicleId ??
+          (sub as any).user?.homeVehicleId ??
+          subUserId
+        );
+      },
+      // Ghép mọi cặp CLAMP để lương chuyến = 1 chuyến. Doanh thu sẽ tự tách
+      // theo giá KV20 nếu khách có giá kẹp; nếu không có thì tính từng vỏ.
+      shouldPairClamp: () => true,
+    });
+
+    const containerById = new Map(containers.map((c) => [c.id, c]));
+    const claimById = new Map(claims.map((c) => [c.id, c]));
+    const targetTrips = trips
+      .filter((t) => Number(t.vehicleId) === Number(vehicleId))
+      .sort(
+        (a, b) =>
+          String(b.containerCode || '').localeCompare(
+            String(a.containerCode || ''),
+          ) ||
+          new Date(a.claimedAt).getTime() - new Date(b.claimedAt).getTime(),
+      );
+
+    const out: any[] = [];
+    const planFixedAdded = new Set<number>();
+
+    for (const trip of targetTrips) {
+      const mainC = containerById.get(trip.containerIds[0]);
+      if (!mainC) continue;
+      const plan = planMap.get(mainC.shippingLineId ?? -1);
+      if (!plan) continue;
+      const claim: any = claimById.get(trip.claimIds[0]);
+      const sub: any = trip.submissionId
+        ? subMap.get(trip.submissionId)
+        : undefined;
+
+      const routeName = sub?.route || plan.routeName || '';
+      const rt = routeMap.get(routeName);
+      const rate = Number(plan.frozenMoney ?? rt?.money ?? 0) || 0;
+      const heSo = plan.leTet ? 3 : plan.tangCuong ? 1.15 : 1;
+      const tripSalary =
+        (trip.claimType === 'VSL' ? 40000 : rate) * heSo;
+
+      const mySurs = surchargesOfPlan(plan);
+      const pct = mySurs
+        .filter((s) => s.calcType === 'percent')
+        .reduce((s, x) => s + (Number(x.value) || 0), 0);
+      const fixed = mySurs
+        .filter((s) => s.calcType === 'add')
+        .reduce((s, x) => s + (Number(x.value) || 0), 0);
+      const firstOfPlan = !planFixedAdded.has(plan.id);
+      if (firstOfPlan) planFixedAdded.add(plan.id);
+      const revFor = (base: number, first: boolean) => {
+        let r = base * (1 + pct / 100);
+        if (first) r += fixed;
+        return r;
+      };
+      const baseFor = (type: string) => Number(priceFor(plan, type)) || 0;
+
+      const mkRow = (
+        c: any,
+        type: string,
+        base: number,
+        revenue: number,
+        salary: number,
+        mergeGroup: string | null,
+        salaryGroup: string | null,
+        role: 'main' | 'clamp' | null,
+        first: boolean,
+      ) => ({
+        containerCode: c.containerCode,
+        type: first ? type : '',
+        planName: first ? plan.name : '',
+        planNgay: first ? isoStr(plan.ngay) : '',
+        driverName: first
+          ? claim?.submissionRef?.user?.fullName ||
+            sub?.user?.fullName ||
+            ''
+          : '',
+        routeName: first ? plan.routeName || '' : '',
+        customerName:
+          first && plan.customerId
+            ? customerMap.get(plan.customerId) || ''
+            : '',
+        customerId: first ? plan.customerId ?? null : null,
+        planId: plan.id,
+        submissionId: trip.submissionId,
+        tripSalary: salary,
+        revenue,
+        baseRevenue: base,
+        surchargeAmount: revenue - base,
+        mergeGroup,
+        salaryGroup,
+        revenueRole: role,
+      });
+
+      if (trip.isPair) {
+        const clampC = containerById.get(trip.containerIds[1]);
+        if (!clampC) continue;
+        const g = `kep:${trip.key}`;
+        const kvBase = Number(priceFor(plan, trip.priceType)) || 0;
+        if (kvBase > 0) {
+          const mainRev = revFor(kvBase, firstOfPlan);
+          out.push(
+            mkRow(
+              mainC,
+              String(mainC.type),
+              kvBase,
+              mainRev,
+              tripSalary,
+              g,
+              null,
+              'main',
+              true,
+            ),
+          );
+          out.push(
+            mkRow(clampC, String(clampC.type), 0, 0, 0, g, null, 'clamp', false),
+          );
+        } else {
+          const mainBase = baseFor(String(mainC.type));
+          const mainRev = revFor(mainBase, firstOfPlan);
+          const clampBase = baseFor(String(clampC.type));
+          const clampRev = revFor(clampBase, false);
+          out.push(
+            mkRow(
+              mainC,
+              String(mainC.type),
+              mainBase,
+              mainRev,
+              tripSalary,
+              null,
+              g,
+              'main',
+              true,
+            ),
+          );
+          out.push(
+            mkRow(
+              clampC,
+              String(clampC.type),
+              clampBase,
+              clampRev,
+              0,
+              null,
+              g,
+              'clamp',
+              false,
+            ),
+          );
+        }
+      } else if (trip.isBundle) {
+        const g = `bo:${trip.key}`;
+        const base = baseFor(trip.priceType);
+        const rev = revFor(base, firstOfPlan);
+        trip.containerIds.forEach((id, idx) => {
+          const c = containerById.get(id);
+          if (!c) return;
+          out.push(
+            mkRow(
+              c,
+              String(c.type),
+              idx === 0 ? base : 0,
+              idx === 0 ? rev : 0,
+              idx === 0 ? tripSalary : 0,
+              g,
+              null,
+              idx === 0 ? 'main' : 'clamp',
+              idx === 0,
+            ),
+          );
+        });
+      } else {
+        const base = baseFor(trip.priceType);
+        const rev = revFor(base, firstOfPlan);
+        out.push(
+          mkRow(
+            mainC,
+            String(mainC.type),
+            base,
+            rev,
+            tripSalary,
+            null,
+            null,
+            null,
+            true,
+          ),
+        );
+      }
+    }
+
+    return out;
+  }
 }
