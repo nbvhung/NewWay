@@ -149,6 +149,19 @@ export class FinanceService {
     return (INVEST_CATEGORIES as readonly string[]).includes(category);
   }
 
+  /** Tháng/năm để tính khoản chi = tháng/năm của NGÀY người dùng chọn. */
+  private monthYearFromItemDate(
+    itemDate?: string | null,
+  ): { month: number; year: number } | null {
+    if (!itemDate) return null;
+    const m = String(itemDate).match(/^(\d{4})-(\d{2})/);
+    if (!m) return null;
+    const year = parseInt(m[1], 10);
+    const month = parseInt(m[2], 10);
+    if (month < 1 || month > 12) return null;
+    return { month, year };
+  }
+
   /**
    * Tài khoản được quản lý Tài chính như supper_admin: hoặc role supper_admin,
    * hoặc được cấp quyền `finance.all` (xem/nhập sổ của mọi bên/admin).
@@ -587,18 +600,29 @@ export class FinanceService {
     );
     if (!skipBenCheck) await this.assertVehicleInBen(dto.vehicleUserId, ben);
 
+    // Ngày người dùng chọn là căn cứ tính tháng/năm (không lấy tháng đang xem).
+    const derived = this.monthYearFromItemDate(dto.itemDate);
+    const itemMonth = derived?.month ?? month;
+    const itemYear = derived?.year ?? year;
+
     // Đảm bảo finance entry tồn tại
-    let entry = await this.repo.findOne({ where: { month, year, userId } });
+    let entry = await this.repo.findOne({
+      where: { month: itemMonth, year: itemYear, userId },
+    });
     if (!entry) {
-      entry = this.repo.create({ month, year, userId });
+      entry = this.repo.create({
+        month: itemMonth,
+        year: itemYear,
+        userId,
+      });
       await this.repo.save(entry);
     }
 
     const amount = Number(dto.amount) || 0;
     const pay = this.resolvePayment(amount, dto);
     const item = this.costRepo.create({
-      month,
-      year,
+      month: itemMonth,
+      year: itemYear,
       userId,
       category: dto.category,
       vehicleUserId:
@@ -621,7 +645,7 @@ export class FinanceService {
     const saved = await this.costRepo.save(item);
 
     // Ghi audit: thay đổi tổng của nhóm = +amount
-    await this.writeAudit(month, year, userId, selfId, editorName, {
+    await this.writeAudit(itemMonth, itemYear, userId, selfId, editorName, {
       [dto.category]: {
         old: 0,
         new: Number(saved.amount) || 0,
@@ -681,10 +705,21 @@ export class FinanceService {
       }
     }
 
+    // Ngày người dùng chọn là căn cứ tính tháng/năm (không lấy tháng đang xem).
+    const derived = this.monthYearFromItemDate(dto.itemDate);
+    const itemMonth = derived?.month ?? month;
+    const itemYear = derived?.year ?? year;
+
     // Đảm bảo finance entry tồn tại
-    let entry = await this.repo.findOne({ where: { month, year, userId } });
+    let entry = await this.repo.findOne({
+      where: { month: itemMonth, year: itemYear, userId },
+    });
     if (!entry) {
-      entry = this.repo.create({ month, year, userId });
+      entry = this.repo.create({
+        month: itemMonth,
+        year: itemYear,
+        userId,
+      });
       await this.repo.save(entry);
     }
 
@@ -693,8 +728,8 @@ export class FinanceService {
     for (const r of rows) {
       const vid = Number(r.vehicleUserId);
       const item = this.costRepo.create({
-        month,
-        year,
+        month: itemMonth,
+        year: itemYear,
         userId,
         category: dto.category,
         vehicleUserId: vid,
@@ -707,7 +742,7 @@ export class FinanceService {
       });
       const s = await this.costRepo.save(item);
       saved.push(s);
-      await this.writeAudit(month, year, userId, selfId, editorName, {
+      await this.writeAudit(itemMonth, itemYear, userId, selfId, editorName, {
         [dto.category]: {
           old: 0,
           new: Number(s.amount) || 0,
@@ -768,6 +803,13 @@ export class FinanceService {
       );
       item.vehicleUserId =
         dto.vehicleUserId === null ? null : Number(dto.vehicleUserId);
+    }
+
+    // Luôn đồng bộ tháng/năm theo ngày người dùng chọn.
+    const derived = this.monthYearFromItemDate(item.itemDate);
+    if (derived) {
+      item.month = derived.month;
+      item.year = derived.year;
     }
 
     const saved = await this.costRepo.save(item);

@@ -1543,7 +1543,7 @@ function FinanceItemsModal({
               <div className="flex-1 min-w-0">
                 <p className="text-[12px] font-semibold truncate text-[#1c1917]">{it.name || '—'}</p>
                 <p className="text-[10px] text-[#78716c]">
-                  {it.itemDate ? String(it.itemDate).slice(0, 10) : '—'} · T{it.month}/{it.year}
+                  {it.itemDate ? String(it.itemDate).slice(0, 10) : '—'}
                   {it.note ? ` · ${it.note}` : ''}
                   {it.invoiceAmount != null ? ` · 🧾 HĐ ${fmt(it.invoiceAmount)}` : ''}
                   {it.cashAmount != null ? ` · 💵 ${fmt(it.cashAmount)}` : ''}
