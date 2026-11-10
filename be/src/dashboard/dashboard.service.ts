@@ -2408,23 +2408,20 @@ export class DashboardService {
         mergeGroup: string | null,
         salaryGroup: string | null,
         role: 'main' | 'clamp' | null,
-        first: boolean,
+        _first: boolean,
       ) => ({
         containerCode: c.containerCode,
-        type: first ? type : '',
-        planName: first ? plan.name : '',
-        planNgay: first ? isoStr(plan.ngay) : '',
-        driverName: first
-          ? claim?.submissionRef?.user?.fullName ||
-            sub?.user?.fullName ||
-            ''
+        // Giữ nguyên thông tin của từng cont; chỉ merge các cột tiền.
+        type,
+        planName: plan.name,
+        planNgay: isoStr(plan.ngay),
+        driverName:
+          claim?.submissionRef?.user?.fullName || sub?.user?.fullName || '',
+        routeName: plan.routeName || '',
+        customerName: plan.customerId
+          ? customerMap.get(plan.customerId) || ''
           : '',
-        routeName: first ? plan.routeName || '' : '',
-        customerName:
-          first && plan.customerId
-            ? customerMap.get(plan.customerId) || ''
-            : '',
-        customerId: first ? plan.customerId ?? null : null,
+        customerId: plan.customerId ?? null,
         planId: plan.id,
         submissionId: trip.submissionId,
         tripSalary: salary,
