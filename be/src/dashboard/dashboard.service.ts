@@ -2353,15 +2353,26 @@ export class DashboardService {
 
     const containerById = new Map(containers.map((c) => [c.id, c]));
     const claimById = new Map(claims.map((c) => [c.id, c]));
+    const planOfTrip = (t: any) =>
+      planMap.get(containerById.get(t.containerIds[0])?.shippingLineId ?? -1);
     const targetTrips = trips
       .filter((t) => Number(t.vehicleId) === Number(vehicleId))
-      .sort(
-        (a, b) =>
-          String(b.containerCode || '').localeCompare(
-            String(a.containerCode || ''),
+      .sort((a, b) => {
+        const pa = planOfTrip(a);
+        const pb = planOfTrip(b);
+        const da = pa ? isoStr(pa.ngay) : '';
+        const db = pb ? isoStr(pb.ngay) : '';
+        return (
+          da.localeCompare(db) ||
+          String(pa?.name || '').localeCompare(String(pb?.name || ''), 'vi') ||
+          (Number(pa?.id) || 0) - (Number(pb?.id) || 0) ||
+          String(a.containerCode || '').localeCompare(
+            String(b.containerCode || ''),
+            'vi',
           ) ||
-          new Date(a.claimedAt).getTime() - new Date(b.claimedAt).getTime(),
-      );
+          new Date(a.claimedAt).getTime() - new Date(b.claimedAt).getTime()
+        );
+      });
 
     const out: any[] = [];
     const planFixedAdded = new Set<number>();
