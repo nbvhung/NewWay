@@ -69,6 +69,7 @@ const emptyForm = {
   stt: '',
   ngayHoatDong: '',
   ownerUserId: '' as number | '',
+  ben: '',
 };
 
 /** Loại khoản nhập kèm xe: chi phí hoặc vốn đầu tư. */
@@ -226,6 +227,7 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
       stt: v.stt || '',
       ngayHoatDong: v.ngayHoatDong || '',
       ownerUserId: v.ownerUserId ?? '',
+      ben: v.ben || '',
     });
     setModalOpen(true);
   };
@@ -238,6 +240,7 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
         stt: form.stt,
         ngayHoatDong: form.ngayHoatDong || null,
         ownerUserId: form.ownerUserId === '' ? null : Number(form.ownerUserId),
+        ben: form.ben || null,
       };
       if (editId) await vehiclesApi.update(editId, payload);
       else await vehiclesApi.create(payload);
@@ -724,6 +727,18 @@ export function VehiclesTab({ currentUser, allUsers, toast }: Props) {
               <option value="">— Chưa gán —</option>
               {admins.map((a) => (<option key={a.id} value={a.id}>{a.fullName}{a.ben ? ` (Bên ${a.ben})` : ''}</option>))}
             </select>
+          </div>
+          <div className="col-span-2">
+            <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Bên của xe</label>
+            <select value={form.ben} onChange={(e) => setForm({ ...form, ben: e.target.value })}
+              className="w-full px-3 py-2 border border-[#e7e5e4] rounded-lg text-xs cursor-pointer">
+              <option value="">Tự động theo chủ vốn</option>
+              <option value="A">Bên A</option>
+              <option value="B">Bên B</option>
+            </select>
+            <p className="text-[10px] text-[#a8a29e] mt-1">
+              Bên của xe dùng cho lọc A/B trên dashboard và sổ tài chính.
+            </p>
           </div>
         </div>
       </Modal>

@@ -232,7 +232,10 @@ export class FinanceService {
     return map;
   }
 
-  /** Map vehicleId → bên, suy từ chủ vốn sở hữu xe (`vehicles.owner_user_id`). */
+  /**
+   * Map vehicleId → bên. Ưu tiên bên ghi trực tiếp trên xe (`vehicles.ben`);
+   * nếu chưa gán thì suy từ chủ vốn (`vehicles.owner_user_id`), mặc định A.
+   */
   async loadVehicleBenMap(): Promise<Map<number, string>> {
     const owners = await this.usersRepo.find({
       where: { ben: Not(IsNull()) },
@@ -246,7 +249,10 @@ export class FinanceService {
     const vehicles = await this.vehiclesRepo.find();
     const map = new Map<number, string>();
     for (const v of vehicles) {
-      const ben = v.ownerUserId != null ? ownerBen.get(v.ownerUserId) : undefined;
+      const explicit = (v.ben || '').trim().toUpperCase();
+      const ben =
+        explicit ||
+        (v.ownerUserId != null ? ownerBen.get(v.ownerUserId) : undefined);
       map.set(v.id, ben || DEFAULT_BEN);
     }
     return map;

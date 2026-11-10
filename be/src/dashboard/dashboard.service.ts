@@ -366,6 +366,24 @@ export class DashboardService {
     const allVehicles = await this.vehicleRepo.find();
     const vehicleMap = new Map<number, Vehicle>();
     for (const v of allVehicles) vehicleMap.set(v.id, v);
+
+    // Bên trực tiếp trên XE (vehicles.ben) > bên của chủ vốn > mặc định A.
+    const ownerBenById = new Map<number, string>();
+    for (const o of owners) ownerBenById.set(o.id, normBen(o.ben));
+    const vehicleBenOf = (v: Vehicle) =>
+      normBen(
+        v.ben ||
+          (v.ownerUserId != null
+            ? ownerBenById.get(v.ownerUserId)
+            : undefined),
+      );
+    // Bổ sung bên ghi trực tiếp trên xe vào danh sách bên có thể chọn.
+    for (const v of allVehicles) {
+      const b = (v.ben || '').trim().toUpperCase();
+      if (b && !benOptions.includes(b)) benOptions.push(b);
+    }
+    benOptions.sort();
+
     const selfId = Number(user?.sub ?? user?.id);
     let allowedVehicles: number[] | null;
     let benOwnerIds: number[] | null = null;
@@ -374,9 +392,20 @@ export class DashboardService {
       allowedVehicles = allLaixe
         .filter((d) => normBen(driverBen.get(d.id)) === benSel)
         .map((d) => d.id);
-      benOwnerIds = owners
-        .filter((o) => normBen(o.ben) === benSel)
-        .map((o) => o.id);
+      // Sổ tài chính của chủ vốn thuộc bên + chủ vốn của XE thuộc bên
+      // (vd xe 40566 bên B nhưng sổ đang nằm ở MRBACH).
+      benOwnerIds = Array.from(
+        new Set([
+          ...owners
+            .filter((o) => normBen(o.ben) === benSel)
+            .map((o) => o.id),
+          ...allVehicles
+            .filter(
+              (v) => vehicleBenOf(v) === benSel && v.ownerUserId != null,
+            )
+            .map((v) => Number(v.ownerUserId)),
+        ]),
+      );
     } else {
       allowedVehicles = ownerVisible;
     }
@@ -392,16 +421,9 @@ export class DashboardService {
       const set = new Set<number>();
       const driverSet = new Set(allowedVehicles);
       if (benSel) {
-        // Bên của XE = bên của CHỦ VỐN sở hữu xe (vehicles.owner_user_id),
-        // không phụ thuộc tài xế đang lái. Xe chưa có chủ → mặc định A.
-        const ownerBen = new Map<number, string>();
-        for (const o of owners) ownerBen.set(o.id, normBen(o.ben));
+        // Bên của XE lấy trực tiếp trên xe (vehicles.ben), fallback chủ vốn.
         for (const v of allVehicles) {
-          const vben =
-            v.ownerUserId != null
-              ? normBen(ownerBen.get(v.ownerUserId))
-              : 'A';
-          if (vben === benSel) set.add(v.id);
+          if (vehicleBenOf(v) === benSel) set.add(v.id);
         }
         // Tài xế thuộc bên nhưng CHƯA gán xe → dùng id tài xế làm xe.
         for (const d of allLaixe) {
@@ -434,7 +456,7 @@ export class DashboardService {
     //     mà CÓ xe của họ tham gia (driverIds chứa ≥1 id visible). Kế hoạch
     //     "allDrivers" (áp dụng mọi xe) vẫn được giữ vì xe của họ có thể tham gia;
     //     phần doanh thu/sản lượng bên dưới đã được lọc theo đúng xe của họ.
-    if (allowedVehicles !== null) {
+    if (allowedVehicles !== null && !benSel) {
       if (allowedVehicles.length === 0) {
         plans = [];
       } else {
@@ -504,6 +526,14 @@ export class DashboardService {
           )
           .getMany()
       : [];
+
+    // Lọc theo BÊN: chỉ giữ kế hoạch thực sự có container thuộc xe của bên đó.
+    if (benSel) {
+      const withContainers = new Set(
+        containers.map((c) => c.shippingLineId),
+      );
+      plans = plans.filter((p) => withContainers.has(p.id));
+    }
 
     // 2b. Cặp KẸP: claim CLAMP đánh dấu container bị kẹp; container chính là
     //     container được ghi nhận ngay TRƯỚC ĐÓ trong CÙNG submission.
@@ -1088,6 +1118,7 @@ export class DashboardService {
       // (không chứa xe họ). Số liệu bên dưới đã được lọc theo đúng xe của họ nên
       // không lộ sản lượng của xe khác.
       if (
+        !benSel &&
         allowedVehicles &&
         allowedVehicles.length > 0 &&
         !plan.allDrivers
@@ -1482,6 +1513,14 @@ export class DashboardService {
           .sort((a, b) => b.revenue - a.revenue),
       });
     }
+    // Chỉ giữ xe nằm trong phạm vi được xem (tránh lọt xe của tài khoản khác).
+    if (allowedVids !== null) {
+      for (let i = byVehicle.length - 1; i >= 0; i--) {
+        if (!allowedVids.includes(Number(byVehicle[i].vehicleId))) {
+          byVehicle.splice(i, 1);
+        }
+      }
+    }
     byVehicle.sort((a, b) => b.revenue - a.revenue);
 
     // ─── Build cost by VEHICLE ───────────────────────────────────
@@ -1686,11 +1725,17 @@ export class DashboardService {
       }
     }
 
-    const costByVehicle = Array.from(costByVehicleMap.values()).sort(
-      (a, b) =>
-        (parseInt(a.stt) || 999999) - (parseInt(b.stt) || 999999) ||
-        a.soXe.localeCompare(b.soXe),
-    );
+    const costByVehicle = Array.from(costByVehicleMap.values())
+      .filter(
+        (r) =>
+          allowedVids === null ||
+          allowedVids.includes(Number(r.vehicleId)),
+      )
+      .sort(
+        (a, b) =>
+          (parseInt(a.stt) || 999999) - (parseInt(b.stt) || 999999) ||
+          a.soXe.localeCompare(b.soXe),
+      );
 
     // Tổng lương/BHXH tính từ đúng các xe trong phạm vi xem.
     totalLuongNguoiLai = 0;

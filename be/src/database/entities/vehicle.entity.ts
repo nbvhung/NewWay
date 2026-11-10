@@ -38,6 +38,19 @@ export class Vehicle {
   })
   ngayHoatDong: string | null;
 
+  /**
+   * Bên của XE: 'A' | 'B' | NULL.
+   * NULL = chưa gán riêng → suy từ bên của chủ vốn (owner_user_id), mặc định A.
+   */
+  @Column({
+    name: 'ben',
+    type: 'varchar',
+    length: 1,
+    nullable: true,
+    default: null,
+  })
+  ben: string | null;
+
   /** Chủ vốn (admin) sở hữu xe; NULL = chưa gán. */
   @Column({ name: 'owner_user_id', type: 'int', nullable: true, default: null })
   ownerUserId: number | null;

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, IsDateString } from 'class-validator';
+﻿import { IsString, IsOptional, IsNumber, IsDateString, IsIn } from 'class-validator';
 
 export class UpdateVehicleDto {
   @IsOptional()
@@ -20,4 +20,10 @@ export class UpdateVehicleDto {
   @IsOptional()
   @IsNumber()
   ownerUserId?: number | null;
+
+  /** Bên của xe: 'A' | 'B'. Bỏ trống = suy từ chủ vốn. */
+  @IsOptional()
+  @IsIn(['A', 'B'])
+  ben?: string | null;
 }
+

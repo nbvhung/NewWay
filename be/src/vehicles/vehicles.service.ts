@@ -144,7 +144,7 @@ export class VehiclesService {
         ngayHoatDong: v.ngayHoatDong ?? null,
         ownerUserId: v.ownerUserId ?? null,
         ownerName: owner?.fullName || '',
-        ben: normBen(owner?.ben),
+        ben: normBen(v.ben || owner?.ben),
         driverCount: ds.length,
         drivers: ds.map((d) => ({
           id: d.id,
@@ -169,7 +169,7 @@ export class VehiclesService {
     return {
       ...v,
       ownerName: owner?.fullName || '',
-      ben: normBen(owner?.ben),
+      ben: normBen(v.ben || owner?.ben),
       drivers: drivers.map((d) => ({
         id: d.id,
         fullName: d.fullName || '',
@@ -750,6 +750,7 @@ export class VehiclesService {
       stt: dto.stt?.trim() || '',
       ngayHoatDong: dto.ngayHoatDong || null,
       ownerUserId,
+      ben: dto.ben ? normBen(dto.ben) : null,
     });
     return this.vehiclesRepository.save(v);
   }
@@ -763,6 +764,7 @@ export class VehiclesService {
     if (dto.ngayHoatDong !== undefined)
       v.ngayHoatDong = dto.ngayHoatDong || null;
     if (dto.ownerUserId !== undefined) v.ownerUserId = dto.ownerUserId ?? null;
+    if (dto.ben !== undefined) v.ben = dto.ben ? normBen(dto.ben) : null;
     const saved = await this.vehiclesRepository.save(v);
     await this.syncPlateToDrivers(id);
     return saved;
