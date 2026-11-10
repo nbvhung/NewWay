@@ -580,12 +580,14 @@ export class VehiclesService {
       c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     });
 
-    // Gom các dòng theo nhóm kẹp để merge 3 ô tiền (Doanh thu / Phụ phí / Tổng) của cả cặp.
+    // Gom các dòng theo nhóm kẹp để merge 4 ô tiền (Lương chuyến / Doanh thu /
+    // Phụ phí / Tổng) của cả cặp. Cặp kẹp = 1 chuyến → lương chuyến chỉ tính 1 lần.
     const kepGroups = new Map<
       string,
       {
         first: number;
         last: number;
+        salary: number;
         base: number;
         surcharge: number;
         total: number;
@@ -614,24 +616,27 @@ export class VehiclesService {
           kepGroups.set(ci.mergeGroup, {
             first: row.number,
             last: row.number,
+            salary: ci.tripSalary || 0,
             base: ci.baseRevenue || 0,
             surcharge: ci.surchargeAmount || 0,
             total: ci.revenue || 0,
           });
         } else {
           g.last = row.number;
+          if (!g.salary) g.salary = ci.tripSalary || 0;
           g.base += ci.baseRevenue || 0;
           g.surcharge += ci.surchargeAmount || 0;
           g.total += ci.revenue || 0;
         }
       }
     });
-    // Cặp kẹp: gộp ô 2 dòng và ghi 1 lần giá trị của cặp cho cả 3 cột tiền.
+    // Cặp kẹp: gộp ô 2 dòng và ghi 1 lần giá trị của cặp cho cả 4 cột tiền.
+    // Lương chuyến của cặp = 1 chuyến (không cộng 2 lần).
     for (const g of kepGroups.values()) {
       if (g.last === g.first) continue;
-      const vals = [g.base, g.surcharge, g.total];
+      const vals = [g.salary, g.base, g.surcharge, g.total];
       vals.forEach((val, idx) => {
-        const col = 11 + idx;
+        const col = 10 + idx;
         ws2.mergeCells(g.first, col, g.last, col);
         const cell = ws2.getCell(g.first, col);
         cell.value = val;
@@ -642,10 +647,19 @@ export class VehiclesService {
     // Dòng tổng: cặp kẹp chỉ tính 1 lần (dòng kẹp = 0, đã gộp vào dòng chính).
     const sumBy = (f: (ci: (typeof containers)[number]) => number) =>
       containers.reduce((s, ci) => s + (f(ci) || 0), 0);
+    const countedSalaryGroups = new Set<string>();
+    const salaryTotal = containers.reduce((s, ci) => {
+      if (ci.mergeGroup) {
+        if (countedSalaryGroups.has(ci.mergeGroup)) return s;
+        countedSalaryGroups.add(ci.mergeGroup);
+      }
+      return s + (ci.tripSalary || 0);
+    }, 0);
     const totalRow = ws2.addRow([`Tổng: ${containers.length} container`]);
     totalRow.font = { bold: true };
     ws2.mergeCells(totalRow.number, 1, totalRow.number, 9);
     const totals: [number, number][] = [
+      [10, salaryTotal],
       [11, sumBy((ci) => ci.baseRevenue)],
       [12, sumBy((ci) => ci.surchargeAmount)],
       [13, sumBy((ci) => ci.revenue)],
