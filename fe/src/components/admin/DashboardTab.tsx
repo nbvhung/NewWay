@@ -426,7 +426,7 @@ function CostItemsSheet({ category, items, month, year, onClose, variant = 'cost
         <div className="px-5 pt-5 pb-3 flex justify-between gap-3" style={{ background: C.surface }}>
           <div className="min-w-0">
             <p className="text-[11px]" style={{ color: C.muted }}>
-              {isInvest ? `Lịch sử vốn đầu tư (cộng dồn đến ${MONTHS_VN[month]}/${year})` : `Lịch sử chi phí · ${MONTHS_VN[month]}/${year}`}
+              {isInvest ? 'Lịch sử vốn đầu tư (tổng hiện tại, không phụ thuộc tháng)' : `Lịch sử chi phí · ${MONTHS_VN[month]}/${year}`}
             </p>
             <h3 className="text-[16px] font-bold mt-0.5">{title}</h3>
           </div>

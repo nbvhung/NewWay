@@ -663,11 +663,11 @@ export function FinanceTab(_props: Props) {
             )}
 
             <div className="mt-4 pt-3 border-t border-[#f5f5f4] flex justify-between">
-              <span className="text-[12px] font-semibold text-[#78716c]">Tổng vốn (cộng dồn đến tháng này)</span>
+              <span className="text-[12px] font-semibold text-[#78716c]">Tổng vốn hiện tại (không phụ thuộc tháng)</span>
               <span className="text-[14px] font-bold text-blue-600">{fmt(totalVon)} ₫</span>
             </div>
             <p className="text-[10px] text-[#a8a29e] mt-1">
-              Vốn đầu tư là <strong>xuyên suốt</strong>: mở tháng nào cũng thấy vốn của mọi tháng trước đó cộng lại.
+              Vốn đầu tư là <strong>tổng hiện tại</strong>: mở tháng nào cũng thấy tổng mới nhất, không bị lọc theo tháng.
             </p>
           </div>
 

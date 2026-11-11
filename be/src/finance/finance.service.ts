@@ -452,12 +452,8 @@ export class FinanceService {
       (INVEST_CATEGORIES as readonly string[]).includes(c);
     const inThisMonth = (it: FinanceCostItem) =>
       it.month === month && it.year === year;
-    const upToThisMonth = (it: FinanceCostItem) =>
-      it.year < year || (it.year === year && it.month <= month);
-
-    const investRows = allItems.filter(
-      (it) => isInvest(it.category) && upToThisMonth(it),
-    );
+    // Vốn đầu tư là TỔNG HIỆN TẠI — không lọc theo tháng đang xem.
+    const investRows = allItems.filter((it) => isInvest(it.category));
     const costRows = includeCost
       ? allItems.filter((it) => !isInvest(it.category) && inThisMonth(it))
       : [];
@@ -480,16 +476,14 @@ export class FinanceService {
     const sum = (g: Record<string, FinanceCostItem[]>, cat: string) =>
       g[cat].reduce((s, i) => s + (Number(i.amount) || 0), 0);
 
-    // Vốn đầu tư cộng dồn: cộng 3 cột legacy của MỌI tháng ≤ tháng đang chọn.
+    // Vốn đầu tư là TỔNG HIỆN TẠI: cộng 3 cột legacy của TẤT CẢ các tháng.
     // (`base` ở trên chỉ là số tổng cũ của riêng tháng đang chọn, để nhập/sửa.)
     const cumLegacy = { vonXe: 0, vonMooc: 0, vonKhac: 0 };
     const allEntries = await this.repo.find({ where: scopeWhere });
     for (const e of allEntries) {
-      if (e.year < year || (e.year === year && e.month <= month)) {
-        cumLegacy.vonXe += num((e as any).vonXe);
-        cumLegacy.vonMooc += num((e as any).vonMooc);
-        cumLegacy.vonKhac += num((e as any).vonKhac);
-      }
+      cumLegacy.vonXe += num((e as any).vonXe);
+      cumLegacy.vonMooc += num((e as any).vonMooc);
+      cumLegacy.vonKhac += num((e as any).vonKhac);
     }
 
     return {

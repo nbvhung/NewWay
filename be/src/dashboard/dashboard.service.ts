@@ -1817,8 +1817,6 @@ export class DashboardService {
       (INVEST_CATEGORIES as readonly string[]).includes(c);
     const inThisMonth = (it: FinanceCostItem) =>
       it.month === month && it.year === year;
-    const upToThisMonth = (it: FinanceCostItem) =>
-      it.year < year || (it.year === year && it.month <= month);
 
     const sumItems = (cat: string, rows: FinanceCostItem[]): number =>
       rows
@@ -1827,18 +1825,15 @@ export class DashboardService {
     const costRows = itemRows.filter(
       (i) => !isInvestCat(i.category) && inThisMonth(i),
     );
-    const investRows = itemRows.filter(
-      (i) => isInvestCat(i.category) && upToThisMonth(i),
-    );
+    // Vốn đầu tư là TỔNG HIỆN TẠI — không lọc theo tháng đang xem.
+    const investRows = itemRows.filter((i) => isInvestCat(i.category));
 
-    // Vốn legacy cộng dồn mọi tháng ≤ tháng đang chọn.
+    // Vốn legacy: cộng TẤT CẢ các tháng.
     const cumLegacy = { vonXe: 0, vonMooc: 0, vonKhac: 0 };
     for (const e of allFinance) {
-      if (e.year < year || (e.year === year && e.month <= month)) {
-        cumLegacy.vonXe += Number((e as any).vonXe) || 0;
-        cumLegacy.vonMooc += Number((e as any).vonMooc) || 0;
-        cumLegacy.vonKhac += Number((e as any).vonKhac) || 0;
-      }
+      cumLegacy.vonXe += Number((e as any).vonXe) || 0;
+      cumLegacy.vonMooc += Number((e as any).vonMooc) || 0;
+      cumLegacy.vonKhac += Number((e as any).vonKhac) || 0;
     }
 
     const suaChua =
