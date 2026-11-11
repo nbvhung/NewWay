@@ -67,7 +67,7 @@ export class VehiclesService {
 
   /**
    * Bật/tắt khoá nguồn vốn. Chỉ tài khoản trong `CAPITAL_LOCK_ALLOWED_USERNAMES`
-   * (MR BACH / VHUN9) được phép; xác thực bằng chính mật khẩu đăng nhập của họ.
+   * (MR BACH / THANH TÙNG / VHUN9) được phép; xác thực bằng chính mật khẩu đăng nhập.
    */
   async setCapitalLock(
     user: any,
@@ -76,7 +76,7 @@ export class VehiclesService {
   ): Promise<{ locked: boolean; canLock: boolean }> {
     if (!canManageCapitalLock(user)) {
       throw new ForbiddenException(
-        'Chỉ MR BACH và VHUN9 được khoá/mở khoá nguồn vốn',
+        'Chỉ MR BACH, THANH TÙNG và VHUN9 được khoá/mở khoá nguồn vốn',
       );
     }
     const actor = await this.usersRepository.findOne({

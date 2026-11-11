@@ -287,6 +287,7 @@ export class FinanceService {
     targetUserId?: number,
   ): Promise<VehicleOption[]> {
     const { userId, ben } = await this.resolveOwner(actor, targetUserId);
+    const isSuper = this.isSuperAdmin(actor);
     const vehicles = await this.vehiclesRepo.find({
       order: { stt: 'ASC', id: 'ASC' },
     });
@@ -302,7 +303,7 @@ export class FinanceService {
     // lái xe đó) + xe họ sở hữu. Tài khoản finance.all / supper_admin bỏ qua
     // giới hạn này để xem được mọi sổ.
     let allowedIds: Set<number> | null = null;
-    if (!this.isSuperAdmin(actor)) {
+    if (!isSuper) {
       const scope = resolveVisibleDriverIds(actor);
       if (scope !== null) {
         const ids = new Set<number>();
@@ -333,7 +334,11 @@ export class FinanceService {
         stt: v.stt || '',
         ben: this.normBen(benMap.get(v.id)),
       }))
-      .filter((v) => v.ben === ben && (!allowedIds || allowedIds.has(v.id)));
+      .filter(
+        (v) =>
+          isSuper ||
+          (v.ben === ben && (!allowedIds || allowedIds.has(v.id))),
+      );
   }
 
   /** Kiểm tra 1 xe có thuộc đúng bên không (chặn nhập xe bên B vào sổ bên A). */
@@ -386,7 +391,9 @@ export class FinanceService {
       }
     }
     const { userId, ben } = await this.resolveOwner(actor, targetUserId);
-    return { userId, ben, skipBenCheck: false };
+    // Tài khoản finance.all / supper_admin được ghi cho mọi xe (kể cả xe
+    // có bên khác với chủ vốn của sổ), nên bỏ kiểm tra bên.
+    return { userId, ben, skipBenCheck: this.isSuperAdmin(actor) };
   }
 
   /**
@@ -794,13 +801,15 @@ export class FinanceService {
     }
     if (dto.note !== undefined) item.note = dto.note ?? null;
     if (dto.vehicleUserId !== undefined) {
-      const owner = await this.usersRepo.findOne({
-        where: { id: item.userId },
-      });
-      await this.assertVehicleInBen(
-        dto.vehicleUserId,
-        this.normBen(owner?.ben),
-      );
+      if (!this.isSuperAdmin(actor)) {
+        const owner = await this.usersRepo.findOne({
+          where: { id: item.userId },
+        });
+        await this.assertVehicleInBen(
+          dto.vehicleUserId,
+          this.normBen(owner?.ben),
+        );
+      }
       item.vehicleUserId =
         dto.vehicleUserId === null ? null : Number(dto.vehicleUserId);
     }

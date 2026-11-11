@@ -4,11 +4,17 @@
  * của họ (bcrypt.compare với `users.password_hash`).
  *
  * - `mrbach`    : MR BACH (username thật trên production là `MRBACH`)
+ * - `tung`      : THANH TÙNG (nick phụ của MR BACH, username `TUNG`)
  * - `superadmin`: VHUN9 (supper_admin)
  *
  * So khớp KHÔNG phân biệt hoa/thường (xem `canManageCapitalLock`).
  */
-export const CAPITAL_LOCK_ALLOWED_USERNAMES = ['mrbach', 'bach', 'superadmin'];
+export const CAPITAL_LOCK_ALLOWED_USERNAMES = [
+  'mrbach',
+  'bach',
+  'tung',
+  'superadmin',
+];
 
 /** Tài khoản này có quyền khoá/mở khoá nguồn vốn không? */
 export function canManageCapitalLock(user?: {
