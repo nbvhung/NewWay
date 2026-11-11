@@ -406,7 +406,7 @@ export function DataTab({ user, allUsers, allShippingLines, loadUsers, loadShipp
                         <span className="font-medium">{s.driverName}</span>
                         {(s as any).actualVehicleSoXe && (
                           <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(249,115,22,0.15)] text-orange-600 w-fit">
-                            🚚 Lái thay: {(s as any).actualVehicleSoXe}
+                            {(s as any).actualVehicleSoXe}
                           </span>
                         )}
                       </div>
