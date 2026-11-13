@@ -37,6 +37,7 @@ const GROUPS: NavGroup[] = [
       { href: '/admin/data', label: role === 'ops' ? 'Thống kê' : 'Tất cả dữ liệu', icon: '📊', tab: 'tab.data', fallback: ['entry.view_all'] },
       { href: '/admin/plans', label: 'Kế hoạch', icon: '🚢', tab: 'tab.plans', fallback: ['plan.view'] },
       { href: '/admin/monthly', label: 'Kế hoạch theo tháng', icon: '📅', tab: 'tab.monthly', fallback: ['entry.view_all'] },
+      { href: '/admin/progress', label: 'Tiến độ', icon: '📈', tab: 'tab.progress', fallback: ['container.view'] },
       { href: '/admin/completed', label: 'Đã hoàn thành', icon: '✅', tab: 'tab.completed', fallback: ['plan.view'] },
       { href: '/admin/containers', label: 'Mã Số Container', icon: '🗃️', tab: 'tab.containers', fallback: ['container.view'] },
       { href: '/admin/chat', label: 'Lịch sử chat', icon: '💬', tab: 'tab.chat', fallback: ['zalo.chat'] },

@@ -30,6 +30,7 @@ export interface ContainerSearchResult {
   importedByName?: string;
   recorded: boolean;
   recordedBy: string | null;
+  soXe?: string;
   hasVsl?: boolean;
   hasKv?: boolean;
   hasKd2?: boolean;
@@ -63,7 +64,35 @@ export interface DeleteContainerResult {
   }>;
 }
 
+export interface PlanProgressVehicle {
+  vehicleId: number;
+  plate: string;
+  driver: string;
+  stt: string;
+  h20: number;
+  h40: number;
+  v20: number;
+  v40: number;
+  total: number;
+}
+
+export interface PlanProgress {
+  id: number;
+  name: string;
+  soChuyen?: string;
+  routeName?: string;
+  ngay?: string | null;
+  customerName: string;
+  total: number;
+  done: number;
+  types: Record<'h20' | 'h40' | 'v20' | 'v40', { done: number; total: number }>;
+  vehicles: PlanProgressVehicle[];
+}
+
 export const containerImportApi = {
+  /** Tiến độ các kế hoạch chưa hoàn thành + sản lượng từng xe. */
+  getProgress: () => api.get<PlanProgress[]>('/admin/container-import/progress'),
+
   import: (planId: number, file: File) => {
     const form = new FormData();
     form.append('file', file);

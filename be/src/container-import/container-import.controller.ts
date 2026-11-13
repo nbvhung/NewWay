@@ -66,6 +66,12 @@ export class ContainerImportController {
     return this.containerImportService.searchAllByCode(code || '', user);
   }
 
+  @Get('progress')
+  @Permissions('container.view')
+  progress(@CurrentUser() user?: any) {
+    return this.containerImportService.getProgress(user);
+  }
+
   @Get('template')
   @Permissions('container.import')
   async downloadTemplate(@Res() res: any) {

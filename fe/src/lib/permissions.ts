@@ -51,6 +51,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: 'tab.data',       group: 'Hiển thị tab', label: 'Tab Dữ liệu / Thống kê', desc: 'Hiện tab Tất cả dữ liệu (Thống kê) trong menu' },
   { key: 'tab.plans',      group: 'Hiển thị tab', label: 'Tab Kế hoạch',          desc: 'Hiện tab Kế hoạch trong menu' },
   { key: 'tab.monthly',    group: 'Hiển thị tab', label: 'Tab Kế hoạch theo tháng', desc: 'Hiện tab Kế hoạch theo tháng trong menu' },
+  { key: 'tab.progress',   group: 'Hiển thị tab', label: 'Tab Tiến độ',           desc: 'Hiện tab Tiến độ kế hoạch trong menu' },
   { key: 'tab.completed',  group: 'Hiển thị tab', label: 'Tab Đã hoàn thành',     desc: 'Hiện tab Đã hoàn thành trong menu' },
   { key: 'tab.containers', group: 'Hiển thị tab', label: 'Tab Mã số container',   desc: 'Hiện tab Mã số container trong menu' },
   { key: 'tab.chat',       group: 'Hiển thị tab', label: 'Tab Lịch sử chat',      desc: 'Hiện tab Lịch sử chat trong menu' },
@@ -90,7 +91,7 @@ export const ROLE_PRESETS: Record<string, string[]> = {
     'user.view',
     'settings.entry_lock',
     'zalo.chat', 'zalo.send', 'zalo.schedule',
-    'tab.data', 'tab.plans', 'tab.monthly', 'tab.completed',
+    'tab.data', 'tab.plans', 'tab.monthly', 'tab.progress', 'tab.completed',
     'tab.containers', 'tab.chat', 'tab.customers', 'tab.routes', 'tab.users',
   ],
   hr: [

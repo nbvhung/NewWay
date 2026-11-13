@@ -292,6 +292,12 @@ export const PERMISSIONS: PermissionDef[] = [
     desc: 'Hiện tab Kế hoạch theo tháng trong menu',
   },
   {
+    key: 'tab.progress',
+    group: 'Hiển thị tab',
+    label: 'Tab Tiến độ',
+    desc: 'Hiện tab Tiến độ kế hoạch trong menu',
+  },
+  {
     key: 'tab.completed',
     group: 'Hiển thị tab',
     label: 'Tab Đã hoàn thành',
@@ -428,6 +434,7 @@ export const ROLE_PRESETS: Record<string, string[]> = {
     'tab.data',
     'tab.plans',
     'tab.monthly',
+    'tab.progress',
     'tab.completed',
     'tab.containers',
     'tab.chat',

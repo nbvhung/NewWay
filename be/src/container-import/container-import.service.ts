@@ -549,7 +549,7 @@ export class ContainerImportService {
     if (planId) qb.where('c.shippingLineId = :planId', { planId });
     qb.leftJoinAndSelect('c.submissionRef', 'sub')
       .leftJoin('sub.user', 'u')
-      .addSelect(['u.id', 'u.fullName', 'u.username'])
+      .addSelect(['u.id', 'u.fullName', 'u.username', 'u.soXe'])
       .leftJoin(
         'plan_vehicle_overrides',
         'pvo',
@@ -599,6 +599,106 @@ export class ContainerImportService {
         claimedAt:
           info.claimedAt || sub?.lastEditedAt || sub?.updatedAt || null,
         clampWith: clampPairs.get(r.id) || '',
+      };
+    });
+  }
+
+  /**
+   * Tiến độ các kế hoạch CHƯA hoàn thành: tổng/đã chạy theo loại cont và
+   * sản lượng từng xe. Xe = XE THỰC CHẠY (pvo > actual > home > tài xế).
+   * Chỉ đọc, không thay đổi dữ liệu.
+   */
+  async getProgress(user?: any) {
+    const plans: any[] = await this.containerImportsRepository.query(`
+      SELECT sl.id, sl.name, sl.so_chuyen AS "soChuyen", sl.route_name AS "routeName",
+             sl.ngay, c.name AS "customerName",
+             COUNT(ci.id)::int AS total,
+             COUNT(ci.submission_id)::int AS done,
+             COUNT(ci.id) FILTER (WHERE ci.type = 'H20')::int AS t_h20,
+             COUNT(ci.id) FILTER (WHERE ci.type = 'H40')::int AS t_h40,
+             COUNT(ci.id) FILTER (WHERE ci.type IN ('V20','V20FR'))::int AS t_v20,
+             COUNT(ci.id) FILTER (WHERE ci.type IN ('V40','V40FR'))::int AS t_v40,
+             COUNT(ci.submission_id) FILTER (WHERE ci.type = 'H20')::int AS d_h20,
+             COUNT(ci.submission_id) FILTER (WHERE ci.type = 'H40')::int AS d_h40,
+             COUNT(ci.submission_id) FILTER (WHERE ci.type IN ('V20','V20FR'))::int AS d_v20,
+             COUNT(ci.submission_id) FILTER (WHERE ci.type IN ('V40','V40FR'))::int AS d_v40
+      FROM shipping_lines sl
+      JOIN container_imports ci ON ci.shipping_line_id = sl.id
+      LEFT JOIN customers c ON c.id = sl.customer_id
+      WHERE sl.completed = false
+      GROUP BY sl.id, c.name
+      ORDER BY sl.ngay DESC NULLS LAST, sl.id DESC
+    `);
+    if (plans.length === 0) return [];
+    const planIds = plans.map((p) => p.id);
+
+    const vehicleRows: any[] = await this.containerImportsRepository.query(
+      `
+      SELECT ci.shipping_line_id AS "planId",
+             COALESCE(pvo.vehicle_id, sub.actual_vehicle_id, u.home_vehicle_id, sub.user_id) AS "vehicleId",
+             COUNT(*) FILTER (WHERE ci.type = 'H20')::int AS h20,
+             COUNT(*) FILTER (WHERE ci.type = 'H40')::int AS h40,
+             COUNT(*) FILTER (WHERE ci.type IN ('V20','V20FR'))::int AS v20,
+             COUNT(*) FILTER (WHERE ci.type IN ('V40','V40FR'))::int AS v40,
+             COUNT(*)::int AS total
+      FROM container_imports ci
+      JOIN submissions sub ON sub.id = ci.submission_id
+      JOIN users u ON u.id = sub.user_id
+      LEFT JOIN plan_vehicle_overrides pvo
+        ON pvo.plan_id = ci.shipping_line_id AND pvo.driver_id = sub.user_id
+      WHERE ci.shipping_line_id = ANY($1)
+      GROUP BY 1, 2
+      `,
+      [planIds],
+    );
+
+    const vehicleIds = [...new Set(vehicleRows.map((r) => Number(r.vehicleId)))];
+    const owners = vehicleIds.length
+      ? await this.usersRepository.find({ where: { id: In(vehicleIds) } })
+      : [];
+    const ownerMap = new Map(owners.map((o) => [o.id, o]));
+
+    const visible = resolveVisibleDriverIds(user);
+    const visibleSet = visible === null ? null : new Set(visible);
+
+    return plans.map((p) => {
+      const vehicles = vehicleRows
+        .filter(
+          (r) =>
+            r.planId === p.id &&
+            (visibleSet === null || visibleSet.has(Number(r.vehicleId))),
+        )
+        .map((r) => {
+          const o: any = ownerMap.get(Number(r.vehicleId));
+          return {
+            vehicleId: Number(r.vehicleId),
+            plate: o?.soXe || '',
+            driver: o?.fullName || '',
+            stt: o?.stt || '',
+            h20: r.h20,
+            h40: r.h40,
+            v20: r.v20,
+            v40: r.v40,
+            total: r.total,
+          };
+        })
+        .sort((a, b) => b.total - a.total);
+      return {
+        id: p.id,
+        name: p.name,
+        soChuyen: p.soChuyen,
+        routeName: p.routeName,
+        ngay: p.ngay,
+        customerName: p.customerName || '',
+        total: p.total,
+        done: p.done,
+        types: {
+          h20: { done: p.d_h20, total: p.t_h20 },
+          h40: { done: p.d_h40, total: p.t_h40 },
+          v20: { done: p.d_v20, total: p.t_v20 },
+          v40: { done: p.d_v40, total: p.t_v40 },
+        },
+        vehicles,
       };
     });
   }
@@ -998,7 +1098,7 @@ export class ContainerImportService {
     qb.leftJoinAndSelect('c.shippingLineRef', 'sl')
       .leftJoinAndSelect('c.submissionRef', 'sub')
       .leftJoin('sub.user', 'u')
-      .addSelect(['u.id', 'u.fullName', 'u.username'])
+      .addSelect(['u.id', 'u.fullName', 'u.username', 'u.soXe'])
       .where('RIGHT(c.container_code, :len) = :digits', {
         digits,
         len: digits.length,
@@ -1030,7 +1130,7 @@ export class ContainerImportService {
       .createQueryBuilder('c')
       .leftJoinAndSelect('c.submissionRef', 'sub')
       .leftJoin('sub.user', 'u')
-      .addSelect(['u.id', 'u.fullName', 'u.username'])
+      .addSelect(['u.id', 'u.fullName', 'u.username', 'u.soXe'])
       .where('RIGHT(c.container_code, :len) = :digits', {
         digits,
         len: digits.length,
@@ -1080,7 +1180,7 @@ export class ContainerImportService {
     qb.leftJoinAndSelect('c.shippingLineRef', 'sl')
       .leftJoinAndSelect('c.submissionRef', 'sub')
       .leftJoin('sub.user', 'u')
-      .addSelect(['u.id', 'u.fullName', 'u.username'])
+      .addSelect(['u.id', 'u.fullName', 'u.username', 'u.soXe'])
       .leftJoin(
         'plan_vehicle_overrides',
         'pvo',
@@ -1147,6 +1247,7 @@ export class ContainerImportService {
         importedByName: importer?.fullName || '',
         recorded: !!r.submissionId,
         recordedBy,
+        soXe: sub?.user?.soXe || '',
         hasVsl: info.hasVsl,
         hasKv: info.hasKv,
         hasKd2: info.hasKd2,
