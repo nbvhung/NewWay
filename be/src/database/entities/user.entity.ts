@@ -54,6 +54,10 @@ export class User {
   })
   ben: string | null;
 
+  /** Tài khoản khách hàng (role 'partner'): thuộc khách hàng nào (customers.id). */
+  @Column({ name: 'customer_id', type: 'int', nullable: true, default: null })
+  customerId: number | null;
+
   @Column({ name: 'so_xe', length: 50, default: '' })
   soXe: string;
 

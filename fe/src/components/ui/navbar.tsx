@@ -25,7 +25,7 @@ export function Navbar() {
       label: user.role === 'ops' ? '📊 SL TỔNG TÀU' : '📊 Sản lượng của tôi',
       show: user.role === 'laixe' || hasPerm(user, 'entry.view_all') || user.role === 'ops',
     },
-    { href: '/admin', label: '⚙️ Quản lý', show: hasPerm(user, 'entry.view_all') || hasPerm(user, 'customer.view') || hasPerm(user, 'salary.view') || hasPerm(user, 'dashboard.view') || hasPerm(user, 'user.view') || hasPerm(user, 'route.view') || hasPerm(user, 'plan.view') },
+    { href: '/admin', label: user.role === 'partner' ? '📈 Tiến độ' : '⚙️ Quản lý', show: user.role === 'partner' || hasPerm(user, 'entry.view_all') || hasPerm(user, 'customer.view') || hasPerm(user, 'salary.view') || hasPerm(user, 'dashboard.view') || hasPerm(user, 'user.view') || hasPerm(user, 'route.view') || hasPerm(user, 'plan.view') },
   ];
   const visibleLinks = links.filter((l) => l.show);
 

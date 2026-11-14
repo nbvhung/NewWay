@@ -472,6 +472,8 @@ export const ROLE_PRESETS: Record<string, string[]> = {
     (k) => k !== 'entry.delete_all' && k !== 'finance.all',
   ),
   supper_admin: PERMISSION_KEYS,
+  // Khách hàng: chỉ xem tab Tiến độ (+ tra mã cont) của kế hoạch thuộc khách đó.
+  partner: ['container.view', 'tab.progress'],
 };
 
 export function isSuperUser(user: { role?: string }): boolean {
@@ -488,6 +490,8 @@ export function resolvePermissions(user: {
   permissions?: string[] | null;
 }): string[] {
   if (isSuperUser(user)) return [...PERMISSION_KEYS];
+  // Khách hàng: quyền cố định, không phụ thuộc cột permissions.
+  if (user?.role === 'partner') return [...ROLE_PRESETS.partner];
   if (Array.isArray(user?.permissions) && user.permissions.length > 0) {
     return user.permissions.filter((p) => PERMISSION_KEYS.includes(p));
   }

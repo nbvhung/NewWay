@@ -609,6 +609,11 @@ export class ContainerImportService {
    * Chỉ đọc, không thay đổi dữ liệu.
    */
   async getProgress(user?: any) {
+    // Tài khoản khách hàng (partner): chỉ thấy kế hoạch của khách mình.
+    const isPartner = user?.role === 'partner';
+    const customerScope: number | null = isPartner
+      ? Number(user?.customerId) || -1
+      : null;
     const plans: any[] = await this.containerImportsRepository.query(`
       SELECT sl.id, sl.name, sl.so_chuyen AS "soChuyen", sl.route_name AS "routeName",
              sl.ngay, c.name AS "customerName",
@@ -626,9 +631,10 @@ export class ContainerImportService {
       JOIN container_imports ci ON ci.shipping_line_id = sl.id
       LEFT JOIN customers c ON c.id = sl.customer_id
       WHERE sl.completed = false
+        AND ($1::int IS NULL OR sl.customer_id = $1::int)
       GROUP BY sl.id, c.name
       ORDER BY sl.ngay DESC NULLS LAST, sl.id DESC
-    `);
+    `, [customerScope]);
     if (plans.length === 0) return [];
     const planIds = plans.map((p) => p.id);
 
@@ -673,7 +679,7 @@ export class ContainerImportService {
           return {
             vehicleId: Number(r.vehicleId),
             plate: o?.soXe || '',
-            driver: o?.fullName || '',
+            driver: isPartner ? '' : o?.fullName || '',
             stt: o?.stt || '',
             h20: r.h20,
             h40: r.h40,
@@ -1176,6 +1182,7 @@ export class ContainerImportService {
   async searchAllByCode(code: string, user?: any): Promise<any[]> {
     const q = (code || '').trim().toUpperCase();
     if (!q) return [];
+    const isPartner = user?.role === 'partner';
     const qb = this.containerImportsRepository.createQueryBuilder('c');
     qb.leftJoinAndSelect('c.shippingLineRef', 'sl')
       .leftJoinAndSelect('c.submissionRef', 'sub')
@@ -1209,6 +1216,13 @@ export class ContainerImportService {
       });
     }
 
+    // Khách hàng (partner): chỉ tra được container thuộc kế hoạch của khách mình.
+    if (isPartner) {
+      qb.andWhere('sl.customerId = :partnerCid', {
+        partnerCid: Number(user?.customerId) || -1,
+      });
+    }
+
     const visible = resolveVisibleDriverIds(user);
     if (visible !== null) {
       if (visible.length === 0) {
@@ -1229,7 +1243,8 @@ export class ContainerImportService {
       const sub: any = (r as any).submissionRef;
       const plan: any = (r as any).shippingLineRef;
       const importer: any = (r as any).importedByRef;
-      const recordedBy = sub ? sub.user?.fullName || sub.driverName || '' : '';
+      const recordedBy =
+        sub && !isPartner ? sub.user?.fullName || sub.driverName || '' : '';
       const info = claimInfo.get(r.id) || {
         hasVsl: false,
         hasKv: false,

@@ -1,3 +1,4 @@
+import { AllowPartner } from '../common/decorators/allow-partner.decorator';
 import {
   Controller,
   Post,
@@ -60,12 +61,14 @@ export class ContainerImportController {
     );
   }
 
+  @AllowPartner()
   @Get('search')
   @Permissions('container.view')
   search(@Query('code') code?: string, @CurrentUser() user?: any) {
     return this.containerImportService.searchAllByCode(code || '', user);
   }
 
+  @AllowPartner()
   @Get('progress')
   @Permissions('container.view')
   progress(@CurrentUser() user?: any) {

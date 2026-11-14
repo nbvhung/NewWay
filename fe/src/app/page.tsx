@@ -11,7 +11,7 @@ export default function Home() {
   useEffect(() => {
     if (loading) return;
     if (user) {
-      if (user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || user.role === 'hr') {
+      if (user.role === 'ops' || user.role === 'admin' || user.role === 'supper_admin' || user.role === 'hr' || user.role === 'partner') {
         router.replace('/admin');
       } else {
         router.replace('/form');

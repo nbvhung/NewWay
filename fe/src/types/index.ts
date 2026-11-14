@@ -23,7 +23,7 @@ export interface User {
   createdAt?: string;
 }
 
-export type Role = 'laixe' | 'ops' | 'admin' | 'supper_admin' | 'hr';
+export type Role = 'laixe' | 'ops' | 'admin' | 'supper_admin' | 'hr' | 'partner';
 
 export interface ShippingLine {
   id: number;

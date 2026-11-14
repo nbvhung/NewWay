@@ -1,3 +1,4 @@
+import { AllowPartner } from '../common/decorators/allow-partner.decorator';
 import {
   Controller,
   Post,
@@ -73,6 +74,7 @@ export class AuthController {
     return { user: result.user };
   }
 
+  @AllowPartner()
   @Post('logout')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
@@ -96,6 +98,7 @@ export class AuthController {
     return { message: 'Đã đăng xuất' };
   }
 
+  @AllowPartner()
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async getMe(@CurrentUser() user: any) {
