@@ -38,6 +38,7 @@ function roleBadge(role: string) {
     admin: 'bg-amber-500/20 text-amber-600',
     ops: 'bg-purple-500/20 text-purple-600',
     laixe: 'bg-sky-500/20 text-sky-600',
+    partner: 'bg-emerald-500/20 text-emerald-700',
     disabled: 'bg-slate-400/20 text-slate-500',
   };
   return `px-2 py-0.5 rounded-full text-[10px] font-semibold ${colors[role] || 'bg-gray-500/20 text-gray-600'}`;
@@ -62,6 +63,7 @@ const ROLE_DESC: Record<string, string> = {
   hr: 'Nhân sự: khách hàng, tuyến đường, lương tháng',
   admin: 'Quản trị toàn hệ thống (trừ xóa toàn bộ dữ liệu)',
   supper_admin: 'Toàn quyền, kể cả xóa toàn bộ dữ liệu',
+  partner: 'Khách hàng: chỉ xem tab Tiến độ và mã container của kế hoạch thuộc khách hàng',
 };
 
 export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
@@ -109,7 +111,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
   const normalize = (s: string) =>
     s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
 
-  const ROLE_ORDER = ['laixe', 'ops', 'hr', 'admin', 'supper_admin', 'disabled'];
+  const ROLE_ORDER = ['laixe', 'ops', 'hr', 'admin', 'supper_admin', 'partner', 'disabled'];
 
   const roleOptions = useMemo(() => {
     const roles = Array.from(new Set(allUsers.map((u) => u.role)));

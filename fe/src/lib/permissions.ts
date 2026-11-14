@@ -105,6 +105,7 @@ export const ROLE_PRESETS: Record<string, string[]> = {
   ],
   admin: PERMISSION_KEYS.filter((k) => k !== 'entry.delete_all' && k !== 'finance.all'),
   supper_admin: PERMISSION_KEYS,
+  partner: ['container.view', 'tab.progress'],
 };
 
 export interface PermUser {
@@ -117,6 +118,7 @@ export const isSuperUser = (u?: PermUser | null) => u?.role === 'supper_admin';
 export function resolvePermissions(u?: PermUser | null): string[] {
   if (!u) return [];
   if (isSuperUser(u)) return [...PERMISSION_KEYS];
+  if (u.role === 'partner') return [...ROLE_PRESETS.partner];
   if (Array.isArray(u.permissions) && u.permissions.length > 0) {
     return u.permissions.filter((p) => PERMISSION_KEYS.includes(p));
   }

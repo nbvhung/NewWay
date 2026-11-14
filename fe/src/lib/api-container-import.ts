@@ -10,6 +10,7 @@ export interface ContainerImport {
   bundleId: string | null;
   phatSinh?: boolean;
   recordedBy?: string;
+  soXe?: string;
   importedByName?: string;
   hasVsl?: boolean;
   hasKv?: boolean;

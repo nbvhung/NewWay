@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { containerImportApi, ContainerSearchResult, PlanProgress } from '@/lib/api-container-import';
+import { containerImportApi, ContainerImport, ContainerSearchResult, PlanProgress } from '@/lib/api-container-import';
 import { fmtNgay, fmtDateTime } from '@/lib/utils';
 import { Modal } from '@/components/ui/modal';
 
@@ -319,7 +319,7 @@ export function ProgressTab({ toast }: Props) {
                     )}
                   </span>
                   <span className="font-semibold shrink-0" style={{ color: st.text }}>
-                    Xem từng xe →
+                    Xem mã cont & từng xe →
                   </span>
                 </div>
               </article>
@@ -328,7 +328,7 @@ export function ProgressTab({ toast }: Props) {
         </div>
       )}
 
-      {/* Popup sản lượng từng xe */}
+      {/* Popup chi tiết kế hoạch: danh sách mã container + sản lượng từng xe */}
       <Modal
         open={!!open}
         onClose={() => setOpenId(null)}
@@ -342,6 +342,41 @@ export function ProgressTab({ toast }: Props) {
 }
 
 function PlanVehicleTable({ plan }: { plan: PlanProgress }) {
+  const [subTab, setSubTab] = useState<'containers' | 'vehicles'>('containers');
+  const [containers, setContainers] = useState<ContainerImport[]>([]);
+  const [loadingConts, setLoadingConts] = useState(false);
+  const [contFilter, setContFilter] = useState<'all' | 'done' | 'pending'>('all');
+  const [contSearch, setContSearch] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    setLoadingConts(true);
+    containerImportApi
+      .getAll(plan.id)
+      .then((res) => {
+        if (active) setContainers(Array.isArray(res.data) ? res.data : []);
+      })
+      .catch(() => {
+        if (active) setContainers([]);
+      })
+      .finally(() => {
+        if (active) setLoadingConts(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [plan.id]);
+
+  const filteredContainers = useMemo(() => {
+    const s = contSearch.trim().toUpperCase();
+    return containers.filter((c) => {
+      if (contFilter === 'done' && !c.submissionId) return false;
+      if (contFilter === 'pending' && !!c.submissionId) return false;
+      if (s && !c.containerCode.toUpperCase().includes(s)) return false;
+      return true;
+    });
+  }, [containers, contFilter, contSearch]);
+
   const value = pct(plan.done, plan.total);
   const cell = (n: number) => (
     <td className={`py-3 px-3 ${n === 0 ? 'text-[#c2bdb4]' : 'text-[#1c1917]'}`}>{n}</td>
@@ -352,14 +387,128 @@ function PlanVehicleTable({ plan }: { plan: PlanProgress }) {
 
   return (
     <div className="tabular-nums">
-      <div className="flex items-center gap-5 pb-4 border-b border-[#eae7e1]">
-        <Donut value={value} size={72} stroke={8} uid={`m${plan.id}`} />
-        <p className="text-[13.5px] text-[#78716c]">
-          {plan.customerName && `Khách hàng: ${plan.customerName} · `}
-          {plan.ngay && `Ngày: ${fmtNgay(plan.ngay)} · `}
-          Đã chạy {plan.done} / {plan.total} cont (còn {plan.total - plan.done} cont)
-        </p>
+      <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b border-[#eae7e1]">
+        <div className="flex items-center gap-4">
+          <Donut value={value} size={72} stroke={8} uid={`m${plan.id}`} />
+          <p className="text-[13.5px] text-[#78716c]">
+            {plan.customerName && `Khách hàng: ${plan.customerName} · `}
+            {plan.ngay && `Ngày: ${fmtNgay(plan.ngay)} · `}
+            Đã chạy {plan.done} / {plan.total} cont (còn {plan.total - plan.done} cont)
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1.5 bg-[#f6f3ee] p-1 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setSubTab('containers')}
+            className={`px-3.5 py-1.5 rounded-lg text-[13px] font-semibold transition-all cursor-pointer ${
+              subTab === 'containers'
+                ? 'bg-white text-[#C2410C] shadow-sm'
+                : 'text-[#78716c] hover:text-[#1c1917]'
+            }`}
+          >
+            📦 Mã container ({plan.total})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubTab('vehicles')}
+            className={`px-3.5 py-1.5 rounded-lg text-[13px] font-semibold transition-all cursor-pointer ${
+              subTab === 'vehicles'
+                ? 'bg-white text-[#C2410C] shadow-sm'
+                : 'text-[#78716c] hover:text-[#1c1917]'
+            }`}
+          >
+            🚛 Từng xe ({plan.vehicles.length} xe)
+          </button>
+        </div>
       </div>
+
+      {subTab === 'containers' ? (
+        <div className="pt-4">
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+            <div className="flex items-center gap-1.5">
+              {[
+                { key: 'all', label: `Tất cả (${containers.length})` },
+                { key: 'done', label: `Đã chạy (${containers.filter((c) => !!c.submissionId).length})` },
+                { key: 'pending', label: `Chưa chạy (${containers.filter((c) => !c.submissionId).length})` },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setContFilter(tab.key as any)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                    contFilter === tab.key
+                      ? 'bg-[#FEF3C7] text-[#B45309]'
+                      : 'bg-[#f6f3ee] text-[#78716c] hover:text-[#1c1917]'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <input
+              value={contSearch}
+              onChange={(e) => setContSearch(e.target.value)}
+              placeholder="Lọc nhanh mã cont trong kế hoạch..."
+              className="px-3.5 py-1.5 bg-white border border-[#e7e5e4] rounded-xl text-[13px] text-[#1c1917] outline-none focus:border-[#F59E0B] w-full sm:w-64"
+            />
+          </div>
+
+          {loadingConts ? (
+            <div className="py-10 text-center text-[#78716c] text-sm">Đang tải danh sách container...</div>
+          ) : filteredContainers.length === 0 ? (
+            <div className="py-10 text-center text-[#78716c] text-sm">Không có container nào khớp bộ lọc.</div>
+          ) : (
+            <div className="overflow-auto max-h-[52vh] border border-[#f0ede8] rounded-xl">
+              <table className="w-full text-left text-[13px]">
+                <thead className="sticky top-0 bg-[#faf9f6] border-b border-[#eae7e1]">
+                  <tr className="text-[12px] text-[#78716c]">
+                    <th className="py-2.5 pl-4 pr-3 font-medium">#</th>
+                    <th className="py-2.5 px-3 font-medium">Mã Container</th>
+                    <th className="py-2.5 px-3 font-medium">Loại</th>
+                    <th className="py-2.5 px-3 font-medium">Trạng thái</th>
+                    <th className="py-2.5 pl-3 pr-4 font-medium text-right">Xe chạy / Thời gian</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredContainers.map((c, idx) => {
+                    const recorded = !!c.submissionId;
+                    return (
+                      <tr key={c.id} className="border-b border-[#f5f2ec] hover:bg-[#faf9f6]">
+                        <td className="py-2.5 pl-4 pr-3 text-[#a8a29e]">{idx + 1}</td>
+                        <td className="py-2.5 px-3 font-mono font-semibold text-[#1c1917]">{c.containerCode}</td>
+                        <td className="py-2.5 px-3 font-medium text-[#1c1917]">{c.type}</td>
+                        <td
+                          className="py-2.5 px-3 font-semibold"
+                          style={{ color: recorded ? '#047857' : '#C2410C' }}
+                        >
+                          {recorded ? '✓ Đã chạy' : c.phatSinh ? 'Chờ phân loại' : 'Chưa chạy'}
+                        </td>
+                        <td className="py-2.5 pl-3 pr-4 text-right">
+                          {recorded ? (
+                            <>
+                              {c.soXe && <span className="font-semibold text-[#1c1917]">{c.soXe}</span>}
+                              {c.recordedBy && (
+                                <span className="font-medium text-[#1c1917]">
+                                  {c.soXe ? ' · ' : ''}
+                                  {c.recordedBy}
+                                </span>
+                              )}
+                              {c.claimedAt && <span className="text-[#78716c]"> · {fmtDateTime(c.claimedAt)}</span>}
+                            </>
+                          ) : (
+                            <span className="text-[#a8a29e]">Chưa có xe nhận</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
@@ -414,6 +563,7 @@ function PlanVehicleTable({ plan }: { plan: PlanProgress }) {
           </tfoot>
         </table>
       </div>
+      )}
     </div>
   );
 }

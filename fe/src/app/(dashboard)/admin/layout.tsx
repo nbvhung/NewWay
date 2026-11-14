@@ -117,6 +117,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   const reload = () => {
+    if (user?.role === 'partner') return;
     loadUsers();
     loadAssignmentUsers();
     loadShippingLines();
@@ -125,6 +126,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user || user.role === 'partner') {
+      setLoading(false);
+      return;
+    }
     Promise.all([
       loadUsers(),
       loadAssignmentUsers(),
@@ -132,7 +138,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       loadRoutes(),
       loadCustomers(),
     ]).finally(() => setLoading(false));
-  }, []);
+  }, [user, authLoading]);
 
   const pathname = usePathname();
   const router = useRouter();

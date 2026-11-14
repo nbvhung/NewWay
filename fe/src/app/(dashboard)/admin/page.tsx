@@ -9,7 +9,8 @@ export default function AdminIndexPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (user?.role === 'ops') router.replace('/admin/data');
+    if (user?.role === 'partner') router.replace('/admin/progress');
+    else if (user?.role === 'ops') router.replace('/admin/data');
     else if (user?.role === 'hr') router.replace('/admin/data');
     else router.replace('/admin/data');
   }, [user, router]);

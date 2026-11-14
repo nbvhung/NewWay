@@ -6,8 +6,10 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, In } from 'typeorm';
 import * as ExcelJS from 'exceljs';
+import * as bcrypt from 'bcryptjs';
 import type { Response } from 'express';
 import { Customer } from '../database/entities/customer.entity';
+import { User } from '../database/entities/user.entity';
 import { PaymentDossier } from '../database/entities/payment-dossier.entity';
 import { CustomerPrice } from '../database/entities/customer-price.entity';
 import { CustomerSurcharge } from '../database/entities/customer-surcharge.entity';
@@ -107,7 +109,69 @@ export class CustomersService {
     private surchargesRepository: Repository<CustomerSurcharge>,
     @InjectRepository(CustomerAuditLog)
     private auditLogsRepository: Repository<CustomerAuditLog>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
   ) {}
+
+  /**
+   * Tự động tạo / đồng bộ tài khoản user `partner` cho khách hàng:
+   * - username = mã số thuế (mst)
+   * - password mặc định khi tạo mới = "partner"
+   * - role = 'partner' (hoặc 'disabled' nếu khách hàng ngừng hoạt động)
+   * - customerId = customer.id
+   */
+  private async syncPartnerAccount(customer: Customer): Promise<void> {
+    const mst = (customer.mst || '').trim();
+    const existingByCustomer = await this.usersRepository.findOne({
+      where: { customerId: customer.id, role: In(['partner', 'disabled']) },
+    });
+
+    if (customer.type !== 'customer' || !mst) {
+      if (existingByCustomer) {
+        existingByCustomer.role = 'disabled';
+        await this.usersRepository.save(existingByCustomer);
+      }
+      return;
+    }
+
+    const desiredRole = customer.status === 'active' ? 'partner' : 'disabled';
+    if (existingByCustomer) {
+      const collision =
+        existingByCustomer.username !== mst
+          ? await this.usersRepository.findOne({ where: { username: mst } })
+          : null;
+      if (!collision) {
+        existingByCustomer.username = mst;
+      }
+      existingByCustomer.fullName = customer.name;
+      existingByCustomer.role = desiredRole;
+      await this.usersRepository.save(existingByCustomer);
+      return;
+    }
+
+    const byUsername = await this.usersRepository.findOne({
+      where: { username: mst },
+    });
+    if (byUsername) {
+      if (byUsername.role === 'partner' || byUsername.role === 'disabled') {
+        byUsername.customerId = customer.id;
+        byUsername.fullName = customer.name;
+        byUsername.role = desiredRole;
+        await this.usersRepository.save(byUsername);
+      }
+      return;
+    }
+
+    const user = this.usersRepository.create({
+      username: mst,
+      passwordHash: bcrypt.hashSync('partner', 10),
+      fullName: customer.name,
+      role: desiredRole,
+      customerId: customer.id,
+      permissions: ['container.view', 'tab.progress'],
+    });
+    await this.usersRepository.save(user);
+  }
 
   /**
    * Danh sách customerId mà tài khoản này được phép xem.
@@ -209,7 +273,9 @@ export class CustomersService {
       type: dto.type || 'customer',
       note: dto.note || '',
     });
-    return this.customersRepository.save(c);
+    const saved = await this.customersRepository.save(c);
+    await this.syncPartnerAccount(saved);
+    return saved;
   }
 
   async update(id: number, dto: UpdateCustomerDto): Promise<Customer> {
@@ -226,7 +292,9 @@ export class CustomersService {
     if (dto.status !== undefined) c.status = dto.status;
     if (dto.type !== undefined) c.type = dto.type;
     if (dto.note !== undefined) c.note = dto.note;
-    return this.customersRepository.save(c);
+    const saved = await this.customersRepository.save(c);
+    await this.syncPartnerAccount(saved);
+    return saved;
   }
 
   async remove(id: number): Promise<{ message: string }> {
@@ -240,6 +308,7 @@ export class CustomersService {
         `Khách hàng đang có ${plans} kế hoạch. Không thể xóa — hãy chuyển trạng thái "Ngừng hoạt động" thay vì xóa.`,
       );
     }
+    await this.usersRepository.delete({ customerId: id, role: In(['partner', 'disabled']) });
     await this.customersRepository.remove(c);
     return { message: 'Đã xóa khách hàng' };
   }

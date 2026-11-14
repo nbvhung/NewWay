@@ -87,6 +87,7 @@ export class ContainerImportController {
     res.send(buffer);
   }
 
+  @AllowPartner()
   @Get()
   @Permissions('container.view')
   findAll(@Query('planId') planId?: string, @CurrentUser() user?: any) {

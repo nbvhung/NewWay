@@ -536,6 +536,7 @@ export class ContainerImportService {
     Array<
       ContainerImport & {
         recordedBy?: string;
+        soXe?: string;
         importedByName?: string;
         hasVsl?: boolean;
         hasKv?: boolean;
@@ -545,8 +546,15 @@ export class ContainerImportService {
       }
     >
   > {
+    const isPartner = user?.role === 'partner';
     const qb = this.containerImportsRepository.createQueryBuilder('c');
+    qb.leftJoin('c.shippingLineRef', 'sl');
     if (planId) qb.where('c.shippingLineId = :planId', { planId });
+    if (isPartner) {
+      qb.andWhere('sl.customerId = :partnerCid', {
+        partnerCid: Number(user?.customerId) || -1,
+      });
+    }
     qb.leftJoinAndSelect('c.submissionRef', 'sub')
       .leftJoin('sub.user', 'u')
       .addSelect(['u.id', 'u.fullName', 'u.username', 'u.soXe'])
@@ -580,9 +588,10 @@ export class ContainerImportService {
     return rows.map((r) => {
       const sub: any = (r as any).submissionRef;
       const importer: any = (r as any).importedByRef;
-      const recordedBy = r.submissionId
-        ? sub?.user?.fullName || sub?.driverName || ''
-        : '';
+      const recordedBy =
+        r.submissionId && !isPartner
+          ? sub?.user?.fullName || sub?.driverName || ''
+          : '';
       const info = claimInfo.get(r.id) || {
         hasVsl: false,
         hasKv: false,
@@ -592,7 +601,8 @@ export class ContainerImportService {
       return {
         ...r,
         recordedBy,
-        importedByName: importer?.fullName || '',
+        soXe: sub?.user?.soXe || '',
+        importedByName: isPartner ? '' : importer?.fullName || '',
         hasVsl: info.hasVsl,
         hasKv: info.hasKv,
         hasKd2: info.hasKd2,

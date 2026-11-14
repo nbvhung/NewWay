@@ -12,6 +12,7 @@ import { ContainerImport } from '../database/entities/container-import.entity';
 import { ContainerClaim } from '../database/entities/container-claim.entity';
 import { Submission } from '../database/entities/submission.entity';
 import { Vehicle } from '../database/entities/vehicle.entity';
+import { User } from '../database/entities/user.entity';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { Vehicle } from '../database/entities/vehicle.entity';
       ContainerClaim,
       Submission,
       Vehicle,
+      User,
     ]),
   ],
   controllers: [CustomersController],
