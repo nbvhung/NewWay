@@ -146,10 +146,22 @@ export class UsersService {
       throw new ForbiddenException('Bạn không có quyền tạo tài khoản này');
     }
 
-    const permissions = this.validateGrantablePermissions(
-      dto.permissions,
-      actor,
-    );
+    const permissions =
+      validRole === 'partner'
+        ? ['container.view', 'tab.progress']
+        : this.validateGrantablePermissions(dto.permissions, actor);
+
+    let customerId: number | null = null;
+    if (validRole === 'partner') {
+      const custRows: Array<{ id: number }> =
+        await this.usersRepository.manager.query(
+          'SELECT id FROM customers WHERE mst = $1 LIMIT 1',
+          [dto.username.trim()],
+        );
+      if (custRows[0]?.id) {
+        customerId = Number(custRows[0].id);
+      }
+    }
 
     const hash = bcrypt.hashSync(dto.password, 10);
     const user = this.usersRepository.create({
@@ -158,6 +170,7 @@ export class UsersService {
       fullName: dto.fullName.trim(),
       role: validRole,
       permissions,
+      customerId,
       visibleDriverIds: dto.visibleDriverIds ?? null,
       ben: dto.ben?.trim() || null,
       soXe: dto.soXe?.trim() || '',
@@ -206,6 +219,15 @@ export class UsersService {
       throw new ForbiddenException('Bạn không có quyền sửa tài khoản này');
     }
 
+    if (dto.username !== undefined && dto.username.trim() && dto.username.trim() !== target.username) {
+      const nextUsername = dto.username.trim();
+      const dup = await this.usersRepository.findOne({ where: { username: nextUsername } });
+      if (dup && dup.id !== target.id) {
+        throw new BadRequestException('Tên đăng nhập / MST đã tồn tại');
+      }
+      target.username = nextUsername;
+    }
+
     if (dto.fullName) target.fullName = dto.fullName.trim();
     if (dto.role) {
       if (
@@ -219,7 +241,9 @@ export class UsersService {
       }
       target.role = dto.role;
     }
-    if (dto.permissions !== undefined) {
+    if (target.role === 'partner') {
+      target.permissions = ['container.view', 'tab.progress'];
+    } else if (dto.permissions !== undefined) {
       target.permissions = this.validateGrantablePermissions(
         dto.permissions,
         actor,
@@ -268,6 +292,13 @@ export class UsersService {
     if (dto.payBhxh !== undefined) target.payBhxh = dto.payBhxh;
 
     const saved = await this.usersRepository.save(target);
+
+    if (saved.role === 'partner' && saved.customerId) {
+      await this.usersRepository.manager.query(
+        'UPDATE customers SET name = $1, mst = $2 WHERE id = $3',
+        [saved.fullName, saved.username, saved.customerId],
+      );
+    }
 
     // Đổi xe nhà qua tab Users → ghi lịch sử bổ nhiệm (hiệu lực hôm nay).
     if (

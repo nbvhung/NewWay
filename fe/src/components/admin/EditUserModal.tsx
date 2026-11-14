@@ -24,16 +24,18 @@ const ROLE_DESC: Record<string, string> = {
   hr: 'Nhân sự: khách hàng, tuyến đường, lương tháng',
   admin: 'Quản trị toàn hệ thống (trừ xóa toàn bộ dữ liệu)',
   supper_admin: 'Toàn quyền, kể cả xóa toàn bộ dữ liệu',
+  partner: 'Khách hàng: chỉ xem tab Tiến độ và mã container của kế hoạch thuộc khách hàng',
 };
 
 export function EditUserModal({ open, onClose, editUserData, setEditUserData, onSave, roleOptions, grantablePerms, drivers }: Props) {
   const presetFor = (role: string) => (ROLE_PRESETS[role] || []).filter((k) => grantablePerms.includes(k));
+  const isPartner = editUserData?.role === 'partner';
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="✏️ Chỉnh sửa tài khoản"
+      title={isPartner ? '✏️ Chỉnh sửa tài khoản khách hàng' : '✏️ Chỉnh sửa tài khoản'}
       footer={
         <>
           <button onClick={onClose} className="px-4 py-2 rounded-lg text-xs font-medium text-[#78716c] border border-[#e7e5e4] hover:text-[#1c1917] cursor-pointer">Hủy</button>
@@ -43,63 +45,77 @@ export function EditUserModal({ open, onClose, editUserData, setEditUserData, on
     >
       <div className="max-h-[70vh] overflow-y-auto pr-1 flex flex-col gap-3">
         <div>
-          <label className="text-xs font-medium text-[#78716c] mb-1 block">Họ tên</label>
+          <label className="text-xs font-medium text-[#78716c] mb-1 block">{isPartner ? 'Tên khách hàng' : 'Họ tên'}</label>
           <input type="text" value={editUserData?.fullName || ''} onChange={e => setEditUserData({ ...editUserData, fullName: e.target.value })}
             className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
         </div>
-        <div>
-          <label className="text-xs font-medium text-[#78716c] mb-1 block">Vai trò mẫu</label>
-          <div className="flex gap-2">
-            <select value={editUserData?.role || 'laixe'} onChange={e => setEditUserData({ ...editUserData, role: e.target.value })}
-              className="flex-1 px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]">
-              {roleOptions.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-            </select>
-            <button type="button" onClick={() => setEditUserData({ ...editUserData, permissions: presetFor(editUserData?.role || 'laixe') })}
-              className="px-2.5 py-2 rounded-lg text-[9px] font-semibold border border-[#e7e5e4] text-[#78716c] hover:text-[#1c1917] hover:border-[#d4d4d0] cursor-pointer whitespace-nowrap">
-              ↩️ Theo vai trò mẫu
-            </button>
-          </div>
-          <p className="text-[9px] text-[#a8a29e] mt-1">{ROLE_DESC[editUserData?.role] || ''}</p>
-        </div>
 
-        {grantablePerms.length > 0 ? (
-          <PermissionChecklist
-            selected={editUserData?.permissions || []}
-            onChange={(p) => setEditUserData({ ...editUserData, permissions: p })}
-            grantable={grantablePerms}
-          />
-        ) : (
-          <p className="text-[10px] text-[#a8a29e]">
-            Quyền của tài khoản này theo <strong>vai trò mẫu</strong>. Chỉ admin / supper_admin được sửa từng quyền.
-          </p>
+        {isPartner && (
+          <div>
+            <label className="text-xs font-medium text-[#78716c] mb-1 block">Mã số thuế <span className="text-[#a8a29e] font-normal">(Tài khoản đăng nhập)</span></label>
+            <input type="text" value={editUserData?.username || ''} onChange={e => setEditUserData({ ...editUserData, username: e.target.value })}
+              placeholder="vd: 0201906059"
+              className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
+          </div>
         )}
 
-        <div>
-          <label className="text-xs font-medium text-[#78716c] mb-1 block">🚗 Xe được xem dữ liệu <span className="text-[#a8a29e] font-normal">(tick &quot;Xem tất cả&quot; = không giới hạn)</span></label>
-          <VehicleSelect
-            drivers={drivers}
-            selected={editUserData?.visibleDriverIds ?? null}
-            onChange={(ids) => setEditUserData({ ...editUserData, visibleDriverIds: ids })}
-          />
-          <p className="text-[9px] text-[#a8a29e] mt-1">Tài khoản Xem vốn chỉ thấy dữ liệu của những xe được chọn.</p>
-        </div>
+        {!isPartner && (
+          <>
+            <div>
+              <label className="text-xs font-medium text-[#78716c] mb-1 block">Vai trò mẫu</label>
+              <div className="flex gap-2">
+                <select value={editUserData?.role || 'laixe'} onChange={e => setEditUserData({ ...editUserData, role: e.target.value })}
+                  className="flex-1 px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]">
+                  {roleOptions.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                </select>
+                <button type="button" onClick={() => setEditUserData({ ...editUserData, permissions: presetFor(editUserData?.role || 'laixe') })}
+                  className="px-2.5 py-2 rounded-lg text-[9px] font-semibold border border-[#e7e5e4] text-[#78716c] hover:text-[#1c1917] hover:border-[#d4d4d0] cursor-pointer whitespace-nowrap">
+                  ↩️ Theo vai trò mẫu
+                </button>
+              </div>
+              <p className="text-[9px] text-[#a8a29e] mt-1">{ROLE_DESC[editUserData?.role] || ''}</p>
+            </div>
 
-        <div>
-          <label className="text-xs font-medium text-[#78716c] mb-1 block">
-            🏷️ Bên chủ vốn <span className="text-[#a8a29e] font-normal">(dùng cho trang Tài chính)</span>
-          </label>
-          <select
-            value={editUserData?.ben || ''}
-            onChange={e => setEditUserData({ ...editUserData, ben: e.target.value })}
-            className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer">
-            <option value="">— Không thuộc bên nào —</option>
-            <option value="A">Bên A — New Way A</option>
-            <option value="B">Bên B — New Way B</option>
-          </select>
-          <p className="text-[9px] text-[#a8a29e] mt-1">
-            Các xe ở trên thuộc bên này. Chi phí nhập cho xe đó vào sổ Tài chính của bên.
-          </p>
-        </div>
+            {grantablePerms.length > 0 ? (
+              <PermissionChecklist
+                selected={editUserData?.permissions || []}
+                onChange={(p) => setEditUserData({ ...editUserData, permissions: p })}
+                grantable={grantablePerms}
+              />
+            ) : (
+              <p className="text-[10px] text-[#a8a29e]">
+                Quyền của tài khoản này theo <strong>vai trò mẫu</strong>. Chỉ admin / supper_admin được sửa từng quyền.
+              </p>
+            )}
+
+            <div>
+              <label className="text-xs font-medium text-[#78716c] mb-1 block">🚗 Xe được xem dữ liệu <span className="text-[#a8a29e] font-normal">(tick &quot;Xem tất cả&quot; = không giới hạn)</span></label>
+              <VehicleSelect
+                drivers={drivers}
+                selected={editUserData?.visibleDriverIds ?? null}
+                onChange={(ids) => setEditUserData({ ...editUserData, visibleDriverIds: ids })}
+              />
+              <p className="text-[9px] text-[#a8a29e] mt-1">Tài khoản Xem vốn chỉ thấy dữ liệu của những xe được chọn.</p>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-[#78716c] mb-1 block">
+                🏷️ Bên chủ vốn <span className="text-[#a8a29e] font-normal">(dùng cho trang Tài chính)</span>
+              </label>
+              <select
+                value={editUserData?.ben || ''}
+                onChange={e => setEditUserData({ ...editUserData, ben: e.target.value })}
+                className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer">
+                <option value="">— Không thuộc bên nào —</option>
+                <option value="A">Bên A — New Way A</option>
+                <option value="B">Bên B — New Way B</option>
+              </select>
+              <p className="text-[9px] text-[#a8a29e] mt-1">
+                Các xe ở trên thuộc bên này. Chi phí nhập cho xe đó vào sổ Tài chính của bên.
+              </p>
+            </div>
+          </>
+        )}
 
         <div className="grid grid-cols-2 gap-2">
           <div className="col-span-2">
@@ -107,7 +123,9 @@ export function EditUserModal({ open, onClose, editUserData, setEditUserData, on
             <input type="text" value={editUserData?.sdt || ''} onChange={e => setEditUserData({ ...editUserData, sdt: e.target.value })}
               className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b]" />
           </div>
-          <p className="col-span-2 text-[9px] text-[#a8a29e]">Biển số / mooc / STT / ngày hoạt động nay quản lý ở tab <b>Quản lý XE</b>.</p>
+          {!isPartner && (
+            <p className="col-span-2 text-[9px] text-[#a8a29e]">Biển số / mooc / STT / ngày hoạt động nay quản lý ở tab <b>Quản lý XE</b>.</p>
+          )}
           <div>
             <label className="text-xs font-medium text-[#78716c] mb-1 block">Zalo ID</label>
             <input type="text" value={editUserData?.zaloId || ''} onChange={e => setEditUserData({ ...editUserData, zaloId: e.target.value })}
@@ -124,7 +142,7 @@ export function EditUserModal({ open, onClose, editUserData, setEditUserData, on
           </div>
         </div>
         <div>
-          <label className="text-xs font-medium text-[#78716c] mb-1 block">Mật khẩu mới <span className="text-[#78716c] font-normal">(để trống = không đổi)</span></label>
+          <label className="text-xs font-medium text-[#78716c] mb-1 block">Đổi mật khẩu <span className="text-[#78716c] font-normal">(để trống = không đổi)</span></label>
           <input type="password" value={editUserData?.password || ''} onChange={e => setEditUserData({ ...editUserData, password: e.target.value })} placeholder="Nhập mật khẩu mới nếu muốn đổi"
             className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#78716c]" />
         </div>

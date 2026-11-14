@@ -13,11 +13,15 @@ import { Type } from 'class-transformer';
 export class UpdateUserDto {
   @IsOptional()
   @IsString()
+  username?: string;
+
+  @IsOptional()
+  @IsString()
   fullName?: string;
 
   @IsOptional()
   @IsString()
-  @IsIn(['laixe', 'ops', 'admin', 'supper_admin', 'hr', 'disabled'], {
+  @IsIn(['laixe', 'ops', 'admin', 'supper_admin', 'hr', 'partner', 'disabled'], {
     message: 'Vai trò không hợp lệ',
   })
   role?: string;

@@ -52,8 +52,8 @@ function canManageUser(currentRole: string, targetRole: string) {
 }
 
 function roleOptionsFor(currentRole: string) {
-  if (currentRole === 'supper_admin') return ['laixe', 'ops', 'admin', 'supper_admin', 'hr'];
-  if (currentRole === 'admin') return ['laixe', 'ops', 'hr'];
+  if (currentRole === 'supper_admin') return ['laixe', 'ops', 'admin', 'supper_admin', 'hr', 'partner'];
+  if (currentRole === 'admin') return ['laixe', 'ops', 'hr', 'partner'];
   return ['laixe'];
 }
 
@@ -176,7 +176,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
     const perms = Array.isArray(u.permissions) && u.permissions.length > 0
       ? u.permissions.filter((p) => PERMISSION_KEYS.includes(p))
       : presetFor(u.role);
-    setEditUserData({ id: u.id, fullName: u.fullName, role: u.role, permissions: perms, visibleDriverIds: Array.isArray(u.visibleDriverIds) ? u.visibleDriverIds.map(Number) : null, soXe: u.soXe, soMooc: u.soMooc || '', stt: u.stt, sdt: u.sdt, ngayHoatDong: u.ngayHoatDong || '', zaloId: u.zaloId || '', zaloBot: u.zaloBot ?? 0, password: '', ben: u.ben || '' });
+    setEditUserData({ id: u.id, username: u.username, fullName: u.fullName, role: u.role, permissions: perms, visibleDriverIds: Array.isArray(u.visibleDriverIds) ? u.visibleDriverIds.map(Number) : null, soXe: u.soXe, soMooc: u.soMooc || '', stt: u.stt, sdt: u.sdt, ngayHoatDong: u.ngayHoatDong || '', zaloId: u.zaloId || '', zaloBot: u.zaloBot ?? 0, password: '', ben: u.ben || '' });
     setEditUserModalOpen(true);
   };
 
@@ -184,9 +184,10 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
     if (!editUserData) return;
     try {
       await usersApi.update(editUserData.id, {
+        ...(editUserData.username ? { username: editUserData.username } : {}),
         fullName: editUserData.fullName,
         role: editUserData.role,
-        ...(canGrant
+        ...(canGrant && editUserData.role !== 'partner'
           ? { permissions: (editUserData.permissions || []).filter((p: string) => PERMISSION_KEYS.includes(p)) }
           : {}),
         // null = xem tất cả xe; [] = không xe nào. Không được ép null thành [].
@@ -295,6 +296,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
               ops: 'from-[#8b5cf6] to-[#7c3aed]',
               laixe: 'from-[#0891b2] to-[#0e7490]',
               hr: 'from-[#10b981] to-[#059669]',
+              partner: 'from-[#059669] to-[#0d9488]',
               disabled: 'from-[#a8a29e] to-[#78716c]',
             };
             return (
@@ -306,7 +308,7 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-sm font-bold text-[#1c1917]">{u.fullName}</span>
                     <span className={roleBadge(u.role)}>{ROLE_LABELS[u.role] || u.role}</span>
-                    {isCustomPerms(u) && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(59,130,246,0.15)] text-blue-600">⚙️ Quyền tùy chỉnh</span>}
+                    {u.role !== 'partner' && isCustomPerms(u) && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(59,130,246,0.15)] text-blue-600">⚙️ Quyền tùy chỉnh</span>}
                     {Array.isArray(u.visibleDriverIds) && u.visibleDriverIds.length > 0 && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(16,185,129,0.15)] text-emerald-600">🚗 Xem {u.visibleDriverIds.length} xe</span>}
                     {u.ben && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(59,130,246,0.15)] text-blue-600">🏷️ Bên {u.ben}</span>}
                     {u.zaloId && <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[rgba(245,158,11,0.15)] text-[#d97706]">💬 Zalo{u.zaloBot === 1 ? ' Bot2' : u.zaloBot === 2 ? ' Bot3' : ''}</span>}
@@ -359,13 +361,13 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
             </div>
             <div className="p-3 space-y-2">
               <div>
-                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Tên đăng nhập</label>
-                <input type="text" value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} placeholder="vd: driver01"
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">{newUser.role === 'partner' ? 'Mã số thuế (Tên đăng nhập)' : 'Tên đăng nhập'}</label>
+                <input type="text" value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} placeholder={newUser.role === 'partner' ? 'vd: 0201906059' : 'vd: driver01'}
                   className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
               </div>
               <div>
-                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Họ tên</label>
-                <input type="text" value={newUser.fullName} onChange={e => setNewUser({ ...newUser, fullName: e.target.value })} placeholder="vd: Nguyễn Văn A"
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">{newUser.role === 'partner' ? 'Tên khách hàng' : 'Họ tên'}</label>
+                <input type="text" value={newUser.fullName} onChange={e => setNewUser({ ...newUser, fullName: e.target.value })} placeholder={newUser.role === 'partner' ? 'vd: CÔNG TY CỔ PHẦN HPH LOGISTICS' : 'vd: Nguyễn Văn A'}
                   className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
               </div>
               <div>
@@ -376,10 +378,10 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
             </div>
           </div>
 
-          {/* Nhóm xe */}
+          {/* Nhóm xe / liên hệ */}
           <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
             <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
-              <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">Thông tin xe</span>
+              <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">{newUser.role === 'partner' ? 'Thông tin liên hệ' : 'Thông tin xe'}</span>
             </div>
             <div className="p-3 grid grid-cols-2 gap-2">
               <div className="col-span-2">
@@ -387,14 +389,16 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
                 <input type="text" value={newUser.sdt} onChange={e => setNewUser({ ...newUser, sdt: e.target.value })} placeholder="0912237755"
                   className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] placeholder:text-[#a8a29e]" />
               </div>
-              <p className="col-span-2 text-[9px] text-[#a8a29e]">Biển số / mooc / STT / ngày hoạt động nay quản lý ở tab <b>Quản lý XE</b>.</p>
+              {newUser.role !== 'partner' && (
+                <p className="col-span-2 text-[9px] text-[#a8a29e]">Biển số / mooc / STT / ngày hoạt động nay quản lý ở tab <b>Quản lý XE</b>.</p>
+              )}
             </div>
           </div>
 
           {/* Nhóm vai trò + quyền */}
           <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
             <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4] flex items-center justify-between gap-2">
-              <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">Vai trò mẫu & Quyền chi tiết</span>
+              <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">{newUser.role === 'partner' ? 'Vai trò' : 'Vai trò mẫu & Quyền chi tiết'}</span>
               {hasPerm(currentUser, 'user.manage') && (
                 <button type="button" onClick={applyViewOnlyTemplate}
                   className="px-2 py-1 rounded-md text-[9px] font-bold bg-[rgba(59,130,246,0.12)] text-blue-600 border border-blue-200 hover:bg-[rgba(59,130,246,0.2)] cursor-pointer whitespace-nowrap">
@@ -404,57 +408,63 @@ export function UsersTab({ currentUser, allUsers, onRefresh, toast }: Props) {
             </div>
             <div className="p-3 space-y-3">
               <div>
-                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Vai trò mẫu <span className="text-[#a8a29e] font-normal">(chọn để tự tích sẵn quyền, sau đó sửa từng quyền bên dưới)</span></label>
+                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">Vai trò mẫu {newUser.role !== 'partner' && <span className="text-[#a8a29e] font-normal">(chọn để tự tích sẵn quyền, sau đó sửa từng quyền bên dưới)</span>}</label>
                 <div className="flex gap-2">
                   <select value={newUser.role} onChange={e => { const r = e.target.value; setNewUser({ ...newUser, role: r, permissions: presetFor(r) }); }}
                     className="flex-1 px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer">
                     {roleOptionsFor(currentUser.role).map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                   </select>
-                  <button type="button" onClick={() => setNewUser({ ...newUser, permissions: presetFor(newUser.role) })}
-                    className="px-2.5 py-2 rounded-lg text-[9px] font-semibold border border-[#e7e5e4] text-[#78716c] hover:text-[#1c1917] hover:border-[#d4d4d0] cursor-pointer whitespace-nowrap">
-                    ↩️ Theo vai trò mẫu
-                  </button>
+                  {newUser.role !== 'partner' && (
+                    <button type="button" onClick={() => setNewUser({ ...newUser, permissions: presetFor(newUser.role) })}
+                      className="px-2.5 py-2 rounded-lg text-[9px] font-semibold border border-[#e7e5e4] text-[#78716c] hover:text-[#1c1917] hover:border-[#d4d4d0] cursor-pointer whitespace-nowrap">
+                      ↩️ Theo vai trò mẫu
+                    </button>
+                  )}
                 </div>
                 <p className="text-[9px] text-[#a8a29e] mt-1.5">{ROLE_DESC[newUser.role] || ''}</p>
               </div>
-              {canGrant ? (
-                <PermissionChecklist
-                  selected={newUser.permissions || []}
-                  onChange={(p) => setNewUser({ ...newUser, permissions: p })}
-                  grantable={grantablePerms}
-                />
-              ) : (
-                <p className="text-[10px] text-[#a8a29e]">Quyền theo <strong>vai trò mẫu</strong>. Chỉ admin / supper_admin được sửa từng quyền.</p>
+              {newUser.role !== 'partner' && (
+                canGrant ? (
+                  <PermissionChecklist
+                    selected={newUser.permissions || []}
+                    onChange={(p) => setNewUser({ ...newUser, permissions: p })}
+                    grantable={grantablePerms}
+                  />
+                ) : (
+                  <p className="text-[10px] text-[#a8a29e]">Quyền theo <strong>vai trò mẫu</strong>. Chỉ admin / supper_admin được sửa từng quyền.</p>
+                )
               )}
             </div>
           </div>
 
           {/* Nhóm xe được xem dữ liệu */}
-          <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
-            <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
-              <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">🚗 Xe được xem dữ liệu <span className="text-[#a8a29e] font-normal">(để trống = xem tất cả)</span></span>
-            </div>
-            <div className="p-3">
-              <VehicleSelect
-                drivers={drivers}
-                selected={newUser.visibleDriverIds ?? null}
-                onChange={(ids) => setNewUser({ ...newUser, visibleDriverIds: ids })}
-              />
-              <p className="text-[9px] text-[#a8a29e] mt-2">Dành cho tài khoản <b>Xem vốn</b>: người góp vốn chỉ thấy dữ liệu của những xe được chọn (Data, Kế hoạch, Container, Xuất Excel, Dashboard).</p>
-              <div className="mt-3">
-                <label className="text-[10px] font-medium text-[#78716c] mb-1 block">
-                  🏷️ Bên chủ vốn <span className="text-[#a8a29e] font-normal">(dùng cho trang Tài chính)</span>
-                </label>
-                <select value={newUser.ben || ''} onChange={e => setNewUser({ ...newUser, ben: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer">
-                  <option value="">— Không thuộc bên nào —</option>
-                  <option value="A">Bên A — New Way A</option>
-                  <option value="B">Bên B — New Way B</option>
-                </select>
-                <p className="text-[9px] text-[#a8a29e] mt-1">Các xe ở trên thuộc bên này. Chi phí nhập cho xe đó vào sổ Tài chính của bên.</p>
+          {newUser.role !== 'partner' && (
+            <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
+              <div className="px-3 py-2 bg-[#f5f5f4] border-b border-[#e7e5e4]">
+                <span className="text-[10px] font-bold text-[#78716c] uppercase tracking-wide">🚗 Xe được xem dữ liệu <span className="text-[#a8a29e] font-normal">(để trống = xem tất cả)</span></span>
+              </div>
+              <div className="p-3">
+                <VehicleSelect
+                  drivers={drivers}
+                  selected={newUser.visibleDriverIds ?? null}
+                  onChange={(ids) => setNewUser({ ...newUser, visibleDriverIds: ids })}
+                />
+                <p className="text-[9px] text-[#a8a29e] mt-2">Dành cho tài khoản <b>Xem vốn</b>: người góp vốn chỉ thấy dữ liệu của những xe được chọn (Data, Kế hoạch, Container, Xuất Excel, Dashboard).</p>
+                <div className="mt-3">
+                  <label className="text-[10px] font-medium text-[#78716c] mb-1 block">
+                    🏷️ Bên chủ vốn <span className="text-[#a8a29e] font-normal">(dùng cho trang Tài chính)</span>
+                  </label>
+                  <select value={newUser.ben || ''} onChange={e => setNewUser({ ...newUser, ben: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#ffffff] border border-[#e7e5e4] rounded-lg text-xs text-[#1c1917] outline-none focus:border-[#f59e0b] cursor-pointer">
+                    <option value="">— Không thuộc bên nào —</option>
+                    <option value="A">Bên A — New Way A</option>
+                    <option value="B">Bên B — New Way B</option>
+                  </select>
+                  <p className="text-[9px] text-[#a8a29e] mt-1">Các xe ở trên thuộc bên này. Chi phí nhập cho xe đó vào sổ Tài chính của bên.</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Nhóm Zalo */}
           <div className="border border-[#e7e5e4] rounded-xl overflow-hidden">
