@@ -600,6 +600,8 @@ export class ContainerImportService {
       };
       return {
         ...r,
+        submissionRef: isPartner ? undefined : sub,
+        importedByRef: isPartner ? undefined : importer,
         recordedBy,
         soXe: sub?.user?.soXe || '',
         importedByName: isPartner ? '' : importer?.fullName || '',
@@ -626,7 +628,15 @@ export class ContainerImportService {
       : null;
     const plans: any[] = await this.containerImportsRepository.query(`
       SELECT sl.id, sl.name, sl.so_chuyen AS "soChuyen", sl.route_name AS "routeName",
-             sl.ngay, c.name AS "customerName",
+             sl.ngay::text AS ngay, c.name AS "customerName",
+             (
+               SELECT MIN(COALESCE(cl.created_at, sub.created_at))
+               FROM container_imports ci2
+               LEFT JOIN container_claims cl ON cl.container_import_id = ci2.id
+               LEFT JOIN submissions sub ON sub.id = ci2.submission_id
+               WHERE ci2.shipping_line_id = sl.id
+                 AND ci2.submission_id IS NOT NULL
+             ) AS "firstClaimedAt",
              COUNT(ci.id)::int AS total,
              COUNT(ci.submission_id)::int AS done,
              COUNT(ci.id) FILTER (WHERE ci.type = 'H20')::int AS t_h20,
@@ -705,6 +715,7 @@ export class ContainerImportService {
         soChuyen: p.soChuyen,
         routeName: p.routeName,
         ngay: p.ngay,
+        firstClaimedAt: p.firstClaimedAt || null,
         customerName: p.customerName || '',
         total: p.total,
         done: p.done,

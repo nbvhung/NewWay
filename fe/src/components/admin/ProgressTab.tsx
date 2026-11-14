@@ -249,7 +249,11 @@ export function ProgressTab({ toast }: Props) {
                     <h2 className="text-[22px] font-bold text-[#1f1a12] mt-2.5 leading-tight truncate">{planTitle(p)}</h2>
                     <div className="text-[13.5px] text-[#8a7a60] mt-1 truncate">
                       {p.routeName || '—'}
-                      {p.ngay && ` · ${fmtNgay(p.ngay)}`}
+                      {p.firstClaimedAt
+                        ? ` · Ghi nhận đầu: ${fmtDateTime(p.firstClaimedAt)}`
+                        : p.ngay
+                          ? ` · Chưa ghi nhận (${fmtNgay(p.ngay)})`
+                          : ''}
                       {p.customerName && ` · ${p.customerName}`}
                     </div>
                   </div>
@@ -392,7 +396,11 @@ function PlanVehicleTable({ plan }: { plan: PlanProgress }) {
           <Donut value={value} size={72} stroke={8} uid={`m${plan.id}`} />
           <p className="text-[13.5px] text-[#78716c]">
             {plan.customerName && `Khách hàng: ${plan.customerName} · `}
-            {plan.ngay && `Ngày: ${fmtNgay(plan.ngay)} · `}
+            {plan.firstClaimedAt
+              ? `Ghi nhận đầu: ${fmtDateTime(plan.firstClaimedAt)} · `
+              : plan.ngay
+                ? `Ngày KH: ${fmtNgay(plan.ngay)} · `
+                : ''}
             Đã chạy {plan.done} / {plan.total} cont (còn {plan.total - plan.done} cont)
           </p>
         </div>

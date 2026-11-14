@@ -83,6 +83,7 @@ export interface PlanProgress {
   soChuyen?: string;
   routeName?: string;
   ngay?: string | null;
+  firstClaimedAt?: string | null;
   customerName: string;
   total: number;
   done: number;
